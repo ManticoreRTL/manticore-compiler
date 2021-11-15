@@ -3,17 +3,21 @@ package manticore.assembly.parser
 import scala.util.parsing.combinator._
 import manticore.assembly.ManticoreAssemblyIR
 
-import manticore.assembly.levels.{WireLogic, MemoryLogic, RegLogic, InputLogic, OutputLogic}
+import manticore.assembly.levels.{
+  WireLogic,
+  MemoryLogic,
+  RegLogic,
+  InputLogic,
+  OutputLogic
+}
 import manticore.assembly.levels.MemoryLogic
 
 import scala.util.parsing.input.CharArrayReader.EofCh
 import scala.util.parsing.input.Positional
 import scala.util.parsing.input.Reader
 
-
 import scala.language.implicitConversions
 import scala.collection.mutable
-
 
 class SaltyAssemblyLexer extends AssemblyLexical {
 
@@ -100,9 +104,7 @@ class SaltyAssemblyLexer extends AssemblyLexical {
   protected def delim: Parser[Token] = _delim
 }
 
-
-
-object RawCircuitAssemblyParser extends AssemblyTokenParser {
+object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   type Tokens = AssemblyTokens
   val lexical: SaltyAssemblyLexer = new SaltyAssemblyLexer()
   import lexical._
@@ -141,20 +143,17 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
   def dec_value: Parser[BigInt] = decLit ^^ { t => BigInt(t.chars) }
   def const_value: Parser[BigInt] = hex_value | dec_value
 
-  def bit_slice: Parser[(Int, Int)] =
-    ("[" ~> const_value ~ ":" ~ const_value <~ "]") ^^ { case (hi ~ _ ~ lo) =>
-      (hi.toInt, lo.toInt)
-    }
+  
+   
   def keyvalue: Parser[(String, String)] =
     (ident ~ "=" ~ stringLit) ^^ { case (k ~ _ ~ v) => (k.chars, v.chars) }
   def single_annon: Parser[AssemblyAnnotation] =
-    log(positioned(annotLiteral) ~ opt("[" ~> repsep(keyvalue, ",") <~ "]"))(
-      "annotation"
-    ) ^^ { case (n ~ values) =>
-      AssemblyAnnotation(
-        n.chars,
-        values.getOrElse(Seq()).toMap
-      )
+    (positioned(annotLiteral) ~ opt("[" ~> repsep(keyvalue, ",") <~ "]")) ^^ {
+      case (n ~ values) =>
+        AssemblyAnnotation(
+          n.chars,
+          values.getOrElse(Seq()).toMap
+        )
     }
 
   def annotations: Parser[Seq[AssemblyAnnotation]] = rep(single_annon)
@@ -162,7 +161,7 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
   def def_reg: Parser[DefReg] =
     (annotations ~ (RegTypes
       .map(keyword(_))
-      .reduce(_ | _)) ~ ident ~ bit_slice ~
+      .reduce(_ | _)) ~ ident ~ const_value ~
       opt(const_value) <~ ";") ^^ { case (a ~ t ~ name ~ s ~ v) =>
       val tt = t.chars match {
         case (".wire")   => WireLogic
@@ -171,7 +170,7 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
         case (".output") => OutputLogic
         case (".mem")    => MemoryLogic
       }
-      DefReg(LogicVariable(name.chars, s, tt), v, a)
+      DefReg(LogicVariable(name.chars, s.toInt, tt), v, a)
     }
 
   def def_func: Parser[DefFunc] =
@@ -191,8 +190,7 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
       case (a ~ op ~ rd ~ _ ~ rs1 ~ _ ~ rs2) =>
         BinaryArithmetic(op, rd.chars, rs1.chars, rs2.chars, a)
     }
-  
-  
+
   def lvec_inst: Parser[CustomInstruction] =
     (annotations ~ keyword(
       "CUST"
@@ -269,27 +267,11 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
   def apply(input: String): DefProgram = {
 
     val tokens: lexical.Scanner = new lexical.Scanner(input)
-    // println(tokens)
-    // println("Tokens:")
-    // def printTokens(tokens_left: lexical.Scanner): Unit = {
-    //   tokens_left.atEnd match {
-    //     case false =>
-    //       println(tokens_left.first)
-    //       printTokens(tokens_left.rest)
-    //     case _ => ()
-    //   }
-    // }
-
-    // printTokens(tokens)
-    // // println(tokens.first)
-    println("Parsing:")
     phrase(positioned(program))(tokens) match {
       case Success(result, _) => result
       case failure: NoSuccess =>
-        println("Failed")
-        println(failure.msg)
-        println(failure.next.pos)
-        println(failure.next.first.toString())
+        println(s"Failed parsing at ${failure.next.pos}: ${failure.msg}")
+        // println(failure.msg)
         scala.sys.error("Parsing failed")
     }
   }
@@ -307,9 +289,9 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
 //         @PRGANNON [id = "MyTop"]
 //         .prog :
 //           @PROCID [id = "sd"]
-//           .proc proc_0: 
+//           .proc proc_0:
 //             // comment:
-            
+
 //             .wire zero[31: 0] 0x000000000000000000000000000000;
 //             @TYPE [t = "reg"]
 //             .input ii[1:0];
@@ -324,11 +306,11 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
 //             ADD oo, zero, ii;
 //             XOR rd, ds, sa;
 //             CUST rd, [f0], rs1, rs2, rs3, rs4;
-                
+
 //           @PROCID [id = "dd"]
-//           .proc proc_1: 
+//           .proc proc_1:
 //             // comment:
-            
+
 //             @WIRE
 //             .reg zero[31: 0] 0x000000000000000000000000000000;
 //             .reg r1[31 : 0]  0x19;
@@ -339,18 +321,18 @@ object RawCircuitAssemblyParser extends AssemblyTokenParser {
 //             .reg  base_mem_ptr[127:0];
 //             .reg  mem_word_read_port [31:0];
 //             .func f0 [0x10];
-            
+
 //             LLD mem_word_read_port, base_mem_ptr[0x010];
 //             @SOURCEINFO [file="/scaratch/mayy/my_vmodule.v", lines="12:13"]
 //             @TRACKED    [signal="my_tracked_signal"]
 //             ADD r1, r2, r3;
 //             XOR rd, ds, sa;
-//             CUST rd, [f0], rs1, rs2, rs3, rs4;      
+//             CUST rd, [f0], rs1, rs2, rs3, rs4;
 //             LLD  rd, base_mem_0[0x100]; // comment
 //             LST  rs, base[0x31]; /* comment */
 //             GST  rs, [rs1, rs2, rs3, zero]; // global store
 //             GLD  rd, [rhh, rhl, rl, rll]; // global load
-//             GLD  rd, [zero, zero, zero, addr]; 
+//             GLD  rd, [zero, zero, zero, addr];
 
 //       """
 //   )

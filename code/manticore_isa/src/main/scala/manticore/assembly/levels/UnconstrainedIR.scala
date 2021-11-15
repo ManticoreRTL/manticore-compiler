@@ -9,9 +9,9 @@ import manticore.assembly.ManticoreAssemblyIR
 object UnconstrainedIR extends ManticoreAssemblyIR {
   case class LogicVariable(
       name: String,
-      slice: (Int, Int),
+      width: Int,
       tpe: LogicType,
-  )
+  ) extends Named
   type Constant = BigInt // unlimited bits
   type Variable = LogicVariable
   type CustomFunction = Seq[BigInt] // unlimited bits
@@ -20,17 +20,4 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
   type ExceptionId = Int
 }
 
-// object UnvectorizedAssembly extends ManticoreAssemblyIR {
-
-//   case class LogicVariable(name: String, width: Int, tpe: LogicType)
-
-//   type Constant = Int // limited to 16 bits
-//   type Variable = LogicVariable
-//   type CustomFunction = Int // limited to 16 bits
-//   type Name = String
-//   type ProcessId = Int
-//   type ExceptionId = Int
-
-// }
-
-// object VectorizedAssembly {}
+object UnconstrainedNameChecker extends AssemblyNameChecker(UnconstrainedIR)

@@ -3,16 +3,21 @@ package manticore.assembly
 import scala.collection.mutable.ArrayBuffer
 import scala.util.parsing.input.Positional
 
+
+
 trait ManticoreAssemblyIR {
 
-  type Constant
-  type Variable
-  type CustomFunction
   type Name
+  type Constant
+  type Variable <: Named
+  type CustomFunction
   type ProcessId
   type ExceptionId
   // type SwizzleCode
 
+  trait Named {
+    val name: Name
+  }
   trait HasSerialized {
     def serialized: String
   }
@@ -177,16 +182,3 @@ trait ManticoreAssemblyIR {
   }
 }
 
-object UnconstrainedAssembly extends ManticoreAssemblyIR {
-  type Constant = Int
-  type Variable = String
-
-  type CustomFunction = String
-
-  def localRamSize: Int = Int.MaxValue
-  def globalRamSize: Int = Int.MaxValue
-
-  def customFunctionSlots: Int = Int.MaxValue
-
-  def dimensions: (Int, Int) = (Int.MaxValue, Int.MaxValue)
-}
