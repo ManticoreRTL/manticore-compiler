@@ -1,6 +1,8 @@
-package manticore.assembly.levels
+package manticore.assembly.levels.unconstrained
 
 import manticore.assembly.ManticoreAssemblyIR
+import manticore.assembly.levels.LogicType
+import manticore.assembly.levels.AssemblyNameChecker
 
 
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit

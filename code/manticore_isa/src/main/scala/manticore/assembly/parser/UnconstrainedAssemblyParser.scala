@@ -109,7 +109,10 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   val lexical: SaltyAssemblyLexer = new SaltyAssemblyLexer()
   import lexical._
 
-  import manticore.assembly.levels.UnconstrainedIR._
+  import manticore.assembly.levels.unconstrained.UnconstrainedIR._
+  import manticore.assembly.levels.{
+    RegLogic, WireLogic, MemoryLogic, InputLogic, OutputLogic
+  }
 
   val arithOperator =
     Seq
@@ -141,7 +144,7 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def hex_value: Parser[BigInt] = hexLit ^^ { x => BigInt(x.chars, 16) }
   def bin_value: Parser[BigInt] = binLit ^^ { x => BigInt(x.chars, 2) }
   def dec_value: Parser[BigInt] = decLit ^^ { t => BigInt(t.chars) }
-  def const_value: Parser[BigInt] = hex_value | dec_value
+  def const_value: Parser[BigInt] = hex_value | dec_value | bin_value
 
   
    

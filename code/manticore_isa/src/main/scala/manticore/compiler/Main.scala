@@ -2,8 +2,8 @@ package manticore.compiler
 
 import java.io.File
 import manticore.assembly.parser.UnconstrainedAssemblyParser
-import manticore.assembly.levels.UnconstrainedIR
-import manticore.assembly.levels.UnconstrainedNameChecker
+import manticore.assembly.levels.unconstrained.{UnconstrainedIR, UnconstrainedNameChecker}
+
 
 object CliParser {
 
