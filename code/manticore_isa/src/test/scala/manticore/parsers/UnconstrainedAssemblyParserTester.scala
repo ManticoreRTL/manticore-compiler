@@ -18,9 +18,9 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
   }
   val regs = (
     """
-    .const zero 32 0;
-    .reg x 32;
-    .reg xi 32 0x321;
+    .const $zero 32 0;
+    .reg %x 32;
+    .reg %%xi 32 0x321;
     .wire y  8 ;
     @TRACKED [signal = "top/inst/yi"]
     @SOURCE [file="myfile.v:312.21"]
@@ -32,9 +32,9 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     .output o 12;
   """,
     Seq(
-      DefReg(LogicVariable("zero", 32, ConstLogic), Some(BigInt(0))),
-      DefReg(LogicVariable("x", 32, RegLogic), None),
-      DefReg(LogicVariable("xi", 32, RegLogic), Some(BigInt(0x321))),
+      DefReg(LogicVariable("$zero", 32, ConstLogic), Some(BigInt(0))),
+      DefReg(LogicVariable("%x", 32, RegLogic), None),
+      DefReg(LogicVariable("%%xi", 32, RegLogic), Some(BigInt(0x321))),
       DefReg(LogicVariable("y", 8, WireLogic), None),
       DefReg(
         LogicVariable("yi", 16, WireLogic),
@@ -100,6 +100,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         """
     val ast = UnconstrainedAssemblyParser(program)
 
+    println(ast.serialized)
     val expected =
       DefProgram(
         Seq(

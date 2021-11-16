@@ -30,23 +30,45 @@ object UInt16 {
   def unapply(v: UInt16): Option[Int] = Some(v.toInt)
 }
 
+object PlacedIR extends ManticoreAssemblyIR {
 
-// object PlacedIR extends ManticoreAssemblyIR {
+  case class LogicVariable(
+      name: String,
+      tpe: LogicType
+  ) extends Named
+      with HasSerialized {
+    import manticore.assembly.levels.{
+      RegLogic,
+      WireLogic,
+      OutputLogic,
+      InputLogic,
+      MemoryLogic,
+      ConstLogic
+    }
+    def serialized: String = (tpe match {
+      case RegLogic    => ".reg"
+      case WireLogic   => ".wire"
+      case OutputLogic => ".output"
+      case MemoryLogic => ".mem"
+      case InputLogic  => ".input"
+      case ConstLogic  => ".const"
+    }) + s" ${name} 16"
+  }
 
-//   case class LogicVariable(
-//       name: String,
-//       tpe: LogicType
-//   ) extends Named
+  case class CustomFunctionImpl(values: Seq[UInt16]) extends HasSerialized {
+    def serialized: String = s"[${values.map(_.toInt).mkString(", ")}]"
+  }
 
-  
-//   type Name = String
-//   type Variable = LogicVariable
-//   type CustomFunction = Seq[UInt16]
-//   type ProcessId = Tuple2[Int, Int]
-//   type Constant = UInt16
-//   type ExceptionId = UInt16
+  case class ProcesssIdImpl(id: Int, x: Int, y: Int)  {
+    
+    override def toString(): String = id.toString()
+  }
 
+  type Name = String
+  type Variable = LogicVariable
+  type CustomFunction = CustomFunctionImpl
+  type ProcessId = ProcesssIdImpl
+  type Constant = UInt16
+  type ExceptionId = UInt16
 
-// }
-
-
+}

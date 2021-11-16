@@ -26,8 +26,9 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
     (defChar ~ identChar ~ rep(identChar) ^^ { case r ~ first ~ rest =>
       Keyword((r :: (first :: rest)) mkString "")
     }
-      | annotChar ~ identChar ~ rep(identChar) ^^ { case at ~ first ~ rest =>
-        AnnotationLiteral(first :: rest mkString "")
+      | annotChar ~ identChar ~ rep(identChar | digit) ^^ {
+        case at ~ first ~ rest =>
+          AnnotationLiteral(first :: rest mkString "")
       }
       | identChar ~ rep(identChar | digit) ^^ { case first ~ rest =>
         processIdent(first :: rest mkString "")
@@ -52,7 +53,7 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
       | failure("illegal character"))
 
   /** Returns the legal identifier chars, except digits. */
-  def identChar = letter | elem('_')
+  def identChar = letter | elem('_') | elem('$') | elem('%')
 
   def defChar = elem('.')
   def annotChar = elem('@')
@@ -187,8 +188,9 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def func_value: Parser[Seq[BigInt]] = func_list_value | func_single_value
 
   def def_func: Parser[DefFunc] =
-    (keyword(".func") ~ ident ~ func_value <~ ";") ^^ { case (Keyword(".func") ~ name ~ vs) =>
-      DefFunc(name.chars, vs)
+    (keyword(".func") ~ ident ~ func_value <~ ";") ^^ {
+      case (Keyword(".func") ~ name ~ vs) =>
+        DefFunc(name.chars, vs)
     }
 
   def arith_op: Parser[BinaryOperator.BinaryOperator] =
