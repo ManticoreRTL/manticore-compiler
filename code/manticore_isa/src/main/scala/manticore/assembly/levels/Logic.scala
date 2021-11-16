@@ -2,6 +2,7 @@ package manticore.assembly.levels
 
 
 sealed abstract class LogicType
+object ConstLogic extends LogicType
 object WireLogic extends LogicType
 object RegLogic extends LogicType
 object InputLogic extends LogicType

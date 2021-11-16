@@ -13,11 +13,12 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     WireLogic,
     InputLogic,
     MemoryLogic,
-    OutputLogic
+    OutputLogic,
+    ConstLogic
   }
   val regs = (
     """
-    .wire zero 32 0;
+    .const zero 32 0;
     .reg x 32;
     .reg xi 32 0x321;
     .wire y  8 ;
@@ -31,7 +32,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     .output o 12;
   """,
     Seq(
-      DefReg(LogicVariable("zero", 32, WireLogic), Some(BigInt(0))),
+      DefReg(LogicVariable("zero", 32, ConstLogic), Some(BigInt(0))),
       DefReg(LogicVariable("x", 32, RegLogic), None),
       DefReg(LogicVariable("xi", 32, RegLogic), Some(BigInt(0x321))),
       DefReg(LogicVariable("y", 8, WireLogic), None),
@@ -145,32 +146,33 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
                 ${insts._1}
     """
 
-    UnconstrainedAssemblyParser(program) shouldBe
-      DefProgram(
-        Seq(
-          DefProcess(
-            id = "pid",
-            registers = regs._2,
-            functions = funcs._2,
-            body = insts._2,
-            Seq(
-              AssemblyAnnotation(
-                "AUTHOR",
-                Map(
-                  "name" -> "mayy",
-                  "email" -> "mahyar.emami@epfl.ch"
-                )
+    val expected = DefProgram(
+      Seq(
+        DefProcess(
+          id = "pid",
+          registers = regs._2,
+          functions = funcs._2,
+          body = insts._2,
+          Seq(
+            AssemblyAnnotation(
+              "AUTHOR",
+              Map(
+                "name" -> "mayy",
+                "email" -> "mahyar.emami@epfl.ch"
               )
             )
           )
-        ),
-        Seq(
-          AssemblyAnnotation(
-            "ORG",
-            Map("id" -> "ch.epfl.vlsc.manticore")
-          )
+        )
+      ),
+      Seq(
+        AssemblyAnnotation(
+          "ORG",
+          Map("id" -> "ch.epfl.vlsc.manticore")
         )
       )
+    )
+    UnconstrainedAssemblyParser(program) shouldBe expected
+    println(expected.serialized)
 
   }
 

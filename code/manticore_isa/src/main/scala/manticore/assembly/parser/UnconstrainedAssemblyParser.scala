@@ -18,8 +18,9 @@ import scala.util.parsing.input.Reader
 
 import scala.language.implicitConversions
 import scala.collection.mutable
+import manticore.assembly.levels.ConstLogic
 
-class SaltyAssemblyLexer extends AssemblyLexical {
+class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
   def token: Parser[Token] =
     (defChar ~ identChar ~ rep(identChar) ^^ { case r ~ first ~ rest =>
@@ -106,12 +107,17 @@ class SaltyAssemblyLexer extends AssemblyLexical {
 
 object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   type Tokens = AssemblyTokens
-  val lexical: SaltyAssemblyLexer = new SaltyAssemblyLexer()
+  val lexical: UnconstrainedAssemblyLexer = new UnconstrainedAssemblyLexer()
   import lexical._
 
   import manticore.assembly.levels.unconstrained.UnconstrainedIR._
   import manticore.assembly.levels.{
-    RegLogic, WireLogic, MemoryLogic, InputLogic, OutputLogic
+    RegLogic,
+    WireLogic,
+    MemoryLogic,
+    InputLogic,
+    OutputLogic,
+    ConstLogic
   }
 
   val arithOperator =
@@ -129,7 +135,7 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   lexical.reserved += ("CUST", "LLD", "LST", "GLD", "GST", "EXPECT", "SEND", "SET")
 
   // defs
-  val RegTypes = Seq(".reg", ".wire", ".input", ".output", ".mem")
+  val RegTypes = Seq(".reg", ".wire", ".input", ".output", ".mem", ".const")
 
   lexical.reserved ++= RegTypes
 
@@ -146,8 +152,6 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def dec_value: Parser[BigInt] = decLit ^^ { t => BigInt(t.chars) }
   def const_value: Parser[BigInt] = hex_value | dec_value | bin_value
 
-  
-   
   def keyvalue: Parser[(String, String)] =
     (ident ~ "=" ~ stringLit) ^^ { case (k ~ _ ~ v) => (k.chars, v.chars) }
   def single_annon: Parser[AssemblyAnnotation] =
@@ -172,15 +176,18 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         case (".input")  => InputLogic
         case (".output") => OutputLogic
         case (".mem")    => MemoryLogic
+        case (".const")  => ConstLogic
       }
       DefReg(LogicVariable(name.chars, s.toInt, tt), v, a)
     }
 
+  def func_single_value: Parser[Seq[BigInt]] = const_value ^^ { x => Seq(x) }
+  def func_list_value: Parser[Seq[BigInt]] =
+    "[" ~> repsep(const_value, ",") <~ "]"
+  def func_value: Parser[Seq[BigInt]] = func_list_value | func_single_value
+
   def def_func: Parser[DefFunc] =
-    (keyword(".func") ~ ident ~ "[" ~ repsep(
-      const_value,
-      ","
-    ) ~ "]" <~ ";") ^^ { case (Keyword(".func") ~ name ~ _ ~ vs ~ _) =>
+    (keyword(".func") ~ ident ~ func_value <~ ";") ^^ { case (Keyword(".func") ~ name ~ vs) =>
       DefFunc(name.chars, vs)
     }
 

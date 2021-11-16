@@ -4,6 +4,7 @@ import java.io.File
 import manticore.assembly.parser.UnconstrainedAssemblyParser
 import manticore.assembly.levels.unconstrained.{UnconstrainedIR, UnconstrainedNameChecker}
 
+import scopt.OParser
 
 object CliParser {
 
@@ -37,10 +38,20 @@ object CliParser {
 
 }
 
+case class CliConfig(
+  input_file: File = new File("."),
+  print_tree: Boolean = false,
+  output_file: File = new File(".")
+)
 object Main {
 
   def main(args: Array[String]): Unit = {
 
+    val builder = OParser.builder[CliConfig]
+    val parser = {
+      import builder._
+      // OParser
+    }
     val parsed = CliParser(args)
 
     println(parsed)
@@ -55,6 +66,7 @@ object Main {
 
     val ast = UnconstrainedAssemblyParser(asm)
 
+    println(ast.serialized)
     val errors = UnconstrainedNameChecker(ast)
     if (errors > 0) {
         sys.error(s"Failed with ${errors} errors!")
