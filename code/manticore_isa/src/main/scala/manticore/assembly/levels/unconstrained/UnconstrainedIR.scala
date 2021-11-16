@@ -10,6 +10,7 @@ import manticore.assembly.levels.MemoryLogic
 import manticore.assembly.levels.InputLogic
 import scala.language.implicitConversions
 import manticore.assembly.levels.ConstLogic
+import manticore.assembly.HasSerialized
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
   */

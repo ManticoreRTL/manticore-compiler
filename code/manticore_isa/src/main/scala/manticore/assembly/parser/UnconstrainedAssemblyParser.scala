@@ -2,6 +2,8 @@ package manticore.assembly.parser
 
 import scala.util.parsing.combinator._
 import manticore.assembly.ManticoreAssemblyIR
+import manticore.assembly.AssemblyAnnotation
+import manticore.assembly.BinaryOperator
 
 import manticore.assembly.levels.{
   WireLogic,

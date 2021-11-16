@@ -4,6 +4,33 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.parsing.input.Positional
 import scala.collection.immutable.ListMap
 
+object BinaryOperator extends Enumeration {
+  type BinaryOperator = Value
+  val ADD, ADDC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SLTU, SLTS, SGTU, SGTS,
+      MUX = Value
+}
+
+case class AssemblyAnnotation(name: String, values: Map[String, String])
+    extends Positional
+    with HasSerialized {
+  def getValue: Map[String, String] = values
+  def getName: String = name
+  def withElement(k: String, v: String) =
+    AssemblyAnnotation(name, values ++ Map(k -> v))
+  def serialized: String =
+    if (values.nonEmpty)
+      s"@${name} [" + {
+        values.map { case (k, v) => k + "=\"" + v + "\"" } mkString ","
+      } + "]"
+    else
+      ""
+
+}
+
+trait HasSerialized {
+  def serialized: String
+}
+
 trait ManticoreAssemblyIR {
 
   type Name
@@ -18,31 +45,11 @@ trait ManticoreAssemblyIR {
     val name: Name
   }
 
-  trait HasSerialized {
-    def serialized: String
-  }
-
   trait HasAnnotations {
     val annons: Seq[AssemblyAnnotation]
     def serializedAnnons(tabs: String = ""): String =
       s"${annons.map(x => tabs + x.serialized).mkString("\n")}\n"
   }
-
-  case class AssemblyAnnotation(name: String, values: Map[String, String])
-      extends Positional
-      with HasSerialized {
-    def getValue: Map[String, String] = values
-    def getName: String = name
-    def withElement(k: String, v: String) =
-      AssemblyAnnotation(name, values ++ Map(k -> v))
-    def serialized: String =
-      if (values.nonEmpty)
-        s"@${name} [" + { values.map { case (k, v) => k + "=\"" + v + "\"" } mkString "," } + "]"
-      else
-        ""
-
-  }
-
   sealed abstract class IRNode
 
   sealed abstract class Declaration
@@ -56,7 +63,8 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Declaration
       with HasSerialized {
-    override def serialized: String = s"${serializedAnnons("\t\t")}\t\t.func ${name} ${value.serialized};"
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\t.func ${name} ${value.serialized};"
   }
 
   case class DefReg(
@@ -75,8 +83,9 @@ trait ManticoreAssemblyIR {
   ) extends Declaration
       with HasSerialized {
     override def serialized: String =
-      s"${serializedAnnons("")}.prog: \n" + processes.foldLeft("") { case (str, p) =>
-        str + p.serialized + "\n"
+      s"${serializedAnnons("")}.prog: \n" + processes.foldLeft("") {
+        case (str, p) =>
+          str + p.serialized + "\n"
       }
   }
 
@@ -103,11 +112,6 @@ trait ManticoreAssemblyIR {
       with Positional
       with HasAnnotations
 
-  object BinaryOperator extends Enumeration {
-    type BinaryOperator = Value
-    val ADD, ADDC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SLTU, SLTS, SGTU,
-        SGTS, MUX = Value
-  }
   case class BinaryArithmetic(
       operator: BinaryOperator.BinaryOperator,
       rd: Name,
@@ -117,7 +121,9 @@ trait ManticoreAssemblyIR {
   ) extends Instruction {
 
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\t${operator.toString().toUpperCase()}\t${rd}, ${rs1}, ${rs2}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\t${operator
+        .toString()
+        .toUpperCase()}\t${rd}, ${rs1}, ${rs2}; //@${pos}"
   }
   case class CustomInstruction(
       func: Name,
@@ -148,7 +154,8 @@ trait ManticoreAssemblyIR {
       offset: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String = s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${offset}[${base}]; //@${pos}"
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${offset}[${base}]; //@${pos}"
   }
 
   case class GlobalLoad(
@@ -174,7 +181,8 @@ trait ManticoreAssemblyIR {
       value: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String = s"${serializedAnnons("\t\t")}\t\tSET ${rd}, ${value}; //@${pos}"
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tSET ${rd}, ${value}; //@${pos}"
   }
 
   case class Send(
@@ -193,6 +201,7 @@ trait ManticoreAssemblyIR {
       error_id: ExceptionId,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String = s"${serializedAnnons("\t\t")}\t\tEXPECT ${ref}, ${got}, [${error_id}]; //@${pos}"
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tEXPECT ${ref}, ${got}, [${error_id}]; //@${pos}"
   }
 }

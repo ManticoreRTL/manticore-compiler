@@ -2,7 +2,7 @@ package manticore.assembly.dsl
 
 import manticore.assembly.ManticoreAssemblyIR
 import scala.collection.mutable.ArrayBuffer
-
+import manticore.assembly.BinaryOperator
 object DslBase {
 
   /** Base class for Assembly DSL

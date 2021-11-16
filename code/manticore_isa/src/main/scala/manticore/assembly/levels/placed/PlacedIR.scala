@@ -32,6 +32,7 @@ object UInt16 {
 
 object PlacedIR extends ManticoreAssemblyIR {
 
+  import manticore.assembly.HasSerialized
   case class LogicVariable(
       name: String,
       tpe: LogicType
@@ -59,7 +60,7 @@ object PlacedIR extends ManticoreAssemblyIR {
     def serialized: String = s"[${values.map(_.toInt).mkString(", ")}]"
   }
 
-  case class ProcesssIdImpl(id: Int, x: Int, y: Int)  {
+  case class ProcesssIdImpl(id: String, x: Int, y: Int)  {
     
     override def toString(): String = id.toString()
   }
