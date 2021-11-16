@@ -19,6 +19,8 @@ final class UInt16 private (private val v: Int) extends AnyVal {
   def <=(that: UInt16): Boolean = this.v <= that.v
   def >(that: UInt16): Boolean = this.v > that.v
   def >=(that: UInt16): Boolean = this.v >= that.v
+
+  override def toString(): String = v.toString()
 }
 
 object UInt16 {

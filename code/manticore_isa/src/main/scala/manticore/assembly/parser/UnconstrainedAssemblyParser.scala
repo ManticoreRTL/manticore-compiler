@@ -21,6 +21,8 @@ import scala.util.parsing.input.Reader
 import scala.language.implicitConversions
 import scala.collection.mutable
 import manticore.assembly.levels.ConstLogic
+import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import java.io.File
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -172,7 +174,7 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     (annotations ~ (RegTypes
       .map(keyword(_))
       .reduce(_ | _)) ~ ident ~ const_value ~
-      opt(const_value) <~ ";") ^^ { case (a ~ t ~ name ~ s ~ v) =>
+      opt(const_value) <~ opt(";")) ^^ { case (a ~ t ~ name ~ s ~ v) =>
       val tt = t.chars match {
         case (".wire")   => WireLogic
         case (".reg")    => RegLogic
@@ -190,7 +192,7 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def func_value: Parser[Seq[BigInt]] = func_list_value | func_single_value
 
   def def_func: Parser[DefFunc] =
-    (keyword(".func") ~ ident ~ func_value <~ ";") ^^ {
+    (keyword(".func") ~ ident ~ func_value <~ opt(";")) ^^ {
       case (Keyword(".func") ~ name ~ vs) =>
         DefFunc(name.chars, vs)
     }
@@ -292,71 +294,18 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
 }
 
-// object ParseTest extends App {
 
-//   /** { } denotes zero or more repetitions Annon::== '@'id Prog ::== '.prog' {
-//     * Proc } Proc ::== '.proc' id ':' Regs
-//     */
-//   val ast = RawCircuitAssemblyParser(
-//     """
-//         @OPT
-//         @PRGANNON [id = "MyTop"]
-//         .prog :
-//           @PROCID [id = "sd"]
-//           .proc proc_0:
-//             // comment:
 
-//             .wire zero[31: 0] 0x000000000000000000000000000000;
-//             @TYPE [t = "reg"]
-//             .input ii[1:0];
-//             .output oo[2:0];
-//             @TRACKED    [my_name="my_tracked_signal"]
-//             .reg r1[31 : 0]  0x19;
-//             .reg r2[31 : 12] 0x11;
-//             .reg r3[31 : 0]  ;
-//             .wire r2[0 : 0] 10;
-//             .func f0 [0x10, 0x2];
-//             @SOURCEINFO [file="/scaratch/mayy/my_vmodule.v", lines="12:13"]
-//             ADD oo, zero, ii;
-//             XOR rd, ds, sa;
-//             CUST rd, [f0], rs1, rs2, rs3, rs4;
+object AssemblyStringParser extends (String => UnconstrainedIR.DefProgram) {
+  def apply(source: String): UnconstrainedIR.DefProgram =
+    UnconstrainedAssemblyParser(
+      source
+    )
+}
 
-//           @PROCID [id = "dd"]
-//           .proc proc_1:
-//             // comment:
-
-//             @WIRE
-//             .reg zero[31: 0] 0x000000000000000000000000000000;
-//             .reg r1[31 : 0]  0x19;
-//             .reg r2[31 : 12] 0x11;
-//             .reg r3[31 : 0]  ;
-//             .wire r2 [32 : 0];
-//             @MEMORY [orig = "id"]
-//             .reg  base_mem_ptr[127:0];
-//             .reg  mem_word_read_port [31:0];
-//             .func f0 [0x10];
-
-//             LLD mem_word_read_port, base_mem_ptr[0x010];
-//             @SOURCEINFO [file="/scaratch/mayy/my_vmodule.v", lines="12:13"]
-//             @TRACKED    [signal="my_tracked_signal"]
-//             ADD r1, r2, r3;
-//             XOR rd, ds, sa;
-//             CUST rd, [f0], rs1, rs2, rs3, rs4;
-//             LLD  rd, base_mem_0[0x100]; // comment
-//             LST  rs, base[0x31]; /* comment */
-//             GST  rs, [rs1, rs2, rs3, zero]; // global store
-//             GLD  rd, [rhh, rhl, rl, rll]; // global load
-//             GLD  rd, [zero, zero, zero, addr];
-
-//       """
-//   )
-//   println(
-//     ast.serialized
-//   )
-//   // println(
-//   //   RawCircuitAssemblyParser(
-//   //     "LVEC r1, [f0], r2, r3, r4, r5"
-//   //   )
-//   // )
-
-// }
+object AssemblyFileParser extends (File => UnconstrainedIR.DefProgram) {
+  def apply(source: File): UnconstrainedIR.DefProgram = {
+    val str = scala.io.Source.fromFile(source).mkString("")
+    UnconstrainedAssemblyParser(str)
+  }
+}

@@ -3,6 +3,8 @@ package manticore.levels
 import manticore.UnitTest
 import manticore.assembly.parser.UnconstrainedAssemblyParser
 import manticore.assembly.levels.RegLogic
+import manticore.assembly.AssemblyAnnotation
+import manticore.assembly.BinaryOperator
 
 class UnconstrainedAssemblyParserTester extends UnitTest {
 
