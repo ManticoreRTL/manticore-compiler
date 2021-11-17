@@ -1,18 +1,23 @@
 package manticore.compiler
 
 import java.io.File
-import manticore.assembly.parser.UnconstrainedAssemblyParser
+
 import manticore.assembly.levels.unconstrained.{
   UnconstrainedIR,
   UnconstrainedNameChecker
 }
 
 import scopt.OParser
+// import manticore.assembly.parser.AssemblyFileParser
+import manticore.assembly.parser.AssemblyParser
+import manticore.assembly.levels.placed.UnconstrainedToPlacedTransform
+import manticore.assembly.levels.placed.PlacedIR
 
 case class CliConfig(
     input_file: File = new File("."),
     print_tree: Boolean = false,
-    output_file: File = new File(".")
+    output_file: File = new File("."),
+    debug_en: Boolean = false
 )
 object Main {
 
@@ -35,6 +40,9 @@ object Main {
         opt[Unit]('t', "print-tree")
           .action { case (_, c) => c.copy(print_tree = true) }
           .text("print the asm program at each step of the assembler"),
+        opt[Unit]('d', "debug")
+          .action { case (_, c) => c.copy(debug_en = true) }
+          .text("print debug information"),
         help('h', "help").text("print usage text and exit")
       )
     }
@@ -47,23 +55,21 @@ object Main {
         sys.error("Failed parsing cli args")
     }
 
-    println(
-      s"Reading input file ${cfg.input_file.toPath.toAbsolutePath}"
-    )
-    val asm = scala.io.Source
-      .fromFile(cfg.input_file)
-      .mkString("")
-    println(s"Parsing into ${UnconstrainedIR.getClass().getSimpleName()}")
+    
+    implicit val ctx: AssemblyContext =
+      AssemblyContext()
+      .withDebugMessage(cfg.debug_en)
+      .withPrintTree(cfg.print_tree)
+      .withSourceFile(cfg.input_file)
+      .withOutputFile(cfg.output_file)
+    
 
-    val ast = UnconstrainedAssemblyParser(asm)
+    val backend =
+      // UnconstrainedNameChecker followedBy
+        UnconstrainedToPlacedTransform
 
-    if (cfg.print_tree)
-      println(ast.serialized)
-
-    val errors = UnconstrainedNameChecker(ast)
-    if (errors > 0) {
-      sys.error(s"Failed with ${errors} errors!")
-    }
+    // backend(Parsercfg.input_file)
+    backend(AssemblyParser.apply(cfg.input_file))
 
   }
 

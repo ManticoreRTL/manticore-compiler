@@ -23,6 +23,11 @@ import scala.collection.mutable
 import manticore.assembly.levels.ConstLogic
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import java.io.File
+import manticore.assembly.levels.Transformation
+import manticore.assembly.levels.AssemblyTransformer
+import manticore.assembly.levels.AssemblyChecker
+import manticore.compiler.AssemblyContext
+import manticore.assembly.Reporter
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -110,7 +115,7 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
   protected def delim: Parser[Token] = _delim
 }
 
-object UnconstrainedAssemblyParser extends AssemblyTokenParser {
+private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   type Tokens = AssemblyTokens
   val lexical: UnconstrainedAssemblyLexer = new UnconstrainedAssemblyLexer()
   import lexical._
@@ -294,18 +299,22 @@ object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
 }
 
+object AssemblyParser extends Reporter {
 
-
-object AssemblyStringParser extends (String => UnconstrainedIR.DefProgram) {
-  def apply(source: String): UnconstrainedIR.DefProgram =
-    UnconstrainedAssemblyParser(
-      source
-    )
-}
-
-object AssemblyFileParser extends (File => UnconstrainedIR.DefProgram) {
-  def apply(source: File): UnconstrainedIR.DefProgram = {
-    val str = scala.io.Source.fromFile(source).mkString("")
-    UnconstrainedAssemblyParser(str)
+  // def getName: String = 
+  def apply(source: String)(implicit
+      context: AssemblyContext
+  ): UnconstrainedIR.DefProgram =  {
+    logger.info("Parsing from string input")
+    UnconstrainedAssemblyParser(source)
   }
+
+  def apply(source: File)(implicit
+      context: AssemblyContext
+  ): UnconstrainedIR.DefProgram = {
+    logger.info("Parsing from file input")
+    UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""))
+  }
+    
+
 }

@@ -48,7 +48,10 @@ trait ManticoreAssemblyIR {
   trait HasAnnotations {
     val annons: Seq[AssemblyAnnotation]
     def serializedAnnons(tabs: String = ""): String =
-      s"${annons.map(x => tabs + x.serialized).mkString("\n")}\n"
+      if (annons.nonEmpty)
+        s"${annons.map(x => tabs + x.serialized).mkString("\n")}\n"
+      else 
+        ""
   }
   sealed abstract class IRNode
 

@@ -1,6 +1,22 @@
 package manticore.assembly.levels
 
 import manticore.assembly.ManticoreAssemblyIR
+import manticore.assembly.Reporter
+import manticore.compiler.AssemblyContext
+
+
+trait Transformation[
+    S <: ManticoreAssemblyIR#DefProgram,
+    T <: ManticoreAssemblyIR#DefProgram
+] {
+
+  def apply(s: S)(implicit context: AssemblyContext): T
+  def followedBy[R <: ManticoreAssemblyIR#DefProgram](
+      g: Transformation[T, R]
+  )(implicit context: AssemblyContext): S => R = { x =>
+    g(apply(x))
+  }
+}
 
 /** Signature class for IR transformation, taking the [[S]] IR flavor as input
   * and producing a [[T]] flavored IR as output
@@ -10,19 +26,17 @@ import manticore.assembly.ManticoreAssemblyIR
 abstract class AssemblyTransformer[
     S <: ManticoreAssemblyIR,
     T <: ManticoreAssemblyIR
-](
-    programIr: S
-) extends (S#DefProgram => T#DefProgram)
+](source: S, target: T)
+    extends Transformation[S#DefProgram, T#DefProgram]
+    with Reporter
 
 /** Signature class for IR checkers, taking [[T]] IR flavor as input and
-  * producing a results of type [[R]] as output.
+  * producing the same program as outpu
   *
   * @param programIr
   */
 abstract class AssemblyChecker[
-    T <: ManticoreAssemblyIR,
-    R
+    T <: ManticoreAssemblyIR
 ](programIr: T)
-    extends (T#DefProgram => R) {
-  def apply(prog: T#DefProgram): R
-}
+    extends Transformation[T#DefProgram, T#DefProgram]
+    with Reporter

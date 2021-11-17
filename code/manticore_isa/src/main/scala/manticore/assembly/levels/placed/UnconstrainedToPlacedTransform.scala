@@ -5,45 +5,44 @@ import manticore.assembly.levels.AssemblyTransformer
 
 import manticore.assembly.levels.unconstrained.{UnconstrainedIR => S}
 import manticore.assembly.levels.placed.{PlacedIR => T}
-import manticore.assembly.PhaseLogger
+
 import manticore.assembly.AssemblyAnnotation
 import manticore.assembly.levels.UInt16
 import manticore.assembly.levels.LogicType
+import manticore.assembly.levels.AssemblyTransformer
+import manticore.compiler.AssemblyContext
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
   */
 object UnconstrainedToPlacedTransform
-    extends (S.DefProgram => T.DefProgram)
-    with PhaseLogger {
+    extends AssemblyTransformer(UnconstrainedIR, PlacedIR) {
 
-  /** Irrecoverably fail the transformation
-    *
-    * @param msg
-    * @return
-    */
-  private def fail[T](msg: String): T =
-    throw new UnsupportedOperationException(s"Failed transform: $msg");
+  override def apply(
+      asm: S.DefProgram
+  )(implicit context: AssemblyContext): T.DefProgram = {
 
-  override def apply(asm: S.DefProgram): T.DefProgram = {
-
+    logger.debug("Starting transformation")
     if (isConvertible(asm) == false) {
-      fail(
+      logger.fail(
         s"${S.getClass().getSimpleName()} not convertible to ${T.getClass().getSimpleName()}"
       );
     }
+
     val (x, y) =
       if (hasLayoutInformation(asm))
         getDimensions(asm) match {
           case Some((xx, yy)) => (xx, yy)
           case None =>
-            fail("invalid dimension")
+            logger.fail("invalid dimension")
         }
       else {
-        fail("no @LAYOUT annotation")
+        logger.fail("no @LAYOUT annotation")
       }
 
-    implicit val proc_map = asm.processes
+    
+
+    val converted_ids = asm.processes
       .map { p =>
         try {
           val location: AssemblyAnnotation =
@@ -51,14 +50,23 @@ object UnconstrainedToPlacedTransform
 
           val x = location.values("x").toInt
           val y = location.values("y").toInt
-          p.id -> T.ProcesssIdImpl(p.id, x, y)
+          p.id -> Some(T.ProcesssIdImpl(p.id, x, y))
         } catch {
           case _: Throwable =>
-            fail(s"Could not read @LOC annotation for process ${p.id}")
+            p.id -> None
         }
 
       }
-      .toMap[S.ProcessId, T.ProcessId]
+
+    converted_ids.find { x => x._2.isEmpty } match {
+      case Some(p) =>
+        logger.fail(s"process ${p._1} does not have valid @LOC annotation")
+      case _ =>
+    }
+
+    implicit val proc_map: Map[S.ProcessId, T.ProcessId] = converted_ids.map {
+      case (o, n) => o -> n.get
+    }.toMap
 
     T.DefProgram(
       processes = asm.processes.map(convert),
@@ -79,7 +87,7 @@ object UnconstrainedToPlacedTransform
   )(implicit proc_map: Map[S.ProcessId, T.ProcessId]): T.DefProcess = {
 
     if (proc.registers.length >= 2048) {
-      fail(
+      logger.fail(
         s"Can only support up to 2048 registers per process but have ${proc.registers.length} registers in ${proc.id}"
       )
     }
@@ -99,15 +107,16 @@ object UnconstrainedToPlacedTransform
     val reg_regs = filterRegs(RegLogic)
     val wire_regs = filterRegs(WireLogic)
     implicit val subst =
-      (const_regs ++ input_regs ++ output_regs ++ reg_regs ++ wire_regs).zipWithIndex.map {
-        case (r, i) =>
+      (const_regs ++ input_regs ++ output_regs ++ reg_regs ++ wire_regs).zipWithIndex
+        .map { case (r, i) =>
           r.variable ->
             T.LogicVariable(
               r.variable.name,
               i,
               r.variable.tpe
             )
-      }.toMap[S.LogicVariable, T.LogicVariable]
+        }
+        .toMap[S.LogicVariable, T.LogicVariable]
 
     T.DefProcess(
       id = proc_map(proc.id),
@@ -218,7 +227,8 @@ object UnconstrainedToPlacedTransform
             // ensure every register is 16 bits
             if (r.variable.width != 16) {
               logger.error(
-                s"register ${r.serialized} in process ${p.id} is not 16-bit"
+                s"expected  16-bit register in process ${p.id}",
+                r
               )
               false
             } else {

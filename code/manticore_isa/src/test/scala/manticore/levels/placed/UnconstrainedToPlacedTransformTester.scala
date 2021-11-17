@@ -5,13 +5,17 @@ import manticore.assembly.parser.UnconstrainedAssemblyParser
 import manticore.assembly.levels.placed.UnconstrainedToPlacedTransform
 import scala.language.postfixOps
 import manticore.assembly.levels.placed.PlacedIR
-import manticore.assembly.parser.AssemblyStringParser
+
 import manticore.assembly.levels.ConstLogic
 import manticore.assembly.BinaryOperator
 import manticore.assembly.AssemblyAnnotation
 
 import manticore.assembly.levels.RegLogic
 import manticore.assembly.levels.UInt16
+import manticore.compiler.AssemblyContext
+import java.io.File
+import manticore.assembly.parser.AssemblyParser
+import manticore.assembly.CompilationFailureException
 
 class UnconstrainedToPlacedTransformTester extends UnitTest {
 
@@ -44,14 +48,15 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
         ADD %x, $zero, $one;
 
         """
+  implicit val context = AssemblyContext()
 
-  val backend: String => PlacedIR.DefProgram = (
-    AssemblyStringParser andThen UnconstrainedToPlacedTransform
-  )
+  
+  val backend = UnconstrainedToPlacedTransform
+  
 
   it should "correctly transform a valid program" in {
     import PlacedIR._
-    backend(valid_program) shouldBe
+    backend(AssemblyParser(valid_program)) shouldBe
       DefProgram(
         Seq(
           DefProcess(
@@ -90,8 +95,8 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
 
   }
   it should "fail transforming an invalid program" in {
-    assertThrows[UnsupportedOperationException] {
-      backend(invalid_program)
+    assertThrows[CompilationFailureException] {
+      backend(AssemblyParser(invalid_program))
     }
   }
 

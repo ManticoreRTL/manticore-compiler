@@ -2,20 +2,21 @@ package manticore.assembly.levels
 
 import manticore.assembly.ManticoreAssemblyIR
 
-import manticore.assembly.PhaseLogger
 import scala.annotation.tailrec
+import manticore.assembly.Reporter
+import manticore.compiler.AssemblyContext
 
 abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
-    extends (T#DefProgram => Int)
-    with PhaseLogger {
-
+    extends AssemblyChecker(programIr) {
   import programIr._
 
-  def apply(prog: DefProgram): Int = {
+  def apply(
+      prog: T#DefProgram
+  )(implicit context: AssemblyContext): T#DefProgram = {
     var error_count = 0
-    case class DefinedName[T](name: T, owner: Declaration)
+    case class DefinedName[TT](name: TT, owner: T#Declaration)
     @tailrec
-    def checkDecls[T](decls: Seq[DefinedName[T]]): Unit = decls match {
+    def checkDecls[TT](decls: Seq[DefinedName[TT]]): Unit = decls match {
       case Nil      => ()
       case r :: Nil => ()
       case r :: tail =>
@@ -28,9 +29,9 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
         checkDecls(tail)
     }
 
-    def checkProcess(proc: DefProcess): Unit = {
+    def checkProcess(proc: T#DefProcess): Unit = {
 
-      val reg_defs: Seq[DefinedName[Name]] = proc.registers.map { r =>
+      val reg_defs: Seq[DefinedName[T#Name]] = proc.registers.map { r =>
         DefinedName(r.variable.name, r)
       }
       checkDecls(reg_defs)
@@ -39,7 +40,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
 
       val reg_names = reg_defs.map { _.name }
       val func_names = func_defs.map { _.name }
-      def checkRegs(regs: Seq[Name])(implicit inst: Instruction) =
+      def checkRegs(regs: Seq[T#Name])(implicit inst: T#Instruction) =
         regs.foreach { r =>
           if (!reg_names.contains(r)) {
             logger.error(
@@ -48,7 +49,8 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
             error_count += 1
           }
         }
-      def checkInst(inst: Instruction): Unit =
+
+      def checkInst(inst: T#Instruction): Unit =
         (inst: @unchecked /* match is already exhaustive, suppress compiler warns */ ) match {
           case BinaryArithmetic(_, rd, rs1, rs2, _) =>
             checkRegs(Seq(rd, rs1, rs2))(inst)
@@ -118,8 +120,9 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
           }
       }
     }
-
-    error_count
-
+    if (logger.countErrors > 0) {
+      logger.fail("Name check failed due to earlier errors!")
+    }
+    prog
   }
 }
