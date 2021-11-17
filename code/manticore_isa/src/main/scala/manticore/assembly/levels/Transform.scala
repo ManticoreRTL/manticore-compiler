@@ -5,45 +5,6 @@ import manticore.assembly.Reporter
 import manticore.compiler.AssemblyContext
 import manticore.assembly.CompilationFailureException
 
-trait OtherT[
-    S <: ManticoreAssemblyIR#DefProgram,
-    T <: ManticoreAssemblyIR#DefProgram
-] extends ((S, AssemblyContext) => (T, AssemblyContext)) {
-
-  def apply(s: S, ctx: AssemblyContext): (T, AssemblyContext)
-}
-
-trait MyFunction[S, T] extends ((S, Int) => (T, Int)) {
-
-  def apply(s: S, x: Int): (T, Int)
-
-  def followedBy[R](g: MyFunction[T, R]): MyFunction[S, R] = { case (s, x) =>
-    val (t, xx) = apply(s, x)
-    g.apply(t, xx)
-  }
-}
-
-// object MyFunTester extends App {
-
-//   object F1 extends MyFunction[Int, Int] {
-//     def apply(s: Int, x: Int) = (s, 1 + x)
-//   }
-
-//   object F2 extends MyFunction[Int, BigInt] {
-//     def apply(s: Int, x: Int) = (BigInt(s), 1 + x)
-//   }
-
-//   object F3 extends MyFunction[BigInt, String] {
-//     def apply(s: BigInt, x: Int) = (s.toString() + ".toString", x + 1)
-//   }
-
-//   val phases = List(F1, F2, F3)
-
-//   // def comp = F1 followedBy F2 followedBy F3
-
-//   println(comp(1, 1))
-
-// }
 
 /** Base transformation signatures, see [[AssemblyTransformer]] and
   * [[AssemblyChecker]] below
