@@ -62,7 +62,7 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
       | failure("illegal character"))
 
   /** Returns the legal identifier chars, except digits. */
-  def identChar = letter | elem('_') | elem('$') | elem('%')
+  def identChar = letter | elem('_') | elem('$') | elem('%') | elem('\\')
 
   def defChar = elem('.')
   def annotChar = elem('@')
@@ -264,9 +264,35 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
           ) ~ rs ~ _ ~ _ ~ rhh ~ _ ~ rh ~ _ ~ rl ~ _ ~ rll ~ _) =>
         GlobalLoad(rs.chars, (rhh.chars, rh.chars, rl.chars, rll.chars), a)
     }
+  def set_inst: Parser[SetValue] =
+    (annotations ~ keyword("SET") ~ ident ~ "," ~ const_value) ^^ {
+      case (a ~ Keyword("SET") ~ rd ~ _ ~ value) =>
+        SetValue(rd.chars, value, a)
+    }
+  def send_inst: Parser[Send] =
+    (annotations ~ keyword(
+      "SEND"
+    ) ~ ident ~ "," ~ ("[" ~> ident <~ "]") ~ "," ~ ident) ^^ {
+      case (a ~ Keyword("SEND") ~ rd ~ _ ~ dest_id ~ _ ~ rs) =>
+        Send(rd.chars, dest_id.chars, rs.chars, a)
+    }
+  def expect_inst: Parser[Expect] =
+    (annotations ~ keyword(
+      "EXPECT"
+    ) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> const_value <~ "]")) ^^ {
+      case (a ~ Keyword("EXPECT") ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
+        Expect(ref.chars, got.chars, ex_id.toInt, a)
+    }
 
+  def pred_inst: Parser[Predicate] =
+    (annotations ~ keyword("PREDICATE") ~ ident) ^^ {
+      case (a ~ Keyword("PREDICATE") ~ rs) =>
+        Predicate(rs.chars, a)
+    }
+    
   def instruction: Parser[Instruction] = positioned(
-    arith_inst | lvec_inst | lload_inst | lstore_inst | gload_inst | gstore_inst
+    arith_inst | lvec_inst | lload_inst | lstore_inst |
+      gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[DefReg]] = rep(positioned(def_reg))
@@ -301,19 +327,20 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
 object AssemblyParser extends Reporter {
 
-  
-  def apply(source: String,
+  def apply(
+      source: String,
       context: AssemblyContext
-  ): UnconstrainedIR.DefProgram =  {
+  ): UnconstrainedIR.DefProgram = {
     logger.info("Parsing from string input")
     UnconstrainedAssemblyParser(source)
   }
 
-  def apply(source: File, context: AssemblyContext
+  def apply(
+      source: File,
+      context: AssemblyContext
   ): UnconstrainedIR.DefProgram = {
     logger.info("Parsing from file input")
     UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""))
   }
-    
 
 }

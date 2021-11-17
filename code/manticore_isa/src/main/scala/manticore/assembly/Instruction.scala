@@ -237,7 +237,7 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tSEND ${rs}, [${dest_id}], ${rd}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tSEND ${rd}, [${dest_id}], ${rs}; //@${pos}"
   }
 
   // value assertion
@@ -249,5 +249,13 @@ trait ManticoreAssemblyIR {
   ) extends Instruction {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\tEXPECT ${ref}, ${got}, [${error_id}]; //@${pos}"
+  }
+
+  case class Predicate(
+    rs: Name,
+    annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+     override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tPREDICATE ${rs}; //@${pos}"
   }
 }

@@ -48,7 +48,7 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
         ADD %x, $zero, $one;
 
         """
-  implicit val context = AssemblyContext()
+  val ctx = AssemblyContext()
 
   
   val backend = UnconstrainedToPlacedTransform
@@ -56,7 +56,8 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
 
   it should "correctly transform a valid program" in {
     import PlacedIR._
-    backend(AssemblyParser(valid_program)) shouldBe
+    val got = backend(AssemblyParser(valid_program, ctx), ctx)._1
+    got shouldBe
       DefProgram(
         Seq(
           DefProcess(
@@ -96,7 +97,7 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
   }
   it should "fail transforming an invalid program" in {
     assertThrows[CompilationFailureException] {
-      backend(AssemblyParser(invalid_program))
+      backend(AssemblyParser(invalid_program, ctx), ctx)
     }
   }
 

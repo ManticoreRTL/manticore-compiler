@@ -104,7 +104,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
             .proc pid:
                 ${regs._1}                
         """
-    val ast = AssemblyParser(program)
+    val ast = AssemblyParser(program, ctx)
 
     println(ast.serialized)
     val expected =
@@ -129,7 +129,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
                 ${regs._1}
                 ${funcs._1}
       """
-    AssemblyParser(program) shouldBe
+    AssemblyParser(program, ctx) shouldBe
       DefProgram(
         Seq(
           DefProcess(
@@ -178,7 +178,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         )
       )
     )
-    AssemblyParser(program) shouldBe expected
+    AssemblyParser(program, ctx) shouldBe expected
     println(expected.serialized)
 
   }
