@@ -1,8 +1,10 @@
 package manticore.assembly.levels
 
+/**
+  * High-level variable type
+  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 
-
-/** High-level variable type */
 sealed abstract class LogicType
 object ConstLogic extends LogicType
 object WireLogic extends LogicType

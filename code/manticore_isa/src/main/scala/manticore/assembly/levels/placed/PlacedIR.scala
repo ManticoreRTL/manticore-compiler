@@ -1,10 +1,13 @@
 package manticore.assembly.levels.placed
-
 import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.LogicType
-
 import manticore.assembly.levels.UInt16
 
+
+
+/**
+  * IR level with placed processes and allocated registers.
+  */
 object PlacedIR extends ManticoreAssemblyIR {
 
   import manticore.assembly.HasSerialized
@@ -48,4 +51,8 @@ object PlacedIR extends ManticoreAssemblyIR {
   type Constant = UInt16
   type ExceptionId = UInt16
 
+
 }
+
+
+

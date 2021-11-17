@@ -1,11 +1,26 @@
 package manticore.assembly
+/**
+  * Classes for diagnostics and reporting
+  *
+  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  */
+
 
 import com.typesafe.scalalogging.LazyLogging
 import scala.util.parsing.input.Positional
 import manticore.compiler.AssemblyContext
 
+
+/**
+  * Irrecoverable compilation exception/error
+  *
+  * @param msg message to be displayed on exit
+  */
 class CompilationFailureException(msg: String) extends Exception(msg)
 
+/**
+  * Fully self-contained reported class, transformation mix with it.
+  */
 trait Reporter {
 
   def getName: String = this.getClass().getSimpleName()

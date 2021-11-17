@@ -46,4 +46,4 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
   type ExceptionId = Int
 }
 
-object UnconstrainedNameChecker extends AssemblyNameChecker(UnconstrainedIR)
+

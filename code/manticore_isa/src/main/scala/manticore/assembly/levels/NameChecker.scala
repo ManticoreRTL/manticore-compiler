@@ -6,14 +6,23 @@ import scala.annotation.tailrec
 import manticore.assembly.Reporter
 import manticore.compiler.AssemblyContext
 
-abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
-    extends AssemblyChecker(programIr) {
-  import programIr._
+/** A generic name checker that makes sure all the used names in the program are
+  * defined. This class should be specialized as an object before being used,
+  * see [[manticore.assembly.levels.unconstrained.UnconstrainedNameChecker]] for
+  * an example.
+  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * 
+  * 
+  * @param irFlavor
+  *   IR flavor object to specialize the checker with
+  */
+abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
+    extends AssemblyChecker(irFlavor) {
+  import irFlavor._
 
-  def apply(
-      prog: T#DefProgram
-  )(implicit context: AssemblyContext): T#DefProgram = {
-    
+  def check(
+      prog: T#DefProgram, context: AssemblyContext): Unit = {
+
     case class DefinedName[TT](name: TT, owner: T#Declaration)
     @tailrec
     def checkDecls[TT](decls: Seq[DefinedName[TT]]): Unit = decls match {
@@ -24,7 +33,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
           logger.error(
             s"${r.name} is declared multiple times, first time at ${r.owner.pos}"
           )
-          
+
         }
         checkDecls(tail)
     }
@@ -46,7 +55,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
             logger.error(
               s"undefined register ${r} at ${inst.serialized}:${inst.pos}"
             )
-            
+
           }
         }
 
@@ -59,7 +68,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
               logger.error(
                 s"undefined function ${func} at ${inst.serialized}:${inst.pos}"
               )
-              
+
             }
             checkRegs(Seq(rd, rs1, rs2, rs3, rs4))(inst)
           case LocalLoad(rd, base, _, _)  => checkRegs(Seq(rd, base))(inst)
@@ -98,12 +107,14 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
           if (dest == p.id) {
             logger
               .error(s"self-send instruction at ${inst.serialized}:${inst.pos}")
-            
+
           }
           if (!proc_ids.contains(dest)) {
             logger
-              .error(s"invalid destination id at ${inst.serialized}:${inst.pos}")
-            
+              .error(
+                s"invalid destination id at ${inst.serialized}:${inst.pos}"
+              )
+
           } else {
 
             // check if dest reg is defined
@@ -115,7 +126,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
               logger.error(
                 s"destination register ${rd} is not defined in process ${dest} in ${inst}:${inst.pos}"
               )
-              
+
             }
           }
       }
@@ -123,6 +134,6 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
     if (logger.countErrors > 0) {
       logger.fail("Name check failed due to earlier errors!")
     }
-    prog
+    
   }
 }

@@ -18,10 +18,11 @@ import manticore.compiler.AssemblyContext
 object UnconstrainedToPlacedTransform
     extends AssemblyTransformer(UnconstrainedIR, PlacedIR) {
 
-  override def apply(
-      asm: S.DefProgram
-  )(implicit context: AssemblyContext): T.DefProgram = {
-
+  override def transform(
+      asm: S.DefProgram,
+      context: AssemblyContext
+  ): T.DefProgram = {
+    implicit val ctx = context
     logger.debug(s"Starting transformation ${getName}")
     if (context.getPrintTree) {
       logger.info(s"Input tree: \n${asm.serialized}\n")
@@ -32,18 +33,18 @@ object UnconstrainedToPlacedTransform
       );
     }
 
-    val (x, y) =
+    val (dimx: Int, dimy: Int) =
       if (hasLayoutInformation(asm))
         getDimensions(asm) match {
           case Some((xx, yy)) => (xx, yy)
           case None =>
             logger.fail("invalid dimension")
+            (0, 0)
         }
       else {
         logger.fail("no @LAYOUT annotation")
+        (0, 0)
       }
-
-    
 
     val converted_ids = asm.processes
       .map { p =>
@@ -53,7 +54,12 @@ object UnconstrainedToPlacedTransform
 
           val x = location.values("x").toInt
           val y = location.values("y").toInt
-          p.id -> Some(T.ProcesssIdImpl(p.id, x, y))
+          if (x >= dimx || y >= dimy) {
+            logger.error(s"location out of bounds for process ${p.id}", p)
+            p.id -> None
+          } else {
+            p.id -> Some(T.ProcesssIdImpl(p.id, x, y))
+          }
         } catch {
           case _: Throwable =>
             p.id -> None
@@ -71,6 +77,10 @@ object UnconstrainedToPlacedTransform
       case (o, n) => o -> n.get
     }.toMap
 
+    // ensure no duplicate location exists
+    if (proc_map.values.toSeq.toSet.size != proc_map.size) {
+      logger.error(s"duplicate locations in defined processes")
+    }
 
     val out = T.DefProgram(
       processes = asm.processes.map(convert),
@@ -79,6 +89,9 @@ object UnconstrainedToPlacedTransform
 
     if (context.getPrintTree) {
       logger.info(s"Output tree: \n${out.serialized}\n")
+    }
+    if (logger.countErrors > 0) {
+      logger.fail(s"Failed transform due to previous errors!")
     }
     out
   }

@@ -301,16 +301,15 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
 object AssemblyParser extends Reporter {
 
-  // def getName: String = 
-  def apply(source: String)(implicit
+  
+  def apply(source: String,
       context: AssemblyContext
   ): UnconstrainedIR.DefProgram =  {
     logger.info("Parsing from string input")
     UnconstrainedAssemblyParser(source)
   }
 
-  def apply(source: File)(implicit
-      context: AssemblyContext
+  def apply(source: File, context: AssemblyContext
   ): UnconstrainedIR.DefProgram = {
     logger.info("Parsing from file input")
     UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""))
