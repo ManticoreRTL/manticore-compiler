@@ -22,7 +22,10 @@ object UnconstrainedToPlacedTransform
       asm: S.DefProgram
   )(implicit context: AssemblyContext): T.DefProgram = {
 
-    logger.debug("Starting transformation")
+    logger.debug(s"Starting transformation ${getName}")
+    if (context.getPrintTree) {
+      logger.info(s"Input tree: \n${asm.serialized}\n")
+    }
     if (isConvertible(asm) == false) {
       logger.fail(
         s"${S.getClass().getSimpleName()} not convertible to ${T.getClass().getSimpleName()}"
@@ -68,10 +71,16 @@ object UnconstrainedToPlacedTransform
       case (o, n) => o -> n.get
     }.toMap
 
-    T.DefProgram(
+
+    val out = T.DefProgram(
       processes = asm.processes.map(convert),
       annons = asm.annons
     )
+
+    if (context.getPrintTree) {
+      logger.info(s"Output tree: \n${out.serialized}\n")
+    }
+    out
   }
 
   /** Unchcked conversion of DefProcess

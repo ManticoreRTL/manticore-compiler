@@ -13,7 +13,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
   def apply(
       prog: T#DefProgram
   )(implicit context: AssemblyContext): T#DefProgram = {
-    var error_count = 0
+    
     case class DefinedName[TT](name: TT, owner: T#Declaration)
     @tailrec
     def checkDecls[TT](decls: Seq[DefinedName[TT]]): Unit = decls match {
@@ -24,7 +24,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
           logger.error(
             s"${r.name} is declared multiple times, first time at ${r.owner.pos}"
           )
-          error_count += 1
+          
         }
         checkDecls(tail)
     }
@@ -46,7 +46,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
             logger.error(
               s"undefined register ${r} at ${inst.serialized}:${inst.pos}"
             )
-            error_count += 1
+            
           }
         }
 
@@ -59,7 +59,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
               logger.error(
                 s"undefined function ${func} at ${inst.serialized}:${inst.pos}"
               )
-              error_count += 1
+              
             }
             checkRegs(Seq(rd, rs1, rs2, rs3, rs4))(inst)
           case LocalLoad(rd, base, _, _)  => checkRegs(Seq(rd, base))(inst)
@@ -98,12 +98,12 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
           if (dest == p.id) {
             logger
               .error(s"self-send instruction at ${inst.serialized}:${inst.pos}")
-            error_count += 1
+            
           }
           if (!proc_ids.contains(dest)) {
             logger
-              .error(s"invalid destition id at ${inst.serialized}:${inst.pos}")
-            error_count += 1
+              .error(s"invalid destination id at ${inst.serialized}:${inst.pos}")
+            
           } else {
 
             // check if dest reg is defined
@@ -115,7 +115,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](programIr: T)
               logger.error(
                 s"destination register ${rd} is not defined in process ${dest} in ${inst}:${inst.pos}"
               )
-              error_count += 1
+              
             }
           }
       }

@@ -5,6 +5,8 @@ import manticore.assembly.parser.UnconstrainedAssemblyParser
 import manticore.assembly.levels.RegLogic
 import manticore.assembly.AssemblyAnnotation
 import manticore.assembly.BinaryOperator
+import manticore.assembly.parser.AssemblyParser
+import manticore.compiler.AssemblyContext
 
 class UnconstrainedAssemblyParserTester extends UnitTest {
 
@@ -93,6 +95,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
       // SetValue("mi", BigInt(0x12123))
     )
   )
+
+  implicit val ctx = AssemblyContext()
   it should "parse a register definitions with annotations" in {
 
     val program = s"""
@@ -100,7 +104,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
             .proc pid:
                 ${regs._1}                
         """
-    val ast = UnconstrainedAssemblyParser(program)
+    val ast = AssemblyParser(program)
 
     println(ast.serialized)
     val expected =
@@ -125,7 +129,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
                 ${regs._1}
                 ${funcs._1}
       """
-    UnconstrainedAssemblyParser(program) shouldBe
+    AssemblyParser(program) shouldBe
       DefProgram(
         Seq(
           DefProcess(
@@ -174,7 +178,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         )
       )
     )
-    UnconstrainedAssemblyParser(program) shouldBe expected
+    AssemblyParser(program) shouldBe expected
     println(expected.serialized)
 
   }
