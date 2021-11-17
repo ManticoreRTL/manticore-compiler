@@ -7,6 +7,8 @@ import manticore.assembly.levels.unconstrained.{UnconstrainedIR => S}
 import manticore.assembly.levels.placed.{PlacedIR => T}
 import manticore.assembly.PhaseLogger
 import manticore.assembly.AssemblyAnnotation
+import manticore.assembly.levels.UInt16
+import manticore.assembly.levels.LogicType
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
@@ -74,7 +76,39 @@ object UnconstrainedToPlacedTransform
     */
   private def convert(
       proc: S.DefProcess
-  )(implicit proc_map: Map[S.ProcessId, T.ProcessId]): T.DefProcess =
+  )(implicit proc_map: Map[S.ProcessId, T.ProcessId]): T.DefProcess = {
+
+    if (proc.registers.length >= 2048) {
+      fail(
+        s"Can only support up to 2048 registers per process but have ${proc.registers.length} registers in ${proc.id}"
+      )
+    }
+    import manticore.assembly.levels.{
+      ConstLogic,
+      InputLogic,
+      RegLogic,
+      MemoryLogic,
+      OutputLogic,
+      WireLogic
+    }
+    def filterRegs[T <: LogicType](tpe: LogicType) =
+      proc.registers.filter(_.variable.tpe == tpe)
+    val const_regs = filterRegs(ConstLogic)
+    val input_regs = filterRegs(InputLogic)
+    val output_regs = filterRegs(OutputLogic)
+    val reg_regs = filterRegs(RegLogic)
+    val wire_regs = filterRegs(WireLogic)
+    implicit val subst =
+      (const_regs ++ input_regs ++ output_regs ++ reg_regs ++ wire_regs).zipWithIndex.map {
+        case (r, i) =>
+          r.variable ->
+            T.LogicVariable(
+              r.variable.name,
+              i,
+              r.variable.tpe
+            )
+      }.toMap[S.LogicVariable, T.LogicVariable]
+
     T.DefProcess(
       id = proc_map(proc.id),
       registers = proc.registers.map(convert),
@@ -82,6 +116,7 @@ object UnconstrainedToPlacedTransform
       body = proc.body.map(convert),
       annons = proc.annons
     )
+  }
 
   /** Unchecked conversion of DefFunc
     *
@@ -104,9 +139,11 @@ object UnconstrainedToPlacedTransform
     * @return
     *   converted one
     */
-  private def convert(reg: S.DefReg): T.DefReg =
+  private def convert(
+      reg: S.DefReg
+  )(implicit subst: Map[S.LogicVariable, T.LogicVariable]): T.DefReg =
     T.DefReg(
-      T.LogicVariable(reg.variable.name, reg.variable.tpe),
+      subst(reg.variable),
       reg.value.map { v => UInt16(v.toInt) },
       reg.annons
     )

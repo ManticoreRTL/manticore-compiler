@@ -9,8 +9,9 @@ import manticore.assembly.parser.AssemblyStringParser
 import manticore.assembly.levels.ConstLogic
 import manticore.assembly.BinaryOperator
 import manticore.assembly.AssemblyAnnotation
-import manticore.assembly.levels.placed.UInt16
+
 import manticore.assembly.levels.RegLogic
+import manticore.assembly.levels.UInt16
 
 class UnconstrainedToPlacedTransformTester extends UnitTest {
 
@@ -56,9 +57,9 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
           DefProcess(
             id = ProcesssIdImpl("p0", 0, 1),
             registers = Seq(
-              DefReg(LogicVariable("$zero", ConstLogic), Some(UInt16(0))),
-              DefReg(LogicVariable("$one", ConstLogic), Some(UInt16(1))),
-              DefReg(LogicVariable("%x", RegLogic), None)
+              DefReg(LogicVariable("$zero", 0, ConstLogic), Some(UInt16(0))),
+              DefReg(LogicVariable("$one", 1, ConstLogic), Some(UInt16(1))),
+              DefReg(LogicVariable("%x", 2, RegLogic), None)
             ),
             functions = Seq(
               DefFunc(
