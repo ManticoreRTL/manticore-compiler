@@ -14,7 +14,7 @@ import scala.collection.immutable.ListMap
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
   val ADD, ADDC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SLTU, SLTS, SGTU, SGTS,
-      MUX = Value
+      PMUX = Value
 }
 
 /** An assembly annotation
