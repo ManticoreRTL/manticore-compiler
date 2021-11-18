@@ -193,10 +193,12 @@ trait ManticoreAssemblyIR {
       rs: Name,
       base: Name,
       offset: Constant,
+      predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${offset}[${base}]; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${offset}[${base}] ${predicate
+        .map("," + _.toString())}; //@${pos}"
   }
 
   // Load from global memory (DRAM)
@@ -213,10 +215,11 @@ trait ManticoreAssemblyIR {
   case class GlobalStore(
       rs: Name,
       base: Tuple4[Name, Name, Name, Name],
+      predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tGST ${rs}, [${base._1}, ${base._2}, ${base._3}, ${base._4}]; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tGST ${rs}, [${base._1}, ${base._2}, ${base._3}, ${base._4}] ${predicate.map { x => "," + x.toString() }}; //@${pos}"
   }
 
   // Set a register value
@@ -252,10 +255,23 @@ trait ManticoreAssemblyIR {
   }
 
   case class Predicate(
-    rs: Name,
-    annons: Seq[AssemblyAnnotation] = Seq()
+      rs: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-     override def serialized: String =
+    override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\tPREDICATE ${rs}; //@${pos}"
   }
+
+  case class Mux(
+      rd: Name,
+      sel: Name,
+      rs1: Name,
+      rs2: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tMUX ${rd}, ${sel}, ${rs1}, ${rs2}; //@${pos}"
+  }
+
 }

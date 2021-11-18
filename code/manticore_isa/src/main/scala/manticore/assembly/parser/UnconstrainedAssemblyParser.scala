@@ -143,7 +143,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   }
   // rest of instruction
   lexical.reserved += ("CUST", "LLD", "LST", "GLD", "GST", "EXPECT", "SEND", "SET")
-
+  lexical.reserved += ("LD", "ST")
   // defs
   val RegTypes = Seq(".reg", ".wire", ".input", ".output", ".mem", ".const")
 
@@ -230,29 +230,37 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     }
 
   def lload_inst: Parser[LocalLoad] =
-    (annotations ~ keyword(
+    (annotations ~ (keyword(
       "LLD"
-    ) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]") ^^ {
-      case (a ~ Keyword("LLD") ~ rd ~ _ ~ base ~ _ ~ offset ~ _) =>
+    ) | keyword("LD")) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]") ^^ {
+      case (a ~ _ ~ rd ~ _ ~ base ~ _ ~ offset ~ _) =>
         LocalLoad(rd.chars, base.chars, offset, a)
     }
 
   def lstore_inst: Parser[LocalStore] =
-    (annotations ~ keyword(
+    (annotations ~ (keyword(
       "LST"
-    ) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]") ^^ {
-      case (a ~ Keyword("LST") ~ rs ~ _ ~ base ~ _ ~ offset ~ _) =>
-        LocalStore(rs.chars, base.chars, offset, a)
+    ) | keyword("ST")) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]" ~ opt(
+      "," ~> ident
+    )) ^^ { case (a ~ _ ~ rs ~ _ ~ base ~ _ ~ offset ~ _ ~ p) =>
+      LocalStore(rs.chars, base.chars, offset, p.map(_.chars), a)
     }
 
   def gstore_inst: Parser[GlobalStore] =
     (annotations ~ keyword(
       "GST"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]") ^^ {
+    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]" ~ opt(
+      "," ~> ident
+    )) ^^ {
       case (a ~ Keyword(
             "GST"
-          ) ~ rs ~ _ ~ _ ~ rhh ~ _ ~ rh ~ _ ~ rl ~ _ ~ rll ~ _) =>
-        GlobalStore(rs.chars, (rhh.chars, rh.chars, rl.chars, rll.chars), a)
+          ) ~ rs ~ _ ~ _ ~ rhh ~ _ ~ rh ~ _ ~ rl ~ _ ~ rll ~ _ ~ p) =>
+        GlobalStore(
+          rs.chars,
+          (rhh.chars, rh.chars, rl.chars, rll.chars),
+          p.map(_.chars),
+          a
+        )
     }
 
   def gload_inst: Parser[GlobalLoad] =
@@ -289,7 +297,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       case (a ~ Keyword("PREDICATE") ~ rs) =>
         Predicate(rs.chars, a)
     }
-    
+
   def instruction: Parser[Instruction] = positioned(
     arith_inst | lvec_inst | lload_inst | lstore_inst |
       gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst

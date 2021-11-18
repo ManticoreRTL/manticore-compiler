@@ -196,12 +196,12 @@ object UnconstrainedToPlacedTransform
       T.Expect(ref, got, UInt16(error_id), annons)
     case S.LocalLoad(rd, base, offset, annons) =>
       T.LocalLoad(rd, base, UInt16(offset.toInt), annons)
-    case S.LocalStore(rs, base, offset, annons) =>
-      T.LocalStore(rs, base, UInt16(offset.toInt), annons)
+    case S.LocalStore(rs, base, offset, p, annons) =>
+      T.LocalStore(rs, base, UInt16(offset.toInt), p, annons)
     case S.GlobalLoad(rd, base, annons) =>
       T.GlobalLoad(rd, base, annons)
-    case S.GlobalStore(rs, base, annons) =>
-      T.GlobalStore(rs, base, annons)
+    case S.GlobalStore(rs, base, p, annons) =>
+      T.GlobalStore(rs, base, p, annons)
     case S.Send(rd, rs, dest_id, annons) =>
       T.Send(rd, rs, proc_map(dest_id), annons)
     case S.SetValue(rd, value, annons) =>
@@ -301,7 +301,7 @@ object UnconstrainedToPlacedTransform
                   logger.error(s"invalid offset in ${i.serialized}")
                   false
                 } else true
-              case S.LocalStore(_, _, offset, _) =>
+              case S.LocalStore(_, _, offset, _, _) =>
                 if (offset >= (1 << 16)) {
                   logger.error(s"invalid offset in ${i.serialized}")
                   false

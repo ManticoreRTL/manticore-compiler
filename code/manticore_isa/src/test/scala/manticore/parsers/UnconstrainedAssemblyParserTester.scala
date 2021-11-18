@@ -76,8 +76,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     ADD x, xi, xi;
     CUST xi, [f0], y, y, yi, yi;
     CUST x, [f1], y, y, yi, yi;
-    LLD  o, m[0x01];
-    LST  i, mi[0x02];
+    LD  o, m[0x01];
+    ST  i, mi[0x02];
     // SET  mi, 0x12123;
   """,
     Seq(
@@ -91,7 +91,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
       CustomInstruction("f0", "xi", "y", "y", "yi", "yi"),
       CustomInstruction("f1", "x", "y", "y", "yi", "yi"),
       LocalLoad("o", "m", BigInt(0x01)),
-      LocalStore("i", "mi", BigInt(0x02))
+      LocalStore("i", "mi", BigInt(0x02), None)
       // SetValue("mi", BigInt(0x12123))
     )
   )
