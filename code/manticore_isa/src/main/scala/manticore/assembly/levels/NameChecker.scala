@@ -10,9 +10,9 @@ import manticore.compiler.AssemblyContext
   * defined. This class should be specialized as an object before being used,
   * see [[manticore.assembly.levels.unconstrained.UnconstrainedNameChecker]] for
   * an example.
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
-  * 
-  * 
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  *
   * @param irFlavor
   *   IR flavor object to specialize the checker with
   */
@@ -20,8 +20,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
     extends AssemblyChecker(irFlavor) {
   import irFlavor._
 
-  def check(
-      prog: T#DefProgram, context: AssemblyContext): Unit = {
+  def check(prog: T#DefProgram, context: AssemblyContext): Unit = {
 
     case class DefinedName[TT](name: TT, owner: T#Declaration)
     @tailrec
@@ -59,6 +58,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
           }
         }
 
+      
       def checkInst(inst: T#Instruction): Unit =
         (inst: @unchecked /* match is already exhaustive, suppress compiler warns */ ) match {
           case BinaryArithmetic(_, rd, rs1, rs2, _) =>
@@ -71,8 +71,9 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
 
             }
             checkRegs(Seq(rd, rs1, rs2, rs3, rs4))(inst)
-          case LocalLoad(rd, base, _, _)  => checkRegs(Seq(rd, base))(inst)
-          case LocalStore(rs, base, _, p, _) => checkRegs(Seq(rs, base) ++ p.toSeq)(inst)
+          case LocalLoad(rd, base, _, _) => checkRegs(Seq(rd, base))(inst)
+          case LocalStore(rs, base, _, p, _) =>
+            checkRegs(Seq(rs, base) ++ p.toSeq)(inst)
           case GlobalLoad(rd, (hh, h, l, ll), _) =>
             checkRegs(Seq(rd, hh, h, l, ll))(inst)
           case GlobalStore(rs, (hh, h, l, ll), p, _) =>
@@ -80,6 +81,9 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
           case SetValue(rd, _, _)     => checkRegs(Seq(rd))(inst)
           case Expect(ref, got, _, _) => checkRegs(Seq(ref, got))(inst)
           case Send(rd, rs, _, _)     => checkRegs(Seq(rs))(inst)
+          case Predicate(rs, _)       => checkRegs(Seq(rs))(inst)
+          case Mux(rd, sel, rs1, rs2, _) =>
+            checkRegs(Seq(rd, sel, rs1, rs2))(inst)
 
         }
       proc.body.foreach(i => checkInst(i))
@@ -134,6 +138,6 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
     if (logger.countErrors > 0) {
       logger.fail("Name check failed due to earlier errors!")
     }
-    
+
   }
 }

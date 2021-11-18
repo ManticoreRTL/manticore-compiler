@@ -206,7 +206,10 @@ object UnconstrainedToPlacedTransform
       T.Send(rd, rs, proc_map(dest_id), annons)
     case S.SetValue(rd, value, annons) =>
       T.SetValue(rd, UInt16(value.toInt), annons)
-
+    case S.Predicate(rs, annons) =>
+      T.Predicate(rs, annons)
+    case S.Mux(rd, sel, rs1, rs2, annons) =>
+      T.Mux(rd, sel, rs1, rs2, annons)
   }
 
   /** Checks if the @LAYOUT annotation exists
