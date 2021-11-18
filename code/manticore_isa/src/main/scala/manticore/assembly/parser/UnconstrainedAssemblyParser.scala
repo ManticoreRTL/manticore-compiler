@@ -250,15 +250,15 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def gstore_inst: Parser[GlobalStore] =
     (annotations ~ keyword(
       "GST"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]" ~ opt(
+    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident  ~ "]" ~ opt(
       "," ~> ident
     )) ^^ {
       case (a ~ Keyword(
             "GST"
-          ) ~ rs ~ _ ~ _ ~ rhh ~ _ ~ rh ~ _ ~ rl ~ _ ~ rll ~ _ ~ p) =>
+          ) ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _ ~ p) =>
         GlobalStore(
           rs.chars,
-          (rhh.chars, rh.chars, rl.chars, rll.chars),
+          (rh.chars, rm.chars, rl.chars),
           p.map(_.chars),
           a
         )
@@ -267,11 +267,11 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def gload_inst: Parser[GlobalLoad] =
     (annotations ~ keyword(
       "GLD"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]") ^^ {
+    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident  ~ "]") ^^ {
       case (a ~ Keyword(
             "GLD"
-          ) ~ rs ~ _ ~ _ ~ rhh ~ _ ~ rh ~ _ ~ rl ~ _ ~ rll ~ _) =>
-        GlobalLoad(rs.chars, (rhh.chars, rh.chars, rl.chars, rll.chars), a)
+          ) ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _) =>
+        GlobalLoad(rs.chars, (rh.chars, rm.chars, rl.chars), a)
     }
   def set_inst: Parser[SetValue] =
     (annotations ~ keyword("SET") ~ ident ~ "," ~ const_value) ^^ {

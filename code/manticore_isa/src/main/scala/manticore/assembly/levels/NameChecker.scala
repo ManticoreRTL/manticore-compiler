@@ -74,10 +74,10 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
           case LocalLoad(rd, base, _, _) => checkRegs(Seq(rd, base))(inst)
           case LocalStore(rs, base, _, p, _) =>
             checkRegs(Seq(rs, base) ++ p.toSeq)(inst)
-          case GlobalLoad(rd, (hh, h, l, ll), _) =>
-            checkRegs(Seq(rd, hh, h, l, ll))(inst)
-          case GlobalStore(rs, (hh, h, l, ll), p, _) =>
-            checkRegs(Seq(rs, hh, h, l, ll) ++ p.toSeq)(inst)
+          case GlobalLoad(rd, (hh, h, l), _) =>
+            checkRegs(Seq(rd, hh, h, l))(inst)
+          case GlobalStore(rs, (hh, h, l), p, _) =>
+            checkRegs(Seq(rs, hh, h, l) ++ p.toSeq)(inst)
           case SetValue(rd, _, _)     => checkRegs(Seq(rd))(inst)
           case Expect(ref, got, _, _) => checkRegs(Seq(ref, got))(inst)
           case Send(rd, rs, _, _)     => checkRegs(Seq(rs))(inst)

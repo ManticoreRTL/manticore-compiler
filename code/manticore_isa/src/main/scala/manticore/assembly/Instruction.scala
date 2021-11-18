@@ -204,22 +204,22 @@ trait ManticoreAssemblyIR {
   // Load from global memory (DRAM)
   case class GlobalLoad(
       rd: Name,
-      base: Tuple4[Name, Name, Name, Name],
+      base: Tuple3[Name, Name, Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tGLD ${rd}, [${base._1}, ${base._2}, ${base._3}, ${base._4}]; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tGLD ${rd}, [${base._1}, ${base._2}, ${base._3}]; //@${pos}"
   }
 
   // Store to global memory (DRAM)
   case class GlobalStore(
       rs: Name,
-      base: Tuple4[Name, Name, Name, Name],
+      base: Tuple3[Name, Name, Name],
       predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tGST ${rs}, [${base._1}, ${base._2}, ${base._3}, ${base._4}] ${predicate.map { x => "," + x.toString() }}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tGST ${rs}, [${base._1}, ${base._2}, ${base._3}] ${predicate.map { x => "," + x.toString() }}; //@${pos}"
   }
 
   // Set a register value
