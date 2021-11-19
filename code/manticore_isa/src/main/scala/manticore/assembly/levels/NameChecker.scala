@@ -84,6 +84,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
           case Predicate(rs, _)       => checkRegs(Seq(rs))(inst)
           case Mux(rd, sel, rs1, rs2, _) =>
             checkRegs(Seq(rd, sel, rs1, rs2))(inst)
+          case Nop => // do nothing
 
         }
       proc.body.foreach(i => checkInst(i))

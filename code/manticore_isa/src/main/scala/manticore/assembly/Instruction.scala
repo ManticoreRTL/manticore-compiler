@@ -77,15 +77,14 @@ trait ManticoreAssemblyIR {
         s"${annons.map(x => tabs + x.serialized).mkString("\n")}\n"
       else
         ""
-    def findAnnotationValue(name: String, key: String): Option[String] =  {
+    def findAnnotationValue(name: String, key: String): Option[String] = {
       val found = annons.find(_.name == name)
       found match {
-        case None => None
-        case Some(AssemblyAnnotation(_, values)) =>  values.get(key)
+        case None                                => None
+        case Some(AssemblyAnnotation(_, values)) => values.get(key)
       }
     }
-      
-      
+
   }
 
   // base IRNode
@@ -194,7 +193,7 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tLLD ${rd}, ${offset}(${base});"
+      s"${serializedAnnons("\t\t")}\t\tLLD ${rd}, ${offset}(${base}); //@${pos}"
   }
 
   // Store to the local scrathpad
@@ -206,8 +205,9 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${offset}[${base}] ${predicate
-        .map("," + _.toString())}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${offset}[${base}]${predicate
+        .map(", " + _.toString())
+        .getOrElse("")}; //@${pos}"
   }
 
   // Load from global memory (DRAM)
@@ -228,7 +228,9 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tGST ${rs}, [${base._1}, ${base._2}, ${base._3}] ${predicate.map { x => "," + x.toString() }}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tGST ${rs}, [${base._1}, ${base._2}, ${base._3}]${predicate
+        .map { x => ", " + x.toString() }
+        .getOrElse("")}; //@${pos}"
   }
 
   // Set a register value
@@ -282,5 +284,11 @@ trait ManticoreAssemblyIR {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\tMUX ${rd}, ${sel}, ${rs1}, ${rs2}; //@${pos}"
   }
+
+  case object Nop extends Instruction {
+    val annons: Seq[AssemblyAnnotation] = Seq()
+    override def serialized: String = s"\t\tNOP;"
+  }
+  
 
 }

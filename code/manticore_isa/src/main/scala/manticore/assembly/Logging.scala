@@ -33,12 +33,12 @@ trait Reporter {
         node: N
     ): Unit =
       println(
-        s"${msg} \n at \n${node.serialized}:${node.pos} reported by ${BOLD}${getName}${RESET}"
+        s"${msg} \n at \n${node.serialized}:${node.pos}\n\t\t reported by ${BOLD}${getName}${RESET}"
       )
 
     private def message(msg: String): Unit =
       println(
-        s"${msg} \nreported by ${BOLD}${getName}${RESET}"
+        s"${msg} \n\t\treported by ${BOLD}${getName}${RESET}"
       )
 
     def error[N <: HasSerialized with Positional](

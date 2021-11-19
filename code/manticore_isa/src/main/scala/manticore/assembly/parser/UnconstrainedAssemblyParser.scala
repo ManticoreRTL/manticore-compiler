@@ -5,7 +5,6 @@ import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.AssemblyAnnotation
 import manticore.assembly.BinaryOperator
 
-
 import scala.util.parsing.input.CharArrayReader.EofCh
 import scala.util.parsing.input.Positional
 import scala.util.parsing.input.Reader
@@ -134,8 +133,8 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     BinaryOperator(i).toString()
   }
   // rest of instruction
-  lexical.reserved += ("CUST", "LLD", "LST", "GLD", "GST", "EXPECT", 
-                        "SEND", "SET", "MUX", "EXPECT", "PREDICATE")
+  lexical.reserved += ("CUST", "LLD", "LST", "GLD", "GST", "EXPECT",
+  "SEND", "SET", "MUX", "EXPECT", "PREDICATE", "NOP")
   lexical.reserved += ("LD", "ST") //short hand for LLD and LST
   // defs
   val RegTypes = Seq(".reg", ".wire", ".input", ".output", ".mem", ".const")
@@ -242,7 +241,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def gstore_inst: Parser[GlobalStore] =
     (annotations ~ keyword(
       "GST"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident  ~ "]" ~ opt(
+    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]" ~ opt(
       "," ~> ident
     )) ^^ {
       case (a ~ Keyword(
@@ -259,7 +258,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def gload_inst: Parser[GlobalLoad] =
     (annotations ~ keyword(
       "GLD"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident  ~ "]") ^^ {
+    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]") ^^ {
       case (a ~ Keyword(
             "GLD"
           ) ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _) =>
@@ -298,9 +297,12 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       case (a ~ _ ~ rd ~ _ ~ sel ~ _ ~ rs1 ~ _ ~ rs2) =>
         Mux(rd.chars, sel.chars, rs1.chars, rs2.chars, a)
     } // only a pseudo instruction, should be translated to a binary mux later
+
+  def nop_inst: Parser[Instruction] = (keyword("NOP")) ^^ { _ => Nop }
+
   def instruction: Parser[Instruction] = positioned(
-    arith_inst | lvec_inst | lload_inst | lstore_inst | mux_inst
-      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst
+    arith_inst | lvec_inst | lload_inst | lstore_inst | mux_inst | nop_inst
+      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst 
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[DefReg]] = rep(positioned(def_reg))

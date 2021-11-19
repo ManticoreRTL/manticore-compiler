@@ -23,7 +23,7 @@ object UnconstrainedToPlacedTransform
       context: AssemblyContext
   ): T.DefProgram = {
     implicit val ctx = context
-    logger.debug(s"Starting transformation ${getName}")
+    
     
     if (isConvertible(asm) == false) {
       logger.fail(
@@ -237,6 +237,7 @@ object UnconstrainedToPlacedTransform
       T.Predicate(rs, annons)
     case S.Mux(rd, sel, rs1, rs2, annons) =>
       T.Mux(rd, sel, rs1, rs2, annons)
+    case S.Nop => T.Nop
   }).setPos(inst.pos)
 
   /** Checks if the @LAYOUT annotation exists

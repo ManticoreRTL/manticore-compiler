@@ -15,91 +15,86 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
   import scalax.collection.Graph
   import scalax.collection.edge.WDiEdge
 
-  def instructionLatency(instruction: Instruction): Int = ???
+  def instructionLatency(instruction: Instruction): Int = 3
 
+  /** Extract the registers used in the instruction
+    *
+    * @param inst
+    * @return
+    */
+  def regUses(inst: Instruction): List[Name] = inst match {
+    case BinaryArithmetic(BinaryOperator.PMUX, rd, rs1, rs2, _) =>
+      logger.warn("PMUX instruction may lead to invalid scheduling!", inst)
+      List(rs1, rs2)
+    case BinaryArithmetic(operator, rd, rs1, rs2, _) =>
+      List(rs1, rs2)
+    case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
+      List(rs1, rs2, rs3, rs4)
+    case LocalLoad(rd, base, offset, _) =>
+      List(base)
+    case LocalStore(rs, base, offset, p, _) =>
+      List(rs, base) ++ (p match {
+        case None =>
+          logger.warn(
+            "Local store instruction does not have a predicate, the scheduling maybe invalid!",
+            inst
+          )
+          List.empty[Name]
+        case Some(n) => List(n)
+      })
+
+    case GlobalLoad(rd, base, _) =>
+      List(base._1, base._2, base._3)
+    case GlobalStore(rs, base, pred, _) =>
+      List(rs, base._1, base._2, base._3) ++ (pred match {
+        case None =>
+          logger.warn(
+            "GlobalStore instruction does not have a predicate, the scheduling maybe invalid!",
+            inst
+          )
+          List.empty[Name]
+        case Some(n) =>
+          List(n)
+      })
+
+    case Send(rd, rs, dest_id, _)  => List(rs)
+    case SetValue(rd, value, _)    => List()
+    case Mux(rd, sel, rs1, rs2, _) => List(sel, rs1, rs2)
+    case Expect(ref, got, error_id, _) =>
+      List(ref, got)
+    case Predicate(rs, _) =>
+      logger.warn(
+        "PREDICATE should be added after scheduling! The final schedule maybe invalid!",
+        inst
+      )
+      List(rs)
+    case Nop => List()
+
+  }
+
+  /** Extract the register define by the instruction if it defines one
+    *
+    * @param inst
+    * @return
+    */
+  def regDef(inst: Instruction): Option[Name] = inst match {
+    case BinaryArithmetic(operator, rd, rs1, rs2, _)        => Some(rd)
+    case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) => Some(rd)
+    case LocalLoad(rd, base, offset, _)                     => Some(rd)
+    case LocalStore(rs, base, offset, p, _)                 => None
+    case GlobalLoad(rd, base, _)                            => Some(rd)
+    case GlobalStore(rs, base, pred, _)                     => None
+    case Send(rd, rs, dest_id, _)                           => None
+    case SetValue(rd, value, _)                             => Some(rd)
+    case Mux(rd, sel, rs1, rs2, _)                          => Some(rd)
+    case Expect(ref, got, error_id, _)                      => None
+    case Predicate(rs, _)                                   => None
+    case Nop                                                => None
+  }
   def createDependenceGraph(
       process: DefProcess,
       ctx: AssemblyContext
   ): Graph[Instruction, WDiEdge] = {
-
-    /** Extract the registers used in the instruction
-      *
-      * @param inst
-      * @return
-      */
-    def regUses(inst: Instruction): List[Name] = inst match {
-      case BinaryArithmetic(BinaryOperator.PMUX, rd, rs1, rs2, _) =>
-        logger.warn("PMUX instruction may lead to invalid scheduling!", inst)
-        List(rs1, rs2)
-      case BinaryArithmetic(operator, rd, rs1, rs2, _) =>
-        List(rs1, rs2)
-      case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
-        List(rs1, rs2, rs3, rs4)
-      case LocalLoad(rd, base, offset, _) =>
-        List(base)
-      case LocalStore(rs, base, offset, p, _) =>
-        List(rs, base) ++ (p match {
-          case None =>
-            logger.warn(
-              "Local store instruction does not have a predicate, the scheduling maybe invalid!",
-              inst
-            )
-            List.empty[Name]
-          case Some(n) => List(n)
-        })
-
-      case GlobalLoad(rd, base, _) =>
-        List(base._1, base._2, base._3)
-      case GlobalStore(rs, base, pred, _) =>
-        List(rs, base._1, base._2, base._3) ++ (pred match {
-          case None =>
-            logger.warn(
-              "GlobalStore instruction does not have a predicate, the scheduling maybe invalid!",
-              inst
-            )
-            List.empty[Name]
-          case Some(n) =>
-            List(n)
-        })
-
-      case Send(rd, rs, dest_id, _)  => List(rs)
-      case SetValue(rd, value, _)    => List(rd)
-      case Mux(rd, sel, rs1, rs2, _) => List(sel, rs1, rs2)
-      case Expect(ref, got, error_id, _) =>
-        List(ref, got)
-      case Predicate(rs, _) =>
-        logger.warn(
-          "PREDICATE should be added after scheduling! The final schedule maybe invalid!",
-          inst
-        )
-        List(rs)
-
-    }
-
-    /** Extract the register define by the instruction if it defines one
-      *
-      * @param inst
-      * @return
-      */
-    def regDef(inst: Instruction): Option[Name] = inst match {
-      case BinaryArithmetic(operator, rd, rs1, rs2, _)        => Some(rd)
-      case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) => Some(rd)
-      case LocalLoad(rd, base, offset, _)                     => Some(rd)
-      case LocalStore(rs, base, offset, p, _)                 => None
-      case GlobalLoad(rd, base, _)                            => Some(rd)
-      case GlobalStore(rs, base, pred, _)                     => None
-      case Send(rd, rs, dest_id, _)                           => None
-      case SetValue(rd, value, _)                             => Some(rd)
-      case Mux(rd, sel, rs1, rs2, _)                          => Some(rd)
-      case Expect(ref, got, error_id, _)                      => None
-      case Predicate(rs, _)                                   => None
-    }
-
-    val raw_inst_graph = Graph[Instruction, WDiEdge]() ++ process.body
-
-    // The register-to-register RAW dependencies
-    val raw_dependency =
-      scala.collection.mutable.Map[Name, scala.collection.mutable.Set[Name]]()
 
     // A map from registers to the instruction defining it (if any), useful for back tracking
     val def_instructions =
@@ -108,25 +103,8 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       regDef(inst) match {
         case Some(rd) =>
           // keep a map from the target regs to the instruction defining it
-          // useful for backward traversal of the dependence graph
           def_instructions.update(rd, inst)
 
-          // a list of operands used by the instruction that rd depends on the
-          val rss = regUses(inst)
-          rss.foreach { rs =>
-            val seen_so_far: scala.collection.mutable.Set[Name] =
-              raw_dependency.getOrElse(
-                rs,
-                scala.collection.mutable.Set.empty[Name]
-              )
-            seen_so_far.add(rd)
-            // creates a dependence between rd and rs (rd depends on rs,
-            // therefore raw_dependency(rs) contains rd)
-            raw_dependency.update(
-              rs,
-              seen_so_far
-            )
-          }
         case None =>
         // instruction does not a value, hence no new dependence edges
       }
@@ -302,39 +280,21 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     }
 
     /** At this point, we a have mapping from load instructions to depending
-      * store instructions, and a mapping from registers to register based on
-      * RAW dependencies (i.e., raw(rs)=rd, iff rs is used to produce rd) and a
-      * mapping from registers to their defining instruction. Combining the tree
-      * gives a us an instruction-to-instruction dependence relation
+      * store instructions, and a mapping from registers to instruction defining
+      * them, we can now build the dependence graph
       */
 
     val raw_dependence_graph =
       process.body.foldLeft(Graph.empty[Instruction, WDiEdge]) {
         case (g, inst) =>
           // first add an edge for register to register dependency
-          regDef(inst) match {
-            case Some(rd) =>
-              // find the instructions that use the value defined by inst
-              val using_instructions = raw_dependency.get(rd) match {
-                case Some(uses) =>
-                  val insts_of_uses: scala.collection.mutable.Set[Instruction] =
-                    uses.collect { rs =>
-                      def_instructions.get(rs) match {
-                        case Some(inst) => inst
-                      }
-                    }
-                  insts_of_uses
-                case None =>
-                  scala.collection.mutable.Set.empty[Instruction]
-              }
-              // these instructions depend on inst, so create an edge for each
-              using_instructions.foldLeft(g + inst) { case (gg, ii) =>
-                gg + WDiEdge(inst, ii)(4)
-              } // latency is hardcoded to 4
-            case None =>
-              g
-            // do nothing, the instruction does not define any value, e.g., could
-            // be a store instruction
+          regUses(inst).foldLeft(g + inst) { case (gg, use) =>
+            def_instructions.get(use) match {
+              case Some(pred) =>
+                gg + WDiEdge(pred, inst)(instructionLatency(pred))
+              case None =>
+                gg
+            }
           }
       }
     // now add the load-to-store dependencies
@@ -356,9 +316,6 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       logger.error("Could not create acyclic dependence graph!")
     }
 
-    dependence_graph.nodes.foreach { n =>
-      println(n.toOuter.serialized)
-    }
     // dependence_graph.
     ctx.dumpArtifact(s"dependence_graph_${getName}.dot") {
 
@@ -403,22 +360,156 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         )
 
       val dot_export: String = dependence_graph.toDot(
-        dotRoot = dot_root, 
+        dotRoot = dot_root,
         edgeTransformer = edgeTransform,
-        cNodeTransformer = Some(nodeTransformer))
+        cNodeTransformer = Some(nodeTransformer)
+      )
       dot_export
     }
     dependence_graph
   }
 
+  def schedule(proc: DefProcess, ctx: AssemblyContext): DefProcess = {
+    type Node = Graph[Instruction, WDiEdge]#NodeT
+    type Edge = Graph[Instruction, WDiEdge]#EdgeT
+    val dependence_graph = createDependenceGraph(proc, ctx)
+    val distance_to_sink = scala.collection.mutable.Map[Node, Double]()
+
+    require(
+      dependence_graph.edges.forall(_.isOut),
+      "dependence graph is mal-formed!"
+    )
+    require(dependence_graph.isAcyclic, "Dependence graph is cyclic!")
+    require(dependence_graph.nodes.size == proc.body.size)
+
+    def traverseGraphNodesAndRecordDistanceToSink(node: Node): Double = {
+      node.outerEdgeTraverser
+
+      if (node.edges.filter(_.from == node).isEmpty) {
+        distance_to_sink(node) = 0
+        0.0
+      } else if (distance_to_sink.contains(node)) {
+        // answer already known
+        distance_to_sink(node)
+      } else {
+        node.edges.map { edge =>
+          if (edge.from == node) {
+            val dist =
+              traverseGraphNodesAndRecordDistanceToSink(edge.to) + edge.weight
+            distance_to_sink(node) = dist
+            dist
+          } else { 0.0 }
+
+        }.max
+      }
+    }
+
+    // find the distance of each node to sinks
+    dependence_graph.nodes.foreach { traverseGraphNodesAndRecordDistanceToSink }
+
+    val priority_list =
+      distance_to_sink.toList.sortBy(_._2)(Ordering[Double].reverse)
+
+    val schedule = scala.collection.mutable.ListBuffer[Instruction]()
+
+    case class ReadyNode(n: Node) extends Ordered[ReadyNode] {
+      def compare(that: ReadyNode) = {
+        val this_priority = distance_to_sink(this.n)
+        val that_priority = distance_to_sink(that.n)
+        if (this_priority > that_priority) {
+          -1
+        } else if (this_priority == that_priority) {
+          0
+        } else {
+          1
+        }
+      }
+    }
+    val ready_list = scala.collection.mutable.SortedSet[ReadyNode]()
+    // initialize the ready list with instruction that have no predecessor
+    dependence_graph.nodes
+      .filter { n => n.edges.filter { e => e.to == n }.isEmpty }
+      .foreach { x =>
+        ready_list.add(ReadyNode(x))
+      }
+
+    logger.debug(
+      s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
+    )(ctx)
+
+    sealed abstract class DepState
+    case object Satisfied extends DepState
+    case object Waiting extends DepState
+
+    // create a mutable set showing the satisfied dependencies
+    val satisfied_dependence = scala.collection.mutable.Set.empty[Edge]
+
+    // dependence_graph.OuterEdgeTraverser
+
+    var active_list = scala.collection.mutable.ListBuffer[(Node, Double)]()
+
+    val unsched_list = scala.collection.mutable.ListBuffer[Instruction]()
+    unsched_list ++= proc.body
+
+    var cycle = 0
+    while (unsched_list.nonEmpty) {
+
+      val to_retire = active_list.filter(_._2 == 0)
+      val finished_list =
+        active_list.filter { _._2 == 0.0 } map { finished =>
+          logger.debug(
+            s"${cycle}: Committing ${finished._1.toOuter.serialized} "
+          )(ctx)
+
+          val node = finished._1
+
+          node.edges
+            .filter { e => e.from == node }
+            .foreach { outbound_edge =>
+              // mark any dependency from this node as satisfied
+              satisfied_dependence.add(outbound_edge)
+              // and check if any instruction has become ready
+              val successor = outbound_edge.to
+              if (
+                successor.edges.filter { _.to == successor }.forall {
+                  satisfied_dependence.contains
+                }
+              ) {
+                logger.debug(
+                  s"${cycle}: Readying ${successor.toOuter.serialized} "
+                )(ctx)
+                ready_list += ReadyNode(successor)
+              }
+            }
+          finished
+        }
+      active_list --= finished_list
+      val new_active_list = active_list.map { case (n, d) => (n, d - 1.0) }
+      active_list = new_active_list
+
+      if (ready_list.isEmpty) {
+        schedule.append(Nop)
+      } else {
+        val head = ready_list.head
+        logger.debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")(ctx)
+        active_list.append((head.n, instructionLatency(head.n.toOuter)))
+        schedule.append(head.n.toOuter)
+        unsched_list -= head.n.toOuter
+        ready_list.remove(head)
+      }
+      cycle += 1
+    }
+
+    proc.copy(body = schedule.toSeq)
+  }
   override def transform(
       source: DefProgram,
       context: AssemblyContext
   ): DefProgram = {
 
-    val g = createDependenceGraph(source.processes.head, context)
+    type Node = Graph[Instruction, WDiEdge]#NodeT
 
-    source
+    source.copy(processes = source.processes.map { p => schedule(p, context) })
   }
 
 }

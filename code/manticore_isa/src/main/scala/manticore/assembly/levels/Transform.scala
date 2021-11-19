@@ -66,6 +66,7 @@ abstract class AssemblyTransformer[
       ctx: AssemblyContext
   ): (T#DefProgram, AssemblyContext) = {
 
+    logger.debug(s"Starting transformation ${getName}")(ctx)
     val res = (transform(source, ctx), ctx)
     ctx.dumpArtifact(s"dump_post_${getName}.masm") {
       res._1.serialized
