@@ -77,6 +77,15 @@ trait ManticoreAssemblyIR {
         s"${annons.map(x => tabs + x.serialized).mkString("\n")}\n"
       else
         ""
+    def findAnnotationValue(name: String, key: String): Option[String] =  {
+      val found = annons.find(_.name == name)
+      found match {
+        case None => None
+        case Some(AssemblyAnnotation(_, values)) =>  values.get(key)
+      }
+    }
+      
+      
   }
 
   // base IRNode

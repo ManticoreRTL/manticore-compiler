@@ -8,7 +8,7 @@ import manticore.assembly.levels.placed.{PlacedIR => T}
 
 import manticore.assembly.AssemblyAnnotation
 import manticore.assembly.levels.UInt16
-import manticore.assembly.levels.LogicType
+
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 
@@ -24,9 +24,7 @@ object UnconstrainedToPlacedTransform
   ): T.DefProgram = {
     implicit val ctx = context
     logger.debug(s"Starting transformation ${getName}")
-    if (context.getPrintTree) {
-      logger.info(s"Input tree: \n${asm.serialized}\n")
-    }
+    
     if (isConvertible(asm) == false) {
       logger.fail(
         s"${S.getClass().getSimpleName()} not convertible to ${T.getClass().getSimpleName()}"
@@ -58,7 +56,7 @@ object UnconstrainedToPlacedTransform
             logger.error(s"location out of bounds for process ${p.id}", p)
             p.id -> None
           } else {
-            p.id -> Some(T.ProcesssIdImpl(p.id, x, y))
+            p.id -> Some(T.ProcessIdImpl(p.id, x, y))
           }
         } catch {
           case _: Throwable =>
@@ -87,9 +85,7 @@ object UnconstrainedToPlacedTransform
       annons = asm.annons
     )
 
-    if (context.getPrintTree) {
-      logger.info(s"Output tree: \n${out.serialized}\n")
-    }
+   
     if (logger.countErrors > 0) {
       logger.fail(s"Failed transform due to previous errors!")
     }
@@ -114,39 +110,71 @@ object UnconstrainedToPlacedTransform
       )
     }
     import manticore.assembly.levels.{
-      ConstLogic,
-      InputLogic,
-      RegLogic,
-      MemoryLogic,
-      OutputLogic,
-      WireLogic
+      VariableType,
+      ConstType,
+      InputType,
+      RegType,
+      MemoryType,
+      OutputType,
+      WireType
     }
-    def filterRegs[T <: LogicType](tpe: LogicType) =
+    def filterRegs(tpe: VariableType) =
       proc.registers.filter(_.variable.tpe == tpe)
-    val const_regs = filterRegs(ConstLogic)
-    val input_regs = filterRegs(InputLogic)
-    val output_regs = filterRegs(OutputLogic)
-    val reg_regs = filterRegs(RegLogic)
-    val wire_regs = filterRegs(WireLogic)
-    implicit val subst =
-      (const_regs ++ input_regs ++ output_regs ++ reg_regs ++ wire_regs).zipWithIndex
-        .map { case (r, i) =>
-          r.variable ->
-            T.LogicVariable(
-              r.variable.name,
-              i,
-              r.variable.tpe
-            )
-        }
-        .toMap[S.LogicVariable, T.LogicVariable]
+    val const_regs = filterRegs(ConstType).zipWithIndex.map { case (r, i) =>
+      r.variable ->
+        T.ConstVariable(r.variable.name, i)
+    }.toMap
 
+    val input_regs = filterRegs(InputType).zipWithIndex.map { case (r, i) =>
+      r.variable ->
+        T.InputVariable(r.variable.name, i + const_regs.size)
+    }.toMap
+
+    val output_regs = filterRegs(OutputType).zipWithIndex.map { case (r, i) =>
+      r.variable ->
+        T.OutputVariable(r.variable.name, i + const_regs.size + input_regs.size)
+    }.toMap
+
+    val reg_regs = filterRegs(RegType).zipWithIndex.map { case (r, i) =>
+      r.variable ->
+        T.RegVariable(
+          r.variable.name,
+          i + const_regs.size + input_regs.size + output_regs.size
+        )
+    }.toMap
+
+    val wire_regs = filterRegs(WireType).zipWithIndex.map { case (r, i) =>
+      r.variable ->
+        T.RegVariable(
+          r.variable.name,
+          i + const_regs.size + input_regs.size + output_regs.size + reg_regs.size
+        )
+    }.toMap
+
+    val mem_regs = filterRegs(MemoryType).zipWithIndex.map {
+      case (r: S.DefReg, i) =>
+        val block = r.findAnnotationValue("MEMBLOCK", "block") match {
+          case Some(b) => b
+          case None =>
+            logger.error("Memory block not specified", r)
+            ""
+        }
+        r.variable ->
+          T.MemoryVariable(
+            r.variable.name,
+            i + const_regs.size + input_regs.size + output_regs.size + reg_regs.size + wire_regs.size,
+            block
+          )
+    }
+    implicit val subst =
+      (const_regs ++ input_regs ++ output_regs ++ reg_regs ++ wire_regs ++ mem_regs)
     T.DefProcess(
       id = proc_map(proc.id),
       registers = proc.registers.map(convert),
       functions = proc.functions.map(convert),
       body = proc.body.map(convert),
       annons = proc.annons
-    )
+    ).setPos(proc.pos)
   }
 
   /** Unchecked conversion of DefFunc
@@ -161,7 +189,7 @@ object UnconstrainedToPlacedTransform
       func.name,
       T.CustomFunctionImpl(func.value.values.map(x => UInt16(x.toInt))),
       func.annons
-    )
+    ).setPos(func.pos)
 
   /** Unchecked conversion of DefReg
     *
@@ -172,13 +200,12 @@ object UnconstrainedToPlacedTransform
     */
   private def convert(
       reg: S.DefReg
-  )(implicit subst: Map[S.LogicVariable, T.LogicVariable]): T.DefReg =
+  )(implicit subst: Map[S.LogicVariable, T.PlacedVariable]): T.DefReg =
     T.DefReg(
       subst(reg.variable),
       reg.value.map { v => UInt16(v.toInt) },
       reg.annons
-    )
-
+    ).setPos(reg.pos)
   /** Unchecked conversion of instructions
     *
     * @param inst
@@ -186,7 +213,7 @@ object UnconstrainedToPlacedTransform
     */
   private def convert(
       inst: S.Instruction
-  )(implicit proc_map: Map[String, T.ProcessId]): T.Instruction = inst match {
+  )(implicit proc_map: Map[String, T.ProcessId]): T.Instruction = (inst match {
 
     case S.BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
       T.BinaryArithmetic(operator, rd, rs1, rs2, annons)
@@ -210,7 +237,7 @@ object UnconstrainedToPlacedTransform
       T.Predicate(rs, annons)
     case S.Mux(rd, sel, rs1, rs2, annons) =>
       T.Mux(rd, sel, rs1, rs2, annons)
-  }
+  }).setPos(inst.pos)
 
   /** Checks if the @LAYOUT annotation exists
     *

@@ -16,10 +16,13 @@ import manticore.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.assembly.levels.placed.PlacedIR
 import manticore.assembly.levels.placed.PlacedNameChecker
 import scala.language.postfixOps
+import manticore.assembly.levels.placed.ListSchedulerTransform
 
 case class CliConfig(
     input_file: Option[File] = None,
     print_tree: Boolean = false,
+    dump_all: Boolean = false,
+    dump_dir: Option[File] = None,
     output_file: Option[File] = None,
     debug_en: Boolean = false,
     jump_to_placed: Boolean =
@@ -35,7 +38,7 @@ object Main {
       // OParser
       OParser.sequence(
         programName("masm"),
-        head("Manticore assmbler", "vPROTOTYPE"),
+        head("Manticore assembler", "vPROTOTYPE"),
         opt[File]('i', "input")
           .action { case (x, c) => c.copy(input_file = Some(x)) }
           .required()
@@ -46,6 +49,12 @@ object Main {
         opt[Unit]('t', "print-tree")
           .action { case (_, c) => c.copy(print_tree = true) }
           .text("print the asm program at each step of the assembler"),
+        opt[Unit]("dump-all")
+          .action { case (_, c) => c.copy(dump_all = true) }
+          .text("dump everything in each step in the directory given by --dump-dir"),
+        opt[File]("dump-dir")
+          .action { case (x, c) => c.copy(dump_dir = Some(x))}
+          .text("directory to place all the dump files"),
         opt[Unit]('d', "debug")
           .action { case (_, c) => c.copy(debug_en = true) }
           .text("print debug information"),
@@ -59,30 +68,34 @@ object Main {
 
     val cfg = OParser.parse(parser, args, CliConfig()) match {
       case Some(config) =>
-        println(s"Parsed cli ${config}")
         config
       case _ =>
         sys.error("Failed parsing cli args")
     }
 
     val ctx: AssemblyContext =
-      AssemblyContext()
-        .withDebugMessage(cfg.debug_en)
-        .withPrintTree(cfg.print_tree)
-        .withSourceFile(cfg.input_file)
-        .withOutputFile(cfg.output_file)
+      AssemblyContext(
+        debug_message = cfg.debug_en,
+        print_tree = cfg.print_tree,
+        source_file = cfg.input_file,
+        output_file = cfg.output_file,
+        dump_all = cfg.dump_all,
+        dump_dir =  cfg.dump_dir
+      )
+    println(ctx.dump_all)
 
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
       val phases =
         UnconstrainedNameChecker followedBy
           UnconstrainedToPlacedTransform followedBy
           PlacedNameChecker followedBy
-          PlacedNameChecker followedBy
-          PlacedNameChecker
+          ListSchedulerTransform
       phases(prg, ctx)._1
     }
     
+
     val parsed = AssemblyParser(cfg.input_file.get, ctx)
+    ctx.dumpArtifact("parsed")(parsed.serialized)
     runPhases(parsed)
 
   }

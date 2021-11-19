@@ -1,8 +1,8 @@
-package manticore.levels
+package manticore.assembly.levels
 
 import manticore.UnitTest
 import manticore.assembly.parser.UnconstrainedAssemblyParser
-import manticore.assembly.levels.RegLogic
+
 import manticore.assembly.AssemblyAnnotation
 import manticore.assembly.BinaryOperator
 import manticore.assembly.parser.AssemblyParser
@@ -13,12 +13,12 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
   behavior of "Unconstrained assembly parser"
   import manticore.assembly.levels.unconstrained.UnconstrainedIR._
   import manticore.assembly.levels.{
-    RegLogic,
-    WireLogic,
-    InputLogic,
-    MemoryLogic,
-    OutputLogic,
-    ConstLogic
+    RegType,
+    WireType,
+    InputType,
+    MemoryType,
+    OutputType,
+    ConstType
   }
   val regs = (
     """
@@ -36,23 +36,23 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     .output o 12;
   """,
     Seq(
-      DefReg(LogicVariable("$zero", 32, ConstLogic), Some(BigInt(0))),
-      DefReg(LogicVariable("%x", 32, RegLogic), None),
-      DefReg(LogicVariable("%%xi", 32, RegLogic), Some(BigInt(0x321))),
-      DefReg(LogicVariable("y", 8, WireLogic), None),
+      DefReg(LogicVariable("$zero", 32, ConstType), Some(BigInt(0))),
+      DefReg(LogicVariable("%x", 32, RegType), None),
+      DefReg(LogicVariable("%%xi", 32, RegType), Some(BigInt(0x321))),
+      DefReg(LogicVariable("y", 8, WireType), None),
       DefReg(
-        LogicVariable("yi", 16, WireLogic),
+        LogicVariable("yi", 16, WireType),
         Some(BigInt("011001010101010", 2)),
         Seq(
           AssemblyAnnotation("TRACKED", Map("signal" -> "top/inst/yi")),
           AssemblyAnnotation("SOURCE", Map("file" -> "myfile.v:312.21"))
         )
       ),
-      DefReg(LogicVariable("m", 64, MemoryLogic), None),
-      DefReg(LogicVariable("mi", 64, MemoryLogic), Some(312312312)),
-      DefReg(LogicVariable("i", 9, InputLogic), None),
+      DefReg(LogicVariable("m", 64, MemoryType), None),
+      DefReg(LogicVariable("mi", 64, MemoryType), Some(312312312)),
+      DefReg(LogicVariable("i", 9, InputType), None),
       DefReg(
-        LogicVariable("o", 12, OutputLogic),
+        LogicVariable("o", 12, OutputType),
         None,
         Seq(AssemblyAnnotation("TRACKED", Map("signal" -> "top/o")))
       )

@@ -4,7 +4,7 @@ ThisBuild / scalaVersion := "2.12.13"
 
 
 val jvmHeapMemOptions = Seq(
-    "-Xms512M", // initial JVM heap pool szie
+    "-Xms512M", // initial JVM heap pool size
     "-Xmx8192M", // maximum heap size
     "-Xss32M", // initial stack size
     "-Xms256M" // maximum stacks size
@@ -25,8 +25,9 @@ lazy val root = (project in file(".")).
       "org.scala-lang.modules" %% "scala-parser-combinators" % "2.1.0",
       "ch.qos.logback" % "logback-classic" % "1.2.3", // for logging
       "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4", // for logging
-      "com.github.scopt" %% "scopt" % "4.0.1"
-  
+      "com.github.scopt" %% "scopt" % "4.0.1", // cli arg parsing
+      "org.scala-graph" %% "graph-core" % "1.13.1", // graphs
+      "org.scala-graph" %% "graph-dot" % "1.13.0" // for exporting graphs
     ),
 
 

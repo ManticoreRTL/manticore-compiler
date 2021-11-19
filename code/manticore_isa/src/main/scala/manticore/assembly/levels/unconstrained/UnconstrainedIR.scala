@@ -1,33 +1,30 @@
 package manticore.assembly.levels.unconstrained
 
 import manticore.assembly.ManticoreAssemblyIR
-import manticore.assembly.levels.LogicType
+import manticore.assembly.levels.VariableType
 import manticore.assembly.levels.AssemblyNameChecker
-import manticore.assembly.levels.RegLogic
-import manticore.assembly.levels.WireLogic
-import manticore.assembly.levels.OutputLogic
-import manticore.assembly.levels.MemoryLogic
-import manticore.assembly.levels.InputLogic
+import manticore.assembly.levels.RegType
+import manticore.assembly.levels.WireType
+import manticore.assembly.levels.OutputType
+import manticore.assembly.levels.MemoryType
+import manticore.assembly.levels.InputType
 import scala.language.implicitConversions
-import manticore.assembly.levels.ConstLogic
+import manticore.assembly.levels.ConstType
 import manticore.assembly.HasSerialized
+
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
   */
 object UnconstrainedIR extends ManticoreAssemblyIR {
+
+  // case class ConstVariable(name: String, )
   case class LogicVariable(
       name: String,
       width: Int,
-      tpe: LogicType
-  ) extends Named with HasSerialized {
-    def serialized: String = (tpe match {
-      case RegLogic    => ".reg"
-      case WireLogic   => ".wire"
-      case OutputLogic => ".output"
-      case MemoryLogic => ".mem"
-      case InputLogic  => ".input"
-      case ConstLogic  => ".const"
-    }) + s" ${name} ${width}"
+      tpe: VariableType
+  ) extends Named
+      with HasSerialized {
+    def serialized: String = s"${tpe.typeName} ${name} ${width}"
   }
 
   case class CustomFunctionImpl(values: Seq[BigInt]) extends HasSerialized {
@@ -45,5 +42,3 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
   type ProcessId = String
   type ExceptionId = Int
 }
-
-

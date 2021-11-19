@@ -1,4 +1,4 @@
-package manticore.levels.placed
+package manticore.assembly.levels.placed
 
 import manticore.UnitTest
 import manticore.assembly.parser.UnconstrainedAssemblyParser
@@ -6,20 +6,21 @@ import manticore.assembly.levels.placed.UnconstrainedToPlacedTransform
 import scala.language.postfixOps
 import manticore.assembly.levels.placed.PlacedIR
 
-import manticore.assembly.levels.ConstLogic
+
 import manticore.assembly.BinaryOperator
 import manticore.assembly.AssemblyAnnotation
 
-import manticore.assembly.levels.RegLogic
+
 import manticore.assembly.levels.UInt16
 import manticore.compiler.AssemblyContext
 import java.io.File
 import manticore.assembly.parser.AssemblyParser
 import manticore.assembly.CompilationFailureException
 
+
 class UnconstrainedToPlacedTransformTester extends UnitTest {
 
-  behavior of "unconstrained IR ro placed IR tranform"
+  behavior of "unconstrained IR ro placed IR transform"
 
   val valid_program =
     """
@@ -30,6 +31,8 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
         .const $zero 16 0x0
         .const $one  16 0x1
         .reg   %x    16;
+        @MEMBLOCK [block="mem_0"]
+        .mem   $$bram 16
         .func f0 [0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
                     0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01]
         ADD %x, $zero, $one;
@@ -61,11 +64,19 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
       DefProgram(
         Seq(
           DefProcess(
-            id = ProcesssIdImpl("p0", 0, 1),
+            id = ProcessIdImpl("p0", 0, 1),
             registers = Seq(
-              DefReg(LogicVariable("$zero", 0, ConstLogic), Some(UInt16(0))),
-              DefReg(LogicVariable("$one", 1, ConstLogic), Some(UInt16(1))),
-              DefReg(LogicVariable("%x", 2, RegLogic), None)
+              DefReg(ConstVariable("$zero", 0), Some(UInt16(0))),
+              DefReg(ConstVariable("$one", 1), Some(UInt16(1))),
+              DefReg(RegVariable("%x", 2), None),
+              DefReg(MemoryVariable("$$bram", 3, "mem_0"),  None,
+                Seq(
+                  AssemblyAnnotation(
+                    "MEMBLOCK", 
+                    Map("block" -> "mem_0")
+                  )
+                )
+              )
             ),
             functions = Seq(
               DefFunc(

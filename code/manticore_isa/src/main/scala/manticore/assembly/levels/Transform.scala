@@ -64,8 +64,15 @@ abstract class AssemblyTransformer[
   override final def apply(
       source: S#DefProgram,
       ctx: AssemblyContext
-  ): (T#DefProgram, AssemblyContext) =
-    (transform(source, ctx), ctx)
+  ): (T#DefProgram, AssemblyContext) = {
+
+    val res = (transform(source, ctx), ctx)
+    ctx.dumpArtifact(s"dump_post_${getName}.masm") {
+      res._1.serialized
+    }
+    res
+  }
+    
 }
 
 /** Signature class for IR checkers, taking [[T]] IR flavor as input and

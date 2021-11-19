@@ -1,0 +1,31 @@
+@LAYOUT [x = "10", y = "20"]
+.prog :
+  @LOC [x = "0", y = "0"]
+  .proc proc_0: 
+     @MEMBLOCK [block="block_0"]
+    .mem bram_0 16
+    @MEMBLOCK [block="block_1"]
+    .mem bram_1 16
+    .reg x 16
+    .reg y 16
+    .reg z 16
+    .reg a 16
+    .reg b 16
+    .reg c 16
+    .reg d 16
+    .const $0 16 0x0
+    .const $1 16 0x1
+    .const $2 16 0x2
+    .const $3 16 0x3
+    .const $128 16 128
+    .reg \p 16
+
+    ADD x, $0, bram_0;
+    ADD y, $128, x;
+    ADD z, $1, $2;
+    ADD a, y, z;
+    ST  $3, a[0x29], \p;
+    SEQ \p, $1, $1;
+    ADD b, $128, bram_0;
+    ADD c, b, z;
+    LD x, c[0x1];

@@ -5,14 +5,6 @@ import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.AssemblyAnnotation
 import manticore.assembly.BinaryOperator
 
-import manticore.assembly.levels.{
-  WireLogic,
-  MemoryLogic,
-  RegLogic,
-  InputLogic,
-  OutputLogic
-}
-import manticore.assembly.levels.MemoryLogic
 
 import scala.util.parsing.input.CharArrayReader.EofCh
 import scala.util.parsing.input.Positional
@@ -20,7 +12,7 @@ import scala.util.parsing.input.Reader
 
 import scala.language.implicitConversions
 import scala.collection.mutable
-import manticore.assembly.levels.ConstLogic
+
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import java.io.File
 import manticore.assembly.levels.Transformation
@@ -122,12 +114,12 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   import manticore.assembly.levels.unconstrained.UnconstrainedIR._
   import manticore.assembly.levels.{
-    RegLogic,
-    WireLogic,
-    MemoryLogic,
-    InputLogic,
-    OutputLogic,
-    ConstLogic
+    RegType,
+    WireType,
+    MemoryType,
+    InputType,
+    OutputType,
+    ConstType
   }
 
   val arithOperator =
@@ -182,12 +174,12 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       .reduce(_ | _)) ~ ident ~ const_value ~
       opt(const_value) <~ opt(";")) ^^ { case (a ~ t ~ name ~ s ~ v) =>
       val tt = t.chars match {
-        case (".wire")   => WireLogic
-        case (".reg")    => RegLogic
-        case (".input")  => InputLogic
-        case (".output") => OutputLogic
-        case (".mem")    => MemoryLogic
-        case (".const")  => ConstLogic
+        case (".wire")   => WireType
+        case (".reg")    => RegType
+        case (".input")  => InputType
+        case (".output") => OutputType
+        case (".mem")    => MemoryType
+        case (".const")  => ConstType
       }
       DefReg(LogicVariable(name.chars, s.toInt, tt), v, a)
     }

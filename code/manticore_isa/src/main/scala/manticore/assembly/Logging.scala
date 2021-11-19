@@ -74,14 +74,14 @@ trait Reporter {
     def fail(msg: String): Unit = throw new CompilationFailureException(msg)
 
     def debug(msg: String)(implicit ctx: AssemblyContext): Unit =
-      if (ctx.getDebugMessage)
+      if (ctx.debug_message)
         message(s"${CYAN}DEBUG${RESET}: ${msg}")
 
     def debug[N <: HasSerialized with Positional](
         msg: String,
         node: N
     )(implicit ctx: AssemblyContext): Unit =
-      if (ctx.getDebugMessage)
+      if (ctx.debug_message)
         message(s"${CYAN}DEBUG${RESET}: ${msg}", node)
 
   }

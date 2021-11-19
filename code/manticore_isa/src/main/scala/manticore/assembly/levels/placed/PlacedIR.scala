@@ -1,58 +1,58 @@
 package manticore.assembly.levels.placed
 import manticore.assembly.ManticoreAssemblyIR
-import manticore.assembly.levels.LogicType
+import manticore.assembly.levels.VariableType
 import manticore.assembly.levels.UInt16
 
-
-
-/**
-  * IR level with placed processes and allocated registers.
+/** IR level with placed processes and allocated registers.
   */
 object PlacedIR extends ManticoreAssemblyIR {
 
   import manticore.assembly.HasSerialized
-  case class LogicVariable(
-      name: String,
-      id: Int,
-      tpe: LogicType
-  ) extends Named
+
+
+  sealed abstract class PlacedVariable(val tpe: VariableType)
+      extends Named
       with HasSerialized {
-    import manticore.assembly.levels.{
-      RegLogic,
-      WireLogic,
-      OutputLogic,
-      InputLogic,
-      MemoryLogic,
-      ConstLogic
-    }
-    def serialized: String = (tpe match {
-      case RegLogic    => ".reg"
-      case WireLogic   => ".wire"
-      case OutputLogic => ".output"
-      case MemoryLogic => ".mem"
-      case InputLogic  => ".input"
-      case ConstLogic  => ".const"
-    }) + s" ${name} 16"
+    override def serialized: String = s"${tpe.typeName} ${name} 16"
   }
+  import manticore.assembly.levels.{
+    WireType,
+    RegType,
+    ConstType,
+    InputType,
+    OutputType,
+    MemoryType
+  }
+  case class WireVariable(name: Name, id: Int)
+      extends PlacedVariable(WireType)
+  case class RegVariable(name: Name, id: Int)
+      extends PlacedVariable(RegType)
+  case class InputVariable(name: Name, id: Int)
+      extends PlacedVariable(InputType)
+  case class ConstVariable(name: Name, id: Int)
+      extends PlacedVariable(ConstType)
+  case class OutputVariable(name: Name, id: Int)
+      extends PlacedVariable(OutputType)
+  case class MemoryVariable(name: Name, id: Int, block: Name)
+      extends PlacedVariable(MemoryType)
+
+
+
 
   case class CustomFunctionImpl(values: Seq[UInt16]) extends HasSerialized {
     def serialized: String = s"[${values.map(_.toInt).mkString(", ")}]"
   }
 
-  case class ProcesssIdImpl(id: String, x: Int, y: Int)  {
-    
+  case class ProcessIdImpl(id: String, x: Int, y: Int) {
+
     override def toString(): String = id.toString()
   }
 
   type Name = String
-  type Variable = LogicVariable
+  type Variable = PlacedVariable
   type CustomFunction = CustomFunctionImpl
-  type ProcessId = ProcesssIdImpl
+  type ProcessId = ProcessIdImpl
   type Constant = UInt16
   type ExceptionId = UInt16
 
-
 }
-
-
-
