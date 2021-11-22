@@ -317,7 +317,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     }
 
     // dependence_graph.
-    ctx.dumpArtifact(s"dependence_graph_${getName}.dot") {
+    ctx.dumpArtifact(s"dependence_graph_${getName}_${process.id.id}.dot") {
 
       import scalax.collection.io.dot._
       import scalax.collection.io.dot.implicits._
@@ -449,10 +449,10 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     var active_list = scala.collection.mutable.ListBuffer[(Node, Double)]()
 
     val unsched_list = scala.collection.mutable.ListBuffer[Instruction]()
-    unsched_list ++= proc.body
+    unsched_list ++= proc.body.filter(_.isInstanceOf[Send] == false)
 
     var cycle = 0
-    while (unsched_list.nonEmpty) {
+    while (unsched_list.nonEmpty && cycle < 4096) {
 
       val to_retire = active_list.filter(_._2 == 0)
       val finished_list =
@@ -500,7 +500,10 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       cycle += 1
     }
 
-    proc.copy(body = schedule.toSeq)
+    if (cycle >= 4096) {
+      logger.error("Failed to schedule processes", proc)
+    }
+    proc.copy(body = schedule.toSeq ++ proc.body.filter(_.isInstanceOf[Send]))
   }
   override def transform(
       source: DefProgram,

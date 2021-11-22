@@ -2,9 +2,8 @@ package manticore.assembly.levels.placed
 
 import manticore.UnitTest
 import manticore.assembly.parser.UnconstrainedAssemblyParser
-import manticore.assembly.levels.placed.UnconstrainedToPlacedTransform
 import scala.language.postfixOps
-import manticore.assembly.levels.placed.PlacedIR
+
 
 
 import manticore.assembly.BinaryOperator

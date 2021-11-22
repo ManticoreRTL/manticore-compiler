@@ -68,9 +68,12 @@ abstract class AssemblyTransformer[
 
     logger.debug(s"Starting transformation ${getName}")(ctx)
     val res = (transform(source, ctx), ctx)
+    if (logger.countErrors > 0)
+      logger.fail("Compilation failed due to earlier errors")
     ctx.dumpArtifact(s"dump_post_${getName}.masm") {
       res._1.serialized
     }
+    
     res
   }
     

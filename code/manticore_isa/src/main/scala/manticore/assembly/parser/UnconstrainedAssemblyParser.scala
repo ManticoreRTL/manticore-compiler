@@ -30,7 +30,7 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
         case at ~ first ~ rest =>
           AnnotationLiteral(first :: rest mkString "")
       }
-      | identChar ~ rep(identChar | digit) ^^ { case first ~ rest =>
+      | identChar ~ rep(identChar | digit | '.') ^^ { case first ~ rest =>
         processIdent(first :: rest mkString "")
       }
       | '0' ~ 'x' ~ digit ~ rep(digit) ^^ { case '0' ~ 'x' ~ first ~ rest =>
@@ -53,7 +53,8 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
       | failure("illegal character"))
 
   /** Returns the legal identifier chars, except digits. */
-  def identChar = letter | elem('_') | elem('$') | elem('%') | elem('\\')
+  def identChar =
+    letter | elem('_') | elem('$') | elem('%') | elem('\\')
 
   def defChar = elem('.')
   def annotChar = elem('@')
@@ -274,7 +275,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       "SEND"
     ) ~ ident ~ "," ~ ("[" ~> ident <~ "]") ~ "," ~ ident) ^^ {
       case (a ~ Keyword("SEND") ~ rd ~ _ ~ dest_id ~ _ ~ rs) =>
-        Send(rd.chars, dest_id.chars, rs.chars, a)
+        Send(rd.chars, rs.chars, dest_id.chars, a)
     }
   def expect_inst: Parser[Expect] =
     (annotations ~ keyword(
@@ -302,7 +303,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def instruction: Parser[Instruction] = positioned(
     arith_inst | lvec_inst | lload_inst | lstore_inst | mux_inst | nop_inst
-      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst 
+      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[DefReg]] = rep(positioned(def_reg))
