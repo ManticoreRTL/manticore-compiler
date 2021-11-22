@@ -414,24 +414,36 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
     case class ReadyNode(n: Node) extends Ordered[ReadyNode] {
       def compare(that: ReadyNode) = {
-        val this_priority = distance_to_sink(this.n)
-        val that_priority = distance_to_sink(that.n)
-        if (this_priority > that_priority) {
-          -1
-        } else if (this_priority == that_priority) {
-          0
-        } else {
-          1
-        }
+        Ordering[Double].reverse
+          .compare(distance_to_sink(this.n), distance_to_sink(that.n))
+        // val this_priority = distance_to_sink(this.n)
+        // val that_priority = distance_to_sink(that.n)
+        // if (this_priority > that_priority) {
+        //   -1
+        // } else if (this_priority == that_priority) {
+        //   0
+        // } else {
+        //   1
+        // }
       }
     }
-    val ready_list = scala.collection.mutable.SortedSet[ReadyNode]()
+
+    implicit val ReadNodeOrdering = Ordering.by { n: ReadyNode =>
+      distance_to_sink(n.n)
+    }
+    val ready_list = scala.collection.mutable.PriorityQueue[ReadyNode]()
     // initialize the ready list with instruction that have no predecessor
-    dependence_graph.nodes
-      .filter { n => n.edges.filter { e => e.to == n }.isEmpty }
-      .foreach { x =>
-        ready_list.add(ReadyNode(x))
-      }
+
+    logger.debug(
+      dependence_graph.nodes
+        .map { n =>
+          s"${n.toOuter.serialized} \tindegree ${n.inDegree}\toutdegree ${n.outDegree}"
+        }
+        .mkString("\n")
+    )(ctx)
+    ready_list ++= dependence_graph.nodes
+      .filter { n => n.inDegree == 0 && n.toOuter.isInstanceOf[Send] == false }
+      .map { ReadyNode(_) }
 
     logger.debug(
       s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
@@ -495,13 +507,16 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         active_list.append((head.n, instructionLatency(head.n.toOuter)))
         schedule.append(head.n.toOuter)
         unsched_list -= head.n.toOuter
-        ready_list.remove(head)
+        ready_list.dequeue()
       }
       cycle += 1
     }
 
     if (cycle >= 4096) {
-      logger.error("Failed to schedule processes", proc)
+      logger.error(
+        "Failed to schedule processes, ran out of instruction space",
+        proc
+      )
     }
     proc.copy(body = schedule.toSeq ++ proc.body.filter(_.isInstanceOf[Send]))
   }
