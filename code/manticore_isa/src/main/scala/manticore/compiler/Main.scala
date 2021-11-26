@@ -95,7 +95,7 @@ object Main {
     
 
     val parsed = AssemblyParser(cfg.input_file.get, ctx)
-    ctx.dumpArtifact("parsed")(parsed.serialized)
+    
     runPhases(parsed)
 
   }

@@ -70,9 +70,9 @@ abstract class AssemblyTransformer[
     val res = (transform(source, ctx), ctx)
     if (logger.countErrors > 0)
       logger.fail("Compilation failed due to earlier errors")
-    ctx.dumpArtifact(s"dump_post_${getName}.masm") {
+    logger.dumpArtifact(s"dump_post_${getName}.masm") {
       res._1.serialized
-    }
+    }(ctx)
     
     res
   }
