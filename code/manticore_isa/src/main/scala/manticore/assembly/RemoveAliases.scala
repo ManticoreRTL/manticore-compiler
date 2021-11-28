@@ -81,7 +81,7 @@ object RemoveAliases
             aliases
 
           case head :: tail =>
-            val newAliases = collection.mutable.LinkedHashMap[Name, Name]()
+            val newAliases = collection.mutable.Map[Name, Name]()
             val zero = BigInt(0)
 
             head match {
@@ -170,7 +170,7 @@ object RemoveAliases
     ): Map[Name, Name] = {
       // Cache of backtracking results to avoid exponential lookup if we end up
       // going up the same tree multiple times.
-      val aliasCache = collection.mutable.LinkedHashMap() ++ aliases
+      val aliasCache = collection.mutable.Map() ++ aliases
 
       def resolve(name: Name): Name = {
         aliasCache.get(name) match {
