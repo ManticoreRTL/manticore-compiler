@@ -1,25 +1,25 @@
 package manticore.assembly
-/**
-  * Classes for diagnostics and reporting
-  *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
-  */
 
+/** Classes for diagnostics and reporting
+  *
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 
 import com.typesafe.scalalogging.LazyLogging
 import scala.util.parsing.input.Positional
 import manticore.compiler.AssemblyContext
+import java.nio.file.Files
+import java.io.PrintWriter
 
-
-/**
-  * Irrecoverable compilation exception/error
+/** Irrecoverable compilation exception/error
   *
-  * @param msg message to be displayed on exit
+  * @param msg
+  *   message to be displayed on exit
   */
 class CompilationFailureException(msg: String) extends Exception(msg)
 
-/**
-  * Fully self-contained reported class, transformation mix with it.
+/** Fully self-contained reported class, transformation mix with it.
   */
 trait Reporter {
 
@@ -73,20 +73,36 @@ trait Reporter {
 
     def fail(msg: String): Unit = throw new CompilationFailureException(msg)
 
-    def debug(msg: String)(implicit ctx: AssemblyContext): Unit =
+    def debug(msg: => String)(implicit ctx: AssemblyContext): Unit =
       if (ctx.debug_message)
         message(s"${CYAN}DEBUG${RESET}: ${msg}")
 
     def debug[N <: HasSerialized with Positional](
-        msg: String,
+        msg: => String,
         node: N
     )(implicit ctx: AssemblyContext): Unit =
       if (ctx.debug_message)
         message(s"${CYAN}DEBUG${RESET}: ${msg}", node)
 
+    def dumpArtifact(
+        file_name: String
+    )(gen: => String)(implicit ctx: AssemblyContext): Unit = {
+
+      ctx.dump_dir match {
+        case Some(dir) if ctx.dump_all =>
+          Files.createDirectories(dir.toPath())
+          println(s"Dumping ${file_name} to ${dir.toPath.toAbsolutePath}")
+          val fpath = dir.toPath().resolve(file_name)
+          val writer = new PrintWriter(fpath.toFile)
+          writer.print(gen)
+          writer.close()
+
+        case _ => // dot nothing
+      }
+
+    }
   }
 
   lazy val logger = new Logger
 
 }
-

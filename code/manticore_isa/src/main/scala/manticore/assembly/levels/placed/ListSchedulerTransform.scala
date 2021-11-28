@@ -22,7 +22,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     * @param inst
     * @return
     */
-  def regUses(inst: Instruction): List[Name] = inst match {
+  private def regUses(inst: Instruction): List[Name] = inst match {
     case BinaryArithmetic(BinaryOperator.PMUX, rd, rs1, rs2, _) =>
       logger.warn("PMUX instruction may lead to invalid scheduling!", inst)
       List(rs1, rs2)
@@ -77,7 +77,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     * @param inst
     * @return
     */
-  def regDef(inst: Instruction): Option[Name] = inst match {
+  private def regDef(inst: Instruction): Option[Name] = inst match {
     case BinaryArithmetic(operator, rd, rs1, rs2, _)        => Some(rd)
     case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) => Some(rd)
     case LocalLoad(rd, base, offset, _)                     => Some(rd)
@@ -91,7 +91,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     case Predicate(rs, _)                                   => None
     case Nop                                                => None
   }
-  def createDependenceGraph(
+  private def createDependenceGraph(
       process: DefProcess,
       ctx: AssemblyContext
   ): Graph[Instruction, WDiEdge] = {
@@ -317,7 +317,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     }
 
     // dependence_graph.
-    ctx.dumpArtifact(s"dependence_graph_${getName}_${process.id.id}.dot") {
+    logger.dumpArtifact(s"dependence_graph_${getName}_${process.id.id}.dot") {
 
       import scalax.collection.io.dot._
       import scalax.collection.io.dot.implicits._
@@ -365,11 +365,19 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         cNodeTransformer = Some(nodeTransformer)
       )
       dot_export
-    }
+    }(ctx)
     dependence_graph
   }
 
-  def schedule(proc: DefProcess, ctx: AssemblyContext): DefProcess = {
+  case class PartiallyScheduledProcess(
+      proc: DefProcess,
+      partial_schedule: List[Instruction],
+      earliest: Map[Send, Int]
+  )
+  private def partiallySchedule(
+      proc: DefProcess,
+      ctx: AssemblyContext
+  ): PartiallyScheduledProcess = {
     type Node = Graph[Instruction, WDiEdge]#NodeT
     type Edge = Graph[Instruction, WDiEdge]#EdgeT
     val dependence_graph = createDependenceGraph(proc, ctx)
@@ -407,39 +415,37 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     // find the distance of each node to sinks
     dependence_graph.nodes.foreach { traverseGraphNodesAndRecordDistanceToSink }
 
-    val priority_list =
-      distance_to_sink.toList.sortBy(_._2)(Ordering[Double].reverse)
+    val send_instructions = proc.body.collect { case i @ Send(_, _, _, _) => i }
+
+    val unsched_list = scala.collection.mutable.ListBuffer[Instruction]()
+    unsched_list ++= proc.body.filter(_.isInstanceOf[Send] == false)
 
     val schedule = scala.collection.mutable.ListBuffer[Instruction]()
 
     case class ReadyNode(n: Node) extends Ordered[ReadyNode] {
-      def compare(that: ReadyNode) = {
-        val this_priority = distance_to_sink(this.n)
-        val that_priority = distance_to_sink(that.n)
-        if (this_priority > that_priority) {
-          -1
-        } else if (this_priority == that_priority) {
-          0
-        } else {
-          1
-        }
-      }
+      def compare(that: ReadyNode) =
+        Ordering[Double].reverse
+          .compare(distance_to_sink(this.n), distance_to_sink(that.n))
+
     }
-    val ready_list = scala.collection.mutable.SortedSet[ReadyNode]()
+
+    val ready_list = scala.collection.mutable.PriorityQueue[ReadyNode]()
     // initialize the ready list with instruction that have no predecessor
-    dependence_graph.nodes
-      .filter { n => n.edges.filter { e => e.to == n }.isEmpty }
-      .foreach { x =>
-        ready_list.add(ReadyNode(x))
-      }
+
+    logger.debug(
+      dependence_graph.nodes
+        .map { n =>
+          s"${n.toOuter.serialized} \tindegree ${n.inDegree}\toutdegree ${n.outDegree}"
+        }
+        .mkString("\n")
+    )(ctx)
+    ready_list ++= dependence_graph.nodes
+      .filter { n => n.inDegree == 0 && n.toOuter.isInstanceOf[Send] == false }
+      .map { ReadyNode(_) }
 
     logger.debug(
       s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
     )(ctx)
-
-    sealed abstract class DepState
-    case object Satisfied extends DepState
-    case object Waiting extends DepState
 
     // create a mutable set showing the satisfied dependencies
     val satisfied_dependence = scala.collection.mutable.Set.empty[Edge]
@@ -447,9 +453,6 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     // dependence_graph.OuterEdgeTraverser
 
     var active_list = scala.collection.mutable.ListBuffer[(Node, Double)]()
-
-    val unsched_list = scala.collection.mutable.ListBuffer[Instruction]()
-    unsched_list ++= proc.body.filter(_.isInstanceOf[Send] == false)
 
     var cycle = 0
     while (unsched_list.nonEmpty && cycle < 4096) {
@@ -495,16 +498,71 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         active_list.append((head.n, instructionLatency(head.n.toOuter)))
         schedule.append(head.n.toOuter)
         unsched_list -= head.n.toOuter
-        ready_list.remove(head)
+        ready_list.dequeue()
       }
       cycle += 1
     }
 
     if (cycle >= 4096) {
-      logger.error("Failed to schedule processes", proc)
+      logger.error(
+        "Failed to schedule processes, ran out of instruction memory",
+        proc
+      )
     }
-    proc.copy(body = schedule.toSeq ++ proc.body.filter(_.isInstanceOf[Send]))
+
+    val register_to_send = send_instructions.map { case i @ Send(_, rs, _, _) =>
+      rs -> i
+    }.toMap
+    val earliest_send_cycles =
+      scala.collection.mutable.Map[Send, Option[Int]](
+        send_instructions.map { x => (x, None) }: _*
+      )
+
+    // find the earliest time each send instruction can be scheduled, i.e.,
+    // latency + cycle where cycle is the time the producer instruction is
+    // scheduled.
+    schedule.zipWithIndex.foreach { case (inst, cycle) =>
+      regDef(inst) match {
+        case Some(rd) =>
+          register_to_send.get(rd) match {
+            case Some(send: Send) =>
+              earliest_send_cycles.update(
+                send,
+                Some(cycle + instructionLatency(inst))
+              )
+            case None =>
+            // nothing
+          }
+        case None =>
+        // nothing
+      }
+    }
+
+    // a map from Send instructions to the earliest time they can be scheduled
+    val send_to_earliest = earliest_send_cycles.map { case (inst, c) =>
+      (
+        inst,
+        c match {
+          case Some(n) => n
+          case None =>
+            logger.warn(s"Process ${proc.id.id} sends a constant value", inst)
+            0
+        }
+      )
+
+    }.toMap
+    // a partial schedule that does not contain the Send instructions
+    val partial_schedule = schedule.toList
+
+    // return both to be used for a global schedule
+    PartiallyScheduledProcess(
+      proc = proc,
+      partial_schedule = partial_schedule,
+      earliest = send_to_earliest
+    )
+
   }
+
   override def transform(
       source: DefProgram,
       context: AssemblyContext
@@ -512,7 +570,98 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
     type Node = Graph[Instruction, WDiEdge]#NodeT
 
-    source.copy(processes = source.processes.map { p => schedule(p, context) })
+    // first find partial schedules that do not have the send instructions (in
+    // parallel)
+    val partial_schedules = source.processes.par.map { p =>
+      partiallySchedule(p, context)
+    }.seq
+
+    def getDim(dim: String): Int =
+      source.findAnnotationValue("LAYOUT", dim) match {
+        case Some(v) => v.toInt
+        case None =>
+          logger.fail("Scheduling requires a valid @LAYOUT annotation")
+          0
+      }
+
+    val dimx = getDim("x")
+    val dimy = getDim("y")
+
+    case class SendWrapper(
+        inst: Send,
+        source: ProcessId,
+        target: ProcessId,
+        earliest: Int
+    ) extends Ordered[SendWrapper] {
+      val manhattan = {
+        val x_dist =
+          if (source.x > target.x) dimx - source.x + target.x
+          else target.x - source.x
+        val y_dist =
+          if (source.y > target.y) dimy - source.y + target.y
+          else target.y - source.y
+        x_dist + y_dist
+      }
+      val priority = manhattan + earliest
+      def compare(that: SendWrapper): Int =
+        Ordering[Int].reverse.compare(this.priority, that.priority)
+    }
+    case class ProcessWrapper(
+        proc: DefProcess,
+        scheduled: List[Instruction],
+        unscheduled: List[SendWrapper]
+    ) extends Ordered[ProcessWrapper] {
+
+      def compare(that: ProcessWrapper): Int =
+        (this.unscheduled, that.unscheduled) match {
+          case (Nil, Nil) => 0
+          case (x :: _, y :: _) =>
+            Ordering[Int].reverse.compare(x.priority, y.priority)
+          case (Nil, y :: _) => -1
+          case (x :: _, Nil) => 1
+        }
+    }
+    // now patch the local schedule by globally scheduling the send instructions
+    import scala.collection.mutable.PriorityQueue
+
+    // keep a sorted queue of Processes, sorting is done based on the 
+    // priority of each processes' send instruction. I.e., the process with 
+    // the most critical send (largest manhattan distance and latest possible schedule time)
+    // should be considered first when trying to schedule sends in a cycle
+    val to_schedule = PriorityQueue.empty[ProcessWrapper] ++
+      partial_schedules.map { psched =>
+        val sends = psched.earliest
+          .map { case (send, early) =>
+            SendWrapper(
+              inst = send,
+              source = psched.proc.id,
+              target = send.dest_id,
+              earliest = early
+            )
+          }
+          .toList
+          .sorted
+        ProcessWrapper(psched.proc, psched.partial_schedule, sends)
+      }.toSeq
+
+
+    type LinkOccupancy = scala.collection.mutable.Set[Int]
+    val linkX = Array.ofDim[LinkOccupancy](dimx, dimy)
+    val linkY = Array.ofDim[LinkOccupancy](dimx, dimy)
+    
+    var cycle = 0
+    while(to_schedule.nonEmpty && cycle < 4096) {
+
+      
+
+    }
+
+
+    source.copy(
+      processes = partial_schedules.map { p =>
+        p.proc.copy(body = p.partial_schedule ++ p.earliest.keySet.toSeq)
+      }.seq
+    )
   }
 
 }

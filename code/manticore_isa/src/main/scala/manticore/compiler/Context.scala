@@ -23,20 +23,6 @@ case class AssemblyContext(
     val debug_message: Boolean = false
 ) {
 
-  def dumpArtifact(file_name: String)(gen: => String): Unit = {
-
-    dump_dir match {
-      case Some(dir) if dump_all =>
-        Files.createDirectories(dir.toPath())
-        println(s"Dumping ${file_name} to ${dir.toPath.toAbsolutePath}")
-        val fpath = dir.toPath().resolve(file_name)
-        val writer = new PrintWriter(fpath.toFile)
-        writer.print(gen)
-        writer.close()
-
-      case _ => // dot nothing
-    }
-
-  }
+  
 
 }

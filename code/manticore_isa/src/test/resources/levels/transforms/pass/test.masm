@@ -44,7 +44,7 @@
     SEND $1, [proc_0_0], $1;
     SEND $2, [proc_0_0], $2;
     SEND $3, [proc_0_0], $3;
-    SET $0, 0x0;
+    // SET $0, 0x0;
     SET $1, 0x01;
     SET $2, 0x02;
     SET $3, 0x03;
