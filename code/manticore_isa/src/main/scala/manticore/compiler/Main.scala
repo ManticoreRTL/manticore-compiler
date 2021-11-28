@@ -88,8 +88,8 @@ object Main {
       val phases =
         UnconstrainedNameChecker followedBy
           UnconstrainedToPlacedTransform followedBy
-          PlacedNameChecker
-          // ListSchedulerTransform
+          PlacedNameChecker followedBy
+          ListSchedulerTransform
       phases(prg, ctx)._1
     }
     

@@ -650,11 +650,11 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     val linkY = Array.ofDim[LinkOccupancy](dimx, dimy)
     
     var cycle = 0
-    while(to_schedule.nonEmpty && cycle < 4096) {
+    // while(to_schedule.nonEmpty && cycle < 4096) {
 
       
 
-    }
+    // }
 
 
     source.copy(
