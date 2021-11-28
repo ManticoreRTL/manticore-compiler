@@ -142,7 +142,7 @@ trait ManticoreAssemblyIR {
       with HasSerialized {
     override def serialized: String = {
 
-      s"${serializedAnnons("\t")}\t.proc ${id}:${(registers
+      s"${serializedAnnons("\t")}\t.proc ${id}:\n${(registers
         .map(_.serialized) ++ functions.map(_.serialized) ++ body
         .map(_.serialized)).mkString("\n")}"
 
