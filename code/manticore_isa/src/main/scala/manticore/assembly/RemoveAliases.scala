@@ -82,7 +82,8 @@ object RemoveAliases
 
           case head :: tail =>
             val newAliases = collection.mutable.Map[Name, Name]()
-            val zero = BigInt(0)
+            // Must use capital letter for first char, otherwise the pattern match below will not work!
+            val Zero = BigInt(0)
 
             head match {
               case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
@@ -91,13 +92,13 @@ object RemoveAliases
                     // If rs1 is 0, then rd is an alias of rs2.
                     consts.get(rs1) match {
                       // We don't care about the width of the 0.
-                      case Some((width, zero)) => newAliases += rd -> rs2
+                      case Some((width, Zero)) => newAliases += rd -> rs2
                       case _                   =>
                     }
                     // if rs2 is 0, then rd is an alias of rs1.
                     consts.get(rs2) match {
                       // We don't care about the width of the 0.
-                      case Some((width, zero)) => newAliases += rd -> rs1
+                      case Some((width, Zero)) => newAliases += rd -> rs1
                       case _                   =>
                     }
 
