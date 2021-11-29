@@ -1,6 +1,6 @@
 package manticore.assembly
 
-/** Dead code elimination
+/** DeadCodeElimination.scala
   *
   * @author
   *   Sahand Kashani <sahand.kashani@epfl.ch>
@@ -9,8 +9,6 @@ package manticore.assembly
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.AssemblyContext
-import manticore.assembly.levels.ConstType
-import manticore.assembly.levels.OutputType
 
 /** This transform identifies dead code and removes it from the design. Dead
   * code consists of names that are never referenced once written. Note that we
@@ -69,7 +67,7 @@ object DeadCodeElimination
               incr(base._3)
               predicate.foreach(incr)
 
-            case SetValue(rd, value, annons)   =>
+            case SetValue(rd, value, annons) =>
 
             case Send(rd, rs, dest_id, annons) =>
               // The rd register, although READ to generate the destination address in *another* process, cannot impose
@@ -101,15 +99,22 @@ object DeadCodeElimination
       }
     }
 
-    val outputs = asm.registers
+    val trackAnnoName = "TRACK"
+    val regAnnoName = "REG"
+    val regsAndTrackedNames = asm.registers
       .filter { reg =>
-        reg.variable.tpe == OutputType
+        reg.annons.exists { anno =>
+          Seq(trackAnnoName, regAnnoName).contains(anno.name)
+        }
       }
 
     // Count all source operands (what "countReferences(asm.body)" represents), but also ensure the
-    // outputs of the program have a positive reference count to avoid pruning them from the circuit.
-    val refCount = countReferences(asm.body) ++ outputs
-      .map(out => out.variable.name -> 1)
+    // names of some signals that may never be read (but that must be preserved) have a positive reference
+    // count to avoid pruning them from the circuit. Names to be preserved are tracked signals and
+    // all registers. Note that the "_curr" port of a register is always read, but the "_next" is never
+    // read, hence why we must force-preserve it.
+    val refCount = countReferences(asm.body) ++ regsAndTrackedNames
+      .map(reg => reg.variable.name -> 1)
       .toMap
 
     val newRegs = asm.registers

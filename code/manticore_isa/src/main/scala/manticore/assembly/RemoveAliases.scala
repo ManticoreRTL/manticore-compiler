@@ -1,6 +1,6 @@
 package manticore.assembly
 
-/** Alias removal pass
+/** RemoveAliases.scala
   *
   * @author
   *   Sahand Kashani <sahand.kashani@epfl.ch>
