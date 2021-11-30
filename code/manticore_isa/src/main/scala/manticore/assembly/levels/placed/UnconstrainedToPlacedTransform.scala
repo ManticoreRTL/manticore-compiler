@@ -6,11 +6,11 @@ import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.unconstrained.{UnconstrainedIR => S}
 import manticore.assembly.levels.placed.{PlacedIR => T}
 
-import manticore.assembly.AssemblyAnnotation
 import manticore.assembly.levels.UInt16
 
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
+import manticore.assembly.annotations.AssemblyAnnotation
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
@@ -23,8 +23,7 @@ object UnconstrainedToPlacedTransform
       context: AssemblyContext
   ): T.DefProgram = {
     implicit val ctx = context
-    
-    
+
     if (isConvertible(asm) == false) {
       logger.fail(
         s"${S.getClass().getSimpleName()} not convertible to ${T.getClass().getSimpleName()}"
@@ -50,8 +49,8 @@ object UnconstrainedToPlacedTransform
           val location: AssemblyAnnotation =
             p.annons.find(_.name == "LOC").get
 
-          val x = location.values("x").toInt
-          val y = location.values("y").toInt
+          val x = location.getIntValue("x").get
+          val y = location.getIntValue("y").get
           if (x >= dimx || y >= dimy) {
             logger.error(s"location out of bounds for process ${p.id}", p)
             p.id -> None
@@ -85,7 +84,6 @@ object UnconstrainedToPlacedTransform
       annons = asm.annons
     )
 
-   
     if (logger.countErrors > 0) {
       logger.fail(s"Failed transform due to previous errors!")
     }
@@ -154,8 +152,8 @@ object UnconstrainedToPlacedTransform
     val mem_regs = filterRegs(MemoryType).zipWithIndex.map {
       case (r: S.DefReg, i) =>
         val block = r.findAnnotationValue("MEMBLOCK", "block") match {
-          case Some(b) => b
-          case None =>
+          case Some(manticore.assembly.annotations.StringValue(b)) => b
+          case _ =>
             logger.error("Memory block not specified", r)
             ""
         }
@@ -206,6 +204,7 @@ object UnconstrainedToPlacedTransform
       reg.value.map { v => UInt16(v.toInt) },
       reg.annons
     ).setPos(reg.pos)
+
   /** Unchecked conversion of instructions
     *
     * @param inst
@@ -258,13 +257,15 @@ object UnconstrainedToPlacedTransform
     * @return
     */
   private def getDimensions(asm: S.DefProgram): Option[(Int, Int)] =
-    asm.annons
-      .find { x =>
-        (x.name == "LAYOUT") && x.values.keySet.contains(
-          "x"
-        ) && x.values.keySet.contains("y")
-      }
-      .map { a => (a.values("x").toInt, a.values("y").toInt) }
+    try {
+      val layout = asm.findAnnotation("LAYOUT").get
+      val x = layout.getIntValue("x").get
+      val y = layout.getIntValue("y").get
+      Some((x, y))
+    } catch {
+      case _: Throwable =>
+        None
+    }
 
   /** Check is [[asm: S.DefProgram]] is convertible to [[T.DefProgram]]
     *

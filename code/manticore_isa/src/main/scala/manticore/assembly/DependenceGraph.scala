@@ -9,7 +9,9 @@ package manticore.assembly
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.AssemblyContext
-import scalax.collection.GraphEdge.DiEdge
+import scalax.collection.edge.LDiEdge
+import manticore.assembly.levels.MemoryType
+import scalax.collection.Graph
 
 /** This transform identifies dead code and removes it from the design. Dead
   * code consists of names that are never referenced once written. Note that we
@@ -17,9 +19,10 @@ import scalax.collection.GraphEdge.DiEdge
   * be run later to try and eliminate the `Nop`s while ensuring that program
   * execution is correct.
   */
-object DependenceGraph extends Reporter {
+abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
+    extends Reporter {
 
-  import UnconstrainedIR._
+  import flavor._
 
   /** Extracts the registers read by the instruction.
     *
@@ -28,7 +31,9 @@ object DependenceGraph extends Reporter {
     * @return
     *   Registers read by the instruction.
     */
-  def regUses(inst: Instruction): Seq[Name] = {
+  def regUses(
+      inst: Instruction
+  ): Seq[Name] = {
     inst match {
       case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
         Seq(rs1, rs2)
@@ -72,7 +77,9 @@ object DependenceGraph extends Reporter {
     * @return
     *   Register written by the instruction (if any).
     */
-  def regDef(inst: Instruction): Option[Name] = {
+  def regDef(
+      inst: Instruction
+  ): Option[Name] = {
     inst match {
       case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Some(rd)
       case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) => Some(rd)
@@ -89,56 +96,230 @@ object DependenceGraph extends Reporter {
     }
   }
 
-  def apply(
-      instrs: Seq[Instruction]
-  ): (
-      scalax.collection.Graph[Int, DiEdge],
-      Map[Int, Instruction]
-  ) = {
-    // Start by assigning an identifier to every instruction. One would think the destination register
-    // of an instruction is the identifier, but some instructions do not write registers. This is why
-    // we explicitly create an index to refer to every instruction.
-    val instrToIdMap = collection.mutable.Map[Instruction, Int]()
-    val idToInstrMap = collection.mutable.Map[Int, Instruction]()
-    val regDefToInstr = collection.mutable.Map[Name, Instruction]()
+  def build[L](
+      process: DefProcess,
+      label: (Instruction, Instruction) => L
+  )(implicit
+      ctx: AssemblyContext
+  ): Graph[Instruction, LDiEdge] = {
 
-    // Populate all data structures.
-    instrs.zipWithIndex.foreach { case (instr, idx) =>
-      instrToIdMap += (instr -> idx)
-      idToInstrMap += (idx -> instr)
-      regDef(instr) match {
-        case Some(reg) => regDefToInstr += (reg -> instr)
-        case None      =>
+    import scalax.collection.mutable.{Graph => MutableGraph}
+
+    // A map from registers to the instruction defining it (if any), useful for back tracking
+    val def_instructions =
+      scala.collection.mutable.Map[Name, Instruction]()
+    process.body.foreach { inst =>
+      regDef(inst) match {
+        case Some(rd) =>
+          // keep a map from the target regs to the instruction defining it
+          def_instructions.update(rd, inst)
+
+        case None =>
+        // instruction does not a value, hence no new dependence edges
       }
     }
 
-    // Create dependence graph.
-    val dependenceGraph = scalax.collection.mutable.Graph[Int, DiEdge]()
-    // Add all vertices to the graph. Each vertex represents an instruction.
-    instrs.foreach { instr =>
-      dependenceGraph.add(instrToIdMap(instr))
-    }
-    // Add all edges based on program dependencies.
-    instrs.foreach { instr =>
-      val readRegs = regUses(instr)
-      val predInstrs = readRegs.flatMap { reg =>
-        // If an instruction writes to the register, that instruction is a predecessor to this instruction.
-        // If no instruction writes to the register, then it must be an input of the program (in which
-        // case we do not create a dependency since inputs are implicit dependencies).
-        regDefToInstr.get(reg)
-      }
-      val instrIdx = instrToIdMap(instr)
-      val edges = predInstrs.map { predInstr =>
-        val predInstrIdx = instrToIdMap(predInstr)
-        DiEdge(predInstrIdx, instrIdx)
-      }
-      edges.foreach(edge => dependenceGraph.add(edge))
+    type EitherLoad = Either[LocalLoad, GlobalLoad]
+    type EitherStore = Either[LocalStore, GlobalStore]
+    val loads: Seq[EitherLoad] = process.body.collect {
+      case ll @ LocalLoad(_, _, _, _) => Left(ll)
+      case gl @ GlobalLoad(_, _, _)   => Right(gl)
     }
 
-    if (dependenceGraph.isCyclic) {
+    val stores: Seq[EitherStore] = process.body.collect {
+      case ls @ LocalStore(_, _, _, _, _) => Left(ls)
+      case gs @ GlobalStore(_, _, _, _)   => Right(gs)
+
+    }
+
+    val mem_decls: Seq[DefReg] = process.registers.collect {
+      case d @ DefReg(m, _, _) if m.varType == MemoryType => d
+    }
+
+    // a map from register to potential memory (.mem) declaration
+    val mem_block =
+      scala.collection.mutable.Map[Name, Set[DefReg]]()
+
+    // a map from memories to stores to that memory
+    val mem_block_stores =
+      scala.collection.mutable
+        .Map[DefReg, scala.collection.mutable.Set[EitherStore]]()
+
+    /** Now we need to create a dependence between loads and stores (store
+      * depends on load) that operate on the same memory block. For this, we
+      * need to start from every load instruction, and trace back throw use-def
+      * chains to reach a DefReg with memory type MemoryLogic
+      */
+
+    def traceMemoryDecl(base: Name): Set[DefReg] = {
+      mem_block.get(base) match {
+        case Some(m) => m // good, we already know the the possible mem block
+        case None    => // bad, need to recurse :(
+          // get the instruction that produces base
+          val producer_inst: Option[Instruction] = def_instructions.get(base)
+          producer_inst match {
+            case Some(inst) =>
+              val uses = regUses(inst)
+              // recurse on every use in inst and update the mem_block
+              val decls: Seq[Set[DefReg]] = uses.map { u: Name =>
+                val parent_decl = traceMemoryDecl(u)
+                mem_block.update(u, parent_decl)
+                parent_decl
+              }
+              // ensure no instruction depends on to mem
+              if (decls.count(_.nonEmpty) > 1) {
+                logger.warn(
+                  "instruction traces back to multiple memory blocks!",
+                  inst
+                )
+              }
+              // return any findings
+              decls.foldLeft(Set.empty[DefReg]) { case (c, x) => c ++ x }
+            case None =>
+              // jackpot, no instruction produces base,
+              // now all we need to do is to check declarations
+              val decl = mem_decls.find(_.variable.name == base).toSet
+              mem_block.update(base, decl)
+              decl
+          }
+      }
+    }
+
+    stores.foreach { s =>
+      val base_ptrs = s match {
+        case Left(LocalStore(_, base, _, _, _))        => Seq(base)
+        case Right(GlobalStore(_, (bh, bm, bl), _, _)) => Seq(bh, bm, bl)
+      }
+
+      base_ptrs.foreach { b =>
+        val m = traceMemoryDecl(b)
+        if (m.isEmpty) {
+          val unwrapped: Instruction = s match {
+            case Left(i)  => i
+            case Right(i) => i
+          }
+          logger.error(s"store instruction has no memory block!", unwrapped)
+        }
+        m.foreach { mdef =>
+          val current_stores = mem_block_stores.getOrElse(
+            mdef,
+            scala.collection.mutable.Set.empty[EitherStore]
+          )
+          current_stores.add(s)
+          mem_block_stores.update(mdef, current_stores)
+        }
+      }
+    }
+
+    // Load-to-store dependency relation
+    val load_store_dependency = scala.collection.mutable
+      .Map[Instruction, scala.collection.mutable.Set[Instruction]]()
+
+    /** Create a dependence between load and store instructions through the
+      * memory block [[mdef]]
+      *
+      * @param inst
+      *   the load instruction
+      * @param mdef
+      *   the memory block shared by the load and stores
+      */
+    def createLoadStoreDependence(
+        inst: Instruction,
+        block: DefReg
+    ): Unit = {
+      require(
+        inst.isInstanceOf[LocalLoad] || inst.isInstanceOf[GlobalLoad],
+        "can only create load-to-store dependence from loads!"
+      )
+
+      // find the corresponding store instructions
+      val stores_using_mdef = mem_block_stores.get(block) match {
+        case Some(store_set) =>
+          if (store_set.isEmpty)
+            logger.error(
+              s"Internal error! Found empty store set for memory ${block}",
+              inst
+            )
+          load_store_dependency.update(
+            inst,
+            store_set.collect {
+              case Right(x) => x
+              case Left(x)  => x
+            }
+          )
+        case None =>
+          logger.debug(
+            s"Inferred ROM memory ${block}",
+            inst
+          )(ctx)
+      }
+
+    }
+
+    loads.foreach { l =>
+      // get all the base pointers
+      l match {
+        case Left(inst @ LocalLoad(_, base, _, _)) =>
+          val decls = traceMemoryDecl(base)
+
+          if (decls.isEmpty) {
+            logger.error("Found no memory for load instruction", inst)
+          }
+
+          decls.foreach { mdef => createLoadStoreDependence(inst, mdef) }
+
+        case Right(inst @ GlobalLoad(_, (bh, bm, bl), _)) =>
+          val used_mems: Set[DefReg] =
+            Seq(bh, bm, bl).foldLeft(Set.empty[DefReg]) { case (c, x) =>
+              c ++ traceMemoryDecl(x)
+            }
+
+          if (used_mems.isEmpty) {
+            logger.error("Found no memory for load instruction", inst)
+          } else {
+            // make sure a single memory is used!
+            used_mems.foreach { u => createLoadStoreDependence(inst, u) }
+
+          }
+      }
+    }
+
+    /** At this point, we a have mapping from load instructions to depending
+      * store instructions, and a mapping from registers to instruction defining
+      * them, we can now build the dependence graph
+      */
+
+    val raw_dependence_graph =
+      process.body.foldLeft(MutableGraph.empty[Instruction, LDiEdge]) {
+        case (g, inst) =>
+          // first add an edge for register to register dependency
+          regUses(inst).foldLeft(g + inst) { case (gg, use) =>
+            def_instructions.get(use) match {
+              case Some(pred) =>
+                gg += LDiEdge[Instruction, L](pred, inst)(label(pred, inst))
+              case None =>
+                gg
+            }
+          }
+      }
+    // now add the load-to-store dependencies
+    val dependence_graph = loads
+      .map {
+        case Right(x) => x
+        case Left(x)  => x
+      }
+      .foldLeft(raw_dependence_graph) { case (g, l) =>
+        load_store_dependency
+          .getOrElse(l, scala.collection.mutable.Set.empty[Instruction])
+          .foldLeft(g) { case (gg, s) =>
+            gg += LDiEdge(l, s)(label(l, s))
+          }
+      }
+
+    if (dependence_graph.isCyclic) {
       logger.error("Could not create acyclic dependence graph!")
     }
-
-    (dependenceGraph, idToInstrMap.toMap)
+    dependence_graph
+    
   }
 }
