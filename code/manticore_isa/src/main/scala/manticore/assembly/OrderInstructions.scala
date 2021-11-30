@@ -7,197 +7,118 @@ package manticore.assembly
   */
 
 import manticore.assembly.levels.AssemblyTransformer
-import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.AssemblyContext
-import scalax.collection.mutable.Graph
-import scalax.collection.GraphEdge.DiEdge
+import scalax.collection.edge.LDiEdge
+import scala.collection.mutable.ArrayBuffer
 
-/** This transform identifies dead code and removes it from the design. Dead
-  * code consists of names that are never referenced once written. Note that we
-  * replace dead code with `Nop` instructions here. A scheduling pass needs to
-  * be run later to try and eliminate the `Nop`s while ensuring that program
-  * execution is correct.
+/** This transform sorts instructions based on their depenencies.
   */
-object OrderInstructions
-    extends AssemblyTransformer(UnconstrainedIR, UnconstrainedIR) {
+class OrderInstructions[T <: ManticoreAssemblyIR](irFlavor: T)
+    extends AssemblyTransformer(irFlavor, irFlavor) {
 
-  import UnconstrainedIR._
-
-  def orderInstructions(
+  import irFlavor._
+  private def orderInstructions(
       asm: DefProcess
+  )(
+      ctx: AssemblyContext
   ): DefProcess = {
-    val dstRegToInstrMap = asm.body.foldLeft(Map.empty[Name, Instruction]) {
-      case (acc, instr) =>
-        instr match {
-          case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
-            acc + (rd -> instr)
-          case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-            acc + (rd -> instr)
-          case LocalLoad(rd, base, offset, annons) =>
-            acc + (rd -> instr)
-          case LocalStore(rs, base, offset, predicate, annons) =>
-            // The instruction does not write to a register.
-            acc
-          case GlobalLoad(rd, base, annons) =>
-            acc + (rd -> instr)
-          case GlobalStore(rs, base, predicate, annons) =>
-            // The instruction does not write to a register.
-            acc
-          case SetValue(rd, value, annons) =>
-            acc + (rd -> instr)
-          case Send(rd, rs, dest_id, annons) =>
-            // The instruction does not write to a register.
-            acc
-          case Expect(ref, got, error_id, annons) =>
-            // The instruction does not write to a register.
-            acc
-          case Predicate(rs, annons) =>
-            // The instruction does not write to a register.
-            acc
-          case Mux(rd, sel, rs1, rs2, annons) =>
-            acc + (rd -> instr)
-          case Nop =>
-            // The instruction does not write to a register.
-            acc
+
+    import manticore.assembly.DependenceGraphBuilder
+    object GraphBuilder extends DependenceGraphBuilder(irFlavor)
+
+    // The value of the label doesn't matter for topological sorting.
+    case class Label(v: Int)
+    def labelingFunc(pred: T#Instruction, succ: T#Instruction): Label = Label(0)
+    val dependenceGraph = GraphBuilder.build[Label](asm, labelingFunc)(ctx)
+
+    // Sort body.
+    val sortedInstrs = ArrayBuffer[T#Instruction]()
+    dependenceGraph.topologicalSort match {
+      case Left(cycleNode) =>
+        logger.error("Dependence graph contains a cycle!")
+      case Right(order) =>
+        order.foreach { instr =>
+          sortedInstrs.append(instr)
         }
     }
-    val regs = asm.registers.map(reg => reg.variable.name -> reg).toMap
 
-    type Node = Either[Instruction, DefReg]
-    def NodeInstr(instr: Instruction): Node = Left(instr)
-    def NodeReg(regName: Name): Node = Right(regs(regName))
-    def getNode(regName: Name): Node = {
-      // The name will always exist in the list of registers. We want to know if an instruction is writing to the name,
-      // or if the name is a port or a constant that is only read. If it is only read, we return the register. If it is
-      // written, we return the instruction that writes the register.
-      dstRegToInstrMap.get(regName) match {
-        case Some(instr) => NodeInstr(instr)
-        case None        => NodeReg(regName)
-      }
-    }
+    // Sort registers.
+    val sortedRegs = asm.registers
+      .groupBy { reg =>
+        reg.variable.varType
+      }.map(_._2).flatten.toSeq
 
-    val g = Graph[Node, DiEdge]()
 
-    // Add all vertices to the graph.
-    val nodes = regs.keys.map(name => getNode(name))
-    nodes.foreach(node => g.add(node))
+    // // Debug: dump the graph
+    // logger.dumpArtifact(s"dependence_graph.dot") {
 
-    // Add all edges based on program dependencies.
-    asm.body.foreach { instr =>
-      val edges = instr match {
-        case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
-          Seq(
-            DiEdge(getNode(rs1), getNode(rd)),
-            DiEdge(getNode(rs2), getNode(rd))
-          )
-        case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-          Seq(
-            DiEdge(getNode(rs1), getNode(rd)),
-            DiEdge(getNode(rs2), getNode(rd)),
-            DiEdge(getNode(rs3), getNode(rd)),
-            DiEdge(getNode(rs4), getNode(rd))
-          )
-        case LocalLoad(rd, base, offset, annons) =>
-          Seq(
-            DiEdge(getNode(base), getNode(rd))
-          )
-        case LocalStore(rs, base, offset, predicate, annons) =>
-          // Store does not write to a register, so we manually make the edge point to this instruction.
-          Seq(
-            DiEdge(getNode(rs), NodeInstr(instr)),
-            DiEdge(getNode(base), NodeInstr(instr))
-          )
-        case GlobalLoad(rd, base, annons) =>
-          Seq(
-            DiEdge(getNode(base._1), getNode(rd)),
-            DiEdge(getNode(base._2), getNode(rd)),
-            DiEdge(getNode(base._3), getNode(rd))
-          )
-        case GlobalStore(rs, base, predicate, annons) =>
-          // Store does not write to a register, so we manually make the edge point to this instruction.
-          Seq(
-            DiEdge(getNode(rs), NodeInstr(instr)),
-            DiEdge(getNode(base._1), NodeInstr(instr)),
-            DiEdge(getNode(base._2), NodeInstr(instr)),
-            DiEdge(getNode(base._3), NodeInstr(instr))
-          )
-        case SetValue(rd, value, annons) =>
-          // SetValue defines a source vertex. It doesn't have dependencies as the constant is encoded in the instruction.
-          Seq.empty
-        case Send(rd, rs, dest_id, annons) =>
-          // Send does not write a register, so we manually make the edge point to this instruction.
-          Seq(
-            DiEdge(getNode(rd), NodeInstr(instr)),
-            DiEdge(getNode(rs), NodeInstr(instr))
-          )
-        case Expect(ref, got, error_id, annons) =>
-          // Expect does not write a register, so we manually make the edge point to this instruction.
-          Seq(
-            DiEdge(getNode(ref), NodeInstr(instr)),
-            DiEdge(getNode(got), NodeInstr(instr))
-          )
-        case Predicate(rs, annons) =>
-          // Predicate writes to a non-user-visible register, so we manually make the edge point to this instruction.
-          Seq(
-            DiEdge(getNode(rs), NodeInstr(instr))
-          )
-        case Mux(rd, sel, rs1, rs2, annons) =>
-          Seq(
-            DiEdge(getNode(sel), getNode(rd)),
-            DiEdge(getNode(rs1), getNode(rd)),
-            DiEdge(getNode(rs2), getNode(rd))
-          )
-        case Nop =>
-          Seq.empty
-      }
+    //   import scalax.collection.io.dot._
+    //   import scalax.collection.io.dot.implicits._
+    //   import scalax.collection.Graph
 
-      edges.foreach(e => g.add(e))
-    }
+    //   val dot_root = DotRootGraph(
+    //     directed = true,
+    //     id = Some("List scheduling dependence graph")
+    //   )
+    //   def edgeTransform(
+    //       iedge: Graph[Instruction, LDiEdge]#EdgeT
+    //   ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
+    //     case LDiEdge(source, target, l) =>
+    //       Some(
+    //         (
+    //           dot_root,
+    //           DotEdgeStmt(
+    //             source.toOuter.hashCode().toString,
+    //             target.toOuter.hashCode().toString,
+    //             List(DotAttr("label", l.asInstanceOf[Label].v.toString))
+    //           )
+    //         )
+    //       )
+    //     case t @ _ =>
+    //       logger.error(
+    //         s"An edge in the dependence could not be serialized! ${t}"
+    //       )
+    //       None
+    //   }
+    //   def nodeTransformer(
+    //       inode: Graph[Instruction, LDiEdge]#NodeT
+    //   ): Option[(DotGraph, DotNodeStmt)] =
+    //     Some(
+    //       (
+    //         dot_root,
+    //         DotNodeStmt(
+    //           NodeId(inode.toOuter.hashCode().toString()),
+    //           List(DotAttr("label", inode.toOuter.serialized.trim))
+    //         )
+    //       )
+    //     )
 
-    def writeDot(g: Graph[Node, DiEdge]): String = {
-      val out = new StringBuilder()
-      val indent = "  "
+    //   val dot_export: String = dependenceGraph.toDot(
+    //     dotRoot = dot_root,
+    //     edgeTransformer = edgeTransform,
+    //     cNodeTransformer = Some(nodeTransformer)
+    //   )
+    //   dot_export
+    // }(ctx)
 
-      // Assign a number to every node.
-      val nodes = g.nodes.zipWithIndex.toMap
-
-      // a [label="Foo"];
-
-      out.append("digraph graph {")
-
-      // Declare all nodes
-      nodes.foreach { case (node, idx) =>
-        val nodeStr = node.toOuter match {
-          case Left(instr)    => instr.serialized
-          case Right(regName) => regName.serialized
-        }
-        out.append(s"${indent}${idx} [label = ${nodeStr}]\n")
-      }
-
-      out.append("}") // digraph
-
-      out.toString()
-    }
-
-    import java.nio.file.Files
-    import java.io.PrintWriter
-
-    val writer = new PrintWriter("dumps/dot.dot")
-    writer.print(writeDot(g))
-    writer.close()
-
-    asm
+    asm.copy(
+      registers = sortedRegs,
+      body = sortedInstrs.map(_.asInstanceOf[Instruction])
+    )
   }
 
-  override def transform(
-      asm: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
-    implicit val ctx = context
+  // override def transform(source: T#DefProgram, context: AssemblyContext): T#DefProgram = ???
 
+  override def transform(
+      asm: T#DefProgram,
+      context: AssemblyContext
+  ): T#DefProgram = {
+    implicit val ctx = context
+    val prog = asm.asInstanceOf[DefProgram]
     val out = DefProgram(
-      processes = asm.processes.map(process => orderInstructions(process)),
-      annons = asm.annons
+      processes =
+        prog.processes.map(process => orderInstructions(process)(ctx)),
+      annons = prog.annons
     )
 
     if (logger.countErrors > 0) {

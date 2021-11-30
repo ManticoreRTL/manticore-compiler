@@ -4,6 +4,7 @@ package manticore.assembly
   *
   * @author
   *   Sahand Kashani <sahand.kashani@epfl.ch>
+  *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
 
 import manticore.assembly.levels.AssemblyTransformer
@@ -15,7 +16,7 @@ import scalax.collection.Graph
 import scala.util.Try
 
 /**
-  * Generic dependence graph builder, to use it, specialize it as an object 
+  * Generic dependence graph builder, to use it, specialize it as an object
   * {{{
   * object MyFlavor extends ManticoreAssemblyIR { ... }
   * object MyFlavorDependenceGraphBuilder extends DependenceGraphBuilder(MyFlavor)
@@ -24,7 +25,7 @@ import scala.util.Try
   *
   * @param flavor
   */
-abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
+abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](flavor: T)
     extends Reporter {
 
   import flavor._
@@ -37,9 +38,9 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
     *   Registers read by the instruction.
     */
   def regUses(
-      inst: Instruction
-  ): Seq[Name] = {
-    inst match {
+      inst: T#Instruction
+  ): Seq[T#Name] = {
+    (inst: @unchecked) match {
       case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
         Seq(rs1, rs2)
       case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
@@ -83,9 +84,9 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
     *   Register written by the instruction (if any).
     */
   def regDef(
-      inst: Instruction
-  ): Option[Name] = {
-    inst match {
+      inst: T#Instruction
+  ): Option[T#Name] = {
+    (inst: @unchecked) match {
       case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Some(rd)
       case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) => Some(rd)
       case LocalLoad(rd, base, offset, annons)                     => Some(rd)
@@ -110,17 +111,17 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
     * @return An immutable dependence graph
     */
   def build[L](
-      process: DefProcess,
-      label: (Instruction, Instruction) => L
+      process: T#DefProcess,
+      label: (T#Instruction, T#Instruction) => L
   )(implicit
       ctx: AssemblyContext
-  ): Graph[Instruction, LDiEdge] =  {
+  ): Graph[T#Instruction, LDiEdge] =  {
 
     import scalax.collection.mutable.{Graph => MutableGraph}
 
     // A map from registers to the instruction defining it (if any), useful for back tracking
     val def_instructions =
-      scala.collection.mutable.Map[Name, Instruction]()
+      scala.collection.mutable.Map[T#Name, T#Instruction]()
     process.body.foreach { inst =>
       regDef(inst) match {
         case Some(rd) =>
@@ -145,18 +146,18 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
 
     }
 
-    val mem_decls: Seq[DefReg] = process.registers.collect {
+    val mem_decls: Seq[T#DefReg] = process.registers.collect {
       case d @ DefReg(m, _, _) if m.varType == MemoryType => d
     }
 
     // a map from register to potential memory (.mem) declaration
     val mem_block =
-      scala.collection.mutable.Map[Name, Set[DefReg]]()
+      scala.collection.mutable.Map[T#Name, Set[T#DefReg]]()
 
     // a map from memories to stores to that memory
     val mem_block_stores =
       scala.collection.mutable
-        .Map[DefReg, scala.collection.mutable.Set[EitherStore]]()
+        .Map[T#DefReg, scala.collection.mutable.Set[EitherStore]]()
 
     /** Now we need to create a dependence between loads and stores (store
       * depends on load) that operate on the same memory block. For this, we
@@ -164,17 +165,17 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
       * chains to reach a DefReg with memory type MemoryLogic
       */
 
-    def traceMemoryDecl(base: Name): Set[DefReg] = {
+    def traceMemoryDecl(base: T#Name): Set[T#DefReg] = {
       mem_block.get(base) match {
         case Some(m) => m // good, we already know the the possible mem block
         case None    => // bad, need to recurse :(
           // get the instruction that produces base
-          val producer_inst: Option[Instruction] = def_instructions.get(base)
+          val producer_inst: Option[T#Instruction] = def_instructions.get(base)
           producer_inst match {
             case Some(inst) =>
               val uses = regUses(inst)
               // recurse on every use in inst and update the mem_block
-              val decls: Seq[Set[DefReg]] = uses.map { u: Name =>
+              val decls: Seq[Set[T#DefReg]] = uses.map { u: T#Name =>
                 val parent_decl = traceMemoryDecl(u)
                 mem_block.update(u, parent_decl)
                 parent_decl
@@ -187,7 +188,7 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
                 )
               }
               // return any findings
-              decls.foldLeft(Set.empty[DefReg]) { case (c, x) => c ++ x }
+              decls.foldLeft(Set.empty[T#DefReg]) { case (c, x) => c ++ x }
             case None =>
               // jackpot, no instruction produces base,
               // now all we need to do is to check declarations
@@ -226,7 +227,7 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
 
     // Load-to-store dependency relation
     val load_store_dependency = scala.collection.mutable
-      .Map[Instruction, scala.collection.mutable.Set[Instruction]]()
+      .Map[T#Instruction, scala.collection.mutable.Set[T#Instruction]]()
 
     /** Create a dependence between load and store instructions through the
       * memory block [[mdef]]
@@ -237,8 +238,8 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
       *   the memory block shared by the load and stores
       */
     def createLoadStoreDependence(
-        inst: Instruction,
-        block: DefReg
+        inst: T#Instruction,
+        block: T#DefReg
     ): Unit = {
       require(
         inst.isInstanceOf[LocalLoad] || inst.isInstanceOf[GlobalLoad],
@@ -282,8 +283,8 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
           decls.foreach { mdef => createLoadStoreDependence(inst, mdef) }
 
         case Right(inst @ GlobalLoad(_, (bh, bm, bl), _)) =>
-          val used_mems: Set[DefReg] =
-            Seq(bh, bm, bl).foldLeft(Set.empty[DefReg]) { case (c, x) =>
+          val used_mems: Set[T#DefReg] =
+            Seq(bh, bm, bl).foldLeft(Set.empty[T#DefReg]) { case (c, x) =>
               c ++ traceMemoryDecl(x)
             }
 
@@ -303,13 +304,13 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
       */
 
     val raw_dependence_graph =
-      process.body.foldLeft(MutableGraph.empty[Instruction, LDiEdge]) {
+      process.body.foldLeft(MutableGraph.empty[T#Instruction, LDiEdge]) {
         case (g, inst) =>
           // first add an edge for register to register dependency
           regUses(inst).foldLeft(g + inst) { case (gg, use) =>
             def_instructions.get(use) match {
               case Some(pred) =>
-                gg += LDiEdge[Instruction, L](pred, inst)(label(pred, inst))
+                gg += LDiEdge[T#Instruction, L](pred, inst)(label(pred, inst))
               case None =>
                 gg
             }
@@ -336,7 +337,7 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
     if (logger.countErrors > 0) {
       logger.fail("Failed to create a dependence graph due to earlier errors")
     }
-    dependence_graph  
+    dependence_graph
   }
 
 }

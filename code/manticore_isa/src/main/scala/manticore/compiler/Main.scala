@@ -17,6 +17,7 @@ import manticore.assembly.levels.placed.PlacedIR
 import manticore.assembly.levels.placed.PlacedNameChecker
 import scala.language.postfixOps
 import manticore.assembly.levels.placed.ListSchedulerTransform
+import manticore.assembly.OrderInstructions
 
 case class CliConfig(
     input_file: Option[File] = None,
@@ -84,18 +85,20 @@ object Main {
       )
     println(ctx.dump_all)
 
+    object Orderer extends OrderInstructions(UnconstrainedIR)
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
       val phases =
         UnconstrainedNameChecker followedBy
+          Orderer followedBy
           UnconstrainedToPlacedTransform followedBy
           PlacedNameChecker followedBy
           ListSchedulerTransform
       phases(prg, ctx)._1
     }
-    
+
 
     val parsed = AssemblyParser(cfg.input_file.get, ctx)
-    
+
     runPhases(parsed)
 
   }

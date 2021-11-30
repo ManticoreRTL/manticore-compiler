@@ -1,5 +1,4 @@
 @LAYOUT [x = "10", y = "20"]
-@PROG
 .prog :
   @LOC [x = "0", y = "0"]
   .proc proc_0_0:

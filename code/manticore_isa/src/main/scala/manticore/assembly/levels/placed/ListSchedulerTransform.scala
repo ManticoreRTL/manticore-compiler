@@ -18,11 +18,20 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
   import scalax.collection.mutable.{Graph => MutableGraph}
   import scalax.collection.edge.WDiEdge
 
-  def instructionLatency(instruction: Instruction): Int = 3
-
   case class Label(v: Int)
-  def labelingFunc(pred: Instruction, succ: Instruction): Label = Label(3)
 
+  def instructionLatency(inst: Instruction): Int = inst match {
+    case Predicate(_, _) => 0
+    case _               => 3
+  }
+  def labelingFunc(pred: Instruction, succ: Instruction): Label =
+    (pred, succ) match {
+      // store instructions take a cycle longer, because there is going to be a
+      // predicate instruction just before them
+      case (p, q: GlobalStore) => Label(instructionLatency(q) + 1)
+      case (p, q: LocalStore)  => Label(instructionLatency(q) + 1)
+      case (p, q)              => Label(instructionLatency(p))
+    }
 
   case class PartiallyScheduledProcess(
       proc: DefProcess,
@@ -38,7 +47,8 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     import manticore.assembly.DependenceGraphBuilder
     object DependenceAnalysis extends DependenceGraphBuilder(PlacedIR)
 
-    val dependence_graph = DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
+    val dependence_graph =
+      DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
     // dump the graph
     logger.dumpArtifact(s"dependence_graph_${getName}_${proc.id.id}.dot") {
 
@@ -90,7 +100,6 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       dot_export
     }(ctx)
 
-
     type Node = dependence_graph.NodeT
     type Edge = dependence_graph.EdgeT
     val distance_to_sink = scala.collection.mutable.Map[Node, Int]()
@@ -116,7 +125,9 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         node.edges.map { edge =>
           if (edge.from == node) {
             val dist: Int =
-              traverseGraphNodesAndRecordDistanceToSink(edge.to) + edge.label.asInstanceOf[Label].v
+              traverseGraphNodesAndRecordDistanceToSink(edge.to) + edge.label
+                .asInstanceOf[Label]
+                .v
             distance_to_sink(node) = dist
             dist
           } else { 0 }
@@ -126,7 +137,9 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     }
 
     // find the distance of each node to sinks
-    dependence_graph.nodes.foreach { x => traverseGraphNodesAndRecordDistanceToSink(x) }
+    dependence_graph.nodes.foreach { x =>
+      traverseGraphNodesAndRecordDistanceToSink(x)
+    }
 
     val send_instructions = proc.body.collect { case i @ Send(_, _, _, _) => i }
 
@@ -166,14 +179,14 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     // dependence_graph.OuterEdgeTraverser
 
     var active_list = scala.collection.mutable.ListBuffer[(Node, Double)]()
-
+    val scheduled_preds = scala.collection.mutable.Set.empty[Node]
     // LIST scheduling simulation loop
     var cycle = 0
     while (unsched_list.nonEmpty && cycle < 4096) {
 
       val to_retire = active_list.filter(_._2 == 0)
       val finished_list =
-        active_list.filter { _._2 == 0.0 } map { finished =>
+        active_list.filter { _._2 == 0 } map { finished =>
           logger.debug(
             s"${cycle}: Committing ${finished._1.toOuter.serialized} "
           )(ctx)
@@ -201,18 +214,40 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
           finished
         }
       active_list --= finished_list
-      val new_active_list = active_list.map { case (n, d) => (n, d - 1.0) }
+      val new_active_list = active_list.map { case (n, d) => (n, d - 1) }
       active_list = new_active_list
 
       if (ready_list.isEmpty) {
         schedule.append(Nop)
       } else {
         val head = ready_list.head
-        logger.debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")(ctx)
-        active_list.append((head.n, instructionLatency(head.n.toOuter)))
-        schedule.append(head.n.toOuter)
-        unsched_list -= head.n.toOuter
-        ready_list.dequeue()
+        // check if a predicate instruction is needed before scheduling the head
+        val predicate: Option[Predicate] =
+          if (scheduled_preds.contains(head.n)) {
+            None // predicate of the store is already scheduled
+          } else {
+            head.n.toOuter match {
+              case GlobalStore(_, (b0, b1, b2), p, _) =>
+                p.map(Predicate(_))
+              case LocalStore(_, b, _, p, _) =>
+                p.map(Predicate(_))
+              case _ => None
+            }
+
+          }
+        predicate match {
+          case Some(x: Predicate) =>
+            logger.debug(s"${cycle}: Scheduling ${x}")(ctx)
+            schedule.append(x)
+            scheduled_preds += head.n
+          case None =>
+            logger
+              .debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")(ctx)
+            active_list.append((head.n, instructionLatency(head.n.toOuter)))
+            schedule.append(head.n.toOuter)
+            unsched_list -= head.n.toOuter
+            ready_list.dequeue()
+        }
       }
       cycle += 1
     }
@@ -223,6 +258,11 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         proc
       )
     }
+
+    /** All of the Non-send instructions are now scheduled. We need to "patch"
+      * the schedule with [[Predicate]] instructions so that [[LocalStore]] and
+      * [[GlobalStore]] would no longer need to have explicit predicates
+      */
 
     val register_to_send = send_instructions.map { case i @ Send(_, rs, _, _) =>
       rs -> i

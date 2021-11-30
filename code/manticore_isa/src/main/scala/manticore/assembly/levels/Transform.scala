@@ -30,15 +30,6 @@ trait Transformation[
 
 }
 
-// trait Haha[
-//     S <: ManticoreAssemblyIR#DefProgram,
-//     T <: ManticoreAssemblyIR#DefProgram
-// ] extends Transformation[S, T] {
-
-//   def transform(s: S)(implicit ctx: AssemblyContext): T
-//   def apply(s: S, ctx: AssemblyContext): (T, AssemblyContext) =
-//     (transform(s)(ctx), ctx)
-// }
 
 /** Signature class for IR transformation, taking the [[S]] IR flavor as input
   * and producing a [[T]] flavored IR as output
@@ -59,7 +50,7 @@ abstract class AssemblyTransformer[
     * @param context
     * @return
     */
-    
+
   def transform(source: S#DefProgram, context: AssemblyContext): T#DefProgram
   override final def apply(
       source: S#DefProgram,
@@ -73,10 +64,10 @@ abstract class AssemblyTransformer[
     logger.dumpArtifact(s"dump_post_${getName}.masm") {
       res._1.serialized
     }(ctx)
-    
+
     res
   }
-    
+
 }
 
 /** Signature class for IR checkers, taking [[T]] IR flavor as input and
@@ -97,7 +88,7 @@ abstract class AssemblyChecker[
     * @param context compilation context
     */
   @throws(classOf[CompilationFailureException])
-  def check(source: T#DefProgram, context: AssemblyContext): Unit 
+  def check(source: T#DefProgram, context: AssemblyContext): Unit
 
   override final def apply(
       source: T#DefProgram,
