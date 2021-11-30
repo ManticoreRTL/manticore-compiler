@@ -18,7 +18,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
   import scalax.collection.mutable.{Graph => MutableGraph}
   import scalax.collection.edge.WDiEdge
 
-  def instructionLatency(instruction: Instruction): Int = 3
+  def instructionLatency(instruction: Instruction): Int = 15
 
   case class Label(v: Int)
   def labelingFunc(pred: Instruction, succ: Instruction): Label = Label(3)
@@ -387,8 +387,8 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     
     import manticore.assembly.DependenceGraphBuilder
     object GraphBuilder extends DependenceGraphBuilder(PlacedIR)
-    val dependence_graph =
-      GraphBuilder.build[Label](proc, labelingFunc)(ctx)
+    
+    val dependence_graph = GraphBuilder.build[Label](proc, labelingFunc)(ctx)
     type Node = dependence_graph.NodeT
     type Edge = dependence_graph.EdgeT
     val distance_to_sink = scala.collection.mutable.Map[Node, Int]()

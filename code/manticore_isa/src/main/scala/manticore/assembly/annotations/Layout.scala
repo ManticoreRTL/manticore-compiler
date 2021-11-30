@@ -15,8 +15,8 @@ object Layout {
     new Layout(
       name,
       Map(
-        "x" -> StringValue(fields("x")),
-        "y" -> StringValue(fields("y"))
+        "x" -> IntValue(fields("x").toInt),
+        "y" -> IntValue(fields("y").toInt)
       )
     )
   }

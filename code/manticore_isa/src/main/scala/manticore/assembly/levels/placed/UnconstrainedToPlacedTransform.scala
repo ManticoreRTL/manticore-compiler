@@ -247,9 +247,7 @@ object UnconstrainedToPlacedTransform
     *   true if @LAYOUT exists
     */
   private def hasLayoutInformation(asm: S.DefProgram): Boolean =
-    asm.annons.exists { x =>
-      x.name == "LAYOUT"
-    }
+    asm.findAnnotation("LAYOUT").nonEmpty
 
   /** Retrieves the dimension info from @LAYOUT
     *

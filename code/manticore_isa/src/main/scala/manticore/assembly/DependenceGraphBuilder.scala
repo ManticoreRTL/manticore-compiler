@@ -12,12 +12,17 @@ import manticore.compiler.AssemblyContext
 import scalax.collection.edge.LDiEdge
 import manticore.assembly.levels.MemoryType
 import scalax.collection.Graph
+import scala.util.Try
 
-/** This transform identifies dead code and removes it from the design. Dead
-  * code consists of names that are never referenced once written. Note that we
-  * replace dead code with `Nop` instructions here. A scheduling pass needs to
-  * be run later to try and eliminate the `Nop`s while ensuring that program
-  * execution is correct.
+/**
+  * Generic dependence graph builder, to use it, specialize it as an object 
+  * {{{
+  * object MyFlavor extends ManticoreAssemblyIR { ... }
+  * object MyFlavorDependenceGraphBuilder extends DependenceGraphBuilder(MyFlavor)
+  * val graph = MyFlavorDependenceGraph.build(...)
+  * }}}
+  *
+  * @param flavor
   */
 abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
     extends Reporter {
@@ -96,12 +101,20 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
     }
   }
 
+  /**
+    * Build a dependence graph
+    *
+    * @param process the process which contains the instructions
+    * @param label a labeling function for edges
+    * @param ctx compilation context
+    * @return An immutable dependence graph
+    */
   def build[L](
       process: DefProcess,
       label: (Instruction, Instruction) => L
   )(implicit
       ctx: AssemblyContext
-  ): Graph[Instruction, LDiEdge] = {
+  ): Graph[Instruction, LDiEdge] =  {
 
     import scalax.collection.mutable.{Graph => MutableGraph}
 
@@ -319,7 +332,11 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](val flavor: T)
     if (dependence_graph.isCyclic) {
       logger.error("Could not create acyclic dependence graph!")
     }
-    dependence_graph
-    
+
+    if (logger.countErrors > 0) {
+      logger.fail("Failed to create a dependence graph due to earlier errors")
+    }
+    dependence_graph  
   }
+
 }
