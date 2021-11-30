@@ -7,7 +7,7 @@ import scala.language.postfixOps
 
 
 import manticore.assembly.BinaryOperator
-import manticore.assembly.AssemblyAnnotation
+import manticore.assembly.annotations.{AssemblyAnnotation, Memblock, Layout, Loc}
 
 
 import manticore.assembly.levels.UInt16
@@ -52,9 +52,9 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
         """
   val ctx = AssemblyContext()
 
-  
+
   val backend = UnconstrainedToPlacedTransform
-  
+
 
   it should "correctly transform a valid program" in {
     import PlacedIR._
@@ -70,8 +70,7 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
               DefReg(RegVariable("%x", 2), None),
               DefReg(MemoryVariable("$$bram", 3, "mem_0"),  None,
                 Seq(
-                  AssemblyAnnotation(
-                    "MEMBLOCK", 
+                  Memblock(
                     Map("block" -> "mem_0")
                   )
                 )
@@ -89,16 +88,14 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
               BinaryArithmetic(BinaryOperator.ADD, "%x", "$zero", "$one")
             ),
             Seq(
-              AssemblyAnnotation(
-                "LOC",
+              Loc(
                 Map("x" -> 0.toString, "y" -> 1.toString)
               )
             )
           )
         ),
         Seq(
-            AssemblyAnnotation(
-                "LAYOUT",
+            Layout(
                 Map("x" -> "10", "y" -> "32")
             )
         )

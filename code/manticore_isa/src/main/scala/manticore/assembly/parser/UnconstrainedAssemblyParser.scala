@@ -165,6 +165,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
           n.chars,
           values.getOrElse(Seq.empty[(String, String)]).toMap
         )
+
     }
 
   def annotations: Parser[Seq[AssemblyAnnotation]] = rep(single_annon)

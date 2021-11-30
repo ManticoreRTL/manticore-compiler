@@ -46,6 +46,17 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
       ""
     }
   }
+
+  override def equals(x: Any): Boolean = {
+    if (x == null) {
+      false
+    } else if (x.isInstanceOf[AssemblyAnnotation]) {
+      val a = x.asInstanceOf[AssemblyAnnotation]
+      a.name == this.name && a.fields == this.fields
+    } else {
+      false
+    }
+  }
 }
 
 /** Generates a typed annotation from a generic string-based annotation.

@@ -3,7 +3,8 @@ package manticore.assembly.levels
 import manticore.UnitTest
 import manticore.assembly.parser.UnconstrainedAssemblyParser
 
-import manticore.assembly.AssemblyAnnotation
+import manticore.assembly.annotations.AssemblyAnnotation
+import manticore.assembly.annotations.Track
 import manticore.assembly.BinaryOperator
 import manticore.assembly.parser.AssemblyParser
 import manticore.compiler.AssemblyContext
@@ -26,13 +27,12 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     .reg %x 32;
     .reg %%xi 32 0x321;
     .wire y  8 ;
-    @TRACKED [signal = "top/inst/yi"]
-    @SOURCE [file="myfile.v:312.21"]
+    @TRACK [name = "top/inst/yi"]
     .wire yi 16 0b011001010101010  ;
     .mem  m  64 ;
     .mem  mi  64 312312312;
     .input i 9;
-    @TRACKED [signal="top/o"]
+    @TRACK [name="top/o"]
     .output o 12;
   """,
     Seq(
@@ -44,8 +44,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         LogicVariable("yi", 16, WireType),
         Some(BigInt("011001010101010", 2)),
         Seq(
-          AssemblyAnnotation("TRACKED", Map("signal" -> "top/inst/yi")),
-          AssemblyAnnotation("SOURCE", Map("file" -> "myfile.v:312.21"))
+          Track(Map("name" -> "top/inst/yi"))
         )
       ),
       DefReg(LogicVariable("m", 64, MemoryType), None),
@@ -54,7 +53,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
       DefReg(
         LogicVariable("o", 12, OutputType),
         None,
-        Seq(AssemblyAnnotation("TRACKED", Map("signal" -> "top/o")))
+        Seq(Track(Map("name" -> "top/o")))
       )
     )
   )
@@ -72,7 +71,6 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
 
   val insts = (
     """
-    @MARKED
     ADD x, xi, xi;
     CUST xi, [f0], y, y, yi, yi;
     CUST x, [f1], y, y, yi, yi;
@@ -81,7 +79,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     SET  mi, 0x12123;
     MUX  x, sel, xi, xi; // use if the instructions are not scheuled
     PMUX  x, xi, xi; // don't use if the insturctions are not scheduled!
-    
+
 
   """,
     Seq(
@@ -89,8 +87,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         BinaryOperator.ADD,
         "x",
         "xi",
-        "xi",
-        Seq(AssemblyAnnotation("MARKED", Map()))
+        "xi"
       ),
       CustomInstruction("f0", "xi", "y", "y", "yi", "yi"),
       CustomInstruction("f1", "x", "y", "y", "yi", "yi"),
@@ -108,7 +105,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     val program = s"""
         .prog:
             .proc pid:
-                ${regs._1}                
+                ${regs._1}
         """
     val ast = AssemblyParser(program, ctx)
 
@@ -129,7 +126,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
 
   it should "parse function definitions with annotations" in {
     val program = s"""
-       
+
         .prog:
             .proc pid:
                 ${regs._1}
@@ -150,9 +147,9 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
 
   it should "parse instructions with annotations" in {
     val program = s"""
-     @ORG [id="ch.epfl.vlsc.manticore"]
+
         .prog:
-            @AUTHOR [name="mayy", email="mahyar.emami@epfl.ch"]
+
             .proc pid:
                 ${regs._1}
                 ${funcs._1}
@@ -165,23 +162,11 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
           id = "pid",
           registers = regs._2,
           functions = funcs._2,
-          body = insts._2,
-          Seq(
-            AssemblyAnnotation(
-              "AUTHOR",
-              Map(
-                "name" -> "mayy",
-                "email" -> "mahyar.emami@epfl.ch"
-              )
-            )
-          )
+          body = insts._2
         )
       ),
       Seq(
-        AssemblyAnnotation(
-          "ORG",
-          Map("id" -> "ch.epfl.vlsc.manticore")
-        )
+
       )
     )
     AssemblyParser(program, ctx) shouldBe expected
