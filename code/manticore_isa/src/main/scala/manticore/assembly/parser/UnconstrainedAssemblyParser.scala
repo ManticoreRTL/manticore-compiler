@@ -2,7 +2,8 @@ package manticore.assembly.parser
 
 import scala.util.parsing.combinator._
 import manticore.assembly.ManticoreAssemblyIR
-import manticore.assembly.AssemblyAnnotation
+import manticore.assembly.annotations.AssemblyAnnotation
+import manticore.assembly.annotations.AssemblyAnnotationBuilder
 import manticore.assembly.BinaryOperator
 
 import scala.util.parsing.input.CharArrayReader.EofCh
@@ -160,7 +161,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def single_annon: Parser[AssemblyAnnotation] =
     (positioned(annotLiteral) ~ opt("[" ~> repsep(keyvalue, ",") <~ "]")) ^^ {
       case (n ~ values) =>
-        AssemblyAnnotation(
+        AssemblyAnnotationBuilder(
           n.chars,
           values.getOrElse(Seq()).toMap
         )

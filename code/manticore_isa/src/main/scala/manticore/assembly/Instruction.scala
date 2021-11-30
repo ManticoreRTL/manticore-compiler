@@ -4,6 +4,8 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.parsing.input.Positional
 import scala.collection.immutable.ListMap
 
+import manticore.assembly.annotations.AssemblyAnnotation
+
 /** Base classes for the various IR flavors.
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
@@ -15,30 +17,6 @@ object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
   val ADD, ADDC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SLTU, SLTS, SGTU, SGTS,
       PMUX = Value
-}
-
-/** An assembly annotation
-  *
-  * @param name
-  *   name of the annotation (given by @NAME in the code)
-  * @param values
-  *   key-value pairs for the annotation
-  */
-case class AssemblyAnnotation(name: String, values: Map[String, String])
-    extends Positional
-    with HasSerialized {
-  def getValue: Map[String, String] = values
-  def getName: String = name
-  def withElement(k: String, v: String) =
-    AssemblyAnnotation(name, values ++ Map(k -> v))
-  def serialized: String =
-    if (values.nonEmpty)
-      s"@${name} [" + {
-        values.map { case (k, v) => k + "=\"" + v + "\"" } mkString ","
-      } + "]"
-    else
-      ""
-
 }
 
 trait HasSerialized {
@@ -80,8 +58,8 @@ trait ManticoreAssemblyIR {
     def findAnnotationValue(name: String, key: String): Option[String] = {
       val found = annons.find(_.name == name)
       found match {
-        case None                                => None
-        case Some(AssemblyAnnotation(_, values)) => values.get(key)
+        case None       => None
+        case Some(anno) => anno.get(key).map(_.toString)
       }
     }
 
@@ -289,6 +267,5 @@ trait ManticoreAssemblyIR {
     val annons: Seq[AssemblyAnnotation] = Seq()
     override def serialized: String = s"\t\tNOP;"
   }
-  
 
 }
