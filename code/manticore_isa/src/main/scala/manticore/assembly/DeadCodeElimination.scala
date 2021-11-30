@@ -33,7 +33,7 @@ object DeadCodeElimination
         case Nil =>
           refCount
 
-        case head :: tail =>
+        case head +: tail =>
           val localRefCounts =
             collection.mutable.Map[Name, Int]().withDefaultValue(0)
           def incr(name: Name): Unit = localRefCounts(name) += 1

@@ -80,7 +80,7 @@ object RemoveAliases
             // End of instruction stream. We return all aliases we have found so far.
             aliases
 
-          case head :: tail =>
+          case head +: tail =>
             val newAliases = collection.mutable.Map[Name, Name]()
             // Must use capital letter for first char, otherwise the pattern match below will not work!
             val Zero = BigInt(0)

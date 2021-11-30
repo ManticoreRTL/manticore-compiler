@@ -413,7 +413,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         node.edges.map { edge =>
           if (edge.from == node) {
             val dist: Int =
-              traverseGraphNodesAndRecordDistanceToSink(edge.to) + (edge.label: Label).v
+              traverseGraphNodesAndRecordDistanceToSink(edge.to) + edge.label.asInstanceOf[Label].v
             distance_to_sink(node) = dist
             dist
           } else { 0 }
@@ -589,7 +589,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
     def getDim(dim: String): Int =
       source.findAnnotationValue("LAYOUT", dim) match {
-        case Some(v) => v.toInt
+        case Some(manticore.assembly.annotations.IntValue(v)) => v
         case None =>
           logger.fail("Scheduling requires a valid @LAYOUT annotation")
           0

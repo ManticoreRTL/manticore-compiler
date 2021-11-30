@@ -5,6 +5,9 @@ import scala.util.parsing.input.Positional
 import scala.collection.immutable.ListMap
 import manticore.assembly.levels.HasVariableType
 
+import manticore.assembly.annotations.AssemblyAnnotation
+import manticore.assembly.annotations.AnnotationValue
+
 /** Base classes for the various IR flavors.
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
@@ -16,30 +19,6 @@ object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
   val ADD, ADDC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SLTU, SLTS, SGTU, SGTS,
       PMUX = Value
-}
-
-/** An assembly annotation
-  *
-  * @param name
-  *   name of the annotation (given by @NAME in the code)
-  * @param values
-  *   key-value pairs for the annotation
-  */
-case class AssemblyAnnotation(name: String, values: Map[String, String])
-    extends Positional
-    with HasSerialized {
-  def getValue: Map[String, String] = values
-  def getName: String = name
-  def withElement(k: String, v: String) =
-    AssemblyAnnotation(name, values ++ Map(k -> v))
-  def serialized: String =
-    if (values.nonEmpty)
-      s"@${name} [" + {
-        values.map { case (k, v) => k + "=\"" + v + "\"" } mkString ","
-      } + "]"
-    else
-      ""
-
 }
 
 trait HasSerialized {
@@ -61,7 +40,7 @@ trait ManticoreAssemblyIR {
 
   type Name // type defining names, e.g., String
   type Constant // type defining constants, e.g., UInt16 or BigInt
-  type Variable <: HasVariableType with Named with HasSerialized// type defining Variables, should include variable type information
+  type Variable <: HasVariableType with Named with HasSerialized // type defining Variables, should include variable type information
   type CustomFunction <: HasSerialized // type defining custom function, e.g., Seq[UInt16]
   type ProcessId // type defining a process identifier, e.g., String
   type ExceptionId // type defining an exception identifier, e.g., String
@@ -78,13 +57,18 @@ trait ManticoreAssemblyIR {
         s"${annons.map(x => tabs + x.serialized).mkString("\n")}\n"
       else
         ""
-    def findAnnotationValue(name: String, key: String): Option[String] = {
+    def findAnnotationValue(
+        name: String,
+        key: String
+    ): Option[AnnotationValue] = {
       val found = annons.find(_.name == name)
       found match {
-        case None                                => None
-        case Some(AssemblyAnnotation(_, values)) => values.get(key)
+        case None       => None
+        case Some(anno) => anno.get(key)
       }
     }
+    def findAnnotation(name: String): Option[AssemblyAnnotation] =
+      annons.find(_.name == name)
 
   }
 
@@ -290,6 +274,5 @@ trait ManticoreAssemblyIR {
     val annons: Seq[AssemblyAnnotation] = Seq()
     override def serialized: String = s"\t\tNOP;"
   }
-  
 
 }
