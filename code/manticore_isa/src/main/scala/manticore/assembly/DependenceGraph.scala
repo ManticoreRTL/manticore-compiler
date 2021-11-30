@@ -17,7 +17,7 @@ import scalax.collection.GraphEdge.DiEdge
   * be run later to try and eliminate the `Nop`s while ensuring that program
   * execution is correct.
   */
-object DependenceGraph {
+object DependenceGraph extends Reporter {
 
   import UnconstrainedIR._
 
@@ -92,8 +92,8 @@ object DependenceGraph {
   def apply(
       instrs: Seq[Instruction]
   ): (
-    scalax.collection.Graph[Int, DiEdge],
-    Map[Int, Instruction]
+      scalax.collection.Graph[Int, DiEdge],
+      Map[Int, Instruction]
   ) = {
     // Start by assigning an identifier to every instruction. One would think the destination register
     // of an instruction is the identifier, but some instructions do not write registers. This is why
@@ -135,9 +135,9 @@ object DependenceGraph {
       edges.foreach(edge => dependenceGraph.add(edge))
     }
 
-    // if (dependenceGraph.isCyclic) {
-    //   logger.error("Could not create acyclic dependence graph!")
-    // }
+    if (dependenceGraph.isCyclic) {
+      logger.error("Could not create acyclic dependence graph!")
+    }
 
     (dependenceGraph, idToInstrMap.toMap)
   }
