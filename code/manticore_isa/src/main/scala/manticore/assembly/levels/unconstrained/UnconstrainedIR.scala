@@ -11,6 +11,7 @@ import manticore.assembly.levels.InputType
 import scala.language.implicitConversions
 import manticore.assembly.levels.ConstType
 import manticore.assembly.HasSerialized
+import manticore.assembly.levels.HasVariableType
 
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
@@ -23,8 +24,9 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
       width: Int,
       tpe: VariableType
   ) extends Named
-      with HasSerialized {
+      with HasSerialized with HasVariableType {
     def serialized: String = s"${tpe.typeName} ${name} ${width}"
+    def varType = tpe
   }
 
   case class CustomFunctionImpl(values: Seq[BigInt]) extends HasSerialized {

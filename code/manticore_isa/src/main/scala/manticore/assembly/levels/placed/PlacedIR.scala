@@ -1,6 +1,7 @@
 package manticore.assembly.levels.placed
 import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.VariableType
+import manticore.assembly.levels.HasVariableType
 import manticore.assembly.levels.UInt16
 
 /** IR level with placed processes and allocated registers.
@@ -12,8 +13,9 @@ object PlacedIR extends ManticoreAssemblyIR {
 
   sealed abstract class PlacedVariable(val tpe: VariableType)
       extends Named
-      with HasSerialized {
+      with HasSerialized with HasVariableType {
     override def serialized: String = s"${tpe.typeName} ${name} 16"
+    override def varType = tpe
   }
   import manticore.assembly.levels.{
     WireType,

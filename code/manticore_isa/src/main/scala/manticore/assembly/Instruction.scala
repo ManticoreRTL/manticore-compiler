@@ -3,6 +3,7 @@ package manticore.assembly
 import scala.collection.mutable.ArrayBuffer
 import scala.util.parsing.input.Positional
 import scala.collection.immutable.ListMap
+import manticore.assembly.levels.HasVariableType
 
 /** Base classes for the various IR flavors.
   * @author
@@ -60,7 +61,7 @@ trait ManticoreAssemblyIR {
 
   type Name // type defining names, e.g., String
   type Constant // type defining constants, e.g., UInt16 or BigInt
-  type Variable <: Named with HasSerialized // type defining Variables, should include variable type information
+  type Variable <: HasVariableType with Named with HasSerialized// type defining Variables, should include variable type information
   type CustomFunction <: HasSerialized // type defining custom function, e.g., Seq[UInt16]
   type ProcessId // type defining a process identifier, e.g., String
   type ExceptionId // type defining an exception identifier, e.g., String

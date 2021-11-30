@@ -8,6 +8,8 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 import manticore.assembly.CompilationFailureException
+import manticore.assembly.DependenceGraphBuilder
+import scalax.collection.edge.LDiEdge
 
 object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
@@ -17,6 +19,9 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
   import scalax.collection.edge.WDiEdge
 
   def instructionLatency(instruction: Instruction): Int = 3
+
+  case class Label(v: Int)
+  def labelingFunc(pred: Instruction, succ: Instruction): Label = Label(3)
 
   /** Extract the registers used in the instruction
     *
@@ -379,10 +384,14 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       proc: DefProcess,
       ctx: AssemblyContext
   ): PartiallyScheduledProcess = {
-    type Node = Graph[Instruction, WDiEdge]#NodeT
-    type Edge = Graph[Instruction, WDiEdge]#EdgeT
-    val dependence_graph = createDependenceGraph(proc, ctx)
-    val distance_to_sink = scala.collection.mutable.Map[Node, Double]()
+    
+    import manticore.assembly.DependenceGraphBuilder
+    object GraphBuilder extends DependenceGraphBuilder(PlacedIR)
+    val dependence_graph =
+      GraphBuilder.build[Label](proc, labelingFunc)(ctx)
+    type Node = dependence_graph.NodeT
+    type Edge = dependence_graph.EdgeT
+    val distance_to_sink = scala.collection.mutable.Map[Node, Int]()
 
     require(
       dependence_graph.edges.forall(_.isOut),
@@ -391,30 +400,30 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     require(dependence_graph.isAcyclic, "Dependence graph is cyclic!")
     require(dependence_graph.nodes.size == proc.body.size)
 
-    def traverseGraphNodesAndRecordDistanceToSink(node: Node): Double = {
+    def traverseGraphNodesAndRecordDistanceToSink(node: Node): Int = {
       node.outerEdgeTraverser
 
       if (node.edges.filter(_.from == node).isEmpty) {
         distance_to_sink(node) = 0
-        0.0
+        0
       } else if (distance_to_sink.contains(node)) {
         // answer already known
         distance_to_sink(node)
       } else {
         node.edges.map { edge =>
           if (edge.from == node) {
-            val dist =
-              traverseGraphNodesAndRecordDistanceToSink(edge.to) + edge.weight
+            val dist: Int =
+              traverseGraphNodesAndRecordDistanceToSink(edge.to) + (edge.label: Label).v
             distance_to_sink(node) = dist
             dist
-          } else { 0.0 }
+          } else { 0 }
 
         }.max
       }
     }
 
     // find the distance of each node to sinks
-    dependence_graph.nodes.foreach { traverseGraphNodesAndRecordDistanceToSink }
+    dependence_graph.nodes.foreach { x => traverseGraphNodesAndRecordDistanceToSink(x) }
 
     val send_instructions = proc.body.collect { case i @ Send(_, _, _, _) => i }
 
@@ -491,7 +500,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       active_list --= finished_list
       val new_active_list = active_list.map { case (n, d) => (n, d - 1.0) }
       active_list = new_active_list
-      
+
       if (ready_list.isEmpty) {
         schedule.append(Nop)
       } else {
@@ -626,8 +635,8 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     // now patch the local schedule by globally scheduling the send instructions
     import scala.collection.mutable.PriorityQueue
 
-    // keep a sorted queue of Processes, sorting is done based on the 
-    // priority of each processes' send instruction. I.e., the process with 
+    // keep a sorted queue of Processes, sorting is done based on the
+    // priority of each processes' send instruction. I.e., the process with
     // the most critical send (largest manhattan distance and latest possible schedule time)
     // should be considered first when trying to schedule sends in a cycle
     val to_schedule = PriorityQueue.empty[ProcessWrapper] ++
@@ -646,18 +655,14 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         ProcessWrapper(psched.proc, psched.partial_schedule, sends)
       }.toSeq
 
-
     type LinkOccupancy = scala.collection.mutable.Set[Int]
     val linkX = Array.ofDim[LinkOccupancy](dimx, dimy)
     val linkY = Array.ofDim[LinkOccupancy](dimx, dimy)
-    
+
     var cycle = 0
     // while(to_schedule.nonEmpty && cycle < 4096) {
 
-      
-
     // }
-
 
     source.copy(
       processes = partial_schedules.map { p =>
