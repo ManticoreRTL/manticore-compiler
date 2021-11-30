@@ -163,7 +163,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       case (n ~ values) =>
         AssemblyAnnotationBuilder(
           n.chars,
-          values.getOrElse(Seq()).toMap
+          values.getOrElse(Seq.empty[(String, String)]).toMap
         )
     }
 

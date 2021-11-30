@@ -6,7 +6,7 @@ final class Memblock private (
 ) extends AssemblyAnnotation
 
 object Memblock {
-  val name: String = "Memblock"
+  val name: String = "Memblock".toUpperCase()
 
   def apply(fields: Map[String, String]) = {
     require(fields.contains("block"))
@@ -19,7 +19,7 @@ object Memblock {
     )
   }
 
-  def unapply(mb: Memblock): Option[Map[String, AnnotationValue]] = Some(
-    mb.fields
+  def unapply(anno: Memblock): Option[Map[String, AnnotationValue]] = Some(
+    anno.fields
   )
 }
