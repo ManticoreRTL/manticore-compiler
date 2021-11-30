@@ -27,15 +27,15 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
   def get(field: String): Option[AnnotationValue] = fields.get(field)
   def getIntValue(field: String): Option[Int] = fields.get(field) match {
     case Some(IntValue(v)) => Some(v)
-    case _                     => None
+    case _                 => None
   }
   def getStringValue(field: String): Option[String] = fields.get(field) match {
     case Some(StringValue(v)) => Some(v)
-    case _ => None
+    case _                    => None
   }
   def getBoolValue(field: String): Option[Boolean] = fields.get(field) match {
     case Some(BooleanValue(v)) => Some(v)
-    case _ => None
+    case _                     => None
   }
   def serialized: String = {
     if (fields.nonEmpty) {
@@ -64,12 +64,13 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
 object AssemblyAnnotationBuilder {
   def apply(name: String, fields: Map[String, String]): AssemblyAnnotation = {
     name.toUpperCase() match {
-      case Loc.name      => Loc(fields)
-      case Layout.name   => Layout(fields)
-      case Memblock.name => Memblock(fields)
-      case Program.name  => Program(fields)
-      case Reg.name      => Reg(fields)
-      case Track.name    => Track(fields)
+      case Loc.name        => Loc(fields)
+      case Layout.name     => Layout(fields)
+      case Memblock.name   => Memblock(fields)
+      case Program.name    => Program(fields)
+      case Reg.name        => Reg(fields)
+      case Sourceinfo.name => Sourceinfo(fields)
+      case Track.name      => Track(fields)
     }
   }
 }
