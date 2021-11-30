@@ -13,6 +13,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
   import PlacedIR._
   import scalax.collection.Graph
+  import scalax.collection.mutable.{Graph => MutableGraph}
   import scalax.collection.edge.WDiEdge
 
   def instructionLatency(instruction: Instruction): Int = 3
@@ -285,13 +286,13 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       */
 
     val raw_dependence_graph =
-      process.body.foldLeft(Graph.empty[Instruction, WDiEdge]) {
+      process.body.foldLeft(MutableGraph.empty[Instruction, WDiEdge]) {
         case (g, inst) =>
           // first add an edge for register to register dependency
           regUses(inst).foldLeft(g + inst) { case (gg, use) =>
             def_instructions.get(use) match {
               case Some(pred) =>
-                gg + WDiEdge(pred, inst)(instructionLatency(pred))
+                gg += WDiEdge(pred, inst)(instructionLatency(pred))
               case None =>
                 gg
             }
@@ -307,7 +308,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         load_store_dependency
           .getOrElse(l, scala.collection.mutable.Set.empty[Instruction])
           .foldLeft(g) { case (gg, s) =>
-            gg + WDiEdge(l, s)(1)
+            gg += WDiEdge(l, s)(1)
           }
 
       }
@@ -454,6 +455,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
     var active_list = scala.collection.mutable.ListBuffer[(Node, Double)]()
 
+    // LIST scheduling simulation loop
     var cycle = 0
     while (unsched_list.nonEmpty && cycle < 4096) {
 
@@ -489,7 +491,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       active_list --= finished_list
       val new_active_list = active_list.map { case (n, d) => (n, d - 1.0) }
       active_list = new_active_list
-
+      
       if (ready_list.isEmpty) {
         schedule.append(Nop)
       } else {
