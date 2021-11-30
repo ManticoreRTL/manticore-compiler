@@ -1,7 +1,8 @@
 @LAYOUT [x = "10", y = "20"]
+@PROG
 .prog :
   @LOC [x = "0", y = "0"]
-  .proc proc_0_0: 
+  .proc proc_0_0:
     @MEMBLOCK [block="block_0"]
     .mem bram_0 16
     @MEMBLOCK [block="block_1"]
@@ -29,7 +30,7 @@
     ADD b, $128, bram_0;
     ADD c, b, z;
     LD x.\y, c[0x1];
-  
+
   @LOC [x = "8", y = "15"]
   .proc proc_8_15:
     .reg xx 16
@@ -48,4 +49,3 @@
     SET $1, 0x01;
     SET $2, 0x02;
     SET $3, 0x03;
-    
