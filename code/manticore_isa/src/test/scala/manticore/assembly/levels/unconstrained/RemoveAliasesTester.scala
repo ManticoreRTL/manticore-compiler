@@ -9,9 +9,9 @@ class RemoveAliasesTester extends UnitTest {
 
   import manticore.assembly.levels.unconstrained.UnconstrainedIR._
 
-  behavior of "instruction ordering transform"
+  behavior of "alias removal transform"
 
-  it should "correctly order instructions in topological order" in {
+  it should "avoid using multiple aliases and use a single name instead" in {
     val inputProgram = """
       @PROGRAM [name = "test"]
       .prog:
