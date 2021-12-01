@@ -6,6 +6,7 @@ package manticore.assembly.levels.unconstrained
   *   Sahand Kashani <sahand.kashani@epfl.ch>
   */
 
+import manticore.assembly.DependenceGraphBuilder
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import scala.collection.mutable.ArrayBuffer
@@ -23,13 +24,11 @@ object OrderInstructions
       ctx: AssemblyContext
   ): DefProcess = {
 
-    import manticore.assembly.DependenceGraphBuilder
     object GraphBuilder extends DependenceGraphBuilder(UnconstrainedIR)
 
     // The value of the label doesn't matter for topological sorting.
-    case class Label(v: Int)
-    def labelingFunc(pred: Instruction, succ: Instruction): Label = Label(0)
-    val dependenceGraph = GraphBuilder.build[Label](asm, labelingFunc)(ctx)
+    def labelingFunc(pred: Instruction, succ: Instruction) = None
+    val dependenceGraph = GraphBuilder.build(asm, labelingFunc)(ctx)
 
     // Sort body.
     val sortedInstrs = ArrayBuffer[Instruction]()
