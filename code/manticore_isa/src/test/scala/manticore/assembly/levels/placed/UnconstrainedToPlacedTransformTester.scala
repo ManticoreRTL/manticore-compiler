@@ -19,7 +19,7 @@ import manticore.assembly.CompilationFailureException
 
 class UnconstrainedToPlacedTransformTester extends UnitTest {
 
-  behavior of "unconstrained IR ro placed IR transform"
+  behavior of "unconstrained IR to placed IR transform"
 
   val valid_program =
     """

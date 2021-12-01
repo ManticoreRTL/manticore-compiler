@@ -43,14 +43,9 @@ object OrderInstructions
     }
 
     // Sort registers.
-    val sortedRegs = asm.registers
-      .groupBy { reg =>
-        reg.variable.varType
-      }
-      .flatMap { case (tpe, regs) =>
-        regs.sortBy(reg => reg.variable.name)
-      }
-      .toSeq
+    val sortedRegs = asm.registers.sortBy { reg =>
+      (reg.variable.tpe.typeName, reg.variable.name)
+    }
 
     asm.copy(
       registers = sortedRegs,

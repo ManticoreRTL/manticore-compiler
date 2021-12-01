@@ -125,7 +125,9 @@ object RemoveAliases
           .flatMap { case ((width, value), names) =>
             // All these names are aliases of one another. We use the first element from the set as the representative
             // and mark all others as being aliases of this one.
-            val group = names.keys
+
+            // We sort to ensure the order is deterministic.
+            val group = names.keys.toSeq.sortBy(name => name)
             val (representative, aliases) = (group.head, group.tail)
             val aliasMap = aliases.map { alias =>
               alias -> representative

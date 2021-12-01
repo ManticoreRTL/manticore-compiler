@@ -64,7 +64,7 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](flavor: T)
       case Send(rd, rs, dest_id, annons) =>
         Seq(rs)
       case SetValue(rd, value, annons) =>
-        Seq()
+        Seq.empty
       case Mux(rd, sel, rs1, rs2, annons) =>
         Seq(sel, rs1, rs2)
       case Expect(ref, got, error_id, annons) =>
