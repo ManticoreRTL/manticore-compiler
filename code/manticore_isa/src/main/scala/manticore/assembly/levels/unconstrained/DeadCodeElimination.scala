@@ -1,4 +1,4 @@
-package manticore.assembly
+package manticore.assembly.levels.unconstrained
 
 /** DeadCodeElimination.scala
   *
@@ -7,8 +7,9 @@ package manticore.assembly
   */
 
 import manticore.assembly.levels.AssemblyTransformer
-import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.AssemblyContext
+import manticore.assembly.annotations.Track
+import manticore.assembly.annotations.Reg
 
 /** This transform identifies dead code and removes it from the design. Dead
   * code consists of names that are never referenced once written. Note that we
@@ -99,12 +100,10 @@ object DeadCodeElimination
       }
     }
 
-    val trackAnnoName = "TRACK"
-    val regAnnoName = "REG"
     val regsAndTrackedNames = asm.registers
       .filter { reg =>
         reg.annons.exists { anno =>
-          Seq(trackAnnoName, regAnnoName).contains(anno.name)
+          Seq(Track.name, Reg.name).contains(anno.name)
         }
       }
 

@@ -1,4 +1,4 @@
-package manticore.assembly
+package manticore.assembly.levels.unconstrained
 
 /** RemoveAliases.scala
   *
@@ -7,9 +7,9 @@ package manticore.assembly
   */
 
 import manticore.assembly.levels.AssemblyTransformer
-import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.AssemblyContext
 import manticore.assembly.levels.ConstType
+import manticore.assembly.BinaryOperator
 
 /** This transform identifies and removes aliases from the design. Processing
   * the following input program:
