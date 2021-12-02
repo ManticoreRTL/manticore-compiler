@@ -6,180 +6,164 @@ package manticore.assembly.levels.unconstrained
   *   Sahand Kashani <sahand.kashani@epfl.ch>
   */
 
+import manticore.assembly.DependenceGraphBuilder
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
-import manticore.assembly.annotations.Track
-import manticore.assembly.annotations.Reg
+import manticore.assembly.levels.OutputType
 
-/** This transform identifies dead code and removes it from the design. Dead
-  * code consists of names that are never referenced once written. Note that we
-  * replace dead code with `Nop` instructions here. A scheduling pass needs to
-  * be run later to try and eliminate the `Nop`s while ensuring that program
-  * execution is correct.
+import scalax.collection.Graph
+import scalax.collection.edge.LDiEdge
+
+/** This transform identifies dead code and removes it from the design. Dead code
+  * is code that does not contribute to the output registers of a program.
   */
 object DeadCodeElimination
     extends AssemblyTransformer(UnconstrainedIR, UnconstrainedIR) {
 
   import UnconstrainedIR._
 
-  def deadCodeElimination(
+  object GraphBuilder extends DependenceGraphBuilder(UnconstrainedIR)
+
+  /** Finds all live instructions in a process. An instruction is considered
+    * live if there exists a path from the instruction to an output register of
+    * the process.
+    *
+    * @param asm
+    *   Target process.
+    * @param ctx
+    *   Target context.
+    * @return
+    *   Set of live instructions in the process.
+    */
+  def findLiveInstrs(
       asm: DefProcess
-  ): DefProcess = {
+  )(
+      ctx: AssemblyContext
+  ): Set[Instruction] = {
+    // Output ports of the process.
+    val outputNames = asm.registers
+      .filter(reg => reg.variable.varType == OutputType)
+      .map(reg => reg.variable.name)
+      .toSet
 
-    def countReferences(
-        body: Seq[Instruction],
-        refCount: Map[Name, Int] = Map.empty.withDefaultValue(0)
-    ): Map[Name, Int] = {
-      body match {
-        case Nil =>
-          refCount
-
-        case head +: tail =>
-          val localRefCounts =
-            collection.mutable.Map[Name, Int]().withDefaultValue(0)
-          def incr(name: Name): Unit = localRefCounts(name) += 1
-
-          head match {
-            case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
-              incr(rs1)
-              incr(rs2)
-
-            case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-              incr(rs1)
-              incr(rs2)
-              incr(rs3)
-              incr(rs4)
-
-            case LocalLoad(rd, base, offset, annons) =>
-              incr(base)
-
-            case LocalStore(rs, base, offset, predicate, annons) =>
-              incr(base)
-              predicate.foreach(incr)
-
-            case GlobalLoad(rd, base, annons) =>
-              incr(base._1)
-              incr(base._2)
-              incr(base._3)
-
-            case GlobalStore(rs, base, predicate, annons) =>
-              incr(base._1)
-              incr(base._2)
-              incr(base._3)
-              predicate.foreach(incr)
-
-            case SetValue(rd, value, annons) =>
-
-            case Send(rd, rs, dest_id, annons) =>
-              // The rd register, although READ to generate the destination address in *another* process, cannot impose
-              // any form of dependency.
-              incr(rs)
-
-            case Expect(ref, got, error_id, annons) =>
-              incr(ref)
-              incr(got)
-
-            case Predicate(rs, annons) =>
-              incr(rs)
-
-            case Mux(rd, sel, rs1, rs2, annons) =>
-              incr(sel)
-              incr(rs1)
-              incr(rs2)
-
-            case Nop =>
-          }
-
-          // Update the reference counts with the locally-computed ones Be sure to increment the existing count if it
-          // already existed!
-          val newRefCount = refCount ++ localRefCounts.map { case (name, cnt) =>
-            name -> (cnt + refCount.getOrElse(name, 0))
-          }
-
-          countReferences(tail, newRefCount)
+    // Instructions that write to the output ports.
+    val outputInstrs = asm.body.filter { instr =>
+      GraphBuilder.regDef(instr) match {
+        case Some(name) => outputNames.contains(name)
+        case None       => false
       }
     }
 
-    val regsAndTrackedNames = asm.registers
-      .filter { reg =>
-        reg.annons.exists { anno =>
-          Seq(Track.name, Reg.name).contains(anno.name)
+    // Create dependency graph.
+    // The value of the label doesn't matter for topological sorting.
+    def labelingFunc(pred: Instruction, succ: Instruction) = None
+    val dependenceGraph = GraphBuilder.build(asm, labelingFunc)(ctx)
+
+    // Cache of backtracking results to avoid exponential lookup if we end up
+    // going up the same tree multiple times.
+    val visitedInstrs = collection.mutable.Set.empty[Instruction]
+
+    def findLiveNodesIter(
+        dstInstr: Instruction
+    ): Unit = {
+      // No need to backtrack if we've already encountered this vertex.
+      if (!visitedInstrs.contains(dstInstr)) {
+        visitedInstrs.add(dstInstr)
+
+        val dstNode = dependenceGraph.get(dstInstr)
+        val predNodes = dstNode.diPredecessors
+        predNodes.foreach { predNode =>
+          val predInstr = predNode.toOuter
+          findLiveNodesIter(predInstr)
         }
       }
+    }
 
-    // Count all source operands (what "countReferences(asm.body)" represents), but also ensure the
-    // names of some signals that may never be read (but that must be preserved) have a positive reference
-    // count to avoid pruning them from the circuit. Names to be preserved are tracked signals and
-    // all registers. Note that the "_curr" port of a register is always read, but the "_next" is never
-    // read, hence why we must force-preserve it.
-    val refCount = countReferences(asm.body) ++ regsAndTrackedNames
-      .map(reg => reg.variable.name -> 1)
-      .toMap
+    // Backtrack from the output instructions to find all live nodes in the graph.
+    outputInstrs.foreach { outputInstr =>
+      findLiveNodesIter(outputInstr)
+    }
 
-    val newRegs = asm.registers
-      .filter { r =>
-        // Only keep registers/constants that are referenced at least once.
-        refCount.getOrElse(r.variable.name, 0) > 0
-      }
+    visitedInstrs.toSet
+  }
 
-    val newBody = asm.body
-      .flatMap { instr =>
-        val skip = instr match {
-          case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
-            refCount(rd) == 0
+  /** Counts the number of times registers are present in an instruction. The
+    * `fcnt` function tells which registers are to be counted in an instruction.
+    *
+    * @param instrs
+    *   Input instructions.
+    * @param cnts
+    *   Map associating registers with the number of times they appear in the
+    *   instruction stream.
+    * @param fcnt
+    *   Function returning the registers in an instruction that must be counted.
+    * @return
+    *   Number of times the register was counted in the instruction stream.
+    */
+  def countWithFunction(
+      instrs: Seq[Instruction],
+      fcnt: Instruction => Seq[Name],
+      cnts: Map[Name, Int] = Map.empty.withDefaultValue(0)
+  ): Map[Name, Int] = {
+    instrs match {
+      case Nil =>
+        cnts
 
-          case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-            refCount(rd) == 0
+      case head +: tail =>
+        val regs = fcnt(head)
 
-          case LocalLoad(rd, base, offset, annons) =>
-            refCount(rd) == 0
-
-          case LocalStore(rs, base, offset, predicate, annons) =>
-            // Do not skip stores. The predicate tells if it is enabled or not.
-            false
-
-          case GlobalLoad(rd, base, annons) =>
-            refCount(rd) == 0
-
-          case GlobalStore(rs, base, predicate, annons) =>
-            // Do not skip stores. The predicate tells if it is enabled or not.
-            false
-
-          case SetValue(rd, value, annons) =>
-            refCount(rd) == 0
-
-          case Send(rd, rs, dest_id, annons) =>
-            // Do not skip Sends as rd is exiting the process. We therefore don't know who is reading it,
-            // but another process is certainly waiting on its value.
-            false
-
-          case Expect(ref, got, error_id, annons) =>
-            // Do not skip. Used for verification and must always be executed.
-            false
-
-          case Predicate(rs, annons) =>
-            // Do not skip predicate instructions. They read a register from the register file and
-            // set an on-chip reg close to the datapath.
-            false
-
-          case Mux(rd, sel, rs1, rs2, annons) =>
-            refCount(rd) == 0
-
-          case Nop =>
-            // This is unscheduled code. It is safe to skip `Nop`s.
-            true
+        val newCnts = regs.foldLeft(cnts) { case (oldCnts, reg) =>
+          val newCnt = oldCnts.get(reg) match {
+            case Some(oldCnt) => oldCnt + 1
+            case None         => 1
+          }
+          oldCnts + (reg -> newCnt)
         }
 
-        if (skip) {
-          None
-        } else {
-          Some(instr)
-        }
-      }
+        countWithFunction(tail, fcnt, newCnts)
+    }
+  }
+
+  /** Performs dead-code elimination.
+    *
+    * @param asm
+    *   Target process.
+    * @param ctx
+    *   Target context.
+    * @return
+    *   Process after dead-code elimination.
+    */
+  def dce(
+      asm: DefProcess
+  )(
+      ctx: AssemblyContext
+  ): DefProcess = {
+
+    // Remove dead instructions.
+    val liveInstrs = findLiveInstrs(asm)(ctx)
+    val newBody = asm.body.filter(instr => liveInstrs.contains(instr))
+
+    // Remove dead registers AFTER filtering dead instructions.
+    // Eliminating unused registers cannot be done to the fullest extent if it is
+    // performed before dead instructions are filtered out as these dead instructions
+    // could reference registers which don't lead to the process' output registers.
+    val refCounts = countWithFunction(
+      newBody,
+      (instr: Instruction) => GraphBuilder.regUses(instr)
+    )
+    val defCounts = countWithFunction(
+      newBody,
+      (instr: Instruction) => GraphBuilder.regDef(instr).toSeq
+    )
+    val newRegs = asm.registers.filter { reg =>
+      val isReferenced = refCounts(reg.variable.name) != 0
+      val isDefined = defCounts(reg.variable.name) != 0
+      isReferenced || isDefined
+    }
 
     asm.copy(
-      registers = newRegs,
-      body = newBody
+      body = newBody,
+      registers = newRegs
     )
   }
 
@@ -190,7 +174,7 @@ object DeadCodeElimination
     implicit val ctx = context
 
     val out = DefProgram(
-      processes = asm.processes.map(process => deadCodeElimination(process)),
+      processes = asm.processes.map(process => dce(process)(ctx)),
       annons = asm.annons
     )
 
