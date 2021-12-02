@@ -25,7 +25,7 @@ trait HasSerialized {
   def serialized: String
 }
 
-/** Abastract IR flavor, any deriving IR flavor should be defined as an object
+/** Abstract IR flavor, any deriving IR flavor should be defined as an object
   * that defines the unbound types [[Name]], [[Constant]], [[Variable]],
   * [[CustomFunction]], [[ProcessId]], [[ExceptionId]].
   *

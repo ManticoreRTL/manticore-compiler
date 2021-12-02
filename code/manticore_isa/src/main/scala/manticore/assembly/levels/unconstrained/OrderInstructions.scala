@@ -48,7 +48,7 @@ object OrderInstructions
 
     asm.copy(
       registers = sortedRegs,
-      body = sortedInstrs
+      body = sortedInstrs.toSeq
     )
   }
 

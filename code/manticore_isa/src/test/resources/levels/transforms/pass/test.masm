@@ -1,10 +1,10 @@
-@LAYOUT [x = "10", y = "20"]
+@LAYOUT [x = "3", y = "3"]
 .prog :
   @LOC [x = "0", y = "0"]
   .proc proc_0_0:
-    @MEMBLOCK [block="block_0"]
+    @MEMBLOCK [block="block_0", capacity = "512"]
     .mem bram_0 16
-    @MEMBLOCK [block="block_1"]
+    @MEMBLOCK [block="block_1", capacity = "512"]
     .mem bram_1 16
     .reg x.\y 16
     .reg y 16
@@ -30,7 +30,7 @@
     ADD c, b, z;
     LD x.\y, c[0x1];
 
-  @LOC [x = "8", y = "15"]
+  @LOC [x = "2", y = "2"]
   .proc proc_8_15:
     .reg xx 16
     .reg z  16

@@ -71,7 +71,7 @@ trait Reporter {
     def info(msg: String): Unit =
       message(s"${BLUE}INFO${RESET}: ${msg}")
 
-    def fail(msg: String): Unit = throw new CompilationFailureException(msg)
+    def fail(msg: String): Nothing = throw new CompilationFailureException(msg)
 
     def debug(msg: => String)(implicit ctx: AssemblyContext): Unit =
       if (ctx.debug_message)

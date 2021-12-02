@@ -14,6 +14,9 @@ import manticore.assembly.annotations.AssemblyAnnotation
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
+  *
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object UnconstrainedToPlacedTransform
     extends AssemblyTransformer(UnconstrainedIR, PlacedIR) {
@@ -90,7 +93,7 @@ object UnconstrainedToPlacedTransform
     out
   }
 
-  /** Unchcked conversion of DefProcess
+  /** Unchecked conversion of DefProcess
     *
     * @param proc
     *   original process
@@ -103,8 +106,8 @@ object UnconstrainedToPlacedTransform
   )(implicit proc_map: Map[S.ProcessId, T.ProcessId]): T.DefProcess = {
 
     if (proc.registers.length >= 2048) {
-      logger.fail(
-        s"Can only support up to 2048 registers per process but have ${proc.registers.length} registers in ${proc.id}"
+      logger.info(
+        s"Process ${proc.id} has ${proc.registers.length} registers."
       )
     }
     import manticore.assembly.levels.{
@@ -151,12 +154,17 @@ object UnconstrainedToPlacedTransform
 
     val mem_regs = filterRegs(MemoryType).zipWithIndex.map {
       case (r: S.DefReg, i) =>
-        val block = r.findAnnotationValue("MEMBLOCK", "block") match {
-          case Some(manticore.assembly.annotations.StringValue(b)) => b
-          case _ =>
-            logger.error("Memory block not specified", r)
-            ""
-        }
+        val block =
+          r.findAnnotation(manticore.assembly.annotations.Memblock.name) match {
+            case Some(block_annon) =>
+              T.MemoryBlock(
+                block_annon.getStringValue("block").get,
+                block_annon.getIntValue("capacity").get
+              )
+            case None =>
+              logger.error("Memory block not specified")
+              T.MemoryBlock("", 0)
+          }
         r.variable ->
           T.MemoryVariable(
             r.variable.name,
