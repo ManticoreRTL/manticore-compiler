@@ -3,8 +3,8 @@ package manticore.assembly
 /** DependenceGraph.scala
   *
   * @author
-  *   Sahand Kashani <sahand.kashani@epfl.ch>
-  *   Mahyar Emami <mahyar.emami@eplf.ch>
+  *   Sahand Kashani <sahand.kashani@epfl.ch> Mahyar Emami
+  *   <mahyar.emami@eplf.ch>
   */
 
 import manticore.assembly.levels.AssemblyTransformer
@@ -15,8 +15,7 @@ import manticore.assembly.levels.MemoryType
 import scalax.collection.Graph
 import scala.util.Try
 
-/**
-  * Generic dependence graph builder, to use it, specialize it as an object
+/** Generic dependence graph builder, to use it, specialize it as an object
   * {{{
   * object MyFlavor extends ManticoreAssemblyIR { ... }
   * object MyFlavorDependenceGraphBuilder extends DependenceGraphBuilder(MyFlavor)
@@ -102,20 +101,23 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](flavor: T)
     }
   }
 
-  /**
-    * Build a dependence graph
+  /** Build a dependence graph
     *
-    * @param process the process which contains the instructions
-    * @param label a labeling function for edges
-    * @param ctx compilation context
-    * @return An immutable dependence graph
+    * @param process
+    *   the process which contains the instructions
+    * @param label
+    *   a labeling function for edges
+    * @param ctx
+    *   compilation context
+    * @return
+    *   An immutable dependence graph
     */
   def build[L](
       process: T#DefProcess,
       label: (T#Instruction, T#Instruction) => L
   )(implicit
       ctx: AssemblyContext
-  ): Graph[T#Instruction, LDiEdge] =  {
+  ): Graph[T#Instruction, LDiEdge] = {
 
     import scalax.collection.mutable.{Graph => MutableGraph}
 
@@ -304,17 +306,18 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](flavor: T)
       */
 
     val raw_dependence_graph =
-      process.body.foldLeft(MutableGraph.empty[T#Instruction, LDiEdge]) {
-        case (g, inst) =>
-          // first add an edge for register to register dependency
-          regUses(inst).foldLeft(g + inst) { case (gg, use) =>
-            def_instructions.get(use) match {
-              case Some(pred) =>
-                gg += LDiEdge[T#Instruction, L](pred, inst)(label(pred, inst))
-              case None =>
-                gg
-            }
+      process.body.foldLeft(
+        MutableGraph[T#Instruction, LDiEdge](process.body: _*)
+      ) { case (g, inst) =>
+        // first add an edge for register to register dependency
+        regUses(inst).foldLeft(g + inst) { case (gg, use) =>
+          def_instructions.get(use) match {
+            case Some(pred) =>
+              gg += LDiEdge[T#Instruction, L](pred, inst)(label(pred, inst))
+            case None =>
+              gg
           }
+        }
       }
     // now add the load-to-store dependencies
     val dependence_graph = loads
@@ -330,6 +333,10 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](flavor: T)
           }
       }
 
+    // dependence_graph.nodes.foreach { n =>
+    //   println(s"Node: ${n.toOuter.serialized}")
+    // }
+    process.body.foreach { inst => }
     if (dependence_graph.isCyclic) {
       logger.error("Could not create acyclic dependence graph!")
     }

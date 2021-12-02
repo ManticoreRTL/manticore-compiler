@@ -17,7 +17,8 @@ import manticore.assembly.levels.placed.PlacedIR
 import manticore.assembly.levels.placed.PlacedNameChecker
 import scala.language.postfixOps
 import manticore.assembly.levels.placed.ListSchedulerTransform
-
+import manticore.assembly.levels.placed.GlobalPacketSchedulerTransform
+import manticore.assembly.levels.placed.PredicateInsertionTransform
 
 case class CliConfig(
     input_file: Option[File] = None,
@@ -92,7 +93,9 @@ object Main {
           UnconstrainedToPlacedTransform followedBy
           PlacedNameChecker followedBy
           ListSchedulerTransform followedBy
-          ListSchedulerTransform
+          PredicateInsertionTransform followedBy
+          GlobalPacketSchedulerTransform
+
       phases(prg, ctx)._1
     }
 

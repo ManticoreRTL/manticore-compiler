@@ -24,6 +24,8 @@ case class AssemblyContext(
     val max_registers: Int = 2048
 ) {
 
+  var transform_index = 0
+
 
 
 }

@@ -11,25 +11,43 @@ import manticore.assembly.CompilationFailureException
 import manticore.assembly.DependenceGraphBuilder
 import scalax.collection.edge.LDiEdge
 import scala.collection.parallel.CollectionConverters._
-/**
-  * List scheduler transformation
+import manticore.assembly.levels.UInt16
+
+/** List scheduler transformation, the output of this transformation is a
+  * program with locally scheduled processes. If the input program has Nops,
+  * they will be all ignored.
   *
-  * @author Mahyar emami <mahyar.emami@epfl.ch>
+  * IMPORTANT:
   *
+  * All the Stores are scheduled after loads since all memories are assumed to
+  * have async read and sync write. Therefore, so if a register allocator needs
+  * to spill to the array memory it has to store and load registers then it can
+  * not use this transformation again.
+  *
+  *
+  * @author
+  *   Mahyar emami <mahyar.emami@epfl.ch>
   */
 object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
   import PlacedIR._
+  import manticore.assembly.levels.placed.LatencyAnalysis
   import scalax.collection.Graph
   import scalax.collection.mutable.{Graph => MutableGraph}
   import scalax.collection.edge.WDiEdge
 
   private case class Label(v: Int)
 
-  private def instructionLatency(inst: Instruction): Int = inst match {
-    case Predicate(_, _) => 0
-    case _               => 3
-  }
+  private def manhattanDistance(
+      source: ProcessId,
+      target: ProcessId,
+      dim: (Int, Int)
+  ) =
+    LatencyAnalysis.manhattan(source, target, dim)
+
+  private def instructionLatency(inst: Instruction): Int =
+    LatencyAnalysis.latency(inst)
+
   private def labelingFunc(pred: Instruction, succ: Instruction): Label =
     (pred, succ) match {
       // store instructions take a cycle longer, because there is going to be a
@@ -47,8 +65,9 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
   private def createLocalSchedule(
       proc: DefProcess,
+      dim: (Int, Int),
       ctx: AssemblyContext
-  ): PartiallyScheduledProcess = {
+  ): DefProcess = {
 
     import manticore.assembly.DependenceGraphBuilder
     import manticore.assembly.levels.placed.DependenceAnalysis
@@ -56,7 +75,9 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     val dependence_graph =
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
     // dump the graph
-    logger.dumpArtifact(s"dependence_graph_${getName}_${proc.id.id}.dot") {
+    logger.dumpArtifact(
+      s"dependence_graph_${getName}_${proc.id.id}_${ctx.transform_index}.dot"
+    ) {
 
       import scalax.collection.io.dot._
       import scalax.collection.io.dot.implicits._
@@ -119,11 +140,33 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     // require(dependence_graph.nodes.size == proc.body.size)
 
     def traverseGraphNodesAndRecordDistanceToSink(node: Node): Int = {
-      node.outerEdgeTraverser
 
       if (node.edges.filter(_.from == node).isEmpty) {
-        distance_to_sink(node) = 0
-        0
+
+        // Nodes that do not introduce any RAW dependence should usually
+        // have a distance to sink equal to instruction latency, except for
+        // Send instruction, because they need to traverse NoC hops. In
+        // order to model their distance sink we can use the Manhattan
+        // distance which is essentially the number of cycles it takes a
+        // message to reach its destination. But since each Send becomes a
+        // SetValue at the target we should also include an additional
+        // latency into our calculation
+        val dist = node.toOuter match {
+          case inst @ Send(rd, _, target, _) =>
+            instructionLatency(inst) + // local instruction latency
+              manhattanDistance(
+                proc.id,
+                target,
+                dim
+              ) + // time to traverse the NoC
+              instructionLatency(
+                SetValue(rd, UInt16(0))
+              ) // remote instruction latency
+          case inst @ _ =>
+            instructionLatency(inst)
+        }
+        distance_to_sink(node) = dist
+        dist
       } else if (distance_to_sink.contains(node)) {
         // answer already known
         distance_to_sink(node)
@@ -136,8 +179,9 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
                 .v
             distance_to_sink(node) = dist
             dist
-          } else { 0 }
-
+          } else {
+            0 // irrelevant, the edge is inwards
+          }
         }.max
       }
     }
@@ -149,8 +193,11 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
     val send_instructions = proc.body.collect { case i @ Send(_, _, _, _) => i }
 
-    val unsched_list = scala.collection.mutable.ListBuffer[Instruction]()
-    unsched_list ++= proc.body.filter(_.isInstanceOf[Send] == false)
+    val unsched_list = scala.collection.mutable.ListBuffer[Instruction](
+      proc.body.filter(_ != Nop): _* // remove nops, they can not be
+      // scheduled because they never become ready (no operands) and they
+      // don't matter anyways.
+    )
 
     val schedule = scala.collection.mutable.ListBuffer[Instruction]()
 
@@ -172,7 +219,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
         .mkString("\n")
     )(ctx)
     ready_list ++= dependence_graph.nodes
-      .filter { n => n.inDegree == 0 && n.toOuter.isInstanceOf[Send] == false }
+      .filter { n => n.inDegree == 0 }
       .map { ReadyNode(_) }
 
     logger.debug(
@@ -185,9 +232,14 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     // dependence_graph.OuterEdgeTraverser
 
     var active_list = scala.collection.mutable.ListBuffer[(Node, Double)]()
-    val scheduled_preds = scala.collection.mutable.Set.empty[Node]
+    // val scheduled_preds = scala.collection.mutable.Set.empty[Node]
     // LIST scheduling simulation loop
     var cycle = 0
+    logger.debug(
+      s"Distance to sink \n${distance_to_sink
+        .map { case (k, v) => s"${k.serialized} : ${v} " }
+        .mkString("\n")}"
+    )(ctx)
     while (unsched_list.nonEmpty && cycle < 4096) {
 
       val to_retire = active_list.filter(_._2 == 0)
@@ -228,32 +280,12 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       } else {
         val head = ready_list.head
         // check if a predicate instruction is needed before scheduling the head
-        val predicate: Option[Predicate] =
-          if (scheduled_preds.contains(head.n)) {
-            None // predicate of the store is already scheduled
-          } else {
-            head.n.toOuter match {
-              case GlobalStore(_, (b0, b1, b2), p, _) =>
-                p.map(Predicate(_))
-              case LocalStore(_, b, _, p, _) =>
-                p.map(Predicate(_))
-              case _ => None
-            }
-
-          }
-        predicate match {
-          case Some(x: Predicate) =>
-            logger.debug(s"${cycle}: Scheduling ${x}")(ctx)
-            schedule.append(x)
-            scheduled_preds += head.n
-          case None =>
-            logger
-              .debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")(ctx)
-            active_list.append((head.n, instructionLatency(head.n.toOuter)))
-            schedule.append(head.n.toOuter)
-            unsched_list -= head.n.toOuter
-            ready_list.dequeue()
-        }
+        logger
+          .debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")(ctx)
+        active_list.append((head.n, instructionLatency(head.n.toOuter)))
+        schedule.append(head.n.toOuter)
+        unsched_list -= head.n.toOuter
+        ready_list.dequeue()
       }
       cycle += 1
     }
@@ -265,97 +297,16 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       )
     }
 
-    /** All of the Non-send instructions are now scheduled. We need to "patch"
-      * the schedule with [[Predicate]] instructions so that [[LocalStore]] and
-      * [[GlobalStore]] would no longer need to have explicit predicates
-      */
+    proc.copy(body = schedule.toSeq)
 
-    val register_to_send = send_instructions.map { case i @ Send(_, rs, _, _) =>
-      rs -> i
-    }.toMap
-    val earliest_send_cycles =
-      scala.collection.mutable.Map[Send, Option[Int]](
-        send_instructions.map { x => (x, None) }: _*
-      )
-
-    // find the earliest time each send instruction can be scheduled, i.e.,
-    // latency + cycle where cycle is the time the producer instruction is
-    // scheduled.
-
-    // now go through all instruction, see if their produced value is sent
-    // and then compute the earliest time a Send can be scheduled
-    schedule.zipWithIndex.foreach { case (inst, cycle) =>
-      DependenceAnalysis.regDef(inst) match {
-        case Some(rd) =>
-          register_to_send.get(rd) match {
-            case Some(send: Send) =>
-              earliest_send_cycles +=
-                send ->
-                  Some(
-                    cycle + 1 + instructionLatency(inst)
-                  )
-
-            case None =>
-            // nothing
-          }
-        case None =>
-        // nothing
-      }
-    }
-
-    val earliest_send_sorted = earliest_send_cycles
-      .map { case (inst, c) =>
-        inst -> (c match {
-          case Some(n) => n
-          case None    => // in case the Send has no producer, warn the user and
-            // set the earliest time to 0
-            logger.warn(s"Process ${proc.id.id} sends a constant value", inst)
-            0
-        })
-      }
-      .toSeq
-      .sortBy(_._2)
-
-    // a map from Send instructions to the earliest time they can be scheduled
-    val send_to_earliest = earliest_send_sorted.zipWithIndex.map {
-      case ((inst, c), offset) =>
-        /**
-          * We prioritize order the Sends within each process by their earliest
-          * time, notice that this means we have to add a cycle offset to
-          * every send corresponding to the number of Sends that are ordered
-          * before them. This ensures that the ordering of Sends is taken
-          * into account later when we perform a global scheduling of Sends
-          */
-        inst -> (c + offset)
-    }.toMap
-    // a partial schedule that does not contain the Send instructions
-    val partial_schedule = schedule.toList
-
-    // return both to be used for a global schedule
-    PartiallyScheduledProcess(
-      proc = proc,
-      partial_schedule = partial_schedule,
-      earliest = send_to_earliest
-    )
 
   }
 
-  private def createGlobalSchedule(
+
+  override def transform(
       source: DefProgram,
       context: AssemblyContext
   ): DefProgram = {
-
-    type Node = Graph[Instruction, WDiEdge]#NodeT
-
-    // first find partial schedules that do not have the send instructions (in
-    // parallel)
-    val partial_schedules = source.processes.par.map { p =>
-      // remove the Nops, the local scheduler will put them back in
-      val pruned_process = p.copy(
-        body = p.body.filter( _!= Nop )
-      )
-      createLocalSchedule(pruned_process, context)
-    }.seq
 
     def getDim(dim: String): Int =
       source.findAnnotationValue("LAYOUT", dim) match {
@@ -368,182 +319,16 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     val dimx = getDim("x")
     val dimy = getDim("y")
 
-    // a wrapper class for Send instruction
-    case class SendWrapper(
-        inst: Send,
-        source: ProcessId,
-        target: ProcessId,
-        earliest: Int
-    ) extends Ordered[SendWrapper] {
-      val x_dist =
-        if (source.x > target.x) dimx - source.x + target.x
-        else target.x - source.x
-      val y_dist =
-        if (source.y > target.y) dimy - source.y + target.y
-        else target.y - source.y
-      val manhattan =
-        x_dist + y_dist
-
-      val path_x: Seq[(Int, Int)] = // a tuple of x location and occupancy time
-        Seq.tabulate(x_dist) { i =>
-          val x_v = (source.x + i) % dimx
-          x_v -> (earliest + instructionLatency(inst) + i + 1)
-        }
-      val path_y: Seq[(Int, Int)] = // a tuple of y location and occupancy time
-        Seq.tabulate(y_dist) { i =>
-          val y_v = (source.y + i) % dimy
-          y_v -> (path_x.last._2 + i + 1)
-        }
-
-      // A send instruction that becomes available earlier, has higher priority
-      // locally, this is somehow enforced, i.e., the List scheduler assumes
-      // that Sends are scheduled in the order in which their data is produced.
-      // Without this assumption it is not possible to compute a valid early time
-      // since scheduling one Send will change the earliest time unscheduled ones
-      def compare(that: SendWrapper): Int =
-        Ordering[Int]
-          .compare(this.earliest, that.earliest)
+    if (context.debug_message) { // run single-threaded if debug enabled
+      source.copy(processes = source.processes.map { p =>
+        createLocalSchedule(p, (dimx, dimy), context)
+      })
+    } else {
+      source.copy(processes = source.processes.par.map { p =>
+        createLocalSchedule(p, (dimx, dimy), context)
+      }.seq)
     }
-
-    import scala.collection.mutable.{Queue => MutableQueue}
-
-    // a wrapper class for processes that contains a list of scheduled
-    // non-Send instruction and non-schedule Send instructions.
-    case class ProcessWrapper(
-        proc: DefProcess,
-        scheduled: MutableQueue[(Send, Int)],
-        unscheduled: MutableQueue[SendWrapper]
-    ) extends Ordered[ProcessWrapper] {
-
-      // Among processes, always prioritize Sends that have a longer
-      // manhattan distance. This is much like the LIST scheduling algorithm
-      // where the distance to sink is the priority.
-      def compare(that: ProcessWrapper): Int =
-        (this.unscheduled, that.unscheduled) match {
-          case (MutableQueue(), MutableQueue()) => 0
-          case (x +: _, y +: _) =>
-            Ordering[Int].reverse.compare(x.manhattan, y.manhattan)
-          case (MutableQueue(), y +: _) => -1
-          case (x +: _, MutableQueue()) => 1
-        }
-    }
-    // now patch the local schedule by globally scheduling the send instructions
-    import scala.collection.mutable.PriorityQueue
-
-    // keep a sorted queue of Processes, sorting is done based on the priority
-    // of each processes' send instruction. I.e., the process with the most
-    // critical send (largest manhattan distance and earliest possible schedule
-    // time) should be considered first when trying to schedule sends in a cycle
-    val to_schedule = PriorityQueue.empty[ProcessWrapper] ++
-      partial_schedules
-        .filter {
-          _.earliest.nonEmpty
-        }
-        .map { psched =>
-          val sends = psched.earliest
-            .map { case (send, early) =>
-              SendWrapper(
-                inst = send,
-                source = psched.proc.id,
-                target = send.dest_id,
-                earliest = early
-              )
-            }
-            .toList
-            .sorted
-          ProcessWrapper(
-            psched.proc,
-            MutableQueue(),
-            MutableQueue() ++ sends
-          )
-        }
-        .toSeq
-
-    def createLinks = {
-      type LinkOccupancy = scala.collection.mutable.Set[Int]
-      val link = Array.ofDim[LinkOccupancy](dimx, dimy)
-      for (x <- 0 until dimx; y <- 0 until dimy) {
-        link(x)(y) = scala.collection.mutable.Set.empty[Int]
-      }
-      link
-    }
-    val linkX = createLinks
-    val linkY = createLinks
-
-    var cycle = 0
-    var schedule_unfinished = true
-    while (cycle < 4096 && to_schedule.exists(_.unscheduled.nonEmpty)) {
-
-      // go through all processes and try to schedule the highest priority
-      // send instruction in each
-      val checked = to_schedule.dequeueAll.map { h: ProcessWrapper =>
-        if (h.unscheduled.nonEmpty) {
-          val inst_wrapper = h.unscheduled.head
-          if (inst_wrapper.earliest <= cycle) {
-            val can_route_horiz = inst_wrapper.path_x.forall { case (x, t) =>
-              linkX(x)(inst_wrapper.source.y).contains(t) == false
-            }
-            val can_route_vert = inst_wrapper.path_y.forall { case (y, t) =>
-              linkY(inst_wrapper.target.x)(y).contains(t) == false
-            }
-            if (can_route_vert && can_route_horiz) {
-              logger.debug(
-                s"@${cycle}: Scheduling ${inst_wrapper.inst.serialized} in process ${h.proc.id}"
-              )(context)
-              h.scheduled += (h.unscheduled.dequeue().inst -> cycle)
-            }
-          }
-
-        }
-        h
-      }
-      cycle += 1
-      to_schedule ++= checked
-    }
-
-    if (to_schedule.exists(_.unscheduled.nonEmpty)) {
-      logger.error("Could not schedule Send instruction in 4096 cycles!")
-    }
-
-    // now we have the time at which each send instruction can be scheduled,
-    // so we are going to "patch" the partial instruction accordingly
-    source.copy(
-      processes = partial_schedules.map { p =>
-        val body: Seq[Instruction] = to_schedule.find(_.proc == p.proc) match {
-          case Some(ProcessWrapper(_, send_schedule, _)) =>
-            val nonsend_sched =
-              MutableQueue[Instruction]() ++ p.partial_schedule
-            val sched_len = nonsend_sched.length + send_schedule.length
-            val full_sched = MutableQueue[Instruction]()
-            var cycle = 0
-            while (nonsend_sched.nonEmpty || send_schedule.nonEmpty) {
-              if (send_schedule.nonEmpty && cycle == send_schedule.head._2) {
-                full_sched.enqueue(send_schedule.dequeue()._1)
-              } else if (nonsend_sched.nonEmpty) {
-                full_sched.enqueue(nonsend_sched.dequeue())
-              } else {
-                full_sched enqueue Nop
-              }
-              cycle += 1
-            }
-
-            full_sched.toSeq
-          case None =>
-            p.partial_schedule
-
-        }
-        p.proc.copy(body = body)
-      }
-    )
-  }
-
-
-  override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
-
-    createGlobalSchedule(source, context)
+    // createGlobalSchedule(source, context)
 
   }
 

@@ -7,6 +7,8 @@ import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.UInt16
 
 import scala.collection.mutable.{Queue => MutableQueue}
+import scala.collection.mutable.{ArrayDeque => MutableDeque}
+import scala.collection.mutable.PriorityQueue
 
 /** Register allocation transform using a linear scan
   * @author
@@ -22,7 +24,7 @@ object RegisterAllocationTransform
   type LivenessScope = Tuple2[Name, Tuple2[Int, Int]]
   private def computeLiveness(
       process: DefProcess
-  )(implicit ctx: AssemblyContext): Seq[LivenessScope] = {
+  )(implicit ctx: AssemblyContext): Map[Name, (Int, Int)] = {
 
     // initialize liveness scopes, constants are always live, therefore,
     // their liveness internal is 0 to infinity.
@@ -60,19 +62,16 @@ object RegisterAllocationTransform
       }
     }
 
-    life_begin
-      .map { case (name, beg) =>
-        life_end.get(name) match {
-          case Some(end) => (name -> (beg, end))
-          case None =>
-            logger.warn(
-              s"Register ${name} in process ${process.id} is never used."
-            )
-            (name -> (beg, beg))
-        }
+    life_begin.map { case (name, beg) =>
+      life_end.get(name) match {
+        case Some(end) => (name -> (beg, end))
+        case None =>
+          logger.warn(
+            s"Register ${name} in process ${process.id} is never used."
+          )
+          (name -> (beg, beg))
       }
-      .toSeq
-      .sortBy { case (n, (b, e)) => b }
+    }.toMap
 
   }
 
@@ -103,32 +102,104 @@ object RegisterAllocationTransform
       )
     }
   }
+
+  private def defineConstantZeroAndOne(
+      process: DefProcess
+  )(implicit ctx: AssemblyContext): DefProcess = {
+
+    def findConstant(value: Int): Option[DefReg] =
+      process.registers.find {
+        case DefReg(_: ConstVariable, Some(UInt16(value)), _) => true
+        case _                                                => false
+      }
+
+    val const_0 = findConstant(0)
+    val const_1 = findConstant(1)
+
+    val non_zero_one = process.registers.filter {
+      case DefReg(_: ConstVariable, Some(UInt16(x)), _) if (x != 0 && x != 1) =>
+        true
+      case _ => false
+    }
+    val consts: Seq[DefReg] = Seq(const_0, const_1).collect { case Some(v) =>
+      v
+    } ++ non_zero_one
+    val non_consts = process.registers.filter {
+      case DefReg(_: ConstVariable, _, _) => false
+      case _                              => true
+    }
+
+    process.copy(
+      registers = consts ++ non_consts
+    )
+  }
+
   private def allocateRegisters(
       process: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
 
-    val MaxRegisters = ctx.max_registers
+    val ReservedRegisters = 2 + 1 // first two registers are reserved,
+    // the first two are tied to zero and one and the third is used as a base
+    // for spilling space
+    val MaxRegisters = ctx.max_registers - ReservedRegisters
     val ArrayMemoryCapacity = 2048
-    val MaxConstRegisters = 32
 
     val (memories, used_capacity) = allocateLocalMemory(process)
+
     val free_capacity = ArrayMemoryCapacity - used_capacity
     logger.info(
-      s"Process ${process.id} requires ${used_capacity} memory words (max usable ${ArrayMemoryCapacity})"
+      s"Process ${process.id} requires ${used_capacity} " +
+        s"memory words (max usable ${ArrayMemoryCapacity})"
     )
 
     val liveness = computeLiveness(process)
+    val const_0 = process.registers.head.variable.name
 
-    val free_const_regs = MutableQueue[Int](
-      Seq.tabulate(MaxConstRegisters) { i => i }: _*
+    // get all the non-zero constants
+    val const_decls = process.registers.collect {
+      case r @ DefReg(v: ConstVariable, Some(UInt16(value)), _) if value != 0 =>
+        r
+    }
+
+    // we spill registers prioritizing the ones that die latest, because these
+    // registers
+    case class LiveRegister(name: Name, lifetime: (Int, Int))
+        extends Ordered[LiveRegister] {
+      override def compare(that: LiveRegister): Int = {
+        Ordering[Int].reverse.compare(this.lifetime._2, that.lifetime._2)
+      }
+    }
+
+    // a map from unique names to possibly colliding hardware registers IDs
+    val rename_map = scala.collection.mutable.Map.empty[Name, Int]
+
+    // initialize the free register deque, constants use the
+    val free_ids = MutableDeque[Int](
+      // valid register IDs are 1 to 2046 (i.e., ctx.max_registers - 2)
+      // because register 0 is not writeable (tied to zero)
+      Seq.tabulate(MaxRegisters) { i => i + ReservedRegisters }: _*
     )
+    val push_cycles = MutableQueue.empty[(Name, Int)]
+    val pop_cycles = MutableQueue.empty[(Name, Int)]
+    // create a queue of unborn names, ordered by increasing birth/start time
+    // we allocate registers by dequeueing an unborn name and pulling an id from
+    // the free_ids and putting in an active list while also keeping a map from
+    // names to the id assigned. If there are no free registers, we look at
+    // a priority queue holding all active registers ordered by decreasing
+    // end time. We "spill" the head of the priority queue
+    // At the same time, we keep another queue, ordered by increasing death/end
+    // time. Dequeueing from this queue means that a register has become free,
+    // we then put the register back in the free_id deque.
+    val unborn_names =
+      MutableQueue.empty[LiveRegister] ++ liveness
+      .map { case (name, range) => LiveRegister(name, range) }
+      .toSeq
+      .sortBy { case LiveRegister(_, life) => life._1 }
 
-    // val free_user_regs = MutableQueue[Int](
-    //   Seq.tabulate(MaxRegisters - MaxConstRegisters)
-    // )
-    var const_reg_index = 0
 
-    val user_reg_index = MaxRegisters - 1
+    // .sortBy { case (_, (start, _)) => start }
+    // val live_names = scala.collection.mutable.PriorityQueue[
+    // val active_regs = PriorityQueue.empty[]
 
     logger.fail("Could not allocate registers")
   }
