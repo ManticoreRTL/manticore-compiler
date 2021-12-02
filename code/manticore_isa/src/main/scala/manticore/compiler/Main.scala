@@ -91,6 +91,7 @@ object Main {
         UnconstrainedNameChecker followedBy
           UnconstrainedToPlacedTransform followedBy
           PlacedNameChecker followedBy
+          ListSchedulerTransform followedBy
           ListSchedulerTransform
       phases(prg, ctx)._1
     }

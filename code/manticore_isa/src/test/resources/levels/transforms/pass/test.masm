@@ -2,9 +2,9 @@
 .prog :
   @LOC [x = "0", y = "0"]
   .proc proc_0_0:
-    @MEMBLOCK [block="block_0"]
+    @MEMBLOCK [block="block_0", capacity = "512"]
     .mem bram_0 16
-    @MEMBLOCK [block="block_1"]
+    @MEMBLOCK [block="block_1", capacity = "512"]
     .mem bram_1 16
     .reg x.\y 16
     .reg y 16

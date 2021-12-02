@@ -3,12 +3,16 @@ import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.VariableType
 import manticore.assembly.levels.HasVariableType
 import manticore.assembly.levels.UInt16
+import manticore.assembly.DependenceGraphBuilder
 
 /** IR level with placed processes and allocated registers.
+ *
+ *  @author Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object PlacedIR extends ManticoreAssemblyIR {
 
   import manticore.assembly.HasSerialized
+
 
 
   sealed abstract class PlacedVariable(val tpe: VariableType)
@@ -25,6 +29,7 @@ object PlacedIR extends ManticoreAssemblyIR {
     OutputType,
     MemoryType
   }
+  case class MemoryBlock(block_id: Name, capacity: Int)
   case class WireVariable(name: Name, id: Int)
       extends PlacedVariable(WireType)
   case class RegVariable(name: Name, id: Int)
@@ -35,7 +40,7 @@ object PlacedIR extends ManticoreAssemblyIR {
       extends PlacedVariable(ConstType)
   case class OutputVariable(name: Name, id: Int)
       extends PlacedVariable(OutputType)
-  case class MemoryVariable(name: Name, id: Int, block: Name)
+  case class MemoryVariable(name: Name, id: Int, block: MemoryBlock)
       extends PlacedVariable(MemoryType)
 
 
@@ -58,3 +63,5 @@ object PlacedIR extends ManticoreAssemblyIR {
   type ExceptionId = UInt16
 
 }
+
+object DependenceAnalysis extends DependenceGraphBuilder(PlacedIR)

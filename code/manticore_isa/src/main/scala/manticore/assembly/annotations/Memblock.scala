@@ -9,12 +9,14 @@ object Memblock {
   val name: String = "Memblock".toUpperCase()
 
   def apply(fields: Map[String, String]) = {
-    require(fields.contains("block"))
+    require(fields.contains("block"), s"${name} annotation requires block")
+    require(fields.contains("capacity"), s"${name} annotation requires capacity")
 
     new Memblock(
       name,
       Map(
-        "block" -> StringValue(fields("block"))
+        "block" -> StringValue(fields("block")),
+        "capacity" -> IntValue(fields("capacity").toInt)
       )
     )
   }

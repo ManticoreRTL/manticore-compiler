@@ -10,7 +10,13 @@ import scala.util.Try
 import manticore.assembly.CompilationFailureException
 import manticore.assembly.DependenceGraphBuilder
 import scalax.collection.edge.LDiEdge
-
+import scala.collection.parallel.CollectionConverters._
+/**
+  * List scheduler transformation
+  *
+  * @author Mahyar emami <mahyar.emami@epfl.ch>
+  *
+  */
 object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
   import PlacedIR._
@@ -45,7 +51,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
   ): PartiallyScheduledProcess = {
 
     import manticore.assembly.DependenceGraphBuilder
-    object DependenceAnalysis extends DependenceGraphBuilder(PlacedIR)
+    import manticore.assembly.levels.placed.DependenceAnalysis
 
     val dependence_graph =
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
@@ -110,7 +116,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     )
 
     require(dependence_graph.isAcyclic, "Dependence graph is cyclic!")
-    require(dependence_graph.nodes.size == proc.body.size)
+    // require(dependence_graph.nodes.size == proc.body.size)
 
     def traverseGraphNodesAndRecordDistanceToSink(node: Node): Int = {
       node.outerEdgeTraverser
@@ -344,7 +350,11 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
     // first find partial schedules that do not have the send instructions (in
     // parallel)
     val partial_schedules = source.processes.par.map { p =>
-      createLocalSchedule(p, context)
+      // remove the Nops, the local scheduler will put them back in
+      val pruned_process = p.copy(
+        body = p.body.filter( _!= Nop )
+      )
+      createLocalSchedule(pruned_process, context)
     }.seq
 
     def getDim(dim: String): Int =
@@ -466,7 +476,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
       // go through all processes and try to schedule the highest priority
       // send instruction in each
-      val checked = to_schedule.dequeueAll.map { h =>
+      val checked = to_schedule.dequeueAll.map { h: ProcessWrapper =>
         if (h.unscheduled.nonEmpty) {
           val inst_wrapper = h.unscheduled.head
           if (inst_wrapper.earliest <= cycle) {
@@ -508,9 +518,9 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
             var cycle = 0
             while (nonsend_sched.nonEmpty || send_schedule.nonEmpty) {
               if (send_schedule.nonEmpty && cycle == send_schedule.head._2) {
-                full_sched enqueue send_schedule.dequeue._1
+                full_sched.enqueue(send_schedule.dequeue()._1)
               } else if (nonsend_sched.nonEmpty) {
-                full_sched enqueue nonsend_sched.dequeue
+                full_sched.enqueue(nonsend_sched.dequeue())
               } else {
                 full_sched enqueue Nop
               }
@@ -523,7 +533,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
         }
         p.proc.copy(body = body)
-      }.seq
+      }
     )
   }
 
