@@ -4,18 +4,19 @@ import manticore.UnitTest
 import manticore.assembly.parser.UnconstrainedAssemblyParser
 import scala.language.postfixOps
 
-
-
 import manticore.assembly.BinaryOperator
-import manticore.assembly.annotations.{AssemblyAnnotation, Memblock, Layout, Loc}
-
+import manticore.assembly.annotations.{
+  AssemblyAnnotation,
+  Memblock,
+  Layout,
+  Loc
+}
 
 import manticore.assembly.levels.UInt16
 import manticore.compiler.AssemblyContext
 import java.io.File
 import manticore.assembly.parser.AssemblyParser
 import manticore.assembly.CompilationFailureException
-
 
 class UnconstrainedToPlacedTransformTester extends UnitTest {
 
@@ -52,9 +53,7 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
         """
   val ctx = AssemblyContext()
 
-
   val backend = UnconstrainedToPlacedTransform
-
 
   it should "correctly transform a valid program" in {
     import PlacedIR._
@@ -68,10 +67,12 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
               DefReg(ConstVariable("$zero", 0), Some(UInt16(0))),
               DefReg(ConstVariable("$one", 1), Some(UInt16(1))),
               DefReg(RegVariable("%x", 2), None),
-              DefReg(MemoryVariable("$$bram", 3, "mem_0"),  None,
+              DefReg(
+                MemoryVariable("$$bram", 3, MemoryBlock("mem_0", 512)),
+                None,
                 Seq(
                   Memblock(
-                    Map("block" -> "mem_0")
+                    Map("block" -> "mem_0", "capacity" -> "512")
                   )
                 )
               )
@@ -95,9 +96,9 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
           )
         ),
         Seq(
-            Layout(
-                Map("x" -> "10", "y" -> "32")
-            )
+          Layout(
+            Map("x" -> "10", "y" -> "32")
+          )
         )
       )
 
