@@ -260,13 +260,13 @@ trait ManticoreAssemblyIR {
   case class Mux(
       rd: Name,
       sel: Name,
-      rs1: Name,
-      rs2: Name,
+      rfalse: Name,
+      rtrue: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
 
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tMUX ${rd}, ${sel}, ${rs1}, ${rs2}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tMUX ${rd}, ${sel}, ${rfalse}, ${rtrue}; //@${pos}"
   }
 
   case object Nop extends Instruction {

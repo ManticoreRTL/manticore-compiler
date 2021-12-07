@@ -268,8 +268,8 @@ object RemoveAliases
         case Predicate(rs, annons) =>
           Predicate(replaceName(rs), annons)
 
-        case Mux(rd, sel, rs1, rs2, annons) =>
-          Mux(rd, replaceName(sel), replaceName(rs1), replaceName(rs2), annons)
+        case Mux(rd, sel, rfalse, rtrue, annons) =>
+          Mux(rd, replaceName(sel), replaceName(rfalse), replaceName(rtrue), annons)
 
         case Nop =>
           Nop
