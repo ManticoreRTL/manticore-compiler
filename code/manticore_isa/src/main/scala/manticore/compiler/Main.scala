@@ -19,6 +19,9 @@ import scala.language.postfixOps
 import manticore.assembly.levels.placed.ListSchedulerTransform
 import manticore.assembly.levels.placed.GlobalPacketSchedulerTransform
 import manticore.assembly.levels.placed.PredicateInsertionTransform
+import manticore.assembly.levels.unconstrained.RemoveAliases
+import manticore.assembly.levels.unconstrained.DeadCodeElimination
+import manticore.assembly.levels.unconstrained.OrderInstructions
 
 case class CliConfig(
     input_file: Option[File] = None,
@@ -90,6 +93,9 @@ object Main {
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
       val phases =
         UnconstrainedNameChecker followedBy
+          OrderInstructions followedBy
+          RemoveAliases followedBy
+          DeadCodeElimination followedBy
           UnconstrainedToPlacedTransform followedBy
           PlacedNameChecker followedBy
           ListSchedulerTransform followedBy

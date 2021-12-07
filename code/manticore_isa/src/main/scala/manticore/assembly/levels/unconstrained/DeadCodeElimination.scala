@@ -14,14 +14,15 @@ import manticore.assembly.levels.OutputType
 import scalax.collection.Graph
 import scalax.collection.edge.LDiEdge
 
-/** This transform identifies dead code and removes it from the design. Dead code
-  * is code that does not contribute to the output registers of a program.
+/** This transform identifies dead code and removes it from the design. Dead
+  * code is code that does not contribute to the output registers of a program.
   */
 object DeadCodeElimination
     extends AssemblyTransformer(UnconstrainedIR, UnconstrainedIR) {
 
   import UnconstrainedIR._
 
+  private def labelingFunc(pred: Instruction, succ: Instruction) = None
   object GraphBuilder extends DependenceGraphBuilder(UnconstrainedIR)
 
   /** Finds all live instructions in a process. An instruction is considered
@@ -56,7 +57,7 @@ object DeadCodeElimination
 
     // Create dependency graph.
     // The value of the label doesn't matter for topological sorting.
-    def labelingFunc(pred: Instruction, succ: Instruction) = None
+
     val dependenceGraph = GraphBuilder.build(asm, labelingFunc)(ctx)
 
     // Cache of backtracking results to avoid exponential lookup if we end up
@@ -161,10 +162,63 @@ object DeadCodeElimination
       isReferenced || isDefined
     }
 
-    asm.copy(
+    val proc = asm.copy(
       body = newBody,
       registers = newRegs
     )
+    val dp = GraphBuilder.build(proc, labelingFunc)(ctx)
+    logger.dumpArtifact(
+      s"dependence_graph_${getName}_${proc.id}_${ctx.transform_index}.dot"
+    ) {
+
+      import scalax.collection.io.dot._
+      import scalax.collection.io.dot.implicits._
+
+      val dot_root = DotRootGraph(
+        directed = true,
+        id = Some("List scheduling dependence graph")
+      )
+      def edgeTransform(
+          iedge: Graph[Instruction, LDiEdge]#EdgeT
+      ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
+        case LDiEdge(source, target, l) =>
+          Some(
+            (
+              dot_root,
+              DotEdgeStmt(
+                source.toOuter.hashCode().toString,
+                target.toOuter.hashCode().toString,
+                List(DotAttr("label", 0))
+              )
+            )
+          )
+        case t @ _ =>
+          logger.error(
+            s"An edge in the dependence could not be serialized! ${t}"
+          )
+          None
+      }
+      def nodeTransformer(
+          inode: Graph[Instruction, LDiEdge]#NodeT
+      ): Option[(DotGraph, DotNodeStmt)] =
+        Some(
+          (
+            dot_root,
+            DotNodeStmt(
+              NodeId(inode.toOuter.hashCode().toString()),
+              List(DotAttr("label", inode.toOuter.serialized.trim))
+            )
+          )
+        )
+
+      val dot_export: String = dp.toDot(
+        dotRoot = dot_root,
+        edgeTransformer = edgeTransform,
+        cNodeTransformer = Some(nodeTransformer)
+      )
+      dot_export
+    }(ctx)
+    proc
   }
 
   override def transform(
