@@ -17,7 +17,7 @@ import manticore.assembly.annotations.AnnotationValue
   */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val ADD, ADDC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SRA, SLTS, PMUX = Value
+  val ADD, ADDC, SUBC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SRA, SLTS, PMUX = Value
 }
 
 trait HasSerialized {
@@ -272,6 +272,30 @@ trait ManticoreAssemblyIR {
   case object Nop extends Instruction {
     val annons: Seq[AssemblyAnnotation] = Seq()
     override def serialized: String = s"\t\tNOP;"
+  }
+
+  case class AddC(
+    rd: Name,
+    rs1: Name,
+    rs2: Name,
+    c: Name,
+    annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tADDCARRY ${rd}, ${rs1}, ${rs2}, ${c}; //@${pos}"
+  }
+
+  case class SubC(
+    rd: Name,
+    rs1: Name,
+    rs2: Name,
+    c: Name,
+    annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tSUBCARRY ${rd}, ${rs1}, ${rs2}, ${c}; //@${pos}"
   }
 
 }
