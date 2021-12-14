@@ -61,8 +61,6 @@ abstract class OrderInstructions[T <: ManticoreAssemblyIR](irFlavor: T)
         registers = sortedRegs,
         body = sortedInstrs.toSeq
       )
-
-      asm
     }
 
     def apply(
