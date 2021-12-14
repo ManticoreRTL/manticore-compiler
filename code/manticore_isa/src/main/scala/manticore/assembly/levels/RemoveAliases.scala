@@ -1,4 +1,4 @@
-package manticore.assembly.levels.unconstrained
+package manticore.assembly.levels
 
 /** RemoveAliases.scala
   *
