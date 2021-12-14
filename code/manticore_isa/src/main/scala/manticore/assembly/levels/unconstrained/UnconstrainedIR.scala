@@ -10,6 +10,7 @@ import manticore.assembly.levels.MemoryType
 import manticore.assembly.levels.InputType
 import scala.language.implicitConversions
 import manticore.assembly.levels.ConstType
+import manticore.assembly.HasWidth
 import manticore.assembly.HasSerialized
 import manticore.assembly.levels.HasVariableType
 
@@ -24,7 +25,7 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
       width: Int,
       tpe: VariableType
   ) extends Named
-      with HasSerialized with HasVariableType {
+      with HasSerialized with HasVariableType with HasWidth {
     def serialized: String = s"${tpe.typeName} ${name} ${width}"
     def varType = tpe
   }

@@ -2,6 +2,7 @@ package manticore.assembly.levels.placed
 import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.VariableType
 import manticore.assembly.levels.HasVariableType
+import manticore.assembly.HasWidth
 import manticore.assembly.levels.UInt16
 import manticore.assembly.DependenceGraphBuilder
 
@@ -17,9 +18,11 @@ object PlacedIR extends ManticoreAssemblyIR {
   sealed abstract class PlacedVariable(val tpe: VariableType)
       extends Named
       with HasSerialized
-      with HasVariableType {
+      with HasVariableType
+      with HasWidth {
     override def serialized: String = s"${tpe.typeName} ${name} 16"
     override def varType = tpe
+    override def width = 16
   }
   import manticore.assembly.levels.{
     WireType,
