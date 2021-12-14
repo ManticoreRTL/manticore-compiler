@@ -1,0 +1,11 @@
+package manticore.assembly.levels.unconstrained
+
+import manticore.assembly.levels.AssemblyNameChecker
+import manticore.assembly.levels.OrderInstructions
+import manticore.assembly.levels.RemoveAliases
+import manticore.assembly.levels.DeadCodeElimination
+
+object UnconstrainedNameChecker extends AssemblyNameChecker(UnconstrainedIR)
+object UnconstrainedOrderInstructions extends OrderInstructions(UnconstrainedIR)
+object UnconstrainedRemoveAliases extends RemoveAliases(UnconstrainedIR)
+object UnconstrainedDeadCodeElimination extends DeadCodeElimination(UnconstrainedIR)

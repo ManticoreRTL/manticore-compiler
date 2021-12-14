@@ -1,5 +1,0 @@
-package manticore.assembly.levels.unconstrained
-
-import manticore.assembly.levels.AssemblyNameChecker
-
-object UnconstrainedNameChecker extends AssemblyNameChecker(UnconstrainedIR)

@@ -1,9 +1,11 @@
-package manticore.assembly.levels.unconstrained
+package manticore.assembly.levels
 
 import manticore.UnitTest
 
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
+import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 
 class DeadCodeEliminationTester extends UnitTest {
 
@@ -49,12 +51,12 @@ class DeadCodeEliminationTester extends UnitTest {
       """
 
     val ctx = AssemblyContext()
-    val got = DeadCodeElimination(AssemblyParser(inputProgram, ctx), ctx)._1
+    val got = UnconstrainedDeadCodeElimination(AssemblyParser(inputProgram, ctx), ctx)._1
     val expected = AssemblyParser(outputProgram, ctx)
 
-    // Debug
-    println(got.serialized)
-    println(expected.serialized)
+    // // Debug
+    // println(got.serialized)
+    // println(expected.serialized)
 
     got shouldBe expected
   }
