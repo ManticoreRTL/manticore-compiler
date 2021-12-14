@@ -11,6 +11,7 @@ import manticore.compiler.AssemblyContext
 import manticore.assembly.levels.ConstType
 import manticore.assembly.BinaryOperator
 import manticore.assembly.ManticoreAssemblyIR
+import java.lang.Character.Subset
 
 /** This transform identifies and removes aliases from the design. Processing
   * the following input program:
@@ -222,7 +223,9 @@ abstract class RemoveAliases[T <: ManticoreAssemblyIR](irFlavor: T)
           }
         }
 
-        instr match {
+        // The @unchecked is to remove warnings saying that this is not an exhaustive match.
+        // It is exhaustive, but the compiler can't see it.
+        (instr: @unchecked) match {
           case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
             BinaryArithmetic(
               operator,
