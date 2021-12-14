@@ -35,7 +35,7 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
       * live if there exists a path from the instruction to an output register
       * of the process.
       *
-      * @param asm
+      * @param proc
       *   Target process.
       * @param ctx
       *   Target context.
@@ -43,18 +43,18 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
       *   Set of live instructions in the process.
       */
     def findLiveInstrs(
-        asm: DefProcess
+        proc: DefProcess
     )(
         ctx: AssemblyContext
     ): Set[Instruction] = {
       // Output ports of the process.
-      val outputNames = asm.registers
+      val outputNames = proc.registers
         .filter(reg => reg.variable.varType == OutputType)
         .map(reg => reg.variable.name)
         .toSet
 
       // Instructions that write to the output ports.
-      val outputInstrs = asm.body.filter { instr =>
+      val outputInstrs = proc.body.filter { instr =>
         // The cast is needed to extract the T#-like type returned from GraphBuilder into irFlavor.
         GraphBuilder.regDef(instr).asInstanceOf[Option[Name]] match {
           case Some(name) => outputNames.contains(name)
@@ -63,7 +63,7 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
       }
 
       // Create dependency graph.
-      val dependenceGraph = GraphBuilder.build(asm, labelingFunc)(ctx)
+      val dependenceGraph = GraphBuilder.build(proc, labelingFunc)(ctx)
 
       // Cache of backtracking results to avoid exponential lookup if we end up
       // going up the same tree multiple times.
@@ -135,7 +135,7 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
 
     /** Performs dead-code elimination.
       *
-      * @param asm
+      * @param proc
       *   Target process.
       * @param ctx
       *   Target context.
@@ -143,14 +143,14 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
       *   Process after dead-code elimination.
       */
     def dce(
-        asm: DefProcess
+        proc: DefProcess
     )(
         ctx: AssemblyContext
     ): DefProcess = {
 
       // Remove dead instructions.
-      val liveInstrs = findLiveInstrs(asm)(ctx)
-      val newBody = asm.body.filter(instr => liveInstrs.contains(instr))
+      val liveInstrs = findLiveInstrs(proc)(ctx)
+      val newBody = proc.body.filter(instr => liveInstrs.contains(instr))
 
       // Remove dead registers AFTER filtering dead instructions.
       // Eliminating unused registers cannot be done to the fullest extent if it is
@@ -166,22 +166,22 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
         // The cast is needed to extract the T#-like type returned from GraphBuilder into irFlavor.
         (instr: Instruction) => GraphBuilder.regDef(instr).asInstanceOf[Option[Name]].toSeq
       )
-      val newRegs = asm.registers.filter { reg =>
+      val newRegs = proc.registers.filter { reg =>
         val isReferenced = refCounts(reg.variable.name) != 0
         val isDefined = defCounts(reg.variable.name) != 0
         isReferenced || isDefined
       }
 
-      val proc = asm.copy(
+      val newProc = proc.copy(
         body = newBody,
         registers = newRegs
       )
 
       // Debug dump graph.
       logger.dumpArtifact(
-        s"dependence_graph_${getName}_${proc.id}_${ctx.transform_index}.dot"
+        s"dependence_graph_${getName}_${newProc.id}_${ctx.transform_index}.dot"
         ) {
-        val dp = GraphBuilder.build(proc, labelingFunc)(ctx)
+        val dp = GraphBuilder.build(newProc, labelingFunc)(ctx)
 
         import scalax.collection.io.dot._
         import scalax.collection.io.dot.implicits._
@@ -230,7 +230,8 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
         )
         dot_export
       }(ctx)
-      proc
+
+      newProc
     }
 
     def apply(
@@ -240,8 +241,7 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
       implicit val ctx = context
 
       val out = DefProgram(
-        processes =
-          asm.processes.map(process => dce(process)(ctx)),
+        processes = asm.processes.map(process => dce(process)(ctx)),
         annons = asm.annons
       )
 

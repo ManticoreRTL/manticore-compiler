@@ -24,7 +24,7 @@ abstract class OrderInstructions[T <: ManticoreAssemblyIR](irFlavor: T)
     import irFlavor._
 
     def orderInstructions(
-        asm: DefProcess
+        proc: DefProcess
     )(
         ctx: AssemblyContext
     ): DefProcess = {
@@ -35,7 +35,7 @@ abstract class OrderInstructions[T <: ManticoreAssemblyIR](irFlavor: T)
       // Must use T#Instruction instead of irFlavor.Instruction as GraphBuilder requires knowledge
       // of the type itself and cannot use the instance variable irFlavor to infer the type.
       def labelingFunc(pred: T#Instruction, succ: T#Instruction) = None
-      val dependenceGraph = GraphBuilder.build(asm, labelingFunc)(ctx)
+      val dependenceGraph = GraphBuilder.build(proc, labelingFunc)(ctx)
 
       // Sort body.
       val sortedInstrs = ArrayBuffer[Instruction]()
@@ -53,11 +53,11 @@ abstract class OrderInstructions[T <: ManticoreAssemblyIR](irFlavor: T)
       }
 
       // Sort registers.
-      val sortedRegs = asm.registers.sortBy { reg =>
+      val sortedRegs = proc.registers.sortBy { reg =>
         (reg.variable.varType.typeName, reg.variable.name.toString())
       }
 
-      asm.copy(
+      proc.copy(
         registers = sortedRegs,
         body = sortedInstrs.toSeq
       )
@@ -70,8 +70,7 @@ abstract class OrderInstructions[T <: ManticoreAssemblyIR](irFlavor: T)
       implicit val ctx = context
 
       val out = DefProgram(
-        processes =
-          asm.processes.map(process => orderInstructions(process)(ctx)),
+        processes = asm.processes.map(process => orderInstructions(process)(ctx)),
         annons = asm.annons
       )
 

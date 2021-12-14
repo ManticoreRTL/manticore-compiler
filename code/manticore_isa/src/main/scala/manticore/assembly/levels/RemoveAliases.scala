@@ -58,7 +58,7 @@ abstract class RemoveAliases[T <: ManticoreAssemblyIR](irFlavor: T)
     import irFlavor._
 
     def removeAliases(
-        asm: DefProcess
+        proc: DefProcess
     ): DefProcess = {
 
       /** Finds all aliases in the instruction sequence.
@@ -284,7 +284,7 @@ abstract class RemoveAliases[T <: ManticoreAssemblyIR](irFlavor: T)
         }
       }
 
-      val consts = asm.registers
+      val consts = proc.registers
         .filter { reg =>
           reg.variable.varType == ConstType
         }
@@ -293,13 +293,13 @@ abstract class RemoveAliases[T <: ManticoreAssemblyIR](irFlavor: T)
         }
         .toMap
 
-      val aliases = findAliases(asm.body, consts)
+      val aliases = findAliases(proc.body, consts)
       val resolvedAliases = resolveAliases(aliases)
       // Note that we do not map on the registers of the assembly program as "resolvedAliases" already
       // contains constant-to-constant aliases as well and these are automatically replaced in the body.
-      val newBody = asm.body.map(instr => replaceAliases(instr, resolvedAliases))
+      val newBody = proc.body.map(instr => replaceAliases(instr, resolvedAliases))
 
-      asm.copy(body = newBody)
+      proc.copy(body = newBody)
     }
 
     def apply(
