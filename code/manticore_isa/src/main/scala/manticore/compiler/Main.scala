@@ -90,12 +90,17 @@ object Main {
     println(ctx.dump_all)
 
 
+    object UnconstrainedOrderInstructions extends OrderInstructions(UnconstrainedIR)
+    object UnconstrainedRemoveAliases extends RemoveAliases(UnconstrainedIR)
+    object UnconstrainedDeadCodeElimination extends DeadCodeElimination(UnconstrainedIR)
+
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
+
       val phases =
         UnconstrainedNameChecker followedBy
-          OrderInstructions followedBy
-          RemoveAliases followedBy
-          DeadCodeElimination followedBy
+          UnconstrainedOrderInstructions followedBy
+          UnconstrainedRemoveAliases followedBy
+          UnconstrainedDeadCodeElimination
           UnconstrainedToPlacedTransform followedBy
           PlacedNameChecker followedBy
           ListSchedulerTransform followedBy
