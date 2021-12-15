@@ -184,7 +184,7 @@ trait ManticoreAssemblyIR {
       s"${serializedAnnons("\t\t")}\t\tLLD ${rd}, ${offset}(${base}); //@${pos}"
   }
 
-  // Store to the local scrathpad
+  // Store to the local scratchpad
   case class LocalStore(
       rs: Name,
       base: Name,
