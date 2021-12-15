@@ -72,6 +72,8 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](flavor: T)
         Seq(rs)
       case Nop =>
         Seq.empty
+      case PadZero(rd, rs, width, annons) =>
+        Seq(rs)
     }
   }
 
@@ -98,6 +100,7 @@ abstract class DependenceGraphBuilder[T <: ManticoreAssemblyIR](flavor: T)
       case Expect(ref, got, error_id, annons)                      => None
       case Predicate(rs, annons)                                   => None
       case Nop                                                     => None
+      case PadZero(rd, rs, width, annons)                          => Some(rd)
     }
   }
 

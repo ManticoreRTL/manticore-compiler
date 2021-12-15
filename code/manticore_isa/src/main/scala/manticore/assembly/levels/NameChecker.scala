@@ -58,7 +58,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
           }
         }
 
-      
+
       def checkInst(inst: T#Instruction): Unit =
         (inst: @unchecked /* match is already exhaustive, suppress compiler warns */ ) match {
           case BinaryArithmetic(_, rd, rs1, rs2, _) =>
@@ -85,6 +85,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
           case Mux(rd, sel, rs1, rs2, _) =>
             checkRegs(Seq(rd, sel, rs1, rs2))(inst)
           case Nop => // do nothing
+          case PadZero(rd, rs, width, annons) => checkRegs(Seq(rd, rs))(inst)
 
         }
       proc.body.foreach(i => checkInst(i))

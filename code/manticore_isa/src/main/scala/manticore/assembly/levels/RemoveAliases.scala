@@ -281,6 +281,9 @@ abstract class RemoveAliases[T <: ManticoreAssemblyIR](irFlavor: T)
 
           case Nop =>
             Nop
+
+          case PadZero(rd, rs, width, annons) =>
+            PadZero(rd, replaceName(rs), width, annons)
         }
       }
 

@@ -136,7 +136,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   }
   // rest of instruction
   lexical.reserved += ("CUST", "LLD", "LST", "GLD", "GST", "EXPECT",
-  "SEND", "SET", "MUX", "EXPECT", "PREDICATE", "NOP")
+  "SEND", "SET", "MUX", "EXPECT", "PREDICATE", "NOP", "PADZERO")
   lexical.reserved += ("LD", "ST") //short hand for LLD and LST
   // defs
   val RegTypes = Seq(".reg", ".wire", ".input", ".output", ".mem", ".const")
@@ -303,9 +303,16 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def nop_inst: Parser[Instruction] = (keyword("NOP")) ^^ { _ => Nop }
 
+  def padzero_inst: Parser[Instruction] = (annotations ~ keyword(
+    "PADZERO"
+  ) ~ ident ~ "," ~ ident ~ "," ~ const_value) ^^ {
+    case (a ~ _ ~ rd ~ _ ~ rs ~ _ ~ width) =>
+      PadZero(rd.chars, rs.chars, width, a)
+  }
+
   def instruction: Parser[Instruction] = positioned(
     arith_inst | lvec_inst | lload_inst | lstore_inst | mux_inst | nop_inst
-      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst
+      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[DefReg]] = rep(positioned(def_reg))

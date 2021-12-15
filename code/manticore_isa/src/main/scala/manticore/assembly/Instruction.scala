@@ -302,4 +302,14 @@ trait ManticoreAssemblyIR {
       s"${serializedAnnons("\t\t")}\t\tSUBCARRY ${rd}, ${rs1}, ${rs2}, ${c}; //@${pos}"
   }
 
+  case class PadZero(
+    rd: Name,
+    rs: Name,
+    width: Constant,
+    annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tPADZERO ${rd}, ${rs}, ${width}; //@${pos}"
+  }
+
 }
