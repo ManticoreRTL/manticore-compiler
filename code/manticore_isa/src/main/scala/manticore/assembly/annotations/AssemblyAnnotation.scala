@@ -71,6 +71,7 @@ object AssemblyAnnotationBuilder {
       case Reg.name        => Reg(fields)
       case Sourceinfo.name => Sourceinfo(fields)
       case Track.name      => Track(fields)
+      case MemInit.name    => MemInit(fields)
     }
   }
 }
