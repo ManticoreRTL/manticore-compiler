@@ -282,9 +282,9 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def expect_inst: Parser[Expect] =
     (annotations ~ keyword(
       "EXPECT"
-    ) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> const_value <~ "]")) ^^ {
+    ) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> stringLit <~ "]")) ^^ {
       case (a ~ Keyword("EXPECT") ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
-        Expect(ref.chars, got.chars, ex_id.toInt, a)
+        Expect(ref.chars, got.chars, ex_id.chars, a)
     }
 
   def pred_inst: Parser[Predicate] =

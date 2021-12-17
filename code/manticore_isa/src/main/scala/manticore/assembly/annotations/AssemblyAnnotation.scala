@@ -64,14 +64,15 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
 object AssemblyAnnotationBuilder {
   def apply(name: String, fields: Map[String, String]): AssemblyAnnotation = {
     name.toUpperCase() match {
-      case Loc.name        => Loc(fields)
-      case Layout.name     => Layout(fields)
-      case Memblock.name   => Memblock(fields)
-      case Program.name    => Program(fields)
-      case Reg.name        => Reg(fields)
-      case Sourceinfo.name => Sourceinfo(fields)
-      case Track.name      => Track(fields)
-      case MemInit.name    => MemInit(fields)
+      case Loc.name         => Loc(fields)
+      case Layout.name      => Layout(fields)
+      case Memblock.name    => Memblock(fields)
+      case Program.name     => Program(fields)
+      case Reg.name         => Reg(fields)
+      case Sourceinfo.name  => Sourceinfo(fields)
+      case Track.name       => Track(fields)
+      case MemInit.name     => MemInit(fields)
+      case DebugSymbol.name => DebugSymbol(fields)
     }
   }
 }

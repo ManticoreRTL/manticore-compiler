@@ -43,5 +43,5 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
   type CustomFunction = CustomFunctionImpl // unlimited bits
   type Name = String
   type ProcessId = String
-  type ExceptionId = Int
+  type ExceptionId = String
 }

@@ -227,7 +227,7 @@ object UnconstrainedToPlacedTransform
     case S.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
       T.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons)
     case S.Expect(ref, got, error_id, annons) =>
-      T.Expect(ref, got, UInt16(error_id), annons)
+      T.Expect(ref, got, UInt16(0), annons)
     case S.LocalLoad(rd, base, offset, annons) =>
       T.LocalLoad(rd, base, UInt16(offset.toInt), annons)
     case S.LocalStore(rs, base, offset, p, annons) =>
@@ -327,13 +327,6 @@ object UnconstrainedToPlacedTransform
         p.body
           .map { i =>
             i match {
-              case S.Expect(_, _, error_id, _) =>
-                if (error_id >= (1 << 16)) {
-                  logger.error(s"invalid exception id in ${i.serialized} ")
-                  false
-                } else {
-                  true
-                }
               case S.LocalLoad(_, _, offset, _) =>
                 if (offset >= (1 << 16)) {
                   logger.error(s"invalid offset in ${i.serialized}")

@@ -33,7 +33,7 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
 
     /** Finds all live instructions in a process. An instruction is considered
       * live if there exists a path from the instruction to an output register
-      * of the process.
+      * of the process or if the instruction is an `EXPECT`
       *
       * @param proc
       *   Target process.
@@ -53,13 +53,15 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
         .map(reg => reg.variable.name)
         .toSet
 
-      // Instructions that write to the output ports.
-      val outputInstrs = proc.body.filter { instr =>
-        // The cast is needed to extract the T#-like type returned from GraphBuilder into irFlavor.
-        GraphBuilder.regDef(instr).asInstanceOf[Option[Name]] match {
-          case Some(name) => outputNames.contains(name)
-          case None       => false
-        }
+      // Instructions that write to the output ports or an EXPECT instruction
+      val outputInstrs = proc.body.filter {
+        case _: Expect => true
+        case instr @ _ =>
+          // The cast is needed to extract the T#-like type returned from GraphBuilder into irFlavor.
+          GraphBuilder.regDef(instr).asInstanceOf[Option[Name]] match {
+            case Some(name) => outputNames.contains(name)
+            case None       => false
+          }
       }
 
       // Create dependency graph.
@@ -159,12 +161,14 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
       val refCounts = countWithFunction(
         newBody,
         // The cast is needed to extract the T#-like type returned from GraphBuilder into irFlavor.
-        (instr: Instruction) => GraphBuilder.regUses(instr).asInstanceOf[Seq[Name]]
+        (instr: Instruction) =>
+          GraphBuilder.regUses(instr).asInstanceOf[Seq[Name]]
       )
       val defCounts = countWithFunction(
         newBody,
         // The cast is needed to extract the T#-like type returned from GraphBuilder into irFlavor.
-        (instr: Instruction) => GraphBuilder.regDef(instr).asInstanceOf[Option[Name]].toSeq
+        (instr: Instruction) =>
+          GraphBuilder.regDef(instr).asInstanceOf[Option[Name]].toSeq
       )
       val newRegs = proc.registers.filter { reg =>
         val isReferenced = refCounts(reg.variable.name) != 0
@@ -180,7 +184,7 @@ abstract class DeadCodeElimination[T <: ManticoreAssemblyIR](irFlavor: T)
       // Debug dump graph.
       logger.dumpArtifact(
         s"dependence_graph_${getName}_${newProc.id}_${ctx.transform_index}.dot"
-        ) {
+      ) {
         val dp = GraphBuilder.build(newProc, labelingFunc)(ctx)
 
         import scalax.collection.io.dot._
