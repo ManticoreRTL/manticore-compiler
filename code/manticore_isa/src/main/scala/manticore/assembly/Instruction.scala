@@ -17,7 +17,7 @@ import manticore.assembly.annotations.AnnotationValue
   */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val ADD, ADDC, SUBC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SRA, SLTS, PMUX = Value
+  val ADD, ADDC, SUB, OR, AND, XOR, SEQ, SLL, SRL, SRA, SLTS, PMUX = Value
 }
 
 trait HasSerialized {
@@ -104,6 +104,7 @@ trait ManticoreAssemblyIR {
       with HasSerialized {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\t${variable.serialized} ${value.getOrElse("")}; // @${pos}"
+
   }
 
   // program definition, single one
@@ -280,26 +281,28 @@ trait ManticoreAssemblyIR {
 
   case class AddC(
     rd: Name,
+    co: Name,
     rs1: Name,
     rs2: Name,
-    c: Name,
+    ci: Name,
     annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
 
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tADDCARRY ${rd}, ${rs1}, ${rs2}, ${c}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tADDCARRY ${rd}, ${co}, ${rs1}, ${rs2}, ${ci}; //@${pos}"
   }
 
   case class SubC(
     rd: Name,
+    co: Name,
     rs1: Name,
     rs2: Name,
-    c: Name,
+    ci: Name,
     annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
 
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tSUBCARRY ${rd}, ${rs1}, ${rs2}, ${c}; //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tSUBCARRY ${rd}, ${co}, ${rs1}, ${rs2}, ${ci}; //@${pos}"
   }
 
   case class PadZero(
