@@ -17,17 +17,19 @@ import manticore.assembly.levels.HasVariableType
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
   */
-object UnconstrainedIR extends ManticoreAssemblyIR {
+object  UnconstrainedIR extends ManticoreAssemblyIR {
 
   // case class ConstVariable(name: String, )
   case class LogicVariable(
       name: String,
       width: Int,
       tpe: VariableType
-  ) extends Named
+  ) extends Named[LogicVariable]
       with HasSerialized with HasVariableType with HasWidth {
     def serialized: String = s"${tpe.typeName} ${name} ${width}"
     def varType = tpe
+
+    def withName(n: Name): LogicVariable = this.copy(name = n)
   }
 
   case class CustomFunctionImpl(values: Seq[BigInt]) extends HasSerialized {

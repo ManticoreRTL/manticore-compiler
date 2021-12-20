@@ -14,82 +14,68 @@ import manticore.assembly.ManticoreAssemblyIR
 
 /** This transform sorts instructions based on their depenencies.
   */
-abstract class OrderInstructions[T <: ManticoreAssemblyIR](irFlavor: T)
-    extends AssemblyTransformer(irFlavor, irFlavor) {
+trait OrderInstructions extends DependenceGraphBuilder with Flavored {
 
-  // Object Impl is declared private so irFlavor does not escape its defining scope
-  // (when irFlavor.<something> is returned from a method).
-  private object Impl {
+  // Object Impl is declared private so flavor does not escape its defining scope
+  // (when flavor.<something> is returned from a method).
 
-    import irFlavor._
+  import flavor._
 
-    def orderInstructions(
-        proc: DefProcess
-    )(
-        ctx: AssemblyContext
-    ): DefProcess = {
+  def orderInstructions(
+      proc: DefProcess
+  )(
+      ctx: AssemblyContext
+  ): DefProcess = {
 
-      object GraphBuilder extends DependenceGraphBuilder(irFlavor)
+    // The value of the label doesn't matter for topological sorting.
+    // Must use Instruction instead of flavor.Instruction as GraphBuilder requires knowledge
+    // of the type itself and cannot use the instance variable flavor to infer the type.
+    def labelingFunc(pred: Instruction, succ: Instruction) = None
+    val dependenceGraph = DependenceAnalysis.build(proc, labelingFunc)(ctx)
 
-      // The value of the label doesn't matter for topological sorting.
-      // Must use T#Instruction instead of irFlavor.Instruction as GraphBuilder requires knowledge
-      // of the type itself and cannot use the instance variable irFlavor to infer the type.
-      def labelingFunc(pred: T#Instruction, succ: T#Instruction) = None
-      val dependenceGraph = GraphBuilder.build(proc, labelingFunc)(ctx)
-
-      // Sort body.
-      val sortedInstrs = ArrayBuffer[Instruction]()
-      dependenceGraph.topologicalSort match {
-        case Left(cycleNode) =>
-          logger.error("Dependence graph contains a cycle!")
-        case Right(order) =>
-          order.foreach { instr =>
-            // Must cast the result back to irFlavor as this is a result from GraphBuilder
-            // and GraphBuilder only knows T.
-            sortedInstrs.append(
-              instr.toOuter.asInstanceOf[irFlavor.Instruction]
-            )
-          }
-      }
-
-      // Sort registers.
-      val sortedRegs = proc.registers.sortBy { reg =>
-        (reg.variable.varType.typeName, reg.variable.name.toString())
-      }
-
-      proc.copy(
-        registers = sortedRegs,
-        body = sortedInstrs.toSeq
-      )
+    // Sort body.
+    val sortedInstrs = ArrayBuffer[Instruction]()
+    dependenceGraph.topologicalSort match {
+      case Left(cycleNode) =>
+        logger.error("Dependence graph contains a cycle!")
+      case Right(order) =>
+        order.foreach { instr =>
+          // Must cast the result back to flavor as this is a result from GraphBuilder
+          // and GraphBuilder only knows T.
+          sortedInstrs.append(
+            instr.toOuter
+          )
+        }
     }
 
-    def apply(
-        asm: DefProgram,
-        context: AssemblyContext
-    ): DefProgram = {
-      implicit val ctx = context
-
-      val out = DefProgram(
-        processes = asm.processes.map(process => orderInstructions(process)(ctx)),
-        annons = asm.annons
-      )
-
-      if (logger.countErrors > 0) {
-        logger.fail(s"Failed transform due to previous errors!")
-      }
-
-      out
+    // Sort registers.
+    val sortedRegs = proc.registers.sortBy { reg =>
+      (reg.variable.varType.typeName, reg.variable.name.toString())
     }
+
+    proc.copy(
+      registers = sortedRegs,
+      body = sortedInstrs.toSeq
+    )
   }
 
-  // Note that we use `T#` for the method signature instead of `irFlavor._` as irFlavor is private to
-  // this instance and cannot escape it (as the return value for example).
-  override def transform(
-      asm: T#DefProgram,
+  def do_transform(
+      asm: DefProgram,
       context: AssemblyContext
-  ): T#DefProgram = {
-    val asmIn = asm.asInstanceOf[irFlavor.DefProgram]
-    val asmOut = Impl(asmIn, context)
-    asmOut
+  ): DefProgram = {
+    implicit val ctx = context
+
+    val out = DefProgram(
+      processes = asm.processes.map(process => orderInstructions(process)(ctx)),
+      annons = asm.annons
+    )
+
+    if (logger.countErrors > 0) {
+      logger.fail(s"Failed transform due to previous errors!")
+    }
+
+    out
   }
+
+
 }

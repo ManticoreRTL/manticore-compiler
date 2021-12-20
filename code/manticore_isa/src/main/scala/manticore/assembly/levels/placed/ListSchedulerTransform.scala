@@ -24,13 +24,15 @@ import manticore.assembly.levels.UInt16
   * to spill to the array memory it has to store and load registers then it can
   * not use this transformation again.
   *
-  *
   * @author
   *   Mahyar emami <mahyar.emami@epfl.ch>
   */
-object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
+object ListSchedulerTransform
+    extends DependenceGraphBuilder
+    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
-  import PlacedIR._
+  val flavor = PlacedIR
+  import flavor._
   import manticore.assembly.levels.placed.LatencyAnalysis
   import scalax.collection.Graph
   import scalax.collection.mutable.{Graph => MutableGraph}
@@ -69,9 +71,8 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
       ctx: AssemblyContext
   ): DefProcess = {
 
-    import manticore.assembly.DependenceGraphBuilder
-    import manticore.assembly.levels.placed.DependenceAnalysis
 
+    // import manticore.assembly.levels.placed.
     val dependence_graph =
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
     // dump the graph
@@ -299,9 +300,7 @@ object ListSchedulerTransform extends AssemblyTransformer(PlacedIR, PlacedIR) {
 
     proc.copy(body = schedule.toSeq)
 
-
   }
-
 
   override def transform(
       source: DefProgram,

@@ -16,13 +16,14 @@ object PlacedIR extends ManticoreAssemblyIR {
   import manticore.assembly.HasSerialized
 
   sealed abstract class PlacedVariable(val tpe: VariableType)
-      extends Named
+      extends Named[PlacedVariable]
       with HasSerialized
       with HasVariableType
       with HasWidth {
     override def serialized: String = s"${tpe.typeName} ${name} 16"
     override def varType = tpe
     override def width = 16
+
   }
   import manticore.assembly.levels.{
     WireType,
@@ -33,16 +34,28 @@ object PlacedIR extends ManticoreAssemblyIR {
     MemoryType
   }
   case class MemoryBlock(block_id: Name, capacity: Int)
-  case class WireVariable(name: Name, id: Int) extends PlacedVariable(WireType)
-  case class RegVariable(name: Name, id: Int) extends PlacedVariable(RegType)
+  case class WireVariable(name: Name, id: Int) extends PlacedVariable(WireType) {
+    def withName(n: Name) = this.copy(name)
+  }
+  case class RegVariable(name: Name, id: Int) extends PlacedVariable(RegType)  {
+    def withName(n: Name) = this.copy(name)
+  }
   case class InputVariable(name: Name, id: Int)
-      extends PlacedVariable(InputType)
+      extends PlacedVariable(InputType)  {
+    def withName(n: Name) = this.copy(name)
+  }
   case class ConstVariable(name: Name, id: Int)
-      extends PlacedVariable(ConstType)
+      extends PlacedVariable(ConstType)  {
+    def withName(n: Name) = this.copy(name)
+  }
   case class OutputVariable(name: Name, id: Int)
-      extends PlacedVariable(OutputType)
+      extends PlacedVariable(OutputType)  {
+    def withName(n: Name) = this.copy(name)
+  }
   case class MemoryVariable(name: Name, id: Int, block: MemoryBlock)
-      extends PlacedVariable(MemoryType)
+      extends PlacedVariable(MemoryType)  {
+    def withName(n: Name) = this.copy(name)
+  }
 
   case class CustomFunctionImpl(values: Seq[UInt16]) extends HasSerialized {
     def serialized: String = s"[${values.map(_.toInt).mkString(", ")}]"
@@ -62,7 +75,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
 }
 
-object DependenceAnalysis extends DependenceGraphBuilder(PlacedIR)
+
 
 object LatencyAnalysis {
 

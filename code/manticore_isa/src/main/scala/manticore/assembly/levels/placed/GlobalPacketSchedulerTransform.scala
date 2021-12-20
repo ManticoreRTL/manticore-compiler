@@ -4,12 +4,13 @@ import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import scala.collection.parallel.CollectionConverters._
+import manticore.assembly.DependenceGraphBuilder
 
 object GlobalPacketSchedulerTransform
-    extends AssemblyTransformer(PlacedIR, PlacedIR) {
+    extends DependenceGraphBuilder with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+  val flavor = PlacedIR
+  import flavor._
 
-  import PlacedIR._
-  import manticore.assembly.levels.placed.DependenceAnalysis
   import manticore.assembly.levels.placed.LatencyAnalysis
   override def transform(
       program: DefProgram,

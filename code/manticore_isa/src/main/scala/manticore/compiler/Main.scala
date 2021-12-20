@@ -93,6 +93,7 @@ object Main {
           UnconstrainedOrderInstructions followedBy
           UnconstrainedRemoveAliases followedBy
           UnconstrainedDeadCodeElimination followedBy
+          // BigIntToUInt16Transform followedBy
           UnconstrainedToPlacedTransform
       val placed_phase = PlacedNameChecker followedBy
           ListSchedulerTransform followedBy

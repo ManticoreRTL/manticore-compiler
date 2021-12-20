@@ -4,7 +4,7 @@ import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.Reporter
 import manticore.compiler.AssemblyContext
 import manticore.assembly.CompilationFailureException
-
+import manticore.assembly.levels.unconstrained.UnconstrainedIR
 
 /** Base transformation signatures, see [[AssemblyTransformer]] and
   * [[AssemblyChecker]] below
@@ -14,8 +14,8 @@ import manticore.assembly.CompilationFailureException
   */
 
 trait Transformation[
-    S <: ManticoreAssemblyIR#DefProgram,
-    T <: ManticoreAssemblyIR#DefProgram
+    -S <: ManticoreAssemblyIR#DefProgram,
+    +T <: ManticoreAssemblyIR#DefProgram
 ] extends ((S, AssemblyContext) => (T, AssemblyContext)) {
 
   // def transform(s: S)(implicit ctx: AssemblyContext): T
@@ -30,32 +30,29 @@ trait Transformation[
 
 }
 
-
 /** Signature class for IR transformation, taking the [[S]] IR flavor as input
   * and producing a [[T]] flavored IR as output
   *
   * @param programIr
   */
-abstract class AssemblyTransformer[
-    S <: ManticoreAssemblyIR,
-    T <: ManticoreAssemblyIR
-](source: S, target: T)
-    extends Transformation[S#DefProgram, T#DefProgram]
+trait AssemblyTransformer[
+    -S <: ManticoreAssemblyIR#DefProgram,
+    +T <: ManticoreAssemblyIR#DefProgram
+]   extends Transformation[S, T]
     with Reporter {
 
-  /**
-    * transform a tree of type S to T
+  /** transform a tree of type S to T
     *
     * @param source
     * @param context
     * @return
     */
 
-  def transform(source: S#DefProgram, context: AssemblyContext): T#DefProgram
+  def transform(source: S, context: AssemblyContext): T
   override final def apply(
-      source: S#DefProgram,
+      source: S,
       ctx: AssemblyContext
-  ): (T#DefProgram, AssemblyContext) = {
+  ): (T, AssemblyContext) = {
 
     logger.info(s"[${ctx.transform_index}] Starting transformation ${getName}")
     val res = (transform(source, ctx), ctx)
@@ -75,26 +72,33 @@ abstract class AssemblyTransformer[
   *
   * @param programIr
   */
-abstract class AssemblyChecker[
-    T <: ManticoreAssemblyIR
-](programIr: T)
-    extends Transformation[T#DefProgram, T#DefProgram]
+trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
+    extends Transformation[T, T]
     with Reporter {
 
-  /**
-    * check the tree and possibly throw an exception if the check failed
+  /** check the tree and possibly throw an exception if the check failed
     *
-    * @param source the tree to check
-    * @param context compilation context
+    * @param source
+    *   the tree to check
+    * @param context
+    *   compilation context
     */
   @throws(classOf[CompilationFailureException])
-  def check(source: T#DefProgram, context: AssemblyContext): Unit
+  def check(source: T, context: AssemblyContext): Unit
 
   override final def apply(
-      source: T#DefProgram,
+      source: T,
       context: AssemblyContext
-  ): (T#DefProgram, AssemblyContext) = {
+  ): (T, AssemblyContext) = {
     check(source, context)
     (source, context)
   }
+}
+
+
+trait Flavored extends Reporter {
+
+  val flavor: ManticoreAssemblyIR
+
+
 }

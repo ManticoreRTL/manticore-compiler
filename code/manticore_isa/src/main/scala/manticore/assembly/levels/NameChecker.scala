@@ -16,13 +16,14 @@ import manticore.compiler.AssemblyContext
   * @param irFlavor
   *   IR flavor object to specialize the checker with
   */
-abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
-    extends AssemblyChecker(irFlavor) {
-  import irFlavor._
+trait AssemblyNameChecker extends Flavored {
 
-  def check(prog: T#DefProgram, context: AssemblyContext): Unit = {
 
-    case class DefinedName[TT](name: TT, owner: T#Declaration)
+  import flavor._
+
+  def do_check(prog: DefProgram, context: AssemblyContext): Unit = {
+
+    case class DefinedName[TT](name: TT, owner: Declaration)
     @tailrec
     def checkDecls[TT](decls: Seq[DefinedName[TT]]): Unit = decls match {
       case Nil      => ()
@@ -37,9 +38,9 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
         checkDecls(tail)
     }
 
-    def checkProcess(proc: T#DefProcess): Unit = {
+    def checkProcess(proc: DefProcess): Unit = {
 
-      val reg_defs: Seq[DefinedName[T#Name]] = proc.registers.map { r =>
+      val reg_defs: Seq[DefinedName[Name]] = proc.registers.map { r =>
         DefinedName(r.variable.name, r)
       }
       checkDecls(reg_defs)
@@ -48,7 +49,7 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
 
       val reg_names = reg_defs.map { _.name }
       val func_names = func_defs.map { _.name }
-      def checkRegs(regs: Seq[T#Name])(implicit inst: T#Instruction) =
+      def checkRegs(regs: Seq[Name])(implicit inst: Instruction) =
         regs.foreach { r =>
           if (!reg_names.contains(r)) {
             logger.error(
@@ -59,10 +60,11 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
         }
 
 
-      def checkInst(inst: T#Instruction): Unit =
+      def checkInst(inst: Instruction): Unit = {
+        implicit val implicit_inst = inst
         (inst: @unchecked /* match is already exhaustive, suppress compiler warns */ ) match {
           case BinaryArithmetic(_, rd, rs1, rs2, _) =>
-            checkRegs(Seq(rd, rs1, rs2))(inst)
+            checkRegs(Seq(rd, rs1, rs2))
           case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
             if (!func_names.contains(func)) {
               logger.error(
@@ -70,24 +72,28 @@ abstract class AssemblyNameChecker[T <: ManticoreAssemblyIR](irFlavor: T)
               )
 
             }
-            checkRegs(Seq(rd, rs1, rs2, rs3, rs4))(inst)
-          case LocalLoad(rd, base, _, _) => checkRegs(Seq(rd, base))(inst)
+            checkRegs(Seq(rd, rs1, rs2, rs3, rs4))
+          case LocalLoad(rd, base, _, _) => checkRegs(Seq(rd, base))
           case LocalStore(rs, base, _, p, _) =>
-            checkRegs(Seq(rs, base) ++ p.toSeq)(inst)
+            checkRegs(Seq(rs, base) ++ p.toSeq)
           case GlobalLoad(rd, (hh, h, l), _) =>
-            checkRegs(Seq(rd, hh, h, l))(inst)
+            checkRegs(Seq(rd, hh, h, l))
           case GlobalStore(rs, (hh, h, l), p, _) =>
-            checkRegs(Seq(rs, hh, h, l) ++ p.toSeq)(inst)
-          case SetValue(rd, _, _)     => checkRegs(Seq(rd))(inst)
-          case Expect(ref, got, _, _) => checkRegs(Seq(ref, got))(inst)
-          case Send(rd, rs, _, _)     => checkRegs(Seq(rs))(inst)
-          case Predicate(rs, _)       => checkRegs(Seq(rs))(inst)
+            checkRegs(Seq(rs, hh, h, l) ++ p.toSeq)
+          case SetValue(rd, _, _)     => checkRegs(Seq(rd))
+          case Expect(ref, got, _, _) => checkRegs(Seq(ref, got))
+          case Send(rd, rs, _, _)     => checkRegs(Seq(rs))
+          case Predicate(rs, _)       => checkRegs(Seq(rs))
           case Mux(rd, sel, rs1, rs2, _) =>
-            checkRegs(Seq(rd, sel, rs1, rs2))(inst)
+            checkRegs(Seq(rd, sel, rs1, rs2))
           case Nop => // do nothing
-          case PadZero(rd, rs, width, annons) => checkRegs(Seq(rd, rs))(inst)
+          case PadZero(rd, rs, width, annons) => checkRegs(Seq(rd, rs))
+          case AddC(rd, co, rs1, rs2, ci, annons) => checkRegs(Seq(rd, co, rs1, rs2, ci))
+
 
         }
+      }
+
       proc.body.foreach(i => checkInst(i))
     }
 

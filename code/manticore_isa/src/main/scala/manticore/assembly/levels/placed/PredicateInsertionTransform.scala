@@ -7,7 +7,7 @@ import manticore.compiler.AssemblyContext
 import scala.collection.parallel.CollectionConverters._
 
 object PredicateInsertionTransform
-    extends AssemblyTransformer(PlacedIR, PlacedIR) {
+    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
   import PlacedIR._
   import scala.collection.mutable.{Queue => MutableQueue}

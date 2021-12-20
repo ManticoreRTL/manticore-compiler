@@ -9,19 +9,21 @@ import manticore.assembly.levels.UInt16
 import scala.collection.mutable.{Queue => MutableQueue}
 import scala.collection.mutable.{ArrayDeque => MutableDeque}
 import scala.collection.mutable.PriorityQueue
+import manticore.assembly.DependenceGraphBuilder
+import manticore.assembly.ManticoreAssemblyIR
 
 /** Register allocation transform using a linear scan
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 
-object RegisterAllocationTransform
-    extends AssemblyTransformer(PlacedIR, PlacedIR) {
+object RegisterAllocationTransform extends DependenceGraphBuilder
+    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
+  val flavor = PlacedIR
   import PlacedIR._
 
-  import manticore.assembly.levels.placed.DependenceAnalysis
-  type LivenessScope = Tuple2[Name, Tuple2[Int, Int]]
+  // import manticore.assembly.levels.placed.  type LivenessScope = Tuple2[Name, Tuple2[Int, Int]]
   private def computeLiveness(
       process: DefProcess
   )(implicit ctx: AssemblyContext): Map[Name, (Int, Int)] = {

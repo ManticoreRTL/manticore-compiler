@@ -19,7 +19,7 @@ import manticore.assembly.annotations.AssemblyAnnotation
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object UnconstrainedToPlacedTransform
-    extends AssemblyTransformer(UnconstrainedIR, PlacedIR) {
+    extends AssemblyTransformer[UnconstrainedIR.DefProgram, PlacedIR.DefProgram] {
 
   override def transform(
       asm: S.DefProgram,
