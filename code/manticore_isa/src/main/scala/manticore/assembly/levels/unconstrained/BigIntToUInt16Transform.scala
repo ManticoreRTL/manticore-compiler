@@ -5,6 +5,8 @@ import manticore.compiler.AssemblyContext
 import manticore.assembly.BinaryOperator
 import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.WireType
+import manticore.assembly.annotations.DebugSymbol
+import manticore.assembly.annotations.AssemblyAnnotation
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -318,8 +320,20 @@ object BigIntToUInt16Transform
           }
       }
 
-      val conv_def = uint16_vars zip values map { case (cvar, cval) =>
-        orig_def.copy(variable = cvar, value = cval).setPos(orig_def.pos)
+      val conv_def = (uint16_vars zip values).zipWithIndex.map {
+        case ((cvar, cval), ix) =>
+          val annons = orig_def.annons.collect {
+            case x: DebugSymbol =>
+              if (x.fields.contains(DebugSymbol.Index)) {
+                logger.error("did not expect debug symbol index", orig_def)
+              }
+              x.withIndex(ix)
+            case y => y
+          }
+
+          orig_def
+            .copy(variable = cvar, value = cval, annons = annons)
+            .setPos(orig_def.pos)
       }
 
       m_wires ++= conv_def

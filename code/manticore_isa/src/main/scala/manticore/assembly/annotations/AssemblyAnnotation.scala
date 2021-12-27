@@ -57,6 +57,7 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
       false
     }
   }
+
 }
 
 /** Generates a typed annotation from a generic string-based annotation.

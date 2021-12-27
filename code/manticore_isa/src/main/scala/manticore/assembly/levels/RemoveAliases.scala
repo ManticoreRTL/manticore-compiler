@@ -223,7 +223,7 @@ trait RemoveAliases extends Flavored {
 
       // The @unchecked is to remove warnings saying that this is not an exhaustive match.
       // It is exhaustive, but the compiler can't see it.
-      instr match {
+      (instr match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
           BinaryArithmetic(
             operator,
@@ -288,7 +288,7 @@ trait RemoveAliases extends Flavored {
 
         case PadZero(rd, rs, width, annons) =>
           PadZero(rd, replaceName(rs), width, annons)
-      }
+      }).setPos(instr.pos)
     }
 
     val consts = proc.registers
