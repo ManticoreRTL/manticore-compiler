@@ -7,7 +7,10 @@ import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.WireType
 
 object BigIntToUInt16Transform
-    extends AssemblyTransformer(UnconstrainedIR, UnconstrainedIR) {
+    extends AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
 
   import UnconstrainedIR._
 
@@ -30,7 +33,7 @@ object BigIntToUInt16Transform
       * @return
       */
     def freshName(suggestion: Name): Name = {
-      val n = s"%${m_name_id}%${suggestion.toString()}"
+      val n = s"${suggestion.toString()}"
       m_name_id += 1
       return n
     }
@@ -130,9 +133,11 @@ object BigIntToUInt16Transform
         ConvertedWire(uint16_vars.map(_.name), msw_mask)
 
       m_subst += original -> converted
+      // sanity check
+      assert(converted.mask.nonEmpty || orig_def.variable.width % 16 == 0)
       converted
 
-    }
+    } ensuring (r => r.parts.length > 0)
 
     /** get the conversion of a given name of a wire/reg
       *
@@ -174,13 +179,126 @@ object BigIntToUInt16Transform
       }
 
     }
+    def maskRd(): Unit = {
+      val ConvertedWire(rd_uint16_array, rd_mask) =
+        builder.getConversion(instruction.rd)
+      rd_mask match {
+        case Some(const_mask) =>
+          BinaryArithmetic(
+            BinaryOperator.AND,
+            rd_uint16_array.last,
+            rd_uint16_array.last,
+            const_mask
+          )
+        case _ =>
+        // do nothing
+      }
+    }
+
+    def assertAligned(
+        rd_array: Seq[Name],
+        rs1_array: Seq[Name],
+        rs2_array: Seq[Name]
+    ): Unit =
+      if (
+        rd_array.length != rs1_array.length || rd_array.length != rs2_array.length || rs2_array.length != rs1_array.length
+      ) {
+        logger.error("Unaligned operands!", instruction)
+      }
 
     instruction.operator match {
       case BinaryOperator.ADD =>
+        val ConvertedWire(rd_uint16_array, rd_mask) =
+          builder.getConversion(instruction.rd)
+        val rs1_uint16_array: Seq[Name] =
+          builder.getConversion(instruction.rs1).parts
+        val rs2_uint16_array: Seq[Name] =
+          builder.getConversion(instruction.rs2).parts
+
+        assertAligned(rd_uint16_array, rs1_uint16_array, rs2_uint16_array)
+
+        if (rs1_uint16_array.size != 1) {
+          val carry: Name = builder.mkWire("add_carry", 16)
+          // set the carry-in to be zero for the first partial sum
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.ADD,
+            rd = carry,
+            rs1 = builder.mkConstant(0),
+            rs2 = builder.mkConstant(0)
+          )
+          val num_loops = rs1_uint16_array.length max rs2_uint16_array.length
+          rs1_uint16_array zip
+            rs1_uint16_array zip
+            rd_uint16_array foreach { case ((rs1_16, rs2_16), rd_16) =>
+              inst_q += AddC(
+                rd = rd_16,
+                co = carry,
+                rs1 = rs1_16,
+                rs2 = rs2_16,
+                ci = carry
+              )
+            }
+
+        } else {
+          inst_q += instruction
+            .copy(
+              rd = rd_uint16_array.head,
+              rs1 = rs1_uint16_array.head,
+              rs2 = rs2_uint16_array.head
+            )
+
+        }
+        maskRd()
 
       case BinaryOperator.ADDC =>
         logger.error("Unexpected instruction!")
       case BinaryOperator.SUB =>
+        val ConvertedWire(rd_uint16_array, rd_mask) =
+          builder.getConversion(instruction.rd)
+        val rs1_uint16_array = builder.getConversion(instruction.rs1).parts
+        val rs2_uint16_array = builder.getConversion(instruction.rs2).parts
+        assertAligned(rd_uint16_array, rs1_uint16_array, rs2_uint16_array)
+        if (rs1_uint16_array.length != 1) {
+
+          // we handle SUB with carry by NOTing the second operand and AddCing
+          // them. However, unlike the ADD conversion, we initialize the first
+          // carry to 1
+          val carry = builder.mkWire("carry", 16)
+          val rs2_16_neg = builder.mkWire(instruction.rs2 + "_neg", 16)
+          val const_0xFFFF = builder.mkConstant(0xffff)
+
+          // set the initial carry to 1
+          inst_q += BinaryArithmetic(
+            BinaryOperator.ADD,
+            carry,
+            builder.mkConstant(0),
+            builder.mkConstant(1)
+          )
+          rs1_uint16_array zip rs2_uint16_array zip rd_uint16_array foreach {
+            case ((rs1_16, rs2_16), rd_16) =>
+              inst_q += BinaryArithmetic(
+                BinaryOperator.XOR,
+                rs2_16_neg,
+                rs2_16,
+                const_0xFFFF
+              )
+              inst_q += AddC(
+                co = carry,
+                rd = rd_16,
+                rs1 = rs1_16,
+                rs2 = rs2_16_neg,
+                ci = carry
+              )
+          }
+
+        } else {
+          inst_q += instruction.copy(
+            rd = rd_uint16_array.head,
+            rs1 = rs1_uint16_array.head,
+            rs2 = rs2_uint16_array.head
+          )
+        }
+        maskRd()
       case op @ (BinaryOperator.OR | BinaryOperator.AND | BinaryOperator.XOR) =>
         val ConvertedWire(rd_uint16_array, mask) =
           builder.getConversion(instruction.rd)
@@ -201,16 +319,8 @@ object BigIntToUInt16Transform
               )
               .setPos(instruction.pos)
         }
-        mask match {
-          case Some(const_mask) =>
-            inst_q += BinaryArithmetic(
-              BinaryOperator.AND,
-              rd_uint16_array.last,
-              rd_uint16_array.last,
-              const_mask
-            )
-          case None => // no masking needed
-        }
+        maskRd()
+
       case BinaryOperator.SEQ =>
         val rs1_uint16_array = builder.getConversion(instruction.rs1).parts
         val rs2_uint16_array = builder.getConversion(instruction.rs2).parts
@@ -420,17 +530,7 @@ object BigIntToUInt16Transform
 
         }
 
-        rd_mask match {
-          case Some(mask_const) =>
-            inst_q +=
-              BinaryArithmetic(
-                BinaryOperator.AND,
-                rd_uint16_array.last,
-                rd_uint16_array.last,
-                mask_const
-              )
-          case _ => // do nothing
-        }
+        maskRd()
       case BinaryOperator.SRL  =>
       case BinaryOperator.SRA  =>
       case BinaryOperator.SLTS =>
@@ -441,18 +541,25 @@ object BigIntToUInt16Transform
         def assumptions(): Unit = {
           val rs2_const = builder.originalDef(instruction.rs1)
           if (rs2_const.variable.varType != ConstType) {
-            logger.error("Second SLTS operand should be constant 0!", instruction)
+            logger.error(
+              "Second SLTS operand should be constant 0!",
+              instruction
+            )
           } else {
             rs2_const.value match {
               case Some(x) if x == 0 => // nothing
               case _ =>
-                logger.error("Second SLTS operand should be constant 0!", instruction)
+                logger.error(
+                  "Second SLTS operand should be constant 0!",
+                  instruction
+                )
             }
           }
         }
         assumptions()
 
-        val ConvertedWire(rs1_uint16_array, rs1_mask) = builder.getConversion(instruction.rs1)
+        val ConvertedWire(rs1_uint16_array, rs1_mask) =
+          builder.getConversion(instruction.rs1)
         val orig_rd_width = builder.originalWidth(instruction.rd)
         if (orig_rd_width == 1) {
           logger.error("Expected Boolean result in SLTS", instruction)
@@ -462,13 +569,12 @@ object BigIntToUInt16Transform
         // number of used bits in the most significant short word
         val rs1_ms_half_word_bits = rs1_mask match {
           case Some(value) => BigInt(value).bitLength
-          case None => 16
+          case None        => 16
         }
 
-         // now we need to shift the most significant bit of the rs1_uint16_array.last
+        // now we need to shift the most significant bit of the rs1_uint16_array.last
         // to the right and bring it to bit position zero, then we can just use
         // a SEQ to check the sign bit, in fact, we no longer need
-
 
         // ATTENTION: We can not use SLTS on the most significant half-word simply
         // because the most significant half-word might be partial, i.e., have
@@ -493,6 +599,8 @@ object BigIntToUInt16Transform
         logger.error("Unexpected instruction!")
 
     }
+    // set the position
+    inst_q.foreach(_.setPos(instruction.pos))
 
     inst_q.toSeq
   }

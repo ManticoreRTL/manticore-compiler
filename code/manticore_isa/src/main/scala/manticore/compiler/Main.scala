@@ -90,6 +90,7 @@ object Main {
 
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
       val unconstrained_phases = UnconstrainedNameChecker followedBy
+          UnconstrainedRenameVariables followedBy
           UnconstrainedOrderInstructions followedBy
           UnconstrainedRemoveAliases followedBy
           UnconstrainedDeadCodeElimination followedBy
