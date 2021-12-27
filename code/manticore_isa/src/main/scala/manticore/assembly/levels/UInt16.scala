@@ -27,14 +27,39 @@ final class UInt16 private (private val v: Int) extends AnyVal {
   def >(that: UInt16): Boolean = this.v > that.v
   def >=(that: UInt16): Boolean = this.v >= that.v
 
+  /**
+    * Logical left shift
+    *
+    * @param shamnt
+    * @return
+    */
   def <<(shamnt: Int): UInt16 = {
     require(shamnt < 16)
     UInt16.clipped(this.v << shamnt)
   }
 
+  /**
+    * Logical right shift
+    * @param shamnt
+    * @return
+    */
   def >>(shamnt: Int): UInt16 = {
     require(shamnt < 16)
     UInt16.clipped(this.v >> shamnt)
+  }
+
+  /**
+    * Arithmetic right shift
+    *
+    * @param shamnt
+    * @return
+    */
+  def >>>(shamnt: Int): UInt16 = {
+    require(shamnt < 16)
+    val sign = this.v >> 15
+    val sign_extension = if (sign == 1) (((1 << 16) - 1) << 16) else 0
+    val extended = this.v | sign_extension
+    UInt16.clipped(extended >>> shamnt)
   }
   override def toString(): String = v.toString()
 }
