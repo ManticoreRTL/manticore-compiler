@@ -6,14 +6,11 @@ import manticore.assembly.BinaryOperator
 import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.WireType
 
-/**
-  * Translates arbitrary width operations to 16-bit ones that match the machine
+/** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
   *
-  *
-  *
-  * [[SRA, SRL, SLL]]: The trickiest ones are the shift operations,
-  * pseudo-code for the shift translations is given below:
+  * [[SRA, SRL, SLL]]: The trickiest ones are the shift operations, pseudo-code
+  * for the shift translations is given below:
   * {{{
   * object ShiftTranslation extends App {
   *   case class ArbitraryInt(val vs: Seq[UInt16], val w: Int) {
@@ -184,9 +181,13 @@ import manticore.assembly.levels.WireType
   * second operand and feeding in a carry of 1 in the first additions.
   *
   * [[SEQ]]: We break every SEQ to many SEQ instructions, and then ADD all the
-  * results, and set the rd to be [[SEQ rd, res_sum, num_SEQ]], where [[rd]]
-  * is the result of the wide instruction and [[res_sum]] is the sum of all 16-bit
+  * results, and set the rd to be [[SEQ rd, res_sum, num_SEQ]], where [[rd]] is
+  * the result of the wide instruction and [[res_sum]] is the sum of all 16-bit
   * [[SEQ]] instruction, and [[num_SEQ]] is the number of 16-bit [[SEQ]]s
+  *
+  * [[SLTS]]: We only have to deal with [[SLTS rd, rs, const_0]]. This can be
+  * efficiently translated to a sign bit check operation. All we need to do is
+  * to shift right the most significant word and do a SEQ on the sign bit!
   *
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
@@ -200,7 +201,7 @@ object BigIntToUInt16Transform
   import UnconstrainedIR._
 
   private case class ConvertedWire(parts: Seq[Name], mask: Option[Name])
-  private class ConversionBuilder(proc: DefProcess) {
+  private class ConversionBuilder(private val proc: DefProcess) {
 
     private var m_name_id = 0
     private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
@@ -211,6 +212,14 @@ object BigIntToUInt16Transform
     private val m_old_defs = proc.registers.map { r =>
       r.variable.name -> r
     }.toMap
+
+    /** Build the converted process from the given sequence of instructions
+      *
+      * @param instructions
+      * @return
+      */
+    def buildFrom(instructions: Seq[Instruction]): DefProcess =
+      proc.copy(registers = m_wires.toSeq, body = instructions).setPos(proc.pos)
 
     /** Create a unique name
       *
@@ -340,11 +349,15 @@ object BigIntToUInt16Transform
 
   }
 
-  def convert(
+  def convertBinaryArithmetic(
       instruction: BinaryArithmetic
-  )(implicit ctx: AssemblyContext, builder: ConversionBuilder) {
+  )(implicit
+      ctx: AssemblyContext,
+      builder: ConversionBuilder
+  ): Seq[Instruction] = {
 
     val inst_q = scala.collection.mutable.Queue.empty[Instruction]
+
     def convertBitwise(bitwise_inst: BinaryArithmetic): Unit = {
 
       val ConvertedWire(rd_uint16_array, mask) =
@@ -395,6 +408,7 @@ object BigIntToUInt16Transform
     )(msg: => String): Unit = if (uint16_array.length != 1) {
       logger.error(msg, instruction)
     }
+
     instruction.operator match {
       case BinaryOperator.ADD =>
         val ConvertedWire(rd_uint16_array, rd_mask) =
@@ -854,6 +868,12 @@ object BigIntToUInt16Transform
             local_res,
             rd_uint16_array.last
           )
+          inst_q += BinaryArithmetic(
+            BinaryOperator.ADD,
+            carry_in,
+            carry_out,
+            builder.mkConstant(0)
+          )
           val new_res = builder.mkWire("new_res", 16)
           // handle the rest (if any)
           for (jx <- (rd_uint16_array.length - 2) to 0 by -1) {
@@ -922,6 +942,146 @@ object BigIntToUInt16Transform
         maskRd()
 
       case BinaryOperator.SRL =>
+        val ConvertedWire(shift_uint16, _) =
+          builder.getConversion(instruction.rs2)
+        val ConvertedWire(rd_uint16_array, rd_mask) =
+          builder.getConversion(instruction.rd)
+        val ConvertedWire(rs1_uint16_array, _) =
+          builder.getConversion(instruction.rs1)
+
+        assert16Bit(shift_uint16) {
+          "Shift amount is too large, can only support shifting up to 16-bit " +
+            "number as the shift amount, are you sure your design is correct?"
+        }
+
+        val mutable_sh =
+          builder.mkWire("mutable_sh", builder.originalWidth(instruction.rs2))
+
+        for (ix <- (rd_uint16_array.length - 1) to 0 by -1) {
+
+          val mutable_sh_eq_0 = builder.mkWire("mutable_sh_eq_0", 0)
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SEQ,
+            mutable_sh_eq_0,
+            mutable_sh,
+            builder.mkConstant(0)
+          )
+          val carry_in = builder.mkWire("carry_in", 16)
+          val mutable_sh_gt_eq_16 = builder.mkWire("mutable_sh_gt_eq_16", 1)
+          val sixteen_minus_shift_amount =
+            builder.mkWire("sixteen_minus_shift_amount", 16)
+          inst_q +=
+            BinaryArithmetic(
+              BinaryOperator.SUB,
+              sixteen_minus_shift_amount,
+              builder.mkConstant(16),
+              mutable_sh
+            )
+          val fifteen_minus_mutable_sh =
+            builder.mkWire("fifteen_minus_mutable_sh", 16)
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SUB,
+            fifteen_minus_mutable_sh,
+            sixteen_minus_shift_amount,
+            builder.mkConstant(1)
+          )
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SLTS,
+            mutable_sh_gt_eq_16,
+            fifteen_minus_mutable_sh,
+            builder.mkConstant(0)
+          )
+          inst_q += BinaryArithmetic(
+            BinaryOperator.ADD,
+            carry_in,
+            builder.mkConstant(0),
+            builder.mkConstant(0)
+          )
+          val left_shift_amount = builder.mkWire("left_shift_amount", 16)
+          inst_q ++= Seq(
+            BinaryArithmetic(
+              BinaryOperator.SEQ,
+              mutable_sh_eq_0,
+              mutable_sh,
+              builder.mkConstant(0)
+            ),
+            Mux(
+              left_shift_amount,
+              mutable_sh_eq_0,
+              sixteen_minus_shift_amount,
+              builder.mkConstant(0)
+            )
+          )
+          val new_res = builder.mkWire("new_res", 16)
+          val rd_left_shifted = builder.mkWire("rd_left_shifted", 16)
+          val carry_out = builder.mkWire("carry_out", 16)
+          val rd_right_shifted = builder.mkWire("rd_right_shifted", 16)
+          val local_res = builder.mkWire("local_wire", 16)
+          // handle the rest (if any)
+          for (jx <- (rd_uint16_array.length - 2) to 0 by -1) {
+
+            inst_q += BinaryArithmetic(
+              BinaryOperator.SLL,
+              rd_left_shifted,
+              rd_uint16_array(jx),
+              left_shift_amount
+            )
+            inst_q += Mux(
+              carry_out,
+              mutable_sh_gt_eq_16,
+              rd_left_shifted,
+              rd_uint16_array(jx)
+            )
+            // we use logical right shift because the carry is handled explicitly
+            inst_q += BinaryArithmetic(
+              BinaryOperator.SRL,
+              rd_right_shifted,
+              rd_uint16_array(jx),
+              mutable_sh
+            )
+            inst_q += Mux(
+              local_res,
+              mutable_sh_gt_eq_16,
+              rd_right_shifted,
+              builder.mkConstant(0)
+            )
+            inst_q += BinaryArithmetic(
+              BinaryOperator.OR,
+              new_res,
+              local_res,
+              carry_in
+            )
+            inst_q += Mux(
+              rd_uint16_array(jx),
+              mutable_sh_eq_0,
+              new_res,
+              rd_uint16_array(jx)
+            )
+            inst_q += BinaryArithmetic(
+              BinaryOperator.ADD,
+              carry_in,
+              carry_out,
+              builder.mkConstant(0)
+            )
+          }
+
+          val mutable_sh_minus_sixteen =
+            builder.mkWire("mutable_sh_minus_sixteen", 16)
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SUB,
+            mutable_sh_minus_sixteen,
+            mutable_sh,
+            builder.mkConstant(16)
+          )
+          inst_q += Mux(
+            mutable_sh,
+            mutable_sh_gt_eq_16,
+            builder.mkConstant(0),
+            mutable_sh
+          )
+
+        }
+        maskRd()
 
       case BinaryOperator.SLTS =>
         // we should only handle SLTS rd, rs1, const_0, because this is the
@@ -994,31 +1154,80 @@ object BigIntToUInt16Transform
 
     inst_q.toSeq
   }
+
   def convert(instruction: Instruction)(implicit
       ctx: AssemblyContext,
       builder: ConversionBuilder
-  ): Seq[Instruction] = {
-
-    logger.error("Not implemented!")
-    Seq()
+  ): Seq[Instruction] = instruction match {
+    case i: BinaryArithmetic => convertBinaryArithmetic(i)
+    case i @ LocalLoad(rd, base, offset, _) =>
+      val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
+      val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
+      rd_uint16_array.zip(base_uint16_array).zipWithIndex.map {
+        case ((rd_16: Name, base_16: Name), ix: Int) =>
+          i.copy(rd_16, base_16, if (ix == 0) offset else BigInt(0))
+            .setPos(i.pos)
+      } ++ rd_mask.map { case m => // Not sure if masking is necessary
+        BinaryArithmetic(
+          BinaryOperator.AND,
+          rd_uint16_array.last,
+          rd_uint16_array.last,
+          m
+        ).setPos(i.pos)
+      }.toSeq
+    case i @ LocalStore(rs, base, offset, predicate, _) =>
+      val ConvertedWire(rs_uint16_array, _) = builder.getConversion(rs)
+      val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
+      rs_uint16_array.zip(base_uint16_array).zipWithIndex.map {
+        case ((rs_16: Name, base_16: Name), ix: Int) =>
+          i.copy(rs_16, base_16, if (ix == 0) offset else BigInt(0))
+            .setPos(i.pos)
+      }
+    case i @ Expect(ref, got, _, _) =>
+      val ConvertedWire(ref_uint16_array, _) = builder.getConversion(ref)
+      val ConvertedWire(got_uint16_array, _) = builder.getConversion(got)
+      ref_uint16_array zip got_uint16_array map { case (r16, g16) =>
+        i.copy(r16, g16).setPos(i.pos)
+      }
+    case i @ Mux(rd, sel, rfalse, rtrue, _) =>
+      val ConvertedWire(rd_uint16_array, _) = builder.getConversion(rd)
+      val sel_uint16_array = builder.getConversion(sel).parts
+      if (sel_uint16_array.size != 1) {
+        logger.error("sel should be single bit!", i)
+      }
+      val rfalse_uint16_array = builder.getConversion(rfalse).parts
+      val rtrue_uint16_array = builder.getConversion(rtrue).parts
+      rd_uint16_array zip (sel_uint16_array zip (rfalse_uint16_array zip rtrue_uint16_array)) map {
+        case (rd16, (sel16, (rfalse16, rtrue16))) =>
+          i.copy(rd16, sel16, rfalse16, rtrue16).setPos(i.pos)
+      } // don't need to mask the results though, rfalse and rtrue are masked
+    // where they are produced and MUX cannot overflow them
+    case i: AddC =>
+      logger.error("AddC can only be inserted by the compiler!", i)
+      Seq.empty[Instruction]
+    case Nop =>
+      logger.error("Nops can only be inserted by the compiler!")
+      Seq.empty[Instruction]
+    case _ =>
+      logger.error("Can not handle custom instructions yet", instruction)
+      Seq.empty[Instruction]
 
   }
+
   def convert(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
 
     implicit val builder = new ConversionBuilder(proc)
 
     val insts: Seq[Instruction] = proc.body.flatMap { convert(_) }
 
-    println(insts map { _.serialized } mkString ("\n"))
-    ???
+    builder.buildFrom(insts)
+
   }
   override def transform(
       source: DefProgram,
       context: AssemblyContext
-  ): DefProgram = {
-
-    source.copy(processes = source.processes.map { p => convert(p)(context) })
-    ???
-  }
+  ): DefProgram = source.copy(processes = source.processes.map { p =>
+    convert(p)(context)
+  })
 
 }
