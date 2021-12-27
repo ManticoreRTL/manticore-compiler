@@ -7,6 +7,7 @@ import manticore.assembly.levels.DeadCodeElimination
 import manticore.assembly.levels.AssemblyChecker
 import manticore.compiler.AssemblyContext
 import manticore.assembly.levels.AssemblyTransformer
+import manticore.assembly.levels.RenameTransformation
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
@@ -17,6 +18,22 @@ object UnconstrainedNameChecker
       context: AssemblyContext
   ): Unit = do_check(source, context)
 
+}
+
+object UnconstrainedRenameVariables
+    extends RenameTransformation
+    with AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
+
+  val flavor = UnconstrainedIR
+  import flavor._
+
+  override def mkName(id: Long, original: String): String =
+    s"%v${id}"
+  override def transform(p: DefProgram, ctx: AssemblyContext) =
+    do_transform(p, ctx)
 }
 object UnconstrainedOrderInstructions
     extends OrderInstructions

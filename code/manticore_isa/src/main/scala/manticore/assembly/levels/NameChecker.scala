@@ -62,7 +62,7 @@ trait AssemblyNameChecker extends Flavored {
 
       def checkInst(inst: Instruction): Unit = {
         implicit val implicit_inst = inst
-        (inst: @unchecked /* match is already exhaustive, suppress compiler warns */ ) match {
+        inst match {
           case BinaryArithmetic(_, rd, rs1, rs2, _) =>
             checkRegs(Seq(rd, rs1, rs2))
           case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>

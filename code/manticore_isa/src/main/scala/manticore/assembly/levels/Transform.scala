@@ -30,6 +30,8 @@ trait Transformation[
 
 }
 
+
+
 /** Signature class for IR transformation, taking the [[S]] IR flavor as input
   * and producing a [[T]] flavored IR as output
   *
@@ -38,7 +40,7 @@ trait Transformation[
 trait AssemblyTransformer[
     -S <: ManticoreAssemblyIR#DefProgram,
     +T <: ManticoreAssemblyIR#DefProgram
-]   extends Transformation[S, T]
+]  extends Transformation[S, T]
     with Reporter {
 
   /** transform a tree of type S to T
