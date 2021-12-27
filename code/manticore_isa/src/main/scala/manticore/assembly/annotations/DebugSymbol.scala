@@ -13,7 +13,8 @@ object DebugSymbol {
         new DebugSymbol(
             name,
             Map(
-                "file" -> StringValue(fields("symbol"))
+                "symbol" -> StringValue(fields("symbol")),
+                "index" -> IntValue(fields.getOrElse("index", "-1").toInt)
             )
         )
     }

@@ -6,6 +6,191 @@ import manticore.assembly.BinaryOperator
 import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.WireType
 
+/**
+  * Translates arbitrary width operations to 16-bit ones that match the machine
+  * data width
+  *
+  *
+  *
+  * [[SRA, SRL, SLL]]: The trickiest ones are the shift operations,
+  * pseudo-code for the shift translations is given below:
+  * {{{
+  * object ShiftTranslation extends App {
+  *   case class ArbitraryInt(val vs: Seq[UInt16], val w: Int) {
+  *   def toBinaryString: String = {
+  *     f"${w}'b" + vs.reverseIterator
+  *       .map { x =>
+  *         String.format("%16s", x.toInt.toBinaryString).replace(" ", "0")
+  *       }
+  *       .mkString(" ")
+  *   }
+  *   override def toString = toBinaryString
+  *   }
+  *
+  *   def shiftRightArithmetic(i: ArbitraryInt, sh: Int): ArbitraryInt = {
+  *
+  *     val rd = scala.collection.mutable.ArrayBuffer[UInt16](i.vs:_*)
+  *
+  *     var mutable_sh = sh
+  *     val msbits = i.w % 16
+  *     val sign = rd.last >> (msbits - 1)
+  *     // first sign extend the most significant short word
+  *     if (i.w % 16 != 0) {
+  *       val ext_mask = if (sign == UInt16(1)) (UInt16((1 << 16) - 1) << msbits) else UInt16(0)
+  *       rd(rd.length - 1) = rd(rd.length - 1) | ext_mask
+  *     }
+  *     for(ix <- (i.vs.length - 1) to 0 by -1) {
+  *       val left_shift_amount = if (mutable_sh == 0) 0 else (16 - mutable_sh)
+  *
+  *       // we only apply SRA to the last element, the rest are handled by
+  *       // propagating the carry
+  *       var carry_in = UInt16(0)
+  *       val sign_replicated = if (sign.toInt == 1) UInt16( (1 << 16) - 1) else UInt16(0)
+  *
+  *       {
+  *         val last_jx = i.vs.length - 1
+  *         val carry_out =
+  *           if (mutable_sh >= 16)
+  *             rd.last
+  *           else
+  *             rd.last << left_shift_amount
+  *         val local_res =
+  *           if (mutable_sh >= 16)
+  *             sign_replicated
+  *           else
+  *             rd(last_jx) >>> mutable_sh
+  *         rd(last_jx) = if (mutable_sh == 0) rd(last_jx) else local_res
+  *         carry_in = carry_out
+  *       }
+  *
+  *       for (jx <- (i.vs.length - 2) to 0 by -1) {
+  *         val carry_out =
+  *           if (mutable_sh >= 16)
+  *             rd(jx)
+  *           else
+  *             rd(jx) << left_shift_amount
+  *         val local_res =
+  *           if (mutable_sh >= 16)
+  *             UInt16(0)
+  *           else
+  *             rd(jx) >> mutable_sh
+  *         val new_res = local_res | carry_in
+  *         rd(jx) = if (mutable_sh == 0) rd(jx) else new_res
+  *         carry_in = carry_out
+  *       }
+  *
+  *       mutable_sh = if (mutable_sh >= 16) mutable_sh - 16 else 0
+  *     }
+  *
+  *     i.copy(vs = rd.toSeq)
+  *   }
+  *   def shiftRightLogical(i: ArbitraryInt, sh: Int): ArbitraryInt = {
+  *     require(sh < Short.MaxValue)
+  *
+  *     val rd = scala.collection.mutable.ArrayBuffer[UInt16](i.vs:_*)
+  *
+  *     var mutable_sh = sh
+  *     for(ix <- (i.vs.length - 1) to 0 by -1) {
+  *       val msh_eq_0 = mutable_sh == 0
+  *       var carry_in = UInt16(0)
+  *       val left_shift_amount = if (mutable_sh == 0) 0 else (16 - mutable_sh)
+  *       for (jx <- (i.vs.length - 1) to 0 by -1) {
+  *
+  *         val carry_out =
+  *           if (mutable_sh >= 16)
+  *             rd(jx)
+  *           else
+  *             rd(jx) << left_shift_amount
+  *         val local_res =
+  *           if (mutable_sh >= 16)
+  *             UInt16(0)
+  *           else
+  *             rd(jx) >> mutable_sh
+  *         val new_res = local_res | carry_in
+  *         rd(jx) = if (mutable_sh == 0) rd(jx) else new_res
+  *         carry_in = carry_out
+  *
+  *       }
+  *       mutable_sh = if (mutable_sh >= 16) mutable_sh - 16 else 0
+  *     }
+  *
+  *     i.copy(vs = rd.toSeq)
+  *   }
+  *   def shiftLeftLogical(i: ArbitraryInt, sh: Int): ArbitraryInt = {
+  *
+  *     require(sh < Short.MaxValue)
+  *
+  *     var msh = sh
+  *
+  *     val rd = scala.collection.mutable.ArrayBuffer[UInt16](
+  *       i.vs: _*
+  *     )
+  *
+  *     for (ix <- 0 until i.vs.length) {
+  *       val msh_eq_0 = msh == 0
+  *       val sixteen_minus_msh = 16 - msh
+  *       val fifteen_minus_msh = sixteen_minus_msh - 1
+  *       val msh_gt_eq_16 = fifteen_minus_msh < 0
+  *       val right_shift_amount = if (msh_eq_0) 0 else sixteen_minus_msh
+  *       var carry_in = UInt16(0)
+  *       val msh_minus_16 = msh - 16
+  *       for (jx <- 0 until i.vs.length) {
+  *         // val right_shifted = rd(jx) >> hsm.toInt
+  *         val carry_out =
+  *           if (msh_gt_eq_16) // ms > 16
+  *             rd(jx)
+  *           else
+  *             rd(jx) >> right_shift_amount // val right_shifted
+  *
+  *         // val res = rd(jx) << msh
+  *         val new_res =
+  *           if (msh_gt_eq_16) // msh > 16
+  *             UInt16(0)
+  *           else
+  *             rd(jx) << msh //
+  *         val new_new_res = new_res | carry_in
+  *         rd(jx) = if (msh_eq_0) rd(jx) else new_new_res
+  *         carry_in = carry_out
+  *       }
+  *
+  *       msh = if (msh_gt_eq_16) msh_minus_16 else 0
+  *
+  *     }
+  *
+  *     i.copy(vs = rd.toSeq)
+  *   }
+  *
+  *   val x = ArbitraryInt(
+  *     Seq(
+  *       UInt16(1),
+  *       UInt16(2),
+  *       UInt16(4),
+  *       UInt16(8)
+  *     ),
+  *     53
+  *   )
+  *
+  *   // println(x.toBinaryString)
+  *   for (i <- 0 until 70)
+  *     println(f"${i}:\t${shiftRightArithmetic(x, i).toBinaryString}")
+  *
+  * }
+  * }}}
+  *
+  * [[ADD]]: Addition is pretty straightforward. We use a cascade of ADDC
+  * instructions.
+  *
+  * [[SUB]]: We replace all the wide subtraction with additions by inverting the
+  * second operand and feeding in a carry of 1 in the first additions.
+  *
+  * [[SEQ]]: We break every SEQ to many SEQ instructions, and then ADD all the
+  * results, and set the rd to be [[SEQ rd, res_sum, num_SEQ]], where [[rd]]
+  * is the result of the wide instruction and [[res_sum]] is the sum of all 16-bit
+  * [[SEQ]] instruction, and [[num_SEQ]] is the number of 16-bit [[SEQ]]s
+  *
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 object BigIntToUInt16Transform
     extends AssemblyTransformer[
       UnconstrainedIR.DefProgram,
@@ -205,7 +390,11 @@ object BigIntToUInt16Transform
       ) {
         logger.error("Unaligned operands!", instruction)
       }
-
+    def assert16Bit(
+        uint16_array: Seq[Name]
+    )(msg: => String): Unit = if (uint16_array.length != 1) {
+      logger.error(msg, instruction)
+    }
     instruction.operator match {
       case BinaryOperator.ADD =>
         val ConvertedWire(rd_uint16_array, rd_mask) =
@@ -375,19 +564,20 @@ object BigIntToUInt16Transform
         val rd = instruction.rd
         val ConvertedWire(shift_uint16, shift_amount_mask) =
           builder.getConversion(shift_amount)
-        if (shift_uint16.length != 1) {
-          logger.error(
-            "Shift amount is too large, can only support shifting up to 16-bit " +
-              "number as the shift amount, are you sure your design is correct?",
-            instruction
-          )
+
+        assert16Bit(shift_uint16) {
+          "Shift amount is too large, can only support shifting up to 16-bit " +
+            "number as the shift amount, are you sure your design is correct?"
         }
 
         // we don't keep the mask for rs, because the producer should have taken
         // care of ANDing the most significant short word.
         val ConvertedWire(rs_uint16_array, _) = builder.getConversion(rs)
 
-        val shift_amount_mutable = builder.freshName(shift_amount + "_mutable")
+        val shift_amount_mutable = builder.mkWire(
+          shift_amount + "_mutable",
+          builder.originalWidth(shift_amount)
+        )
 
         val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
 
@@ -531,8 +721,208 @@ object BigIntToUInt16Transform
         }
 
         maskRd()
-      case BinaryOperator.SRL  =>
-      case BinaryOperator.SRA  =>
+      case BinaryOperator.SRA =>
+        val shift_amount = instruction.rs2
+        val rd = instruction.rd
+        val rs1 = instruction.rs1
+
+        val ConvertedWire(shift_uint16, _) = builder.getConversion(shift_amount)
+        assert16Bit(shift_uint16) {
+          "Shift amount is too large, can only support shifting up to 16-bit " +
+            "number as the shift amount, are you sure your design is correct?"
+        }
+
+        val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
+        val ConvertedWire(rs1_uint16_array, _) = builder.getConversion(rs1)
+        val rs_width = builder.originalWidth(rs1)
+
+        val mutable_sh =
+          builder.mkWire("mutable_sh", builder.originalWidth(shift_amount))
+
+        val msbits =
+          rs_width % 16 // number of valid bits in the most significant short word
+        // we need to sign extend the most significant word if necessary
+        val sign_bit = builder.mkWire("sign", 1)
+        val msbits_shift = builder.mkConstant(msbits - 1)
+
+        if (msbits != 0) {
+          // not 16-bit aligned, so need to extend the sign bit
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SRL,
+            sign_bit,
+            rd_uint16_array.last,
+            builder.mkConstant(msbits - 1)
+          )
+          val sext_mask = builder.mkWire("sext_mask", 16)
+          inst_q += Mux(
+            sext_mask,
+            sign_bit,
+            builder.mkConstant(0),
+            builder.mkConstant((1 << 16) - 1)
+          )
+          inst_q += BinaryArithmetic(
+            BinaryOperator.OR,
+            rd_uint16_array.last,
+            rd_uint16_array.last,
+            sext_mask
+          )
+        }
+
+        for (ix <- (rd_uint16_array.length - 1) to 0 by -1) {
+
+          val left_shift_amount = builder.mkWire("left_shift_amount", 16)
+          val sixteen_minus_shift_amount =
+            builder.mkWire("sixteen_minus_shift_amount", 16)
+          val mutable_sh_eq_0 = builder.mkWire("mutable_sh_eq_0", 1)
+
+          inst_q ++= Seq(
+            BinaryArithmetic(
+              BinaryOperator.SEQ,
+              mutable_sh_eq_0,
+              mutable_sh,
+              builder.mkConstant(0)
+            ),
+            BinaryArithmetic(
+              BinaryOperator.SUB,
+              sixteen_minus_shift_amount,
+              builder.mkConstant(16),
+              mutable_sh
+            ),
+            Mux(
+              left_shift_amount,
+              mutable_sh_eq_0,
+              sixteen_minus_shift_amount,
+              builder.mkConstant(0)
+            )
+          )
+          val carry_in = builder.mkWire("carry_in", 16)
+          val sign_replicated = builder.mkWire("sign_replicated", 16)
+          inst_q += Mux(
+            sign_replicated,
+            sign_bit,
+            builder.mkConstant(0),
+            builder.mkConstant((1 << 16) - 1)
+          )
+          // handle the most significant short word, in this case we will actually
+          // use the SRA instruction, but for the other short words we use SRL
+          val carry_out = builder.mkWire("carry_out", 16)
+          val rd_left_shifted = builder.mkWire("rd_left_shifted", 16)
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SLL,
+            rd_left_shifted,
+            rd_uint16_array.last,
+            left_shift_amount
+          )
+          val mutable_sh_gt_eq_16 = builder.mkWire("mutable_sh_gt_eq_16", 1)
+          val fifteen_minus_mutable_sh =
+            builder.mkWire("fifteen_minus_mutable_sh", 16)
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SUB,
+            fifteen_minus_mutable_sh,
+            sixteen_minus_shift_amount,
+            builder.mkConstant(1)
+          )
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SLTS,
+            mutable_sh_gt_eq_16,
+            fifteen_minus_mutable_sh,
+            builder.mkConstant(0)
+          )
+          inst_q += Mux(
+            carry_out,
+            mutable_sh_gt_eq_16,
+            rd_left_shifted,
+            rd_uint16_array.last
+          )
+          val rd_right_shifted = builder.mkWire("rd_right_shifted", 16)
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SRA,
+            rd_right_shifted,
+            rd_uint16_array.last,
+            mutable_sh
+          )
+          val local_res = builder.mkWire("local_res", 16)
+          inst_q += Mux(
+            local_res,
+            mutable_sh_gt_eq_16,
+            rd_right_shifted,
+            sign_replicated
+          )
+          inst_q += Mux(
+            rd_uint16_array.last,
+            mutable_sh_eq_0,
+            local_res,
+            rd_uint16_array.last
+          )
+          val new_res = builder.mkWire("new_res", 16)
+          // handle the rest (if any)
+          for (jx <- (rd_uint16_array.length - 2) to 0 by -1) {
+
+            inst_q += BinaryArithmetic(
+              BinaryOperator.SLL,
+              rd_left_shifted,
+              rd_uint16_array(jx),
+              left_shift_amount
+            )
+            inst_q += Mux(
+              carry_out,
+              mutable_sh_gt_eq_16,
+              rd_left_shifted,
+              rd_uint16_array(jx)
+            )
+            // we use logical right shift because the carry is handled explicitly
+            inst_q += BinaryArithmetic(
+              BinaryOperator.SRL,
+              rd_right_shifted,
+              rd_uint16_array(jx),
+              mutable_sh
+            )
+            inst_q += Mux(
+              local_res,
+              mutable_sh_gt_eq_16,
+              rd_right_shifted,
+              builder.mkConstant(0)
+            )
+            inst_q += BinaryArithmetic(
+              BinaryOperator.OR,
+              new_res,
+              local_res,
+              carry_in
+            )
+            inst_q += Mux(
+              rd_uint16_array(jx),
+              mutable_sh_eq_0,
+              new_res,
+              rd_uint16_array(jx)
+            )
+            inst_q += BinaryArithmetic(
+              BinaryOperator.ADD,
+              carry_in,
+              carry_out,
+              builder.mkConstant(0)
+            )
+          }
+
+          val mutable_sh_minus_sixteen =
+            builder.mkWire("mutable_sh_minus_sixteen", 16)
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SUB,
+            mutable_sh_minus_sixteen,
+            mutable_sh,
+            builder.mkConstant(16)
+          )
+          inst_q += Mux(
+            mutable_sh,
+            mutable_sh_gt_eq_16,
+            builder.mkConstant(0),
+            mutable_sh
+          )
+        }
+
+        maskRd()
+
+      case BinaryOperator.SRL =>
+
       case BinaryOperator.SLTS =>
         // we should only handle SLTS rd, rs1, const_0, because this is the
         // only thing the Thyrio frontend gives us. This is rather easy and
