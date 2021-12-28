@@ -11,6 +11,16 @@ import manticore.assembly.levels.UInt16
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import manticore.assembly.annotations.AssemblyAnnotation
+import manticore.assembly.annotations.{
+  Loc => LocAnnotation,
+  Layout => LayoutAnnotation
+}
+import manticore.assembly.annotations.AssemblyAnnotationFields.{
+  X => XField,
+  Y => YField,
+  Block => BlockField,
+  Capacity => CapacityField
+}
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
@@ -19,7 +29,10 @@ import manticore.assembly.annotations.AssemblyAnnotation
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object UnconstrainedToPlacedTransform
-    extends AssemblyTransformer[UnconstrainedIR.DefProgram, PlacedIR.DefProgram] {
+    extends AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      PlacedIR.DefProgram
+    ] {
 
   override def transform(
       asm: S.DefProgram,
@@ -50,10 +63,10 @@ object UnconstrainedToPlacedTransform
       .map { p =>
         try {
           val location: AssemblyAnnotation =
-            p.annons.find(_.name == "LOC").get
+            p.annons.find(_.name == LocAnnotation.name).get
 
-          val x = location.getIntValue("x").get
-          val y = location.getIntValue("y").get
+          val x = location.getIntValue(XField).get
+          val y = location.getIntValue(YField).get
           if (x >= dimx || y >= dimy) {
             logger.error(s"location out of bounds for process ${p.id}", p)
             p.id -> None
@@ -158,8 +171,8 @@ object UnconstrainedToPlacedTransform
           r.findAnnotation(manticore.assembly.annotations.Memblock.name) match {
             case Some(block_annon) =>
               T.MemoryBlock(
-                block_annon.getStringValue("block").get,
-                block_annon.getIntValue("capacity").get
+                block_annon.getStringValue(BlockField).get,
+                block_annon.getIntValue(CapacityField).get
               )
             case None =>
               logger.error("Memory block not specified")
@@ -265,8 +278,8 @@ object UnconstrainedToPlacedTransform
   private def getDimensions(asm: S.DefProgram): Option[(Int, Int)] =
     try {
       val layout = asm.findAnnotation("LAYOUT").get
-      val x = layout.getIntValue("x").get
-      val y = layout.getIntValue("y").get
+      val x = layout.getIntValue(XField).get
+      val y = layout.getIntValue(YField).get
       Some((x, y))
     } catch {
       case _: Throwable =>

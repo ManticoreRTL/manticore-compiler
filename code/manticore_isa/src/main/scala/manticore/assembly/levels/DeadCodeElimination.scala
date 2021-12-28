@@ -61,8 +61,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
       case instr @ _ =>
         // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
         DependenceAnalysis.regDef(instr) match {
-          case Some(name) => outputNames.contains(name)
-          case None       => false
+          case s @ h +: t => s.exists(outputNames.contains)
+          case Nil       => false
         }
     }
 
@@ -162,13 +162,13 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
       newBody,
       // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
       (instr: Instruction) =>
-        DependenceAnalysis.regUses(instr).asInstanceOf[Seq[Name]]
+        DependenceAnalysis.regUses(instr)
     )
     val defCounts = countWithFunction(
       newBody,
       // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
       (instr: Instruction) =>
-        DependenceAnalysis.regDef(instr).asInstanceOf[Option[Name]].toSeq
+        DependenceAnalysis.regDef(instr)
     )
     val newRegs = proc.registers.filter { reg =>
       val isReferenced = refCounts(reg.variable.name) != 0
@@ -183,7 +183,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
 
     // Debug dump graph.
     logger.dumpArtifact(
-      s"dependence_graph_${getName}_${newProc.id}_${ctx.transform_index}.dot"
+      s"dependence_graph_${ctx.transform_index}_${getName}_${newProc.id}.dot"
     ) {
       val dp = DependenceAnalysis.build(newProc, labelingFunc)(ctx)
 
@@ -248,10 +248,6 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
       processes = asm.processes.map(process => dce(process)(ctx)),
       annons = asm.annons
     )
-
-    if (logger.countErrors > 0) {
-      logger.fail(s"Failed transform due to previous errors!")
-    }
 
     out
   }

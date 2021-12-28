@@ -2,26 +2,22 @@ package manticore.assembly.annotations
 
 final class Reg private (
     val name: String,
-    val fields: Map[String, AnnotationValue]
+    val fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
 ) extends AssemblyAnnotation
 
-object Reg {
+object Reg extends AssemblyAnnotationParser {
   val name: String = "Reg".toUpperCase()
 
-  def apply(fields: Map[String, String]) = {
-    require(fields.contains("id"))
-    require(fields.contains("type"))
+  def apply(fields: Map[String, AnnotationValue]) = {
+    val parsed_fields = parse(fields)
+    requiresField(AssemblyAnnotationFields.Id, parsed_fields)
+    requiresField(AssemblyAnnotationFields.Type, parsed_fields)
 
     new Reg(
       name,
-      Map(
-        "id" -> StringValue(fields("id")),
-        "type" -> StringValue(fields("type"))
-      )
+      parsed_fields
     )
   }
 
-  def unapply(anno: Reg): Option[Map[String, AnnotationValue]] = Some(
-    anno.fields
-  )
+
 }

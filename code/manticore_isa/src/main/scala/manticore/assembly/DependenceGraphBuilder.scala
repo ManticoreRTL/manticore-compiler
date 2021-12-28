@@ -36,7 +36,7 @@ trait DependenceGraphBuilder extends Flavored {
     def regUses(
         inst: Instruction
     ): Seq[Name] = {
-      (inst: @unchecked) match {
+      inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
           Seq(rs1, rs2)
         case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
@@ -71,6 +71,8 @@ trait DependenceGraphBuilder extends Flavored {
           Seq.empty
         case PadZero(rd, rs, width, annons) =>
           Seq(rs)
+        case AddC(rd, co, rs1, rs2, ci, annons) =>
+          Seq(rs1, rs2, ci)
       }
     }
 
@@ -83,21 +85,22 @@ trait DependenceGraphBuilder extends Flavored {
       */
     def regDef(
         inst: Instruction
-    ): Option[Name] = {
-      (inst: @unchecked) match {
-        case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Some(rd)
-        case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) => Some(rd)
-        case LocalLoad(rd, base, offset, annons)                     => Some(rd)
-        case LocalStore(rs, base, offset, p, annons)                 => None
-        case GlobalLoad(rd, base, annons)                            => Some(rd)
-        case GlobalStore(rs, base, pred, annons)                     => None
-        case Send(rd, rs, dest_id, annons)                           => None
-        case SetValue(rd, value, annons)                             => Some(rd)
-        case Mux(rd, sel, rs1, rs2, annons)                          => Some(rd)
-        case Expect(ref, got, error_id, annons)                      => None
-        case Predicate(rs, annons)                                   => None
-        case Nop                                                     => None
-        case PadZero(rd, rs, width, annons)                          => Some(rd)
+    ): Seq[Name] = {
+      inst match {
+        case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Seq(rd)
+        case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) => Seq(rd)
+        case LocalLoad(rd, base, offset, annons)                     => Seq(rd)
+        case LocalStore(rs, base, offset, p, annons)                 => Nil
+        case GlobalLoad(rd, base, annons)                            => Seq(rd)
+        case GlobalStore(rs, base, pred, annons)                     => Nil
+        case Send(rd, rs, dest_id, annons)                           => Nil
+        case SetValue(rd, value, annons)                             => Seq(rd)
+        case Mux(rd, sel, rs1, rs2, annons)                          => Seq(rd)
+        case Expect(ref, got, error_id, annons)                      => Nil
+        case Predicate(rs, annons)                                   => Nil
+        case Nop                                                     => Nil
+        case PadZero(rd, rs, width, annons)                          => Seq(rd)
+        case AddC(rd, co, rs1, rs2, ci, annons) => Seq(rd, co)
       }
     }
 
@@ -126,11 +129,11 @@ trait DependenceGraphBuilder extends Flavored {
         scala.collection.mutable.Map[Name, Instruction]()
       process.body.foreach { inst =>
         regDef(inst) match {
-          case Some(rd) =>
+          case s @ h +: t =>
             // keep a map from the target regs to the instruction defining it
-            def_instructions.update(rd, inst)
+            s.foreach { rd => def_instructions.update(rd, inst)}
 
-          case None =>
+          case Nil =>
           // instruction does not a value, hence no new dependence edges
         }
       }
@@ -341,9 +344,6 @@ trait DependenceGraphBuilder extends Flavored {
         logger.error("Could not create acyclic dependence graph!")
       }
 
-      if (logger.countErrors > 0) {
-        logger.fail("Failed to create a dependence graph due to earlier errors")
-      }
       dependence_graph
     }
   }

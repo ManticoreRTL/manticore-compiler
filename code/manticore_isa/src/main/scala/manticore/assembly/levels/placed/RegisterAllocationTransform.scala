@@ -17,7 +17,8 @@ import manticore.assembly.ManticoreAssemblyIR
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 
-object RegisterAllocationTransform extends DependenceGraphBuilder
+object RegisterAllocationTransform
+    extends DependenceGraphBuilder
     with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
   val flavor = PlacedIR
@@ -47,13 +48,15 @@ object RegisterAllocationTransform extends DependenceGraphBuilder
 
     process.body.zipWithIndex.foreach { case (inst, ix) =>
       DependenceAnalysis.regDef(inst) match {
-        case Some(rd) =>
-          if (life_begin.contains(rd)) {
-            logger.error(s"Register ${rd} is defined multiple times!", inst)
-          } else {
-            life_begin += (rd -> ix)
+        case Seq() =>
+        case rds @ _ =>
+          rds.foreach { rd =>
+            if (life_begin.contains(rd)) {
+              logger.error(s"Register ${rd} is defined multiple times!", inst)
+            } else {
+              life_begin += (rd -> ix)
+            }
           }
-        case None =>
       }
       DependenceAnalysis.regUses(inst).foreach { rs =>
         if (!life_begin.contains(rs)) {
@@ -194,10 +197,9 @@ object RegisterAllocationTransform extends DependenceGraphBuilder
     // we then put the register back in the free_id deque.
     val unborn_names =
       MutableQueue.empty[LiveRegister] ++ liveness
-      .map { case (name, range) => LiveRegister(name, range) }
-      .toSeq
-      .sortBy { case LiveRegister(_, life) => life._1 }
-
+        .map { case (name, range) => LiveRegister(name, range) }
+        .toSeq
+        .sortBy { case LiveRegister(_, life) => life._1 }
 
     // .sortBy { case (_, (start, _)) => start }
     // val live_names = scala.collection.mutable.PriorityQueue[

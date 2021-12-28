@@ -2,26 +2,22 @@ package manticore.assembly.annotations
 
 final class Loc private (
     val name: String,
-    val fields: Map[String, AnnotationValue]
+    val fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
 ) extends AssemblyAnnotation
 
-object Loc {
+object Loc extends AssemblyAnnotationParser {
   val name: String = "Loc".toUpperCase()
 
-  def apply(fields: Map[String, String]) = {
-    require(fields.contains("x"))
-    require(fields.contains("y"))
+  def apply(fields: Map[String, AnnotationValue]) = {
+    val parsed_fields = parse(fields)
+    requiresField(AssemblyAnnotationFields.X, parsed_fields)
+    requiresField(AssemblyAnnotationFields.Y, parsed_fields)
 
     new Loc(
       name,
-      Map(
-        "x" -> IntValue(fields("x").toInt),
-        "y" -> IntValue(fields("y").toInt)
-      )
+      parsed_fields
     )
   }
 
-  def unapply(anno: Loc): Option[Map[String, AnnotationValue]] = Some(
-    anno.fields
-  )
+
 }

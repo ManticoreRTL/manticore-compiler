@@ -2,24 +2,21 @@ package manticore.assembly.annotations
 
 final class Program private (
     val name: String,
-    val fields: Map[String, AnnotationValue]
+    val fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
 ) extends AssemblyAnnotation
 
-object Program {
+object Program extends AssemblyAnnotationParser {
   val name: String = "Program".toUpperCase()
 
-  def apply(fields: Map[String, String]) = {
-    require(fields.contains("name"))
+  def apply(fields: Map[String, AnnotationValue]) = {
+    val parsed_fields = parse(fields)
+    requiresField(AssemblyAnnotationFields.Name, parsed_fields)
 
     new Program(
       name,
-      Map(
-        "name" -> StringValue(fields("name"))
-      )
+      parsed_fields
     )
   }
 
-  def unapply(anno: Program): Option[Map[String, AnnotationValue]] = Some(
-    anno.fields
-  )
+
 }

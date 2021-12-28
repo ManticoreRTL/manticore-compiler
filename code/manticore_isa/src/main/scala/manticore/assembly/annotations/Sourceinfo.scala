@@ -2,24 +2,21 @@ package manticore.assembly.annotations
 
 final class Sourceinfo private (
     val name: String,
-    val fields: Map[String, AnnotationValue]
+    val fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
 ) extends AssemblyAnnotation
 
-object Sourceinfo {
+object Sourceinfo extends AssemblyAnnotationParser{
   val name: String = "Sourceinfo".toUpperCase()
 
-  def apply(fields: Map[String, String]) = {
-    require(fields.contains("file"))
+  def apply(fields: Map[String, AnnotationValue]) = {
+    val parsed_fields = parse(fields)
+    requiresField(AssemblyAnnotationFields.File, parsed_fields)
 
     new Sourceinfo(
       name,
-      Map(
-        "file" -> StringValue(fields("file"))
-      )
+      parsed_fields
     )
   }
 
-  def unapply(anno: Sourceinfo): Option[Map[String, AnnotationValue]] = Some(
-    anno.fields
-  )
+
 }

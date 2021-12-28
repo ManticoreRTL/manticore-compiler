@@ -7,6 +7,7 @@ import manticore.assembly.levels.HasVariableType
 
 import manticore.assembly.annotations.AssemblyAnnotation
 import manticore.assembly.annotations.AnnotationValue
+import manticore.assembly.annotations.AssemblyAnnotationFields.FieldName
 
 /** Base classes for the various IR flavors.
   * @author
@@ -65,7 +66,7 @@ trait ManticoreAssemblyIR {
         ""
     def findAnnotationValue(
         name: String,
-        key: String
+        key: FieldName
     ): Option[AnnotationValue] = {
       val found = annons.find(_.name == name)
       found match {

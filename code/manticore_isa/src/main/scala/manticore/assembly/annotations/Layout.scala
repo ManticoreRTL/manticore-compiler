@@ -2,26 +2,21 @@ package manticore.assembly.annotations
 
 final class Layout private (
     val name: String,
-    val fields: Map[String, AnnotationValue]
+    val fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
 ) extends AssemblyAnnotation
 
-object Layout {
+object Layout extends AssemblyAnnotationParser {
   val name: String = "Layout".toUpperCase()
 
-  def apply(fields: Map[String, String]) = {
-    require(fields.contains("x"))
-    require(fields.contains("y"))
-
+  def apply(fields: Map[String, AnnotationValue]) = {
+    val parsed_fields = parse(fields)
+    requiresField(AssemblyAnnotationFields.X, parsed_fields)
+    requiresField(AssemblyAnnotationFields.Y, parsed_fields)
     new Layout(
       name,
-      Map(
-        "x" -> IntValue(fields("x").toInt),
-        "y" -> IntValue(fields("y").toInt)
-      )
+      parsed_fields
     )
   }
 
-  def unapply(anno: Layout): Option[Map[String, AnnotationValue]] = Some(
-    anno.fields
-  )
+
 }

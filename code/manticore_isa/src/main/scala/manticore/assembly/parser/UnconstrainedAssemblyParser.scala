@@ -20,6 +20,10 @@ import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.AssemblyChecker
 import manticore.compiler.AssemblyContext
 import manticore.assembly.Reporter
+import manticore.assembly.annotations.AnnotationValue
+import manticore.assembly.annotations.IntValue
+import manticore.assembly.annotations.StringValue
+import manticore.assembly.annotations.AssemblyAnnotationFields
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -156,14 +160,24 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def dec_value: Parser[BigInt] = decLit ^^ { t => BigInt(t.chars) }
   def const_value: Parser[BigInt] = hex_value | dec_value | bin_value
 
-  def keyvalue: Parser[(String, String)] =
-    (ident ~ "=" ~ stringLit) ^^ { case (k ~ _ ~ v) => (k.chars, v.chars) }
+  def annon_int_value: Parser[AnnotationValue] = const_value ^^ {
+    case x: BigInt => IntValue(x.toInt)
+  }
+  def annon_string_value: Parser[AnnotationValue] = stringLit ^^ { case x =>
+    StringValue(x.chars)
+  }
+
+  def annon_value: Parser[AnnotationValue] =
+    annon_int_value | annon_string_value
+  def keyvalue: Parser[(String, AnnotationValue)] =
+    (ident ~ "=" ~ annon_value) ^^ { case (k ~ _ ~ v) => (k.chars, v) }
   def single_annon: Parser[AssemblyAnnotation] =
     (positioned(annotLiteral) ~ opt("[" ~> repsep(keyvalue, ",") <~ "]")) ^^ {
       case (n ~ values) =>
         AssemblyAnnotationBuilder(
           n.chars,
-          values.getOrElse(Seq.empty[(String, String)]).toMap
+          if (values.nonEmpty) values.get.toMap
+          else Map.empty[String, AnnotationValue]
         )
 
     }

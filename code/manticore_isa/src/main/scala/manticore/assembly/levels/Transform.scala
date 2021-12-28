@@ -58,11 +58,11 @@ trait AssemblyTransformer[
 
     logger.info(s"[${ctx.transform_index}] Starting transformation ${getName}")
     val res = (transform(source, ctx), ctx)
-    if (logger.countErrors > 0)
-      logger.fail("Compilation failed due to earlier errors")
-    logger.dumpArtifact(s"dump_post_${getName}_${ctx.transform_index}.masm") {
+    logger.dumpArtifact(s"dump_post_${ctx.transform_index}_${getName}.masm") {
       res._1.serialized
     }(ctx)
+    if (logger.countErrors > 0)
+      logger.fail("Compilation failed due to earlier errors")
     ctx.transform_index += 1
     res
   }

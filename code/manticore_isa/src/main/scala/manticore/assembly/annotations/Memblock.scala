@@ -2,26 +2,22 @@ package manticore.assembly.annotations
 
 final class Memblock private (
     val name: String,
-    val fields: Map[String, AnnotationValue]
+    val fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
 ) extends AssemblyAnnotation
 
-object Memblock {
+object Memblock extends AssemblyAnnotationParser {
   val name: String = "Memblock".toUpperCase()
 
-  def apply(fields: Map[String, String]) = {
-    require(fields.contains("block"), s"${name} annotation requires block")
-    require(fields.contains("capacity"), s"${name} annotation requires capacity")
+  def apply(fields: Map[String, AnnotationValue]) = {
+    val parsed_fields = parse(fields)
+    requiresField(AssemblyAnnotationFields.Block, parsed_fields)
+    requiresField(AssemblyAnnotationFields.Capacity, parsed_fields)
 
     new Memblock(
       name,
-      Map(
-        "block" -> StringValue(fields("block")),
-        "capacity" -> IntValue(fields("capacity").toInt)
-      )
+      parsed_fields
     )
   }
 
-  def unapply(anno: Memblock): Option[Map[String, AnnotationValue]] = Some(
-    anno.fields
-  )
+
 }

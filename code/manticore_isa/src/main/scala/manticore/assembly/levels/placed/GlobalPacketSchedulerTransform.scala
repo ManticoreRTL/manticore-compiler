@@ -5,7 +5,8 @@ import manticore.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import scala.collection.parallel.CollectionConverters._
 import manticore.assembly.DependenceGraphBuilder
-
+import manticore.assembly.annotations.AssemblyAnnotationFields.{X => XField, Y => YField, FieldName}
+import manticore.assembly.annotations.{Layout => LayoutAnnotation}
 object GlobalPacketSchedulerTransform
     extends DependenceGraphBuilder with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
   val flavor = PlacedIR
@@ -17,15 +18,15 @@ object GlobalPacketSchedulerTransform
       context: AssemblyContext
   ): DefProgram = {
 
-    def getDim(dim: String): Int =
-      program.findAnnotationValue("LAYOUT", dim) match {
+    def getDim(dim: FieldName): Int =
+      program.findAnnotationValue(LayoutAnnotation.name, dim) match {
         case Some(manticore.assembly.annotations.IntValue(v)) => v
         case _ =>
           logger.fail("Scheduling requires a valid @LAYOUT annotation")
           0
       }
-    val dimx = getDim("x")
-    val dimy = getDim("y")
+    val dimx = getDim(XField)
+    val dimy = getDim(YField)
 
     // a wrapper class for Send instruction
     case class SendWrapper(

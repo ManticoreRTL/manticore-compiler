@@ -12,7 +12,8 @@ import manticore.assembly.DependenceGraphBuilder
 import scalax.collection.edge.LDiEdge
 import scala.collection.parallel.CollectionConverters._
 import manticore.assembly.levels.UInt16
-
+import manticore.assembly.annotations.AssemblyAnnotationFields.{X => XField, Y => YField, FieldName}
+import manticore.assembly.annotations.{Layout => LayoutAnnotation}
 /** List scheduler transformation, the output of this transformation is a
   * program with locally scheduled processes. If the input program has Nops,
   * they will be all ignored.
@@ -307,16 +308,16 @@ object ListSchedulerTransform
       context: AssemblyContext
   ): DefProgram = {
 
-    def getDim(dim: String): Int =
-      source.findAnnotationValue("LAYOUT", dim) match {
+    def getDim(dim: FieldName): Int =
+      source.findAnnotationValue(LayoutAnnotation.name, dim) match {
         case Some(manticore.assembly.annotations.IntValue(v)) => v
         case _ =>
           logger.fail("Scheduling requires a valid @LAYOUT annotation")
           0
       }
 
-    val dimx = getDim("x")
-    val dimy = getDim("y")
+    val dimx = getDim(XField)
+    val dimy = getDim(YField)
 
     if (context.debug_message) { // run single-threaded if debug enabled
       source.copy(processes = source.processes.map { p =>
