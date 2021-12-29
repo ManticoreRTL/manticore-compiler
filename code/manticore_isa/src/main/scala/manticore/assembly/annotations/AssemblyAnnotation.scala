@@ -6,7 +6,7 @@ import manticore.assembly.HasSerialized
 sealed abstract class AnnotationValue
 
 case class StringValue(value: String) extends AnnotationValue {
-  override def toString() = value
+  override def toString() = s"\"${value}\""
 }
 
 case class IntValue(value: Int) extends AnnotationValue {
@@ -85,7 +85,7 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
   def serialized: String = {
     if (fields.nonEmpty) {
       s"@${name} [" + {
-        fields.map { case (k, v) => k + "=\"" + v + "\"" } mkString ","
+        fields.map { case (k, v) => k + "=" + v + "" } mkString ","
       } + "]"
     } else {
       ""
@@ -108,7 +108,7 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
 trait AssemblyAnnotationParser {
   val name: String
   import AssemblyAnnotationFields.FieldName
-  class AssemblyAnnotationParseError(val msg: String) extends Exception
+  class AssemblyAnnotationParseError(val msg: String) extends Exception(msg)
   def parse(fields: Map[String, AnnotationValue]) = {
     val parsed_fields = fields.map { case (k, v) =>
       AssemblyAnnotationFields.parse(k) match {

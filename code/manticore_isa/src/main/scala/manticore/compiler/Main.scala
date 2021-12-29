@@ -96,6 +96,7 @@ object Main {
           UnconstrainedDeadCodeElimination followedBy
           UnconstrainedBigIntTo16BitsTransform followedBy
           UnconstrainedRenameVariables followedBy
+          UnconstrainedNameChecker followedBy
           UnconstrainedDeadCodeElimination followedBy
           UnconstrainedToPlacedTransform
       val placed_phase = PlacedNameChecker followedBy

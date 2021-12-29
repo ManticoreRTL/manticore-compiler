@@ -125,18 +125,7 @@ trait DependenceGraphBuilder extends Flavored {
       import scalax.collection.mutable.{Graph => MutableGraph}
 
       // A map from registers to the instruction defining it (if any), useful for back tracking
-      val def_instructions =
-        scala.collection.mutable.Map[Name, Instruction]()
-      process.body.foreach { inst =>
-        regDef(inst) match {
-          case s @ h +: t =>
-            // keep a map from the target regs to the instruction defining it
-            s.foreach { rd => def_instructions.update(rd, inst)}
-
-          case Nil =>
-          // instruction does not a value, hence no new dependence edges
-        }
-      }
+      val def_instructions = definingInstructionMap(process)
 
       type EitherLoad = Either[LocalLoad, GlobalLoad]
       type EitherStore = Either[LocalStore, GlobalStore]
@@ -156,53 +145,15 @@ trait DependenceGraphBuilder extends Flavored {
       }
 
       // a map from register to potential memory (.mem) declaration
-      val mem_block =
-        scala.collection.mutable.Map[Name, Set[DefReg]]()
+      val mem_block = memoryBlocks(process, def_instructions)
+        // scala.collection.mutable.Map[Name, Set[DefReg]]()
 
       // a map from memories to stores to that memory
       val mem_block_stores =
         scala.collection.mutable
           .Map[DefReg, scala.collection.mutable.Set[EitherStore]]()
 
-      /** Now we need to create a dependence between loads and stores (store
-        * depends on load) that operate on the same memory block. For this, we
-        * need to start from every load instruction, and trace back throw
-        * use-def chains to reach a DefReg with memory type MemoryLogic
-        */
 
-      def traceMemoryDecl(base: Name): Set[DefReg] = {
-        mem_block.get(base) match {
-          case Some(m) => m // good, we already know the the possible mem block
-          case None    => // bad, need to recurse :(
-            // get the instruction that produces base
-            val producer_inst: Option[Instruction] = def_instructions.get(base)
-            producer_inst match {
-              case Some(inst) =>
-                val uses = regUses(inst)
-                // recurse on every use in inst and update the mem_block
-                val decls: Seq[Set[DefReg]] = uses.map { u: Name =>
-                  val parent_decl = traceMemoryDecl(u)
-                  mem_block.update(u, parent_decl)
-                  parent_decl
-                }
-                // ensure no instruction depends on to mem
-                if (decls.count(_.nonEmpty) > 1) {
-                  logger.warn(
-                    "instruction traces back to multiple memory blocks!",
-                    inst
-                  )
-                }
-                // return any findings
-                decls.foldLeft(Set.empty[DefReg]) { case (c, x) => c ++ x }
-              case None =>
-                // jackpot, no instruction produces base,
-                // now all we need to do is to check declarations
-                val decl = mem_decls.find(_.variable.name == base).toSet
-                mem_block.update(base, decl)
-                decl
-            }
-        }
-      }
 
       stores.foreach { s =>
         val base_ptrs = s match {
@@ -211,7 +162,7 @@ trait DependenceGraphBuilder extends Flavored {
         }
 
         base_ptrs.foreach { b =>
-          val m = traceMemoryDecl(b)
+          val m = mem_block(b)
           if (m.isEmpty) {
             val unwrapped: Instruction = s match {
               case Left(i)  => i
@@ -279,7 +230,7 @@ trait DependenceGraphBuilder extends Flavored {
         // get all the base pointers
         l match {
           case Left(inst @ LocalLoad(_, base, _, _)) =>
-            val decls = traceMemoryDecl(base)
+            val decls = mem_block(base)
 
             if (decls.isEmpty) {
               logger.error("Found no memory for load instruction", inst)
@@ -290,7 +241,7 @@ trait DependenceGraphBuilder extends Flavored {
           case Right(inst @ GlobalLoad(_, (bh, bm, bl), _)) =>
             val used_mems: Set[DefReg] =
               Seq(bh, bm, bl).foldLeft(Set.empty[DefReg]) { case (c, x) =>
-                c ++ traceMemoryDecl(x)
+                c ++ mem_block(x)
               }
 
             if (used_mems.isEmpty) {
@@ -345,6 +296,98 @@ trait DependenceGraphBuilder extends Flavored {
       }
 
       dependence_graph
+    }
+
+    /** Create mapping from names to the instruction defining them (i.e.,
+      * instruction that have that name as the destination)
+      *
+      * @param proc
+      * @return
+      */
+    def definingInstructionMap(proc: DefProcess): Map[Name, Instruction] =
+      proc.body.flatMap { inst => regDef(inst) map { rd => rd -> inst } }.toMap
+
+    /**
+      * Create a mapping from load/store base registers to the set of
+      *
+      *
+      * @param proc
+      * @param def_instructions
+      * @return
+      */
+    def memoryBlocks(
+        proc: DefProcess,
+        def_instructions: Map[Name, Instruction]
+    ): Map[Name, Set[DefReg]] = {
+
+      val mem_block =
+        scala.collection.mutable.Map[Name, Set[DefReg]]()
+
+      val mem_decls: Seq[DefReg] = proc.registers.collect {
+        case d @ DefReg(m, _, _) if m.varType == MemoryType => d
+      }
+
+      /** We need to create a dependence between loads and stores (store depends
+        * on load) that operate on the same memory block. For this, we need to
+        * start from every load instruction, and trace back throw use-def chains
+        * to reach a DefReg with memory type MemoryLogic
+        */
+
+      def traceMemoryDecl(base: Name): Set[DefReg] = {
+        mem_block.get(base) match {
+          case Some(m) => m // good, we already know the the possible mem block
+          case None    => // bad, need to recurse :(
+            // get the instruction that produces base
+            val producer_inst: Option[Instruction] = def_instructions.get(base)
+            producer_inst match {
+              case Some(inst) =>
+                val uses = regUses(inst)
+                // recurse on every use in inst and update the mem_block
+                val decls: Seq[Set[DefReg]] = uses.map { u: Name =>
+                  val parent_decl = traceMemoryDecl(u)
+                  mem_block.update(u, parent_decl)
+                  parent_decl
+                }
+                // // ensure no instruction depends on to mem
+                // if (decls.count(_.nonEmpty) > 1) {
+                //   logger.debug(
+                //     "instruction traces back to multiple memory blocks!",
+                //     inst
+                //   )(ctx)
+                // }
+                // return any findings
+                val res = decls.foldLeft(Set.empty[DefReg]) { case (c, x) => c ++ x }
+                mem_block.update(base, res)
+                res
+              case None =>
+                // jackpot, no instruction produces base,
+                // now all we need to do is to check declarations
+                val decl = mem_decls.find(_.variable.name == base).toSet
+                mem_block.update(base, decl)
+                decl
+            }
+        }
+      }
+
+      proc.body.foreach {
+        case LocalLoad(_, base, _, _) =>
+          traceMemoryDecl(base)
+        case GlobalLoad(rd, base, annons) =>
+          traceMemoryDecl(base._1)
+          traceMemoryDecl(base._2)
+          traceMemoryDecl(base._3)
+        case LocalStore(rs, base, offset, predicate, annons) =>
+          traceMemoryDecl(base)
+        case GlobalStore(rs, base, predicate, annons) =>
+          traceMemoryDecl(base._1)
+          traceMemoryDecl(base._2)
+          traceMemoryDecl(base._3)
+        case _ => // do nothing
+
+      }
+
+      mem_block.toMap
+
     }
   }
 

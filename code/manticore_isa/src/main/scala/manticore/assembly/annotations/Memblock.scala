@@ -12,7 +12,7 @@ object Memblock extends AssemblyAnnotationParser {
     val parsed_fields = parse(fields)
     requiresField(AssemblyAnnotationFields.Block, parsed_fields)
     requiresField(AssemblyAnnotationFields.Capacity, parsed_fields)
-
+    requiresField(AssemblyAnnotationFields.Width, parsed_fields)
     new Memblock(
       name,
       parsed_fields
