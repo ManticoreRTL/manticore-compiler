@@ -10,13 +10,12 @@ import manticore.assembly.annotations.MemInit
 import manticore.assembly.annotations.StringValue
 import manticore.assembly.levels.ConstType
 import manticore.assembly.DependenceGraphBuilder
+import manticore.assembly.levels.AssemblyChecker
+import manticore.assembly.annotations.DebugSymbol
 
 object UnconstrainedInterpreter
     extends DependenceGraphBuilder
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with AssemblyChecker[UnconstrainedIR.DefProgram] {
   val flavor = UnconstrainedIR
   import flavor._
 
@@ -108,9 +107,12 @@ object UnconstrainedInterpreter
     var predicate: Boolean = false
     var carry: Boolean = false
     var select: Boolean = false
+    var exception_occurred: Boolean = false
 
   }
-  private final class ProcessInterpreter(val proc: DefProcess) {
+  private final class ProcessInterpreter(val proc: DefProcess)(implicit
+      val ctx: AssemblyContext
+  ) {
 
     // A table for looking up instructions that modify the value of a name
     val def_instructions: Map[Name, Instruction] =
@@ -182,7 +184,7 @@ object UnconstrainedInterpreter
           // so we can always use the BigInt.<< signed shift right as the logical
           // one
           require(
-            rs2_val > 0,
+            rs2_val >= 0,
             "something went wrong! all interpreted values should be positive!"
           )
 
@@ -218,45 +220,150 @@ object UnconstrainedInterpreter
           else
             rs1_val
       }
+      state.register_file(rd) = rd_val
     }
 
     // def checkMemoryReference(base: Name, offset: BigInt)
     def interpret(instruction: Instruction): Unit = instruction match {
-
-
       case i: BinaryArithmetic => interpret(i)
       case i: CustomInstruction =>
         logger.error("Custom instruction can not be interpreted yet!", i)
       case LocalLoad(rd, base, offset, _) =>
         val used_mems = memory_blocks(base)
         if (used_mems.isEmpty) {
-            logger.error("Could not resolve memory block", instruction)
+          logger.error("Could not resolve memory block", instruction)
         } else {
 
-            val with_block_annon = used_mems.collect{
-                case mdef if mdef.findAnnotation(Memblock.name).nonEmpty => mdef
-            }
-
+          val with_block_annon = used_mems.collect {
+            case mdef if mdef.findAnnotation(Memblock.name).nonEmpty => mdef
+          }
 
         }
-
+        ???
       case LocalStore(rs, base, offset, predicate, annons) => ???
       case GlobalLoad(rd, base, annons)                    => ???
       case GlobalStore(rs, base, predicate, annons)        => ???
       case SetValue(rd, value, annons)                     => ???
       case Send(rd, rs, dest_id, annons)                   => ???
-      case Expect(ref, got, error_id, annons)              => ???
-      case Predicate(rs, annons)                           => ???
-      case Mux(rd, sel, rfalse, rtrue, annons)             => ???
-      case Nop                                             => ???
-      case AddC(rd, co, rs1, rs2, ci, annons)              => ???
-      case PadZero(rd, rs, width, annons)                  => ???
+      case Expect(ref, got, error_id, annons) =>
+        val ref_val = state.register_file(ref)
+        val got_val = state.register_file(got)
+        if (ref_val != got_val) {
+
+          // dump the state of registers
+          logger.dumpArtifact("interpreter_state") {
+
+            case class RegDump(index: Int, value: BigInt)
+                extends Ordered[RegDump] {
+              override def compare(that: RegDump): Int =
+                Ordering[Int].compare(this.index, that.index)
+            }
+
+            val width_map = scala.collection.mutable.Map.empty[String, Int]
+            val index_map = scala.collection.mutable.Map
+              .empty[String, scala.collection.mutable.PriorityQueue[RegDump]]
+
+            state.register_file.foreach { case (n, v) =>
+              val name_def = definitions(n)
+              val dbginfo = name_def.findAnnotation(DebugSymbol.name)
+
+              // get the debug symbol, if one exits, otherwise get the info
+              // from the DefReg node
+              val (dbg_name: String, dbg_index: Int, dbg_w: Int) =
+                dbginfo match {
+                  case Some(dbgsym: DebugSymbol) =>
+                    (dbgsym.getSymbol(), dbgsym.getIndex(), dbgsym.getWidth())
+                  case _ => (name_def.variable.name, 0, name_def.variable.width)
+                }
+              if (index_map contains dbg_name) {
+                index_map(dbg_name) += RegDump(dbg_index, v)
+                assert(width_map(dbg_name) == dbg_w)
+              } else {
+                index_map += (dbg_name -> scala.collection.mutable
+                  .PriorityQueue[RegDump](RegDump(dbg_index, v)))
+                width_map += (dbg_name -> dbg_w)
+              }
+            }
+
+            index_map.map { case (dbg_name, indexed_values) =>
+              val ordered_vals = indexed_values.dequeueAll.toSeq
+              if (dbg_name == "rs_2")
+                println(ordered_vals)
+              val value: BigInt = ordered_vals.foldLeft(BigInt(0)) {
+                case (carry, x) =>
+                  (carry << 16) | x.value
+              }
+              s"${dbg_name}[${width_map(dbg_name)} : 0] = ${value}"
+            }.toSeq.sorted.mkString("\n")
+          }
+          logger.error(
+            s"Interpreter encountered a Manticore exception, expected ${ref_val} but got ${got_val}",
+            instruction
+          )
+          state.exception_occurred = true
+        }
+      case Predicate(rs, annons) => ???
+      case Mux(rd, sel, rfalse, rtrue, annons) =>
+        val sel_val = state.register_file(sel)
+        val rd_val = if (sel_val == 1) {
+          val rtrue_val = state.register_file(rtrue)
+          rtrue_val
+        } else if (sel_val == 0) {
+          val rfalse_val = state.register_file(rfalse)
+          rfalse_val
+        } else {
+          logger.error(s"Select has illegal value ${sel_val}", instruction)
+          BigInt(0)
+        }
+        state.register_file(rd) = rd_val
+      case Nop =>
+        // do nothing
+        logger.warn("Nops are unnecessary for interpretation", instruction)
+      case AddC(rd, co, rs1, rs2, ci, annons) =>
+        val rd_width = definitions(rd).variable.width
+        val rs1_val = state.register_file(rs1)
+        val rs2_val = state.register_file(rs2)
+        val ci_val = state.register_file(ci)
+        if (ci_val > 1) {
+          logger.error(
+            "Internal interpreter error, carry computation is incorrect",
+            instruction
+          )
+        }
+        val rs1_width = definitions(rs1).variable.width
+        val rs2_width = definitions(rs2).variable.width
+        if (rs1_width != rs2_width || rs1_width != rd_width) {
+          logger.error(
+            "Interpreter can only compute ADDCARRY of numbers with equal bit width",
+            instruction
+          )
+        }
+        val rd_carry_val = rs1_val + rs2_val + ci_val
+        val rd_val = clipped(rd_carry_val)(ClipWidth(rd_width))
+        val co_val = BigInt(if (rd_carry_val.testBit(rd_width)) 1 else 0)
+        state.register_file(rd) = rd_val
+        state.register_file(co) = co_val
+
+      case PadZero(rd, rs, width, annons) => ???
+    }
+
+    def run(): Unit = proc.body.foreach { interpret }
+    def exceptionOccurred(): Boolean = state.exception_occurred
+
+  }
+  override def check(
+      source: UnconstrainedIR.DefProgram,
+      context: AssemblyContext
+  ): Unit = {
+
+    if (source.processes.length != 1) {
+      logger.error("Can not handle more than one process for now")
+    } else {
+      val interp = new ProcessInterpreter(source.processes.head)(context)
+      // var cycles = 0
+      interp.run()
     }
 
   }
-  override def transform(
-      source: UnconstrainedIR.DefProgram,
-      context: AssemblyContext
-  ): UnconstrainedIR.DefProgram = ???
 
 }

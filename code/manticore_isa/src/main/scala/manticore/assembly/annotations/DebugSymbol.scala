@@ -15,6 +15,11 @@ final class DebugSymbol private (
   def withWidth(w: Int) = new DebugSymbol(
     fields.updated(AssemblyAnnotationFields.Width, IntValue(w))
   )
+
+  def getSymbol() = getStringValue(AssemblyAnnotationFields.Symbol).get
+  def getIndex() = getIntValue(AssemblyAnnotationFields.Index).getOrElse(0)
+  def getWidth() = getIntValue(AssemblyAnnotationFields.Width).getOrElse(0)
+
 }
 
 object DebugSymbol extends AssemblyAnnotationParser {
@@ -28,6 +33,11 @@ object DebugSymbol extends AssemblyAnnotationParser {
     new DebugSymbol(
       name,
       parsed_fields
+    )
+  }
+  def apply(symbol: String) = {
+    new DebugSymbol(
+      name, Map(AssemblyAnnotationFields.Symbol -> StringValue(symbol))
     )
   }
 }

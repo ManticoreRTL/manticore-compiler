@@ -8,6 +8,7 @@ import manticore.assembly.levels.WireType
 import manticore.assembly.annotations.DebugSymbol
 import manticore.assembly.annotations.AssemblyAnnotation
 import manticore.assembly.annotations.AssemblyAnnotationFields
+import manticore.assembly.annotations.StringValue
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -331,8 +332,12 @@ object UnconstrainedBigIntTo16BitsTransform
 
       val conv_def = (uint16_vars zip values).zipWithIndex.map {
         case ((cvar, cval), ix) =>
-          val annons = orig_def.annons.collect {
+
+          // check if a debug symbol annotation exits
+          val dbgsym = orig_def.annons.collect {
             case x: DebugSymbol =>
+              // if DebugSymbol annotation exits, append the index and width
+              // to it
               if (x.fields.contains(AssemblyAnnotationFields.Index)) {
                 logger.error("did not expect debug symbol index", orig_def)
               }
@@ -343,11 +348,19 @@ object UnconstrainedBigIntTo16BitsTransform
                 case None =>
                   with_index.withWidth(width)
               }
-            case y => y
+          } match {
+            case Seq() => // if it does not exists, create one from scratch
+              DebugSymbol(orig_def.variable.name).withIndex(ix).withWidth(width)
+            case x +: _ => x // return the original one with appended index and width
+          }
+
+          val other_annons = orig_def.annons.filter {
+            case _: DebugSymbol => false
+            case _ => true
           }
 
           orig_def
-            .copy(variable = cvar, value = cval, annons = annons)
+            .copy(variable = cvar, value = cval, annons = other_annons :+ dbgsym)
             .setPos(orig_def.pos)
 
       }

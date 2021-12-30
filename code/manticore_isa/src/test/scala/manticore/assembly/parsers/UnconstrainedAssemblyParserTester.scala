@@ -8,6 +8,7 @@ import manticore.assembly.annotations.Track
 import manticore.assembly.BinaryOperator
 import manticore.assembly.parser.AssemblyParser
 import manticore.compiler.AssemblyContext
+import manticore.assembly.annotations.StringValue
 
 class UnconstrainedAssemblyParserTester extends UnitTest {
 
@@ -44,7 +45,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         LogicVariable("yi", 16, WireType),
         Some(BigInt("011001010101010", 2)),
         Seq(
-          Track(Map("name" -> "top/inst/yi"))
+          Track(Map("name" -> StringValue("top/inst/yi")))
         )
       ),
       DefReg(LogicVariable("m", 64, MemoryType), None),
@@ -53,7 +54,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
       DefReg(
         LogicVariable("o", 12, OutputType),
         None,
-        Seq(Track(Map("name" -> "top/o")))
+        Seq(Track(Map("name" -> StringValue("top/o"))))
       )
     )
   )

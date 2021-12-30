@@ -17,6 +17,8 @@ import manticore.compiler.AssemblyContext
 import java.io.File
 import manticore.assembly.parser.AssemblyParser
 import manticore.assembly.CompilationFailureException
+import manticore.assembly.annotations.StringValue
+import manticore.assembly.annotations.IntValue
 
 class UnconstrainedToPlacedTransformTester extends UnitTest {
 
@@ -72,7 +74,7 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
                 None,
                 Seq(
                   Memblock(
-                    Map("block" -> "mem_0", "capacity" -> "512")
+                    Map("block" -> StringValue("mem_0"), "capacity" -> IntValue(512))
                   )
                 )
               )
@@ -90,14 +92,14 @@ class UnconstrainedToPlacedTransformTester extends UnitTest {
             ),
             Seq(
               Loc(
-                Map("x" -> 0.toString, "y" -> 1.toString)
+                Map("x" -> IntValue(0), "y" -> IntValue(1))
               )
             )
           )
         ),
         Seq(
           Layout(
-            Map("x" -> "10", "y" -> "32")
+            Map("x" -> IntValue(10), "y" -> IntValue(32))
           )
         )
       )
