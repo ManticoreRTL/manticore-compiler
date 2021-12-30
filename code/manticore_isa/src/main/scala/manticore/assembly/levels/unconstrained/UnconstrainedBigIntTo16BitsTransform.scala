@@ -8,6 +8,7 @@ import manticore.assembly.levels.WireType
 import manticore.assembly.annotations.DebugSymbol
 import manticore.assembly.annotations.AssemblyAnnotation
 import manticore.assembly.annotations.AssemblyAnnotationFields
+
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
   *
@@ -206,9 +207,10 @@ object UnconstrainedBigIntTo16BitsTransform
   private class ConversionBuilder(private val proc: DefProcess) {
 
     private var m_name_id = 0
-    private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
+    // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
+    private val m_wires = scala.collection.mutable.Map.empty[Name, DefReg]
     private val m_constants =
-      scala.collection.mutable.HashMap.empty[Int, DefReg]
+      scala.collection.mutable.Map.empty[Int, DefReg]
     private val m_subst =
       scala.collection.mutable.HashMap.empty[Name, ConvertedWire]
     private val m_old_defs = proc.registers.map { r =>
@@ -223,7 +225,7 @@ object UnconstrainedBigIntTo16BitsTransform
     def buildFrom(instructions: Seq[Instruction]): DefProcess =
       proc
         .copy(
-          registers = m_wires.toSeq ++ m_constants.values,
+          registers = (m_wires.values ++ m_constants.values).toSeq.distinct,
           body = instructions
         )
         .setPos(proc.pos)
@@ -276,9 +278,10 @@ object UnconstrainedBigIntTo16BitsTransform
         m_old_defs.contains(suggestion) == false,
         "can not create a new wire for something that is defined in the original program"
       )
+      val wire_name = freshName(suggestion)
       val new_wire =
         DefReg(LogicVariable(freshName(suggestion), width, WireType), None)
-      m_wires += new_wire
+      m_wires += wire_name -> new_wire
       new_wire.variable.name
     }
 
@@ -295,6 +298,7 @@ object UnconstrainedBigIntTo16BitsTransform
       require(m_old_defs.contains(original), "can not convert undefined wire")
       require(m_subst.contains(original) == false, "conversion already exists!")
       val orig_def = m_old_defs(original)
+
       val width = orig_def.variable.width
       val array_size = (width - 1) / 16 + 1
       assert(array_size >= 1)
@@ -335,9 +339,6 @@ object UnconstrainedBigIntTo16BitsTransform
               val with_index = x.withIndex(ix)
               with_index.getIntValue(AssemblyAnnotationFields.Width) match {
                 case Some(w) =>
-                  if (w != width) {
-                    logger.error("Width mismatch in the debug symbol", orig_def)
-                  }
                   with_index
                 case None =>
                   with_index.withWidth(width)
@@ -348,9 +349,11 @@ object UnconstrainedBigIntTo16BitsTransform
           orig_def
             .copy(variable = cvar, value = cval, annons = annons)
             .setPos(orig_def.pos)
+
       }
 
-      m_wires ++= conv_def
+      m_wires ++= conv_def.map { r => r.variable.name -> r }
+
       val converted =
         ConvertedWire(uint16_vars.map(_.name), msw_mask)
 
@@ -375,6 +378,25 @@ object UnconstrainedBigIntTo16BitsTransform
 
     def originalDef(original_name: Name): DefReg = m_old_defs(original_name)
 
+  }
+
+  private def assertAligned(
+      rd_array: Seq[Name],
+      rs1_array: Seq[Name],
+      rs2_array: Seq[Name],
+      inst: Instruction
+  ): Unit =
+    if (
+      rd_array.length != rs1_array.length || rd_array.length != rs2_array.length || rs2_array.length != rs1_array.length
+    ) {
+      logger.error("Unaligned operands!", inst)
+    }
+
+  private def assert16Bit(
+      uint16_array: Seq[Name],
+      inst: Instruction
+  )(msg: => String): Unit = if (uint16_array.length != 1) {
+    logger.error(msg, inst)
   }
 
   def convertBinaryArithmetic(
@@ -405,12 +427,16 @@ object UnconstrainedBigIntTo16BitsTransform
       }
 
     }
-    def maskRd(rd_mutable: Name, rd_mask: Option[Name]): Seq[Instruction] = {
+    def maskRd(
+        rd_mutable: Name,
+        rd_mask: Option[Name],
+        orig: BinaryArithmetic
+    ): Seq[Instruction] = {
 
       rd_mask match {
         case Some(const_mask) =>
           Seq(
-            instruction.copy(
+            orig.copy(
               operator = BinaryOperator.AND,
               rd = rd_mutable,
               rs1 = rd_mutable,
@@ -423,7 +449,11 @@ object UnconstrainedBigIntTo16BitsTransform
       }
     }
 
-    def moveRegs(dest: Seq[Name], source: Seq[Name]): Seq[Instruction] = {
+    def moveRegs(
+        dest: Seq[Name],
+        source: Seq[Name],
+        orig: BinaryArithmetic
+    ): Seq[Instruction] = {
 
       require(
         dest.length == source.length,
@@ -431,29 +461,13 @@ object UnconstrainedBigIntTo16BitsTransform
       )
 
       dest zip source map { case (d, s) =>
-        instruction.copy(
+        orig.copy(
           operator = BinaryOperator.ADD,
           rd = d,
           rs1 = s,
           rs2 = builder.mkConstant(0)
         )
       }
-    }
-
-    def assertAligned(
-        rd_array: Seq[Name],
-        rs1_array: Seq[Name],
-        rs2_array: Seq[Name]
-    ): Unit =
-      if (
-        rd_array.length != rs1_array.length || rd_array.length != rs2_array.length || rs2_array.length != rs1_array.length
-      ) {
-        logger.error("Unaligned operands!", instruction)
-      }
-    def assert16Bit(
-        uint16_array: Seq[Name]
-    )(msg: => String): Unit = if (uint16_array.length != 1) {
-      logger.error(msg, instruction)
     }
 
     instruction.operator match {
@@ -465,7 +479,12 @@ object UnconstrainedBigIntTo16BitsTransform
         val rs2_uint16_array: Seq[Name] =
           builder.getConversion(instruction.rs2).parts
 
-        assertAligned(rd_uint16_array, rs1_uint16_array, rs2_uint16_array)
+        assertAligned(
+          rd_uint16_array,
+          rs1_uint16_array,
+          rs2_uint16_array,
+          instruction
+        )
 
         val rd_uint16_array_mutable = rd_uint16_array.map { x =>
           builder.mkWire(x, 16)
@@ -479,9 +498,9 @@ object UnconstrainedBigIntTo16BitsTransform
             rs1 = builder.mkConstant(0),
             rs2 = builder.mkConstant(0)
           )
-          val num_loops = rs1_uint16_array.length max rs2_uint16_array.length
+
           rs1_uint16_array zip
-            rs1_uint16_array zip
+            rs2_uint16_array zip
             rd_uint16_array_mutable foreach { case ((rs1_16, rs2_16), rd_16) =>
               inst_q += AddC(
                 rd = rd_16,
@@ -502,8 +521,12 @@ object UnconstrainedBigIntTo16BitsTransform
 
         }
 
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask)
-        inst_q ++= moveRegs(rd_uint16_array, rd_uint16_array_mutable)
+        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+        inst_q ++= moveRegs(
+          rd_uint16_array,
+          rd_uint16_array_mutable,
+          instruction
+        )
 
       case BinaryOperator.ADDC =>
         logger.error("Unexpected instruction!", instruction)
@@ -512,7 +535,12 @@ object UnconstrainedBigIntTo16BitsTransform
           builder.getConversion(instruction.rd)
         val rs1_uint16_array = builder.getConversion(instruction.rs1).parts
         val rs2_uint16_array = builder.getConversion(instruction.rs2).parts
-        assertAligned(rd_uint16_array, rs1_uint16_array, rs2_uint16_array)
+        assertAligned(
+          rd_uint16_array,
+          rs1_uint16_array,
+          rs2_uint16_array,
+          instruction
+        )
         val rd_uint16_array_mutable = rd_uint16_array map {
           builder.mkWire(_, 16)
         }
@@ -557,8 +585,12 @@ object UnconstrainedBigIntTo16BitsTransform
           )
         }
 
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask)
-        inst_q ++ moveRegs(rd_uint16_array, rd_uint16_array_mutable)
+        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+        inst_q ++ moveRegs(
+          rd_uint16_array,
+          rd_uint16_array_mutable,
+          instruction
+        )
 
       case op @ (BinaryOperator.OR | BinaryOperator.AND | BinaryOperator.XOR) =>
         val ConvertedWire(rd_uint16_array, mask) =
@@ -582,8 +614,12 @@ object UnconstrainedBigIntTo16BitsTransform
               )
               .setPos(instruction.pos)
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, mask)
-        inst_q ++= moveRegs(rd_uint16_array, rd_uint16_array_mutable)
+        inst_q ++= maskRd(rd_uint16_array_mutable.last, mask, instruction)
+        inst_q ++= moveRegs(
+          rd_uint16_array,
+          rd_uint16_array_mutable,
+          instruction
+        )
 
       case BinaryOperator.SEQ =>
         val rs1_uint16_array = builder.getConversion(instruction.rs1).parts
@@ -640,10 +676,12 @@ object UnconstrainedBigIntTo16BitsTransform
         val ConvertedWire(shift_uint16, shift_amount_mask) =
           builder.getConversion(shift_amount)
 
-        assert16Bit(shift_uint16) {
+        assert16Bit(shift_uint16, instruction) {
           "Shift amount is too large, can only support shifting up to 16-bit " +
             "number as the shift amount, are you sure your design is correct?"
         }
+
+        val shift_orig_def = builder.originalDef(shift_amount)
 
         // we don't keep the mask for rs, because the producer should have taken
         // care of ANDing the most significant short word.
@@ -654,171 +692,311 @@ object UnconstrainedBigIntTo16BitsTransform
         val rd_uint16_array_mutable = rd_uint16_array.map { x =>
           builder.mkWire(x, 16)
         }
+        if (shift_orig_def.variable.varType == ConstType) {
 
-        if (rd_uint16_array_mutable.length == 1) {
+          val concrete_shift_amount: Int = shift_orig_def.value match {
+            case Some(x) =>
+              if (x.isValidInt) {
+                x.toInt
+              } else {
+                logger.error(
+                  s"Can not handle SLL with shift amount larger than ${Int.MaxValue}",
+                  instruction
+                )
+                0
+              }
 
-          if (builder.originalWidth(shift_amount) > 4) {
-            logger.error("Unsafe SLL", instruction)
+            case None =>
+              logger.error("undefined const value!", shift_orig_def)
+              0
           }
-          // easy case
-          inst_q += instruction.copy(
-            rd = rd_uint16_array_mutable.head,
-            rs1 = rs_uint16_array.head,
-            rs2 = shift_uint16.head
-          )
+          if (concrete_shift_amount >= builder.originalWidth(rd)) {
+            logger.warn("SLL discards all bits", instruction)
+            rd_uint16_array_mutable.map { rd16 =>
+              instruction.copy(
+                operator = BinaryOperator.ADD,
+                rd = rd16,
+                rs1 = builder.mkConstant(0),
+                rs2 = builder.mkConstant(0)
+              )
+            }
+          } else if (concrete_shift_amount % 16 == 0) {
+            // great! aligned shifting no need to propagate carries
+            val shifted_rs: Seq[Name] = Seq.fill(concrete_shift_amount / 16) {
+              builder.mkConstant(0)
+            } ++ rs_uint16_array
+            inst_q ++ (rd_uint16_array_mutable zip shifted_rs) map {
+              case (rd16: Name, rs16: Name) =>
+                instruction.copy(
+                  operator = BinaryOperator.ADD,
+                  rd = rd16,
+                  rs1 = rs16,
+                  rs2 = builder.mkConstant(0)
+                )
+            }
+          } else {
+            // the shift is not aligned to 16 bits, we need to handle carries
+            // the first concrete_shift_amount / 16 shift outputs would be zero
+            // very much like the aligned case, but after that point the outputs
+            // have carries from the previous short words.
+            val actual_shift =
+              concrete_shift_amount % 16 // the actual shifting that we need to do
+            assert(actual_shift != 0, "SLL translation logic is buggy?")
+            val num_zero_rds: Int = concrete_shift_amount / 16
+            val num_carries: Int =
+              rd_uint16_array_mutable.length - num_zero_rds - 1
+            assert(num_carries >= 0)
+            val carry_wires = Seq.tabulate(num_carries) { i =>
+              builder.mkWire(s"sll_carry_${i}", 16)
+            }
 
-        } else {
-          val shift_amount_mutable = builder.mkWire(
-            shift_amount + "_mutable",
-            16
-          )
-
-          val const_0 = builder.mkConstant(0)
-          val const_1 = builder.mkConstant(1)
-          val const_16 = builder.mkConstant(16)
-
-          val shift_amount_mutable_eq_0 =
-            builder.mkWire("shift_amount_mutable_eq_0", 1)
-          val sixteen_minus_shift_amount_mutable =
-            builder.mkWire("sixteen_minus_" + shift_amount_mutable, 16)
-          val fifteen_minus_shift_amount_mutable =
-            builder.mkWire("fifteen_minus_" + shift_amount_mutable, 16)
-          val shift_amount_mutable_gt_eq_16 =
-            builder.mkWire(shift_amount_mutable + "gt_eq_16", 1)
-          val shift_amount_mutable_minus_16 =
-            builder.mkWire(shift_amount_mutable + "_minus_16", 16)
-          val shift_right_amount_mutable =
-            builder.mkWire(shift_amount + "_right_mutable", 16)
-          val right_shifted = builder.mkWire("right_shifted", 16)
-          val carry_in = builder.mkWire("carry_in", 16)
-          val carry_out = builder.mkWire("carry_out", 16)
-          val tmp_res = builder.mkWire("tmp_res", 16)
-          val tmp_tmp_res = builder.mkWire("tmp_tmp_res", 16)
-          val tmp_tmp_tmp_res = builder.mkWire("tmp_tmp_tmp_res", 16)
-          // initialize the rd mutable array to the values of the rs
-
-          assert(rs_uint16_array.size == rd_uint16_array.size)
-          inst_q ++= moveRegs(rd_uint16_array_mutable, rs_uint16_array)
-
-          // initialize the mutable shift amount to the original value
-          inst_q +=
-            BinaryArithmetic(
-              BinaryOperator.ADD,
-              shift_amount_mutable,
-              shift_uint16.head,
-              const_0
+            // zero out the low short words
+            inst_q ++= (rd_uint16_array_mutable).slice(0, num_zero_rds).map {
+              case rd16 =>
+                instruction.copy(
+                  operator = BinaryOperator.ADD,
+                  rd = rd16,
+                  rs1 = builder.mkConstant(0),
+                  rs2 = builder.mkConstant(0)
+                )
+            }
+            // compute the carry between significant short words
+            assert(
+              carry_wires.length <= rs_uint16_array.length,
+              "carries should be fewer than the original data"
             )
-          for (ix <- 0 until rs_uint16_array.length) {
-            inst_q ++= Seq(
-              BinaryArithmetic(
-                BinaryOperator.SEQ,
-                shift_amount_mutable_eq_0,
-                shift_amount_mutable,
-                const_0
-              ),
-              BinaryArithmetic(
-                BinaryOperator.SUB,
-                sixteen_minus_shift_amount_mutable,
-                const_16,
-                shift_amount_mutable
-              ),
-              BinaryArithmetic(
-                BinaryOperator.SUB,
-                fifteen_minus_shift_amount_mutable,
-                sixteen_minus_shift_amount_mutable,
-                const_1
-              ),
-              BinaryArithmetic(
-                BinaryOperator.SLTS,
-                shift_amount_mutable_gt_eq_16,
-                fifteen_minus_shift_amount_mutable,
-                const_0
-              ),
-              Mux(
-                shift_right_amount_mutable,
-                shift_amount_mutable_eq_0,
-                sixteen_minus_shift_amount_mutable,
-                const_0
-              ),
+
+            /** Essentially we we'll have SRL carry_0, rs_0, (16 - actual_shift)
+              * SRL carry_1, rs_1, (16 - actual_shift) ... until the number of
+              * carries, which is the number of non-zero shift results minus one
+              * (some significant words are non-zero, starting form
+              * num_zero_rds) Note that if there are no carries, then the
+              * following piece of code won't add any instructions
+              */
+            inst_q ++= carry_wires zip rs_uint16_array map { case (co, rs16) =>
+              instruction.copy(
+                operator = BinaryOperator.SRL,
+                rd = co,
+                rs1 = rs16,
+                rs2 = builder.mkConstant(16 - actual_shift)
+              )
+            }
+            // now there are n significant words, and n - 1 carries, all we need to do is
+            // to SLL the corresponding rs word and OR is with the carry, the first carry
+            // is set to zero so we handle it differently
+
+            // first significant short word
+            assert(
+              num_zero_rds < rd_uint16_array_mutable.length,
+              "We should handle the case in which the SLL results can be computed to zero separately"
+            )
+            inst_q += instruction.copy(
+              operator = BinaryOperator.SLL,
+              rd = rd_uint16_array_mutable(num_zero_rds),
+              // the first rs short word is shifted to the num_zero_rds position
+              // in the output and then shifted by a Manticore-acceptable (less than 16) amount
+              rs1 = rs_uint16_array.head,
+              rs2 = builder.mkConstant(actual_shift)
+            )
+            // the other words are a bit more expensive, they require an extra OR operation
+            // note that if there are no carry wires, then this piece of code will not add
+            // any new instructions
+            inst_q ++= rd_uint16_array_mutable.slice(
+              num_zero_rds + 1,
+              rd_uint16_array_mutable.length
+            ) zip rs_uint16_array.tail zip carry_wires flatMap {
+              case ((rd16, rs16), ci) =>
+                Seq(
+                  instruction.copy(
+                    operator = BinaryOperator.SLL,
+                    rd = rd16,
+                    rs1 = rs16,
+                    rs2 = builder.mkConstant(actual_shift)
+                  ),
+                  instruction.copy(
+                    operator = BinaryOperator.OR,
+                    rd = rd16,
+                    rs1 = rd16,
+                    rs2 = ci
+                  )
+                )
+            }
+
+          }
+        } else { // the shift amount is fully dynamic
+          if (rd_uint16_array_mutable.length == 1) {
+
+            if (builder.originalWidth(shift_amount) > 16) {
+              logger.error("Unsafe SLL", instruction)
+            }
+            // easy case
+            inst_q += instruction.copy(
+              rd = rd_uint16_array_mutable.head,
+              rs1 = rs_uint16_array.head,
+              rs2 = shift_uint16.head
+            )
+
+          } else {
+            val shift_amount_mutable = builder.mkWire(
+              shift_amount + "_mutable",
+              16
+            )
+
+            val const_0 = builder.mkConstant(0)
+            val const_1 = builder.mkConstant(1)
+            val const_16 = builder.mkConstant(16)
+
+            val shift_amount_mutable_eq_0 =
+              builder.mkWire("shift_amount_mutable_eq_0", 1)
+            val sixteen_minus_shift_amount_mutable =
+              builder.mkWire("sixteen_minus_" + shift_amount_mutable, 16)
+            val fifteen_minus_shift_amount_mutable =
+              builder.mkWire("fifteen_minus_" + shift_amount_mutable, 16)
+            val shift_amount_mutable_gt_eq_16 =
+              builder.mkWire(shift_amount_mutable + "gt_eq_16", 1)
+            val shift_amount_mutable_minus_16 =
+              builder.mkWire(shift_amount_mutable + "_minus_16", 16)
+            val shift_right_amount_mutable =
+              builder.mkWire(shift_amount + "_right_mutable", 16)
+            val right_shifted = builder.mkWire("right_shifted", 16)
+            val carry_in = builder.mkWire("carry_in", 16)
+            val carry_out = builder.mkWire("carry_out", 16)
+            val tmp_res = builder.mkWire("tmp_res", 16)
+            val tmp_tmp_res = builder.mkWire("tmp_tmp_res", 16)
+            val tmp_tmp_tmp_res = builder.mkWire("tmp_tmp_tmp_res", 16)
+            // initialize the rd mutable array to the values of the rs
+
+            assert(rs_uint16_array.size == rd_uint16_array.size)
+            inst_q ++= moveRegs(
+              rd_uint16_array_mutable,
+              rs_uint16_array,
+              instruction
+            )
+
+            // initialize the mutable shift amount to the original value
+            inst_q +=
               BinaryArithmetic(
                 BinaryOperator.ADD,
-                carry_in,
-                const_0,
+                shift_amount_mutable,
+                shift_uint16.head,
                 const_0
-              ),
-              BinaryArithmetic(
-                BinaryOperator.SUB,
-                shift_amount_mutable_minus_16,
-                shift_right_amount_mutable,
-                const_16
               )
-            )
-            for (jx <- 0 until rs_uint16_array.length) {
-
+            for (ix <- 0 until rs_uint16_array.length) {
               inst_q ++= Seq(
                 BinaryArithmetic(
-                  BinaryOperator.SRL,
-                  right_shifted,
-                  rd_uint16_array_mutable(jx),
-                  shift_right_amount_mutable
-                ),
-                BinaryArithmetic(
-                  BinaryOperator.SLL,
-                  tmp_res,
-                  rd_uint16_array_mutable(jx),
-                  shift_amount_mutable
-                ),
-                Mux(
-                  carry_out,
-                  shift_amount_mutable_gt_eq_16,
-                  right_shifted,
-                  rd_uint16_array_mutable(jx)
-                ),
-                Mux(
-                  tmp_tmp_res,
-                  shift_amount_mutable_gt_eq_16,
-                  tmp_res,
+                  BinaryOperator.SEQ,
+                  shift_amount_mutable_eq_0,
+                  shift_amount_mutable,
                   const_0
                 ),
                 BinaryArithmetic(
-                  BinaryOperator.OR,
-                  tmp_tmp_tmp_res,
-                  tmp_res,
-                  carry_in
+                  BinaryOperator.SUB,
+                  sixteen_minus_shift_amount_mutable,
+                  const_16,
+                  shift_amount_mutable
+                ),
+                BinaryArithmetic(
+                  BinaryOperator.SUB,
+                  fifteen_minus_shift_amount_mutable,
+                  sixteen_minus_shift_amount_mutable,
+                  const_1
+                ),
+                BinaryArithmetic(
+                  BinaryOperator.SLTS,
+                  shift_amount_mutable_gt_eq_16,
+                  fifteen_minus_shift_amount_mutable,
+                  const_0
                 ),
                 Mux(
-                  rd_uint16_array_mutable(jx),
+                  shift_right_amount_mutable,
                   shift_amount_mutable_eq_0,
-                  tmp_tmp_tmp_res,
-                  rd_uint16_array_mutable(jx)
+                  sixteen_minus_shift_amount_mutable,
+                  const_0
                 ),
                 BinaryArithmetic(
                   BinaryOperator.ADD,
                   carry_in,
-                  carry_out,
+                  const_0,
                   const_0
+                ),
+                BinaryArithmetic(
+                  BinaryOperator.SUB,
+                  shift_amount_mutable_minus_16,
+                  shift_right_amount_mutable,
+                  const_16
                 )
               )
-            }
-            inst_q +=
-              Mux(
-                shift_amount_mutable,
-                shift_amount_mutable_gt_eq_16,
-                const_0,
-                shift_amount_mutable_minus_16
-              )
+              for (jx <- 0 until rs_uint16_array.length) {
 
+                inst_q ++= Seq(
+                  BinaryArithmetic(
+                    BinaryOperator.SRL,
+                    right_shifted,
+                    rd_uint16_array_mutable(jx),
+                    shift_right_amount_mutable
+                  ),
+                  BinaryArithmetic(
+                    BinaryOperator.SLL,
+                    tmp_res,
+                    rd_uint16_array_mutable(jx),
+                    shift_amount_mutable
+                  ),
+                  Mux(
+                    carry_out,
+                    shift_amount_mutable_gt_eq_16,
+                    right_shifted,
+                    rd_uint16_array_mutable(jx)
+                  ),
+                  Mux(
+                    tmp_tmp_res,
+                    shift_amount_mutable_gt_eq_16,
+                    tmp_res,
+                    const_0
+                  ),
+                  BinaryArithmetic(
+                    BinaryOperator.OR,
+                    tmp_tmp_tmp_res,
+                    tmp_res,
+                    carry_in
+                  ),
+                  Mux(
+                    rd_uint16_array_mutable(jx),
+                    shift_amount_mutable_eq_0,
+                    tmp_tmp_tmp_res,
+                    rd_uint16_array_mutable(jx)
+                  ),
+                  BinaryArithmetic(
+                    BinaryOperator.ADD,
+                    carry_in,
+                    carry_out,
+                    const_0
+                  )
+                )
+              }
+              inst_q +=
+                Mux(
+                  shift_amount_mutable,
+                  shift_amount_mutable_gt_eq_16,
+                  const_0,
+                  shift_amount_mutable_minus_16
+                )
+
+            }
           }
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask)
-        inst_q ++= moveRegs(rd_uint16_array, rd_uint16_array_mutable)
+        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+        inst_q ++= moveRegs(
+          rd_uint16_array,
+          rd_uint16_array_mutable,
+          instruction
+        )
       case BinaryOperator.SRA =>
         val shift_amount = instruction.rs2
         val rd = instruction.rd
         val rs1 = instruction.rs1
 
         val ConvertedWire(shift_uint16, _) = builder.getConversion(shift_amount)
-        assert16Bit(shift_uint16) {
+        assert16Bit(shift_uint16, instruction) {
           "Shift amount is too large, can only support shifting up to 16-bit " +
             "number as the shift amount, are you sure your design is correct?"
         }
@@ -833,7 +1011,7 @@ object UnconstrainedBigIntTo16BitsTransform
 
         if (rd_uint16_array_mutable.length == 1) {
 
-          if (builder.originalWidth(shift_amount) > 4) {
+          if (builder.originalWidth(shift_amount) > 16) {
             logger.error("unsafe SRA", instruction)
           }
           // easy case
@@ -845,7 +1023,7 @@ object UnconstrainedBigIntTo16BitsTransform
 
         } else {
 
-          moveRegs(rd_uint16_array_mutable, rs1_uint16_array)
+          moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
 
           val mutable_sh =
             builder.mkWire("mutable_sh", builder.originalWidth(shift_amount))
@@ -1036,8 +1214,12 @@ object UnconstrainedBigIntTo16BitsTransform
             )
           }
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask)
-        inst_q ++= moveRegs(rd_uint16_array, rd_uint16_array_mutable)
+        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+        inst_q ++= moveRegs(
+          rd_uint16_array,
+          rd_uint16_array_mutable,
+          instruction
+        )
 
       case BinaryOperator.SRL =>
         val ConvertedWire(shift_uint16, _) =
@@ -1053,7 +1235,7 @@ object UnconstrainedBigIntTo16BitsTransform
 
         if (rd_uint16_array_mutable.length == 1) {
 
-          if (builder.originalWidth(instruction.rs2) > 4) {
+          if (builder.originalWidth(instruction.rs2) > 16) {
             logger.error("Unsafe SRL", instruction)
           }
           inst_q += instruction.copy(
@@ -1064,9 +1246,9 @@ object UnconstrainedBigIntTo16BitsTransform
         } else {
 
           // initialize the rd mutable array
-          moveRegs(rd_uint16_array_mutable, rs1_uint16_array)
+          moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
 
-          assert16Bit(shift_uint16) {
+          assert16Bit(shift_uint16, instruction) {
             "Shift amount is too large, can only support shifting up to 16-bit " +
               "number as the shift amount, are you sure your design is correct?"
           }
@@ -1199,8 +1381,12 @@ object UnconstrainedBigIntTo16BitsTransform
 
           }
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask)
-        inst_q ++= moveRegs(rd_uint16_array, rd_uint16_array_mutable)
+        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+        inst_q ++= moveRegs(
+          rd_uint16_array,
+          rd_uint16_array_mutable,
+          instruction
+        )
 
       case BinaryOperator.SLTS =>
         // we should only handle SLTS rd, rs1, const_0, because this is the
@@ -1375,5 +1561,3 @@ object UnconstrainedBigIntTo16BitsTransform
   })
 
 }
-
-
