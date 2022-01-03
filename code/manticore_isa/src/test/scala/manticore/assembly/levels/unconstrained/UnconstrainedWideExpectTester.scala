@@ -43,6 +43,7 @@ class UnconstrainedWideExpectTester extends UnconstrainedTest {
       .proc proc_0_0:
         .const first ${width} ${ref}
         .const second ${width} ${different}
+        @TRAP [type = "\\fail"]
         EXPECT first, second, ["failed"];
     """
   }
@@ -55,6 +56,7 @@ class UnconstrainedWideExpectTester extends UnconstrainedTest {
       .proc proc_0_0:
         .const first ${width} ${ref}
         .const second ${width} ${got}
+        @TRAP [type = "\\fail"]
         EXPECT first, second, ["failed"];
     """
   }
@@ -79,7 +81,7 @@ class UnconstrainedWideExpectTester extends UnconstrainedTest {
     }
   }
 
-  it should "catch expect exceptions" taggedAs Tags.WidthConversion in {
+  it should "catch expect failures" taggedAs Tags.WidthConversion in {
 
     for (ix <- 0 until 20) {
       println("Generating failing program")

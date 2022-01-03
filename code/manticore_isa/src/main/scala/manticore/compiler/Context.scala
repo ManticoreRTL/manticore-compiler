@@ -21,7 +21,8 @@ case class AssemblyContext(
     val dump_all: Boolean = false,
     val dump_dir: Option[File] = None,
     val debug_message: Boolean = false,
-    val max_registers: Int = 2048
+    val max_registers: Int = 2048,
+    val max_cycles: Int = 20
 ) {
 
   var transform_index = 0

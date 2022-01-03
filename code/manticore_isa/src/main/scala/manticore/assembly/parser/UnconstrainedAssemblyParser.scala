@@ -139,9 +139,9 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     BinaryOperator(i).toString()
   }
   // rest of instruction
-  lexical.reserved += ("CUST", "LLD", "LST", "GLD", "GST", "EXPECT",
+  lexical.reserved ++= Seq("CUST", "LLD", "LST", "GLD", "GST", "EXPECT",
   "SEND", "SET", "MUX", "EXPECT", "PREDICATE", "NOP", "PADZERO")
-  lexical.reserved += ("LD", "ST") //short hand for LLD and LST
+  lexical.reserved ++= Seq("LD", "ST") //short hand for LLD and LST
   // defs
   val RegTypes = Seq(".reg", ".wire", ".input", ".output", ".mem", ".const")
 
@@ -149,7 +149,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   // register parameters
   // lexical.reserved += ("$INIT", "$TYPE", "$WIDTH", "$SLICE")
-  lexical.delimiters += (",", "[", "]", ";", ":", "(", ")", "=")
+  lexical.delimiters ++= Seq(",", "[", "]", ";", ":", "(", ")", "=")
 
   // def annotLiteral: Parser[String] =
   //   elem("annontation", _.isInstanceOf[AnnotationLiteral]) ^^ {

@@ -46,6 +46,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedTest {
     ${Range(32, 33).map { ix =>
       Seq(
         s"SLL result, rs, sh;",
+        s"@TRAP [type = \"\\fail\"]",
         s"EXPECT result, rs_${ix}, [\"e_${ix}\"];",
         s"ADD sh, sh, const_1;"
       ) mkString ("\n")

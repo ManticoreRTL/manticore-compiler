@@ -26,7 +26,7 @@ object AssemblyAnnotationFields {
   trait BindsToString
   trait BindsToInt
 
-  object Symbol extends FieldName("symbol") with BindsToInt
+  object Symbol extends FieldName("symbol") with BindsToString
   object Width extends FieldName("width") with BindsToInt
   object Index extends FieldName("index") with BindsToInt
   object X extends FieldName("x") with BindsToInt
@@ -85,7 +85,7 @@ trait AssemblyAnnotation extends Positional with HasSerialized {
   def serialized: String = {
     if (fields.nonEmpty) {
       s"@${name} [" + {
-        fields.map { case (k, v) => k + "=" + v + "" } mkString ","
+        fields.map { case (k, v) => s"${k} = ${v}" } mkString ","
       } + "]"
     } else {
       ""
@@ -136,10 +136,9 @@ trait AssemblyAnnotationParser {
 
   def checkBindings(bindings: Map[FieldName, AnnotationValue]): Unit = {
     bindings.foreach {
-      case (fn, v)                                                     =>
       case (_: AssemblyAnnotationFields.BindsToInt, _: IntValue)       =>
       case (_: AssemblyAnnotationFields.BindsToString, _: StringValue) =>
-      case (x, _) =>
+      case (x: FieldName, _) =>
         throw new AssemblyAnnotationParseError(
           s"Invalid ${name} annotation fields or values"
         )
@@ -166,6 +165,7 @@ object AssemblyAnnotationBuilder {
       case Track.name       => Track(fields)
       case MemInit.name     => MemInit(fields)
       case DebugSymbol.name => DebugSymbol(fields)
+      case Trap.name        => Trap(fields)
     }
   }
 }

@@ -29,8 +29,6 @@ trait HasWidth {
   def width: Int
 }
 
-
-
 /** Abstract IR flavor, any deriving IR flavor should be defined as an object
   * that defines the unbound types [[Name]], [[Constant]], [[Variable]],
   * [[CustomFunction]], [[ProcessId]], [[ExceptionId]].
@@ -46,7 +44,9 @@ trait ManticoreAssemblyIR {
 
   type Name // type defining names, e.g., String
   type Constant // type defining constants, e.g., UInt16 or BigInt
-  type Variable <: HasVariableType with Named[Variable] with HasSerialized with HasWidth // type defining Variables, should include variable type information
+  type Variable <: HasVariableType with Named[
+    Variable
+  ] with HasSerialized with HasWidth // type defining Variables, should include variable type information
   type CustomFunction <: HasSerialized // type defining custom function, e.g., Seq[UInt16]
   type ProcessId // type defining a process identifier, e.g., String
   type ExceptionId // type defining an exception identifier, e.g., String
@@ -186,7 +186,7 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tLLD ${rd}, ${offset}(${base}); //@${pos}"
+      s"${serializedAnnons("\t\t")}\t\tLLD ${rd}, ${base}[${offset}]; //@${pos}"
   }
 
   // Store to the local scratchpad
@@ -198,7 +198,7 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${offset}[${base}]${predicate
+      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${base}[${offset}], ${predicate
         .map(", " + _.toString())
         .getOrElse("")}; //@${pos}"
   }
@@ -284,25 +284,23 @@ trait ManticoreAssemblyIR {
   }
 
   case class AddC(
-    rd: Name,
-    co: Name,
-    rs1: Name,
-    rs2: Name,
-    ci: Name,
-    annons: Seq[AssemblyAnnotation] = Seq()
+      rd: Name,
+      co: Name,
+      rs1: Name,
+      rs2: Name,
+      ci: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
 
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\tADDCARRY ${rd}, ${co}, ${rs1}, ${rs2}, ${ci}; //@${pos}"
   }
 
-
-
   case class PadZero(
-    rd: Name,
-    rs: Name,
-    width: Constant,
-    annons: Seq[AssemblyAnnotation] = Seq()
+      rd: Name,
+      rs: Name,
+      width: Constant,
+      annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\tPADZERO ${rd}, ${rs}, ${width}; //@${pos}"

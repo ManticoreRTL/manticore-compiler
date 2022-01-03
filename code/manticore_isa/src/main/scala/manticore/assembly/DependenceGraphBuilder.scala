@@ -287,14 +287,6 @@ trait DependenceGraphBuilder extends Flavored {
             }
         }
 
-      // dependence_graph.nodes.foreach { n =>
-      //   println(s"Node: ${n.toOuter.serialized}")
-      // }
-      process.body.foreach { inst => }
-      if (dependence_graph.isCyclic) {
-        logger.error("Could not create acyclic dependence graph!")
-      }
-
       dependence_graph
     }
 
@@ -308,7 +300,8 @@ trait DependenceGraphBuilder extends Flavored {
       proc.body.flatMap { inst => regDef(inst) map { rd => rd -> inst } }.toMap
 
     /**
-      * Create a mapping from load/store base registers to the set of
+      * Create a mapping from load/store base registers to the set of registers
+      * that constitute the base of the memory
       *
       *
       * @param proc

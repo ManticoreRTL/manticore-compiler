@@ -12,12 +12,25 @@ import manticore.assembly.levels.ConstType
 import manticore.assembly.DependenceGraphBuilder
 import manticore.assembly.levels.AssemblyChecker
 import manticore.assembly.annotations.DebugSymbol
+import manticore.assembly.annotations.Trap
 
 object UnconstrainedInterpreter
     extends DependenceGraphBuilder
     with AssemblyChecker[UnconstrainedIR.DefProgram] {
   val flavor = UnconstrainedIR
   import flavor._
+  // wrapper class for memory state
+  case class BlockRam(
+      content: Array[Constant],
+      width: Int,
+      capacity: Int,
+      block: String
+  )
+
+  abstract class InterpretationTrap
+
+  case object InterpretationFailure extends InterpretationTrap
+  case object InterpretationStop extends InterpretationTrap
 
   private final class ProcessState(val proc: DefProcess) {
 
@@ -26,7 +39,16 @@ object UnconstrainedInterpreter
       proc.registers.map { r =>
         val k = r.variable.name
         val v = r.value match {
-          case Some(x) => x
+          case Some(x) =>
+            if (r.variable.varType == MemoryType) {
+              logger.warn(s"ignoring memory base register initial value", r)
+              // note that we set the initial value of all .mem definitions to 0
+              // because we resolve the memory address partly by name, partly
+              // by a runtime offset. See how memories are initialized bellow
+              BigInt(0)
+            } else {
+              x
+            }
           case None =>
             if (r.variable.varType == ConstType) {
               logger.error(s"constant register without initial value!", r)
@@ -35,79 +57,115 @@ object UnconstrainedInterpreter
         }
         k -> v
       }
-    // wrapper class for memory state
-    case class BlockRam(content: Array[Constant], width: Int, capacity: Int)
-    // a mutable memory
-    val memory: Map[Name, BlockRam] =
+
+    // a mutable container that holds the memory state. A load or store
+    // will access this container.
+    val memory: Map[Name, BlockRam] = {
+
+      // a temp container to map block names to their allocated interpreter
+      // memory blocks
+      val memory_blocks =
+        scala.collection.mutable.Map.empty[String, BlockRam]
+
+      // go through the list of registers, filter out the memory ones, and
+      // see if the memory block is already initialized in the or not. If not
+      // initialized, read the init files or zero out the memory and establish
+      // a mapping from register name to the BlockRam case class
+
       proc.registers
         .collect { case m @ DefReg(LogicVariable(_, _, MemoryType), _, _) =>
           m
         }
         .map { m =>
-          val memblock_cap = m.findAnnotationValue(
-            Memblock.name,
-            AssemblyAnnotationFields.Capacity
-          )
-          val cap = memblock_cap match {
-            case Some(IntValue(v)) =>
-              v
-            case _ =>
-              logger.error(s"missing memory block capacity!", m)
-              0
-          }
-          val memblock_width = m.findAnnotationValue(
-            Memblock.name,
-            AssemblyAnnotationFields.Width
-          )
-          val width = memblock_width match {
-            case Some(IntValue(v)) => v
-            case _ =>
-              logger.error(s"missing memory block width!", m)
-              0
-          }
-          val meminit: Array[BigInt] = m.findAnnotation(MemInit.name) match {
-            case Some(meminit_annon) =>
-              // this is not safe from Scala compilers perspective, but it is safe
-              // from our perspective because of the way we construct the
-              // annotation fields, i.e., the result is never [[None]]
-              val Some(file_name: String) =
-                meminit_annon.getStringValue(AssemblyAnnotationFields.File)
-              val Some(count: Int) =
-                meminit_annon.getIntValue(AssemblyAnnotationFields.Count)
-              if (count > cap) {
-                logger.error("init file overflows memory!", m)
+          val block_name: String = m.findAnnotation(Memblock.name) match {
+            case Some(block_annon) =>
+              block_annon.getStringValue(
+                AssemblyAnnotationFields.Block
+              ) match {
+                case Some(n: String) => n
+                case _ =>
+                  logger.error(s"missing block field in MEMBLOCK", m)
+                  ""
               }
-              import java.nio.file.{Files, Path}
-              val file_path = Path.of(file_name)
-
-              try {
-                scala.io.Source
-                  .fromFile(file_name)
-                  .getLines()
-                  .slice(0, count)
-                  .map {
-                    BigInt(_)
-                  }
-                  .toArray[BigInt] ++ Array.fill(cap - count)(BigInt(0))
-              } catch {
-                case e: Exception =>
+            case _ =>
+              logger.error(s"missing MEMBLOCK annotation", m)
+              ""
+          }
+          if (memory_blocks contains block_name) {
+            m.variable.name -> memory_blocks(block_name)
+          } else {
+            val memblock_cap = m.findAnnotationValue(
+              Memblock.name,
+              AssemblyAnnotationFields.Capacity
+            )
+            val cap = memblock_cap match {
+              case Some(IntValue(v)) =>
+                if (v == 0) {
                   logger.error(
-                    s"Could not read file ${file_path.toAbsolutePath()}"
+                    s"memory capacity 0! Please make sure all memories are less than 4 GiBs."
                   )
-                  Array.fill(cap)(BigInt(0))
-              }
-            case _ =>
-              Array.fill(cap)(BigInt(0))
+                }
+                v
+              case _ =>
+                logger.error(s"missing memory block capacity!", m)
+                0
+            }
+            val memblock_width = m.findAnnotationValue(
+              Memblock.name,
+              AssemblyAnnotationFields.Width
+            )
+            val width = memblock_width match {
+              case Some(IntValue(v)) => v
+              case _ =>
+                logger.error(s"missing memory block width!", m)
+                0
+            }
+            val meminit: Array[BigInt] = m.findAnnotation(MemInit.name) match {
+              case Some(meminit_annon) =>
+                // this is not safe from Scala compilers perspective, but it is safe
+                // from our perspective because of the way we construct the
+                // annotation fields, i.e., the result is never [[None]]
+                val Some(file_name: String) =
+                  meminit_annon.getStringValue(AssemblyAnnotationFields.File)
+                val Some(count: Int) =
+                  meminit_annon.getIntValue(AssemblyAnnotationFields.Count)
+                if (count > cap) {
+                  logger.error("init file overflows memory!", m)
+                }
+                import java.nio.file.{Files, Path}
+                val file_path = Path.of(file_name)
 
+                try {
+                  scala.io.Source
+                    .fromFile(file_name)
+                    .getLines()
+                    .slice(0, count)
+                    .map {
+                      BigInt(_)
+                    }
+                    .toArray[BigInt] ++ Array.fill(cap - count)(BigInt(0))
+                } catch {
+                  case e: Exception =>
+                    logger.error(
+                      s"Could not read file ${file_path.toAbsolutePath()}"
+                    )
+                    Array.fill(cap)(BigInt(0))
+                }
+              case _ =>
+                Array.fill(cap)(BigInt(0))
+
+            }
+            val new_block = BlockRam(meminit, width, cap, block_name)
+            memory_blocks += (block_name -> new_block)
+            m.variable.name -> new_block
           }
-          m.variable.name -> BlockRam(meminit, width, cap)
         }
         .toMap
-
+    }
     var predicate: Boolean = false
     var carry: Boolean = false
     var select: Boolean = false
-    var exception_occurred: Boolean = false
+    var exception_occurred: Option[InterpretationTrap] = None
 
   }
   private final class ProcessInterpreter(val proc: DefProcess)(implicit
@@ -118,8 +176,31 @@ object UnconstrainedInterpreter
     val def_instructions: Map[Name, Instruction] =
       DependenceAnalysis.definingInstructionMap(proc)
     // A table to look up the set of memories a name traces back to
-    val memory_blocks: Map[Name, Set[DefReg]] =
+    private val memory_blocks: Map[Name, Set[DefReg]] =
       DependenceAnalysis.memoryBlocks(proc, def_instructions)
+
+    private def handleMemoryAccess(base: Name, instruction: Instruction)(
+        handler: BlockRam => Unit
+    ): Unit = {
+      val visited_mems = memory_blocks(base)
+      val accessed = visited_mems.collect {
+        case m: DefReg if state.memory.contains(m.variable.name) =>
+          state.memory(m.variable.name)
+      }
+      if (accessed.isEmpty) {
+        logger.error("Could not resolve memory access block", instruction)
+      } else if (accessed.size != 1) {
+        logger.error(
+          s"Conflicting memory access resolution, instruction accesses the following memory blocks: ${accessed
+            .map { _.block } mkString (",")}",
+          instruction
+        )
+      } else {
+        // we have: accessed.size == 1
+        handler(accessed.head)
+      }
+
+    }
     // A table for looking up name definitions
     val definitions: Map[Name, DefReg] = proc.registers.map { r =>
       r.variable.name -> r
@@ -223,28 +304,64 @@ object UnconstrainedInterpreter
       state.register_file(rd) = rd_val
     }
 
+    private def nextPower2BitMask(x: Int): Int = {
+      var v = x
+      v -= 1
+      v |= v >> 1
+      v |= v >> 2
+      v |= v >> 4
+      v |= v >> 8
+      v |= v >> 16
+      v
+    }
     // def checkMemoryReference(base: Name, offset: BigInt)
     def interpret(instruction: Instruction): Unit = instruction match {
       case i: BinaryArithmetic => interpret(i)
       case i: CustomInstruction =>
         logger.error("Custom instruction can not be interpreted yet!", i)
       case LocalLoad(rd, base, offset, _) =>
-        val used_mems = memory_blocks(base)
-        if (used_mems.isEmpty) {
-          logger.error("Could not resolve memory block", instruction)
-        } else {
-
-          val with_block_annon = used_mems.collect {
-            case mdef if mdef.findAnnotation(Memblock.name).nonEmpty => mdef
+        // this is wrong, need to somehow infer the address mode (i.e., short-word or arbitrary-word)
+        handleMemoryAccess(base, instruction) { resolved_block =>
+          val addr_val = state.register_file(base)
+          val block_cap = resolved_block.capacity
+          if (block_cap == 0) {
+            logger.error(
+              "Can not handle LD from memory with capacity 0!",
+              instruction
+            )
+          } else {
+            val block_index: BigInt =
+              addr_val & nextPower2BitMask(block_cap.toInt)
+            val rd_val = resolved_block.content(block_index.toInt)
+            state.register_file(rd) = rd_val
           }
-
         }
-        ???
-      case LocalStore(rs, base, offset, predicate, annons) => ???
-      case GlobalLoad(rd, base, annons)                    => ???
-      case GlobalStore(rs, base, predicate, annons)        => ???
-      case SetValue(rd, value, annons)                     => ???
-      case Send(rd, rs, dest_id, annons)                   => ???
+      case LocalStore(rs, base, offset, predicate, annons) =>
+        handleMemoryAccess(base, instruction) { resolved_block =>
+          val addr_val = state.register_file(base)
+          val block_cap: Int = resolved_block.capacity
+          if (block_cap == 0) {
+            logger.error(
+              "Can not ST from  memory with capacity 0!",
+              instruction
+            )
+          } else {
+            val block_index: BigInt =
+              addr_val & nextPower2BitMask(block_cap.toInt)
+            val rs_val = state.register_file(rs)
+            assert(block_index.isValidInt, "Something went wrong handling ST")
+            resolved_block.content(block_index.toInt) = rs_val
+          }
+        }
+
+      case GlobalLoad(rd, base, annons) =>
+        logger.error("Can handle global memory access", instruction)
+      case GlobalStore(rs, base, predicate, annons) =>
+        logger.error("Can handle global memory access", instruction)
+      case SetValue(rd, value, annons) =>
+        logger.error("Can handle SET", instruction)
+      case Send(rd, rs, dest_id, annons) =>
+        logger.error("Can not handle SEND", instruction)
       case Expect(ref, got, error_id, annons) =>
         val ref_val = state.register_file(ref)
         val got_val = state.register_file(got)
@@ -285,22 +402,48 @@ object UnconstrainedInterpreter
               }
             }
 
-            index_map.map { case (dbg_name, indexed_values) =>
-              val ordered_vals = indexed_values.dequeueAll.toSeq
-              if (dbg_name == "rs_2")
-                println(ordered_vals)
-              val value: BigInt = ordered_vals.foldLeft(BigInt(0)) {
-                case (carry, x) =>
-                  (carry << 16) | x.value
+            index_map
+              .map { case (dbg_name, indexed_values) =>
+                val ordered_vals = indexed_values.dequeueAll.toSeq
+                if (dbg_name == "rs_2")
+                  println(ordered_vals)
+                val value: BigInt = ordered_vals.foldLeft(BigInt(0)) {
+                  case (carry, x) =>
+                    (carry << 16) | x.value
+                }
+                s"${dbg_name}[${width_map(dbg_name) - 1} : 0] = ${value}"
               }
-              s"${dbg_name}[${width_map(dbg_name) - 1} : 0] = ${value}"
-            }.toSeq.sorted.mkString("\n")
+              .toSeq
+              .sorted
+              .mkString("\n")
           }
-          logger.error(
-            s"Interpreter encountered a Manticore exception, expected ${ref_val} but got ${got_val}",
-            instruction
-          )
-          state.exception_occurred = true
+
+          val trap_source = instruction
+            .findAnnotationValue(
+              Trap.name,
+              AssemblyAnnotationFields.File
+            ) match {
+            case Some(StringValue(x)) => x
+            case _                    => ""
+          }
+          state.exception_occurred = instruction.findAnnotationValue(
+            Trap.name,
+            AssemblyAnnotationFields.Type
+          ) match {
+            case Some(Trap.Fail) =>
+              logger.error(s"User exception caught! ${error_id}", instruction)
+              logger.error(s"Expected ${ref_val} but got ${got_val}")
+              Some(InterpretationFailure)
+            case Some(Trap.Stop) =>
+              logger.info("Interpretation stopped!")
+              if (trap_source.nonEmpty)
+                logger.error(s"Stop condition from ${trap_source}", instruction)
+              Some(InterpretationStop)
+            case _ =>
+              logger.error(s"Missing TRAP type!", instruction)
+              Some(InterpretationFailure)
+          }
+
         }
       case Predicate(rs, annons) => ???
       case Mux(rd, sel, rfalse, rtrue, annons) =>
@@ -348,7 +491,7 @@ object UnconstrainedInterpreter
     }
 
     def run(): Unit = proc.body.foreach { interpret }
-    def exceptionOccurred(): Boolean = state.exception_occurred
+    def getException(): Option[InterpretationTrap] = state.exception_occurred
 
   }
   override def check(
@@ -359,9 +502,14 @@ object UnconstrainedInterpreter
     if (source.processes.length != 1) {
       logger.error("Can not handle more than one process for now")
     } else {
+      var cycles = 0
       val interp = new ProcessInterpreter(source.processes.head)(context)
-      // var cycles = 0
-      interp.run()
+
+      while (cycles < context.max_cycles && interp.getException().isEmpty) {
+        interp.run()
+        cycles += 1
+      }
+
     }
 
   }

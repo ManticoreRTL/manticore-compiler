@@ -296,7 +296,10 @@ object UnconstrainedBigIntTo16BitsTransform
       *   a converted wire
       */
     private def convertWire(original: Name): ConvertedWire = {
-      require(m_old_defs.contains(original), "can not convert undefined wire")
+      require(
+        m_old_defs.contains(original),
+        s"can not convert undefined wire ${original}"
+      )
       require(m_subst.contains(original) == false, "conversion already exists!")
       val orig_def = m_old_defs(original)
 
@@ -334,35 +337,38 @@ object UnconstrainedBigIntTo16BitsTransform
 
       val conv_def = (uint16_vars zip values).zipWithIndex.map {
         case ((cvar, cval), ix) =>
-
           // check if a debug symbol annotation exits
-          val dbgsym = orig_def.annons.collect {
-            case x: DebugSymbol =>
-              // if DebugSymbol annotation exits, append the index and width
-              // to it
-              if (x.fields.contains(AssemblyAnnotationFields.Index)) {
-                logger.error("did not expect debug symbol index", orig_def)
-              }
-              val with_index = x.withIndex(ix)
-              with_index.getIntValue(AssemblyAnnotationFields.Width) match {
-                case Some(w) =>
-                  with_index
-                case None =>
-                  with_index.withWidth(width)
-              }
+          val dbgsym = orig_def.annons.collect { case x: DebugSymbol =>
+            // if DebugSymbol annotation exits, append the index and width
+            // to it
+            if (x.fields.contains(AssemblyAnnotationFields.Index)) {
+              logger.error("did not expect debug symbol index", orig_def)
+            }
+            val with_index = x.withIndex(ix)
+            with_index.getIntValue(AssemblyAnnotationFields.Width) match {
+              case Some(w) =>
+                with_index
+              case None =>
+                with_index.withWidth(width)
+            }
           } match {
             case Seq() => // if it does not exists, create one from scratch
               DebugSymbol(orig_def.variable.name).withIndex(ix).withWidth(width)
-            case x +: _ => x // return the original one with appended index and width
+            case x +: _ =>
+              x // return the original one with appended index and width
           }
 
           val other_annons = orig_def.annons.filter {
             case _: DebugSymbol => false
-            case _ => true
+            case _              => true
           }
 
           orig_def
-            .copy(variable = cvar, value = cval, annons = other_annons :+ dbgsym)
+            .copy(
+              variable = cvar,
+              value = cval,
+              annons = other_annons :+ dbgsym
+            )
             .setPos(orig_def.pos)
 
       }
@@ -414,6 +420,15 @@ object UnconstrainedBigIntTo16BitsTransform
     logger.error(msg, inst)
   }
 
+  /** Convert binary arithmetic operations
+    *
+    * TODO: handle constant cases (remove unnecessary masking) [x] SLL [ ] SRA [
+    * ] SRL [ ] ADD [ ] SUB [ ] AND OR XOR [ ] PMUX [ ] SLTS [ ] SEQ
+    * @param instruction
+    * @param ctx
+    * @param builder
+    * @return
+    */
   def convertBinaryArithmetic(
       instruction: BinaryArithmetic
   )(implicit
@@ -487,6 +502,7 @@ object UnconstrainedBigIntTo16BitsTransform
 
     instruction.operator match {
       case BinaryOperator.ADD =>
+        // TODO: Handle cases when either of the operands are constant
         val ConvertedWire(rd_uint16_array, rd_mask) =
           builder.getConversion(instruction.rd)
         val rs1_uint16_array: Seq[Name] =
@@ -1482,30 +1498,72 @@ object UnconstrainedBigIntTo16BitsTransform
       ctx: AssemblyContext,
       builder: ConversionBuilder
   ): Seq[Instruction] = instruction match {
-    case i: BinaryArithmetic => convertBinaryArithmetic(i)
+    case i: BinaryArithmetic                => convertBinaryArithmetic(i)
     case i @ LocalLoad(rd, base, offset, _) =>
+      /** We assume the base_uint16 conversion yields a single register, i.e.,
+        * we can use 16 bits to address the memory (i) if the source width is <
+        * 16 then there will be a single rs_uint16 and a single base_uint16. The
+        * translation is straightforward then: We choose to was memory for
+        * simplicity of address handling by placing smaller words in our short
+        * word block ram storage. (ii) if the source width is > 16 then we use
+        * the offset field of the base address to read multiple words
+        * essentially packing large words in multiple short words in the block
+        * ram storage.
+        */
       val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
-      rd_uint16_array.zip(base_uint16_array).zipWithIndex.map {
-        case ((rd_16: Name, base_16: Name), ix: Int) =>
-          i.copy(rd_16, base_16, if (ix == 0) offset else BigInt(0))
-            .setPos(i.pos)
-      } ++ rd_mask.map { case m => // Not sure if masking is necessary
-        BinaryArithmetic(
-          BinaryOperator.AND,
-          rd_uint16_array.last,
-          rd_uint16_array.last,
-          m
-        ).setPos(i.pos)
-      }.toSeq
+
+      if (base_uint16_array.length != 1) {
+        logger.error("Can not handle large memories yet!")
+        // TODO: promote to global access
+      }
+
+      val base_uint16_head = base_uint16_array.head
+
+      rd_uint16_array.zipWithIndex.map { case (rd_16: Name, ix: Int) =>
+        if (offset != 0) {
+          logger.warn(
+            "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
+            i
+          )
+        } else if (offset + ix > 0xffff) {
+          logger.error(
+            "can not translate LLD: offset overflows 16 bit addresses. " +
+              "This should not happen with Thyrio frontend",
+            i
+          )
+        }
+        i.copy(rd_16, base_uint16_head, offset + ix).setPos(i.pos)
+        // Should we mask the loaded values too? Hopefully, as long as we
+        // take the easy path of not tightly packing bits in the BRAMs we
+        // should not need to mask the result of a load
+      }
+
     case i @ LocalStore(rs, base, offset, predicate, _) =>
       val ConvertedWire(rs_uint16_array, _) = builder.getConversion(rs)
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
-      rs_uint16_array.zip(base_uint16_array).zipWithIndex.map {
-        case ((rs_16: Name, base_16: Name), ix: Int) =>
-          i.copy(rs_16, base_16, if (ix == 0) offset else BigInt(0))
-            .setPos(i.pos)
+      if (base_uint16_array.length != 1) {
+        logger.error("Can not handle large memories yet", i)
+        // need to promote this local access to a global one
       }
+      val base_uint16_head = base_uint16_array.head
+
+      rs_uint16_array.zipWithIndex.map { case (rs_16: Name, ix: Int) =>
+        if (offset != 0) {
+          logger.warn(
+            "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
+            i
+          )
+        } else if (offset + ix > 0xffff) {
+          logger.error(
+            "can not translate LLD: offset overflows 16 bit addresses. " +
+              "This should not happen with Thyrio frontend",
+            i
+          )
+        }
+        i.copy(rs_16, base_uint16_head, offset + ix).setPos(i.pos)
+      }
+
     case i @ Expect(ref, got, _, _) =>
       val ConvertedWire(ref_uint16_array, _) = builder.getConversion(ref)
       val ConvertedWire(got_uint16_array, _) = builder.getConversion(got)
