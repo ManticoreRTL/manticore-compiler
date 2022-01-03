@@ -94,7 +94,7 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
   ): (T, AssemblyContext) = {
     check(source, context)
     if (logger.countErrors > 0)
-      logger.fail("Checker failed!")
+      logger.fail(s"Checker failed after encountering ${logger.countErrors} errors!")
     (source, context)
   }
 }

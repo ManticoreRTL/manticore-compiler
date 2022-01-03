@@ -313,7 +313,9 @@ object UnconstrainedBigIntTo16BitsTransform
       val uint16_vars = Seq.tabulate(array_size) { i =>
         LogicVariable(
           freshName(original + s"_$i"),
-          if (i == array_size - 1) mask_bits else 16,
+          // if (i == array_size - 1) mask_bits else 16,
+          16, // we make every variable 16 bit and mask the computation results
+          // explicitly if necessary
           orig_def.variable.varType
         )
       }
@@ -935,7 +937,7 @@ object UnconstrainedBigIntTo16BitsTransform
                 BinaryArithmetic(
                   BinaryOperator.SUB,
                   shift_amount_mutable_minus_16,
-                  shift_right_amount_mutable,
+                  shift_amount_mutable,
                   const_16
                 )
               )

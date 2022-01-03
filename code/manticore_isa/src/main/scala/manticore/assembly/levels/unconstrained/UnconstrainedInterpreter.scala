@@ -173,7 +173,7 @@ object UnconstrainedInterpreter
           state.select = is_eq
           BigInt(if (is_eq) 1 else 0)
         case SLL =>
-          if (rs2_val.isValidInt && rs2_val < 0xffff) {
+          if (rs2_val.isValidInt && rs2_val <= 0xffff) {
             clipped(rs1_val << rs2_val.toInt)
           } else {
             logger.error("unsupported SLL shift amount", inst)
@@ -188,7 +188,7 @@ object UnconstrainedInterpreter
             "something went wrong! all interpreted values should be positive!"
           )
 
-          if (rs2_val.isValidInt && rs2_val < 0xffff) {
+          if (rs2_val.isValidInt && rs2_val <= 0xffff) {
             clipped(rs1_val >> rs2_val.toInt)
           } else {
             logger.error("unsupported SRL shift amount", inst)
@@ -251,7 +251,7 @@ object UnconstrainedInterpreter
         if (ref_val != got_val) {
 
           // dump the state of registers
-          logger.dumpArtifact("interpreter_state") {
+          logger.dumpArtifact("interpreter_state.txt") {
 
             case class RegDump(index: Int, value: BigInt)
                 extends Ordered[RegDump] {
@@ -293,7 +293,7 @@ object UnconstrainedInterpreter
                 case (carry, x) =>
                   (carry << 16) | x.value
               }
-              s"${dbg_name}[${width_map(dbg_name)} : 0] = ${value}"
+              s"${dbg_name}[${width_map(dbg_name) - 1} : 0] = ${value}"
             }.toSeq.sorted.mkString("\n")
           }
           logger.error(

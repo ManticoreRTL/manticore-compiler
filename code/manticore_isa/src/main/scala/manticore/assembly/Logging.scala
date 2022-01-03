@@ -24,6 +24,7 @@ class CompilationFailureException(msg: String) extends Exception(msg)
 trait Reporter {
 
   def getName: String = this.getClass().getSimpleName()
+
   class Logger {
     import io.AnsiColor._
     private var error_count: Int = 0;
@@ -53,7 +54,10 @@ trait Reporter {
       error_count += 1
     }
     def countErrors: Int = error_count
-
+    def clearErrors: Unit = {
+      warn("Clearing errors!")
+      error_count = 0
+    }
     def warn(msg: String): Unit = {
       message(s"${YELLOW}WARNING${RESET}: ${msg}")
       warn_count += 1
