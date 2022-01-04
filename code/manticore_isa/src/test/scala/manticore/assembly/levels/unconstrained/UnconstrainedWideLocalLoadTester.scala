@@ -29,9 +29,9 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
 
   def mkProgram(program_name: String): String = {
 
-    val capacity = 80
-    val width = 44
-    val init_count = 40
+    val capacity = randgen.nextInt(100)
+    val width = randgen.nextInt(82)
+    val init_count = randgen.nextInt(capacity )
     // val min_value = mkWideRand(width - 1)
     val init_vals = Array.fill(init_count) {
       mkWideRand(width)
@@ -79,12 +79,14 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
       // UnconstrainedOrderInstructions followedBy // which is required for resolving memory accesses for LLD and LST
       UnconstrainedInterpreter
   it should "correctly read from memory" taggedAs Tags.WidthConversion in {
+    // the test may print warnings about Thyrio that do not matter
+    Range(0, 10).foreach { i =>
+      val prog_txt = mkProgram(s"ld_test_${i}")
+      val prog = AssemblyParser(prog_txt, ctx)
+      println(prog.serialized)
+      backend(prog, ctx)
+    }
 
-    val prog_txt = mkProgram("ld_test")
-    println(prog_txt)
-    val prog = AssemblyParser(mkProgram("ld_test"), ctx)
-    println(prog.serialized)
-    backend(prog, ctx)
 
   }
 
