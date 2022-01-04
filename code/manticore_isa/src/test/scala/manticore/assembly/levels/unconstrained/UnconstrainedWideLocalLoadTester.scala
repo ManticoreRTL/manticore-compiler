@@ -29,15 +29,15 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
 
   def mkProgram(program_name: String): String = {
 
-    val capacity = 1 << 10
-    val width = 60
-    val init_count = 1
+    val capacity = 80
+    val width = 44
+    val init_count = 40
     // val min_value = mkWideRand(width - 1)
     val init_vals = Array.fill(init_count) {
       mkWideRand(width)
     }
     val fp = mkInitFile(program_name + ".dat", init_count, init_vals)
-    val addr_bits = BigInt(capacity - 1).bitLength + 1
+    val addr_bits = BigInt(capacity - 1).bitLength
     s"""
     .prog:
     .proc proc_0_0:
@@ -65,7 +65,8 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
       ) mkString ("\n")
 
     } mkString ("\n")}
-
+    @TRAP [type = "\\stop"]
+    EXPECT const_1, const_0, ["end"];
     """
 
   }
@@ -75,7 +76,7 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
   val backend =
     UnconstrainedBigIntTo16BitsTransform followedBy
       UnconstrainedRenameVariables followedBy // to be able to build a dependence graph
-      UnconstrainedOrderInstructions followedBy // which is required for resolving memory accesses for LLD and LST
+      // UnconstrainedOrderInstructions followedBy // which is required for resolving memory accesses for LLD and LST
       UnconstrainedInterpreter
   it should "correctly read from memory" taggedAs Tags.WidthConversion in {
 

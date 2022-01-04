@@ -92,6 +92,7 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
       source: T,
       context: AssemblyContext
   ): (T, AssemblyContext) = {
+    logger.info(s"[${context.transform_index}] Starting program check ${getName}")
     check(source, context)
     if (logger.countErrors > 0)
       logger.fail(s"Checker failed after encountering ${logger.countErrors} errors!")

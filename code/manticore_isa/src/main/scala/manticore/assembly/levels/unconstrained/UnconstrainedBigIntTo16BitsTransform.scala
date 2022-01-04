@@ -204,6 +204,8 @@ object UnconstrainedBigIntTo16BitsTransform
 
   import UnconstrainedIR._
 
+  val MaxLocalAddressBits = 11
+
   private case class ConvertedWire(parts: Seq[Name], mask: Option[Name])
   private class ConversionBuilder(private val proc: DefProcess) {
 
@@ -1494,74 +1496,71 @@ object UnconstrainedBigIntTo16BitsTransform
     inst_q.toSeq
   }
 
+  def log2ceil(x: Int) = BigInt(x - 1).bitLength
+
   def convert(instruction: Instruction)(implicit
       ctx: AssemblyContext,
       builder: ConversionBuilder
   ): Seq[Instruction] = instruction match {
     case i: BinaryArithmetic                => convertBinaryArithmetic(i)
     case i @ LocalLoad(rd, base, offset, _) =>
-      /** We assume the base_uint16 conversion yields a single register, i.e.,
-        * we can use 16 bits to address the memory (i) if the source width is <
-        * 16 then there will be a single rs_uint16 and a single base_uint16. The
-        * translation is straightforward then: We choose to was memory for
-        * simplicity of address handling by placing smaller words in our short
-        * word block ram storage. (ii) if the source width is > 16 then we use
-        * the offset field of the base address to read multiple words
-        * essentially packing large words in multiple short words in the block
-        * ram storage.
+      /** Memories with wide words are translated into multiple parallel
+        * memories with short-words where the for instance a 10 deep 33 wide
+        * memory is translate into 3 memories that are 10 deep and each 16-bit
+        * wide. This streamlines the translation process quite significantly as
+        * we do not need to do any sort of wide-address to short-address
+        * conversion.
         */
       val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
+      // ensure the memory can fit in a physical BRAM
 
-      if (base_uint16_array.length != 1) {
+
+      val addr_width_orig = builder.originalWidth(base)
+      val extended_addr_width =
+        log2ceil(rd_uint16_array.length) + addr_width_orig
+      if (extended_addr_width > MaxLocalAddressBits) {
         logger.error("Can not handle large memories yet!")
         // TODO: promote to global access
-      }
-
-      val base_uint16_head = base_uint16_array.head
-
-      rd_uint16_array.zipWithIndex.map { case (rd_16: Name, ix: Int) =>
+        Seq(i)
+      } else {
+        val base_uint16_head = base_uint16_array.head
+        assert(base_uint16_array.length == 1)
         if (offset != 0) {
           logger.warn(
             "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
             i
           )
-        } else if (offset + ix > 0xffff) {
-          logger.error(
-            "can not translate LLD: offset overflows 16 bit addresses. " +
-              "This should not happen with Thyrio frontend",
-            i
-          )
         }
-        i.copy(rd_16, base_uint16_head, offset + ix).setPos(i.pos)
-        // Should we mask the loaded values too? Hopefully, as long as we
-        // take the easy path of not tightly packing bits in the BRAMs we
-        // should not need to mask the result of a load
+        rd_uint16_array.map { case rd_16 =>
+          i.copy(rd = rd_16, base = base_uint16_head, offset = offset)
+            .setPos(i.pos)
+        }
       }
 
     case i @ LocalStore(rs, base, offset, predicate, _) =>
       val ConvertedWire(rs_uint16_array, _) = builder.getConversion(rs)
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
-      if (base_uint16_array.length != 1) {
-        logger.error("Can not handle large memories yet", i)
-        // need to promote this local access to a global one
-      }
-      val base_uint16_head = base_uint16_array.head
-
-      rs_uint16_array.zipWithIndex.map { case (rs_16: Name, ix: Int) =>
+      val addr_width_orig = builder.originalWidth(base)
+      val extended_addr_width =
+        log2ceil(rs_uint16_array.length) + addr_width_orig
+      if (extended_addr_width > MaxLocalAddressBits) {
+        logger.error("Can not handle large memories yet!")
+        // TODO: promote to global access
+        Seq(i)
+      } else {
+        val base_uint16_head = base_uint16_array.head
+        assert(base_uint16_array.length == 1)
         if (offset != 0) {
           logger.warn(
             "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
             i
           )
-        } else if (offset + ix > 0xffff) {
-          logger.error(
-            "can not translate LLD: offset overflows 16 bit addresses. " +
-              "This should not happen with Thyrio frontend",
-            i
-          )
         }
-        i.copy(rs_16, base_uint16_head, offset + ix).setPos(i.pos)
+        rs_uint16_array.map { case rs_16 =>
+          i.copy(rs = rs_16, base = base_uint16_head, offset = offset)
+            .setPos(i.pos)
+        }
       }
 
     case i @ Expect(ref, got, _, _) =>

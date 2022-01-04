@@ -13,6 +13,7 @@ import manticore.assembly.DependenceGraphBuilder
 import manticore.assembly.levels.AssemblyChecker
 import manticore.assembly.annotations.DebugSymbol
 import manticore.assembly.annotations.Trap
+import manticore.assembly.annotations.AssemblyAnnotation
 
 object UnconstrainedInterpreter
     extends DependenceGraphBuilder
@@ -322,7 +323,7 @@ object UnconstrainedInterpreter
       case LocalLoad(rd, base, offset, _) =>
         // this is wrong, need to somehow infer the address mode (i.e., short-word or arbitrary-word)
         handleMemoryAccess(base, instruction) { resolved_block =>
-          val addr_val = state.register_file(base)
+          val addr_val = state.register_file(base) + offset
           val block_cap = resolved_block.capacity
           if (block_cap == 0) {
             logger.error(
@@ -333,7 +334,25 @@ object UnconstrainedInterpreter
             val block_index: BigInt =
               addr_val & nextPower2BitMask(block_cap.toInt)
             val rd_val = resolved_block.content(block_index.toInt)
-            state.register_file(rd) = rd_val
+            // if there is a debug symbol index, we need to shift the word to
+            // the right and only extract the relevant bits
+            val rd_def = definitions(rd)
+            val rd_val_actual = rd_def.findAnnotationValue(
+              DebugSymbol.name,
+              AssemblyAnnotationFields.Index
+            ) match {
+              case Some(IntValue(index)) =>
+                // the original word was large word and is now broken into
+                // 16-bit words, the index indicates the sub-word position
+                // for instance, index 1 means the part we are actually concerned
+                // with is the bits [16 : 31]
+                val rd_val_shifted = rd_val >> (16 * index)
+                val rd_val_masked = rd_val_shifted & 0xffff // keep only 16 bits
+                rd_val_masked
+              case _ =>
+                rd_val
+            }
+            state.register_file(rd) = rd_val_actual
           }
         }
       case LocalStore(rs, base, offset, predicate, annons) =>
@@ -349,8 +368,37 @@ object UnconstrainedInterpreter
             val block_index: BigInt =
               addr_val & nextPower2BitMask(block_cap.toInt)
             val rs_val = state.register_file(rs)
-            assert(block_index.isValidInt, "Something went wrong handling ST")
-            resolved_block.content(block_index.toInt) = rs_val
+            val pred_val = predicate
+              .map { x => state.register_file(x) == 1 }
+              .getOrElse(state.predicate)
+
+            if (pred_val) {
+              assert(block_index.isValidInt, "Something went wrong handling ST")
+              val rs_def = definitions(rs)
+              val rs_val_actual = rs_def.findAnnotationValue(
+                DebugSymbol.name,
+                AssemblyAnnotationFields.Index
+              ) match {
+                case Some(IntValue(index)) =>
+                  // since the debug symbol is augmented with index, then
+                  // the original memory has gone through width conversion
+                  // and we need to only store a sub-word (it could be a full
+                  // word iff the original memory width was 16 bits)
+                  // therefore we first need to read from the memory and then
+                  // write a modified wide word to it.
+                  val old_val = resolved_block.content(block_index.toInt)
+                  val rs_val_shifted = rs_val << (16 * index)
+                  val old_val_masked = old_val & (0xffff << (16 * index))
+                  val new_val = old_val_masked | rs_val_shifted
+                  new_val
+                case _ =>
+                  // no valid index, so no need to handle sub-word stores
+                  rs_val
+
+              }
+              resolved_block.content(block_index.toInt) = rs_val_actual
+            }
+
           }
         }
 
@@ -435,7 +483,7 @@ object UnconstrainedInterpreter
               logger.error(s"Expected ${ref_val} but got ${got_val}")
               Some(InterpretationFailure)
             case Some(Trap.Stop) =>
-              logger.info("Interpretation stopped!")
+              logger.info("Stop signal interpreted.")
               if (trap_source.nonEmpty)
                 logger.error(s"Stop condition from ${trap_source}", instruction)
               Some(InterpretationStop)
@@ -443,8 +491,8 @@ object UnconstrainedInterpreter
               logger.error(s"Missing TRAP type!", instruction)
               Some(InterpretationFailure)
           }
-
         }
+
       case Predicate(rs, annons) => ???
       case Mux(rd, sel, rfalse, rtrue, annons) =>
         val sel_val = state.register_file(sel)
