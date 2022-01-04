@@ -1541,6 +1541,13 @@ object UnconstrainedBigIntTo16BitsTransform
     case i @ LocalStore(rs, base, offset, predicate, _) =>
       val ConvertedWire(rs_uint16_array, _) = builder.getConversion(rs)
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
+      val pred_uint16 = predicate.map { p =>
+        val conv = builder.getConversion(p).parts
+        if (conv.length != 1) {
+          logger.error("LST predicate should be single-bit!")
+        }
+        conv.head
+      }
       val addr_width_orig = builder.originalWidth(base)
       val extended_addr_width =
         log2ceil(rs_uint16_array.length) + addr_width_orig
@@ -1558,7 +1565,7 @@ object UnconstrainedBigIntTo16BitsTransform
           )
         }
         rs_uint16_array.map { case rs_16 =>
-          i.copy(rs = rs_16, base = base_uint16_head, offset = offset)
+          i.copy(rs = rs_16, base = base_uint16_head, offset = offset, predicate =  pred_uint16)
             .setPos(i.pos)
         }
       }

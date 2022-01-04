@@ -16,8 +16,7 @@ import manticore.assembly.annotations.Trap
 import manticore.assembly.annotations.AssemblyAnnotation
 
 object UnconstrainedInterpreter
-    extends DependenceGraphBuilder
-    with AssemblyChecker[UnconstrainedIR.DefProgram] {
+    extends AssemblyChecker[UnconstrainedIR.DefProgram] {
   val flavor = UnconstrainedIR
   import flavor._
   // wrapper class for memory state
@@ -59,14 +58,13 @@ object UnconstrainedInterpreter
         k -> v
       }
 
-    // a mutable container that holds the memory state. A load or store
-    // will access this container.
-    val memory: Map[Name, BlockRam] = {
+    // a container to map block names to their allocated interpreter
+    // memory blocks (one to one)
+    val memory_blocks =
+      scala.collection.mutable.Map.empty[String, BlockRam]
 
-      // a temp container to map block names to their allocated interpreter
-      // memory blocks
-      val memory_blocks =
-        scala.collection.mutable.Map.empty[String, BlockRam]
+    // a container to map .mem names to their allocated block ram (possibly many to one)
+    val memory: Map[Name, BlockRam] = {
 
       // go through the list of registers, filter out the memory ones, and
       // see if the memory block is already initialized in the or not. If not
@@ -173,34 +171,20 @@ object UnconstrainedInterpreter
       val ctx: AssemblyContext
   ) {
 
-    // A table for looking up instructions that modify the value of a name
-    val def_instructions: Map[Name, Instruction] =
-      DependenceAnalysis.definingInstructionMap(proc)
-    // A table to look up the set of memories a name traces back to
-    private val memory_blocks: Map[Name, Set[DefReg]] =
-      DependenceAnalysis.memoryBlocks(proc, def_instructions)
-
     private def handleMemoryAccess(base: Name, instruction: Instruction)(
         handler: BlockRam => Unit
     ): Unit = {
-      val visited_mems = memory_blocks(base)
-      val accessed = visited_mems.collect {
-        case m: DefReg if state.memory.contains(m.variable.name) =>
-          state.memory(m.variable.name)
-      }
-      if (accessed.isEmpty) {
-        logger.error("Could not resolve memory access block", instruction)
-      } else if (accessed.size != 1) {
-        logger.error(
-          s"Conflicting memory access resolution, instruction accesses the following memory blocks: ${accessed
-            .map { _.block } mkString (",")}",
-          instruction
-        )
-      } else {
-        // we have: accessed.size == 1
-        handler(accessed.head)
-      }
 
+      val resolved_block = instruction.findAnnotationValue(
+        Memblock.name,
+        AssemblyAnnotationFields.Block
+      ) match {
+        case Some(StringValue(block_name))
+            if state.memory_blocks.contains(block_name) =>
+          handler(state.memory_blocks(block_name))
+        case _ =>
+          logger.error("Could not resolve memory access block", instruction)
+      }
     }
     // A table for looking up name definitions
     val definitions: Map[Name, DefReg] = proc.registers.map { r =>
@@ -357,7 +341,7 @@ object UnconstrainedInterpreter
         }
       case LocalStore(rs, base, offset, predicate, annons) =>
         handleMemoryAccess(base, instruction) { resolved_block =>
-          val addr_val = state.register_file(base)
+          val addr_val = state.register_file(base) + offset
           val block_cap: Int = resolved_block.capacity
           if (block_cap == 0) {
             logger.error(
@@ -388,7 +372,10 @@ object UnconstrainedInterpreter
                   // write a modified wide word to it.
                   val old_val = resolved_block.content(block_index.toInt)
                   val rs_val_shifted = rs_val << (16 * index)
-                  val old_val_masked = old_val & (0xffff << (16 * index))
+                  val mask: BigInt = ((BigInt(
+                    1
+                  ) << resolved_block.width) - 1) - (BigInt(0xffff) << (16 * index))
+                  val old_val_masked = old_val & mask
                   val new_val = old_val_masked | rs_val_shifted
                   new_val
                 case _ =>
