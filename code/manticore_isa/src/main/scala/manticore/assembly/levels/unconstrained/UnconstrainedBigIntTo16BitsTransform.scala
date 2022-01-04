@@ -403,18 +403,6 @@ object UnconstrainedBigIntTo16BitsTransform
 
   }
 
-  private def assertAligned(
-      rd_array: Seq[Name],
-      rs1_array: Seq[Name],
-      rs2_array: Seq[Name],
-      inst: Instruction
-  ): Unit =
-    if (
-      rd_array.length != rs1_array.length || rd_array.length != rs2_array.length || rs2_array.length != rs1_array.length
-    ) {
-      logger.error("Unaligned operands!", inst)
-    }
-
   private def assert16Bit(
       uint16_array: Seq[Name],
       inst: Instruction
@@ -502,6 +490,22 @@ object UnconstrainedBigIntTo16BitsTransform
       }
     }
 
+    def assertAligned(inst: BinaryArithmetic): Unit = {
+
+      val rd_w = builder.originalWidth(inst.rd)
+      val rs1_w = builder.originalWidth(inst.rs1)
+      val rs2_w = builder.originalWidth(inst.rs2)
+      if (rs1_w != rs2_w) {
+        logger.error(
+          s"Operands width ${rs1_w} and ${rs2_w} are not aligned!",
+          inst
+        )
+      }
+      if (rs1_w != rd_w || rs2_w != rd_w) {
+        logger.error(s"Result register is not aligned with operands", inst)
+      }
+    }
+
     instruction.operator match {
       case BinaryOperator.ADD =>
         // TODO: Handle cases when either of the operands are constant
@@ -512,12 +516,7 @@ object UnconstrainedBigIntTo16BitsTransform
         val rs2_uint16_array: Seq[Name] =
           builder.getConversion(instruction.rs2).parts
 
-        assertAligned(
-          rd_uint16_array,
-          rs1_uint16_array,
-          rs2_uint16_array,
-          instruction
-        )
+        assertAligned(instruction)
 
         val rd_uint16_array_mutable = rd_uint16_array.map { x =>
           builder.mkWire(x, 16)
@@ -569,9 +568,6 @@ object UnconstrainedBigIntTo16BitsTransform
         val rs1_uint16_array = builder.getConversion(instruction.rs1).parts
         val rs2_uint16_array = builder.getConversion(instruction.rs2).parts
         assertAligned(
-          rd_uint16_array,
-          rs1_uint16_array,
-          rs2_uint16_array,
           instruction
         )
         val rd_uint16_array_mutable = rd_uint16_array map {
@@ -691,7 +687,8 @@ object UnconstrainedBigIntTo16BitsTransform
           inst_q += BinaryArithmetic(
             BinaryOperator.ADD,
             seq_add_res,
-            builder.mkConstant(0), builder.mkConstant(0)
+            builder.mkConstant(0),
+            builder.mkConstant(0)
           )
           // compute partial equalities by computing the equality of
           // the partial operands and then summing up the results and

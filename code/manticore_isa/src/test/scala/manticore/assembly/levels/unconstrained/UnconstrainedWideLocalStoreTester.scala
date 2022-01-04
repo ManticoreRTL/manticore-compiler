@@ -11,7 +11,6 @@ class UnconstrainedWideLocalStoreTester extends UnconstrainedWideTest {
 
   behavior of "unconstrained wide local store instructions"
 
-  val dump_path = createDumpDirectory()
 
 
   def mkProgram(program_name: String): String = {
@@ -24,7 +23,7 @@ class UnconstrainedWideLocalStoreTester extends UnconstrainedWideTest {
       mkWideRand(width)
     }
     val memblock = s"@MEMBLOCK [block=\"block0\", capacity = ${capacity}, width = ${width}]"
-    val addr_bits = BigInt(capacity - 1).bitLength
+    val addr_bits = log2Ceil(capacity)
     s"""
     .prog:
     .proc proc_0_0:

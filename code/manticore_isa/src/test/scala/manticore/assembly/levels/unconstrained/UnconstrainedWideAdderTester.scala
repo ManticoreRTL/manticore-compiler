@@ -8,18 +8,6 @@ import manticore.assembly.parser.AssemblyParser
 
 class UnconstrainedWideAdderTester extends UnconstrainedWideTest {
 
-  val dump_path = createDumpDirectory()
-  def dumpToFile(
-      file_name: String,
-      content: Array[BigInt]
-  ): Path = {
-
-    val fp = dump_path.resolve(file_name)
-    val printer = new PrintWriter(fp.toFile())
-    printer.print(content mkString ("\n"))
-    printer.close()
-    fp
-  }
   def mkProgram(): String = {
     // don't pick too large a value, the test will fail because
     // large memories are not handled yet
@@ -37,7 +25,7 @@ class UnconstrainedWideAdderTester extends UnconstrainedWideTest {
     val rs2_fp = dumpToFile("rs2_vals.dat", rs2_vals)
     val rd_fp = dumpToFile("rd_vals.dat", rd_vals)
 
-    val addr_width = (BigInt(count) - 1).bitLength
+    val addr_width = log2Ceil(count)
 
     val rs1_mb =
       s"@MEMBLOCK[block = \"rs1\", capacity = ${count}, width = ${width}]"
@@ -64,6 +52,7 @@ class UnconstrainedWideAdderTester extends UnconstrainedWideTest {
             .reg counter 16 0
             .const const_0 16 0
             .const const_1 16 1
+            .const const_ptr_inc ${addr_width} 1
             .const const_max 16 ${count}
             .reg   done  1 0
 
@@ -82,9 +71,9 @@ class UnconstrainedWideAdderTester extends UnconstrainedWideTest {
             @TRAP [type = "\\fail"]
             EXPECT rd_ref, rd_v, ["failed"];
 
-            ADD rs1_ptr, rs1_ptr, const_1;
-            ADD rs2_ptr, rs2_ptr, const_1;
-            ADD rd_ptr, rd_ptr, const_1;
+            ADD rs1_ptr, rs1_ptr, const_ptr_inc;
+            ADD rs2_ptr, rs2_ptr, const_ptr_inc;
+            ADD rd_ptr, rd_ptr, const_ptr_inc;
             ADD counter, counter, const_1;
             SEQ done, counter, const_max;
             @TRAP [type = "\\stop"]

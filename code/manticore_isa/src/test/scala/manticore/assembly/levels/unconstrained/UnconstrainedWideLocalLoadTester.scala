@@ -11,21 +11,6 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
 
   behavior of "unconstrained wide local load instructions"
 
-  val dump_path = createDumpDirectory()
-  def mkInitFile(
-      file_name: String,
-      count: Int,
-      content: Array[BigInt]
-  ): Path = {
-    require(count <= content.length)
-    val fp = dump_path.resolve(file_name)
-    val print_writer = new PrintWriter(fp.toFile())
-    for (ix <- 0 until count) {
-      print_writer.println(content(ix))
-    }
-    print_writer.close()
-    fp
-  }
 
   def mkProgram(program_name: String): String = {
 
@@ -36,8 +21,8 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
     val init_vals = Array.fill(init_count) {
       mkWideRand(width)
     }
-    val fp = mkInitFile(program_name + ".dat", init_count, init_vals)
-    val addr_bits = BigInt(capacity - 1).bitLength
+    val fp = dumpToFile(program_name + ".dat", init_vals)
+    val addr_bits = log2Ceil(capacity)
     val memblock = s"@MEMBLOCK [block=\"block0\", capacity = ${capacity}, width = ${width}]"
     s"""
     .prog:

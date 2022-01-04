@@ -1,9 +1,10 @@
 package manticore.assembly.levels.unconstrained
 
 import manticore.UnconstrainedTest
+import java.nio.file.Path
+import java.io.PrintWriter
 
 trait UnconstrainedWideTest extends UnconstrainedTest {
-
 
   lazy val randgen = new scala.util.Random(0)
   def mkWideRand(w: Int): BigInt = {
@@ -16,5 +17,21 @@ trait UnconstrainedWideTest extends UnconstrainedTest {
     val masked = combined & ((BigInt(1) << w) - 1)
     masked
   }
+  val dump_path = createDumpDirectory()
+  def dumpToFile(
+      file_name: String,
+      content: Array[BigInt]
+  ): Path = {
 
+    val fp = dump_path.resolve(file_name)
+    val printer = new PrintWriter(fp.toFile())
+    printer.print(content mkString ("\n"))
+    printer.close()
+    fp
+  }
+
+  def log2Ceil(x: Int): Int = {
+    require(x > 0)
+    BigInt(x - 1).bitLength
+  }
 }
