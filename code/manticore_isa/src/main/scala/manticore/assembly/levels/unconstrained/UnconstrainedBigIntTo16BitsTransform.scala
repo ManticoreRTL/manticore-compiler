@@ -671,35 +671,55 @@ object UnconstrainedBigIntTo16BitsTransform
         if (orig_rd_width != 1) {
           logger.error("Expected boolean wire in SEQ")
         }
-        val seq_sub_res = builder.mkWire("seq_sub_res", 16)
-        val seq_add_res = builder.mkWire("seq_add_res", 16)
-        if (rs1_uint16_array.size >= (1 << 16)) {
-          logger.error("SEQ is too wide!", instruction)
-        }
-        rs1_uint16_array zip rs2_uint16_array foreach { case (rs1_16, rs2_16) =>
-          inst_q += BinaryArithmetic(
-            BinaryOperator.SUB,
-            seq_sub_res,
-            rs1_16,
-            rs2_16
+        val ConvertedWire(rd_uint16, _) =
+          builder.getConversion(instruction.rd)
+        assert(rd_uint16.size == 1, "SEQ result should be single-bit")
+
+        if (rs1_uint16_array.length == 1) {
+          inst_q += instruction.copy(
+            rd = rd_uint16.head,
+            rs1 = rs1_uint16_array.head,
+            rs2 = rs2_uint16_array.head
           )
+        } else {
+          val seq_partial_res = builder.mkWire("seq_partial_res", 16)
+          val seq_add_res = builder.mkWire("seq_add_res", 16)
+          if (rs1_uint16_array.size >= (1 << 16)) {
+            logger.error("SEQ is too wide!", instruction)
+          }
+          // init sum of results to zero
           inst_q += BinaryArithmetic(
             BinaryOperator.ADD,
             seq_add_res,
+            builder.mkConstant(0), builder.mkConstant(0)
+          )
+          // compute partial equalities by computing the equality of
+          // the partial operands and then summing up the results and
+          // checking whether sum is equal to the number of partial results
+          rs1_uint16_array zip rs2_uint16_array foreach {
+            case (rs1_16, rs2_16) =>
+              inst_q += instruction.copy(
+                operator = BinaryOperator.SEQ,
+                rd = seq_partial_res,
+                rs1 = rs1_16,
+                rs2 = rs2_16
+              )
+              inst_q += BinaryArithmetic(
+                BinaryOperator.ADD,
+                seq_add_res,
+                seq_add_res,
+                seq_partial_res
+              )
+          }
+
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SEQ,
+            rd_uint16.head,
             seq_add_res,
-            seq_sub_res
+            builder.mkConstant(rs1_uint16_array.length)
           )
         }
-        val ConvertedWire(rd_uint16, _) =
-          builder.getConversion(instruction.rd)
-        assert(rd_uint16.size == 1)
 
-        inst_q += BinaryArithmetic(
-          BinaryOperator.SEQ,
-          rd_uint16.head,
-          seq_add_res,
-          builder.mkConstant(0)
-        )
       // no need to mask the result since the hardware implementation
       // can only produce a single bit anyways.
       case BinaryOperator.SLL =>
@@ -1515,7 +1535,6 @@ object UnconstrainedBigIntTo16BitsTransform
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
       // ensure the memory can fit in a physical BRAM
 
-
       val addr_width_orig = builder.originalWidth(base)
       val extended_addr_width =
         log2ceil(rd_uint16_array.length) + addr_width_orig
@@ -1565,8 +1584,12 @@ object UnconstrainedBigIntTo16BitsTransform
           )
         }
         rs_uint16_array.map { case rs_16 =>
-          i.copy(rs = rs_16, base = base_uint16_head, offset = offset, predicate =  pred_uint16)
-            .setPos(i.pos)
+          i.copy(
+            rs = rs_16,
+            base = base_uint16_head,
+            offset = offset,
+            predicate = pred_uint16
+          ).setPos(i.pos)
         }
       }
 

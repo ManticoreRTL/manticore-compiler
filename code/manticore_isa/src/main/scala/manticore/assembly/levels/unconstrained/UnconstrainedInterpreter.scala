@@ -317,7 +317,16 @@ object UnconstrainedInterpreter
           } else {
             val block_index: BigInt =
               addr_val & nextPower2BitMask(block_cap.toInt)
-            val rd_val = resolved_block.content(block_index.toInt)
+            val rd_val =
+              if (block_index.toInt >= resolved_block.content.length) {
+                logger.error(
+                  s"Index out of bound! ${block_index.toInt} >= ${resolved_block.content.length}",
+                  instruction
+                )
+                BigInt(0)
+              } else {
+                resolved_block.content(block_index.toInt)
+              }
             // if there is a debug symbol index, we need to shift the word to
             // the right and only extract the relevant bits
             val rd_def = definitions(rd)
@@ -374,7 +383,9 @@ object UnconstrainedInterpreter
                   val rs_val_shifted = rs_val << (16 * index)
                   val mask: BigInt = ((BigInt(
                     1
-                  ) << resolved_block.width) - 1) - (BigInt(0xffff) << (16 * index))
+                  ) << resolved_block.width) - 1) - (BigInt(
+                    0xffff
+                  ) << (16 * index))
                   val old_val_masked = old_val & mask
                   val new_val = old_val_masked | rs_val_shifted
                   new_val
@@ -544,6 +555,7 @@ object UnconstrainedInterpreter
         interp.run()
         cycles += 1
       }
+      logger.info(s"Finished interpretation after ${cycles} cycles")
 
     }
 
