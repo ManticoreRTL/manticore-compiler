@@ -9,19 +9,19 @@ import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
 import manticore.UnconstrainedTest
 
-class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
+class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
 
-  behavior of "Unconstrained wide SLL conversion"
+  behavior of "Unconstrained wide SRL conversion"
 
   // val randgen = new scala.util.Random()
   // a simple program that shifts '1' to the left 0 to 31 times
   def mkProgram(width: Int) = {
     // val width = 32
     // require(width <= 32)
-    val initial_value = 1
+    val initial_value = (BigInt(1) << (width - 1))
     val rs_init_val: Long = 1.toLong
     val expected_vals = Array.tabulate(width + 1) { i =>
-      (BigInt(1) << i) & ((BigInt(1) << width) - 1)
+      (initial_value >> i) & ((BigInt(1) << width) - 1)
     }
 
     val expected_fp = dumpToFile(s"expected_${width}.dat", expected_vals)
@@ -53,7 +53,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     .wire shifted_ref ${width}
 
 
-    SLL shifted, init_val, sh_amount;
+    SRL shifted, init_val, sh_amount;
     ${memblock}
     LLD shifted_ref, res_ref_ptr[0];
     @TRAP [type = "\\fail"]
@@ -80,7 +80,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
   val interpreter = UnconstrainedInterpreter
   val backend =
     UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
-  it should "correctly translate wide SLL operations to 16-bit SLLs" taggedAs Tags.WidthConversion in {
+  it should "correctly translate wide SRL operations to 16-bit SLLs" taggedAs Tags.WidthConversion in {
 
     repeat(100) { i =>
       val prog_txt = mkProgram(16 + i)

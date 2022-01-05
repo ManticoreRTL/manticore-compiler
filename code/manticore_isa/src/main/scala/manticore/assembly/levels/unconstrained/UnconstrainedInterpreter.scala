@@ -492,10 +492,12 @@ object UnconstrainedInterpreter
           }
         } else {
 
-          if (annons.exists{
-            case a: Echo => true
-            case _ => false
-          }) {
+          if (
+            annons.exists {
+              case a: Echo => true
+              case _       => false
+            }
+          ) {
             logger.info(s"values ${ref_val} and ${got_val} match.", instruction)
           }
 
@@ -504,11 +506,11 @@ object UnconstrainedInterpreter
       case Predicate(rs, annons) => ???
       case Mux(rd, sel, rfalse, rtrue, annons) =>
         val sel_val = state.register_file(sel)
+        val rtrue_val = state.register_file(rtrue)
+        val rfalse_val = state.register_file(rfalse)
         val rd_val = if (sel_val == 1) {
-          val rtrue_val = state.register_file(rtrue)
           rtrue_val
         } else if (sel_val == 0) {
-          val rfalse_val = state.register_file(rfalse)
           rfalse_val
         } else {
           logger.error(s"Select has illegal value ${sel_val}", instruction)

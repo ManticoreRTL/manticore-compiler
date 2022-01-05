@@ -1282,8 +1282,8 @@ object UnconstrainedBigIntTo16BitsTransform
           builder.getConversion(instruction.rs2)
         val ConvertedWire(rd_uint16_array, rd_mask) =
           builder.getConversion(instruction.rd)
-        val rd_uint16_array_mutable = rd_uint16_array map {
-          builder.mkWire(_, 16)
+        val rd_uint16_array_mutable = rd_uint16_array map { n =>
+          builder.mkWire(n + "_mutable", 16)
         }
 
         val ConvertedWire(rs1_uint16_array, _) =
@@ -1294,6 +1294,7 @@ object UnconstrainedBigIntTo16BitsTransform
           if (builder.originalWidth(instruction.rs2) > 16) {
             logger.error("Unsafe SRL", instruction)
           }
+
           inst_q += instruction.copy(
             rd = rd_uint16_array_mutable.head,
             rs1 = rs1_uint16_array.head,
@@ -1302,7 +1303,7 @@ object UnconstrainedBigIntTo16BitsTransform
         } else {
 
           // initialize the rd mutable array
-          moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
+          inst_q ++= moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
 
           assert16Bit(shift_uint16, instruction) {
             "Shift amount is too large, can only support shifting up to 16-bit " +
@@ -1311,7 +1312,12 @@ object UnconstrainedBigIntTo16BitsTransform
 
           val mutable_sh =
             builder.mkWire("mutable_sh", builder.originalWidth(instruction.rs2))
-
+          inst_q += BinaryArithmetic(
+            BinaryOperator.ADD,
+            mutable_sh,
+            shift_uint16.head,
+            builder.mkConstant(0)
+          )
           for (ix <- (rd_uint16_array_mutable.length - 1) to 0 by -1) {
 
             val mutable_sh_eq_0 = builder.mkWire("mutable_sh_eq_0", 1)
@@ -1353,27 +1359,21 @@ object UnconstrainedBigIntTo16BitsTransform
               builder.mkConstant(0)
             )
             val left_shift_amount = builder.mkWire("left_shift_amount", 16)
-            inst_q ++= Seq(
-              BinaryArithmetic(
-                BinaryOperator.SEQ,
-                mutable_sh_eq_0,
-                mutable_sh,
-                builder.mkConstant(0)
-              ),
+            inst_q +=
               Mux(
                 left_shift_amount,
                 mutable_sh_eq_0,
                 sixteen_minus_shift_amount,
                 builder.mkConstant(0)
               )
-            )
+
             val new_res = builder.mkWire("new_res", 16)
             val rd_left_shifted = builder.mkWire("rd_left_shifted", 16)
             val carry_out = builder.mkWire("carry_out", 16)
             val rd_right_shifted = builder.mkWire("rd_right_shifted", 16)
-            val local_res = builder.mkWire("local_wire", 16)
+            val local_res = builder.mkWire("local_res", 16)
             // handle the rest (if any)
-            for (jx <- (rd_uint16_array_mutable.length - 2) to 0 by -1) {
+            for (jx <- (rd_uint16_array_mutable.length - 1) to 0 by -1) {
 
               inst_q += BinaryArithmetic(
                 BinaryOperator.SLL,
@@ -1432,7 +1432,7 @@ object UnconstrainedBigIntTo16BitsTransform
               mutable_sh,
               mutable_sh_gt_eq_16,
               builder.mkConstant(0),
-              mutable_sh
+              mutable_sh_minus_sixteen
             )
 
           }
