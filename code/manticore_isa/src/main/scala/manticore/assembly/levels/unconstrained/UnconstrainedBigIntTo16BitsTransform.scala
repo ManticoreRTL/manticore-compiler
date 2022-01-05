@@ -554,11 +554,12 @@ object UnconstrainedBigIntTo16BitsTransform
         }
 
         inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
-        inst_q ++= moveRegs(
+        val moves = moveRegs(
           rd_uint16_array,
           rd_uint16_array_mutable,
           instruction
         )
+        inst_q ++= moves
 
       case BinaryOperator.ADDC =>
         logger.error("Unexpected instruction!", instruction)
@@ -567,12 +568,15 @@ object UnconstrainedBigIntTo16BitsTransform
           builder.getConversion(instruction.rd)
         val rs1_uint16_array = builder.getConversion(instruction.rs1).parts
         val rs2_uint16_array = builder.getConversion(instruction.rs2).parts
+        // ensure that both operands and the results are has the same width
         assertAligned(
           instruction
         )
-        val rd_uint16_array_mutable = rd_uint16_array map {
-          builder.mkWire(_, 16)
+
+        val rd_uint16_array_mutable = rd_uint16_array map { n =>
+          builder.mkWire(n + "_mutable", 16)
         }
+
         if (rs1_uint16_array.length != 1) {
 
           // we handle SUB with carry by NOTing the second operand and AddCing
@@ -607,6 +611,7 @@ object UnconstrainedBigIntTo16BitsTransform
           }
 
         } else {
+          // trivial case, use the dedicated SUB instruction
           inst_q += instruction.copy(
             rd = rd_uint16_array_mutable.head,
             rs1 = rs1_uint16_array.head,
@@ -615,11 +620,12 @@ object UnconstrainedBigIntTo16BitsTransform
         }
 
         inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
-        inst_q ++ moveRegs(
+        val moves = moveRegs(
           rd_uint16_array,
           rd_uint16_array_mutable,
           instruction
         )
+        inst_q ++= moves
 
       case op @ (BinaryOperator.OR | BinaryOperator.AND | BinaryOperator.XOR) =>
         val ConvertedWire(rd_uint16_array, mask) =
