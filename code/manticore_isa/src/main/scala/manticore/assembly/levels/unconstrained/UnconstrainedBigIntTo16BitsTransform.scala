@@ -34,7 +34,7 @@ import manticore.assembly.annotations.StringValue
   *
   *     var mutable_sh = sh
   *     val msbits = i.w % 16
-  *     val sign = rd.last >> (msbits - 1)
+  *     val sign = if (msbits != 0) (rd.last >> (msbits - 1)) else (rd.last >> 15)
   *     // first sign extend the most significant short word
   *     if (i.w % 16 != 0) {
   *       val ext_mask = if (sign == UInt16(1)) (UInt16((1 << 16) - 1) << msbits) else UInt16(0)
@@ -1058,8 +1058,8 @@ object UnconstrainedBigIntTo16BitsTransform
         }
 
         val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
-        val rd_uint16_array_mutable = rd_uint16_array map {
-          builder.mkWire(_, 16)
+        val rd_uint16_array_mutable = rd_uint16_array map { n =>
+          builder.mkWire(n + "_mutable", 16)
         }
 
         val ConvertedWire(rs1_uint16_array, _) = builder.getConversion(rs1)
@@ -1079,11 +1079,16 @@ object UnconstrainedBigIntTo16BitsTransform
 
         } else {
 
-          moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
+          inst_q ++= moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
 
           val mutable_sh =
             builder.mkWire("mutable_sh", builder.originalWidth(shift_amount))
-
+          inst_q += BinaryArithmetic(
+            BinaryOperator.ADD,
+            mutable_sh,
+            shift_uint16.head,
+            builder.mkConstant(0)
+          )
           val msbits =
             rs_width % 16 // number of valid bits in the most significant short word
           // we need to sign extend the most significant word if necessary
@@ -1103,13 +1108,20 @@ object UnconstrainedBigIntTo16BitsTransform
               sext_mask,
               sign_bit,
               builder.mkConstant(0),
-              builder.mkConstant((1 << 16) - 1)
+              builder.mkConstant((0xFFFF << msbits) & 0XFFFF)
             )
             inst_q += BinaryArithmetic(
               BinaryOperator.OR,
               rd_uint16_array_mutable.last,
               rd_uint16_array_mutable.last,
               sext_mask
+            )
+          } else {
+            inst_q += BinaryArithmetic(
+              BinaryOperator.SRL,
+              sign_bit,
+              rd_uint16_array_mutable.last,
+              builder.mkConstant(15)
             )
           }
 
@@ -1146,7 +1158,7 @@ object UnconstrainedBigIntTo16BitsTransform
               sign_replicated,
               sign_bit,
               builder.mkConstant(0),
-              builder.mkConstant((1 << 16) - 1)
+              builder.mkConstant(0xFFFF)
             )
             // handle the most significant short word, in this case we will actually
             // use the SRA instruction, but for the other short words we use SRL
@@ -1221,7 +1233,8 @@ object UnconstrainedBigIntTo16BitsTransform
                 rd_left_shifted,
                 rd_uint16_array_mutable(jx)
               )
-              // we use logical right shift because the carry is handled explicitly
+              // we use logical right shift because the "sign" carry is
+              // handled manually
               inst_q += BinaryArithmetic(
                 BinaryOperator.SRL,
                 rd_right_shifted,
@@ -1266,7 +1279,7 @@ object UnconstrainedBigIntTo16BitsTransform
               mutable_sh,
               mutable_sh_gt_eq_16,
               builder.mkConstant(0),
-              mutable_sh
+              mutable_sh_minus_sixteen
             )
           }
         }

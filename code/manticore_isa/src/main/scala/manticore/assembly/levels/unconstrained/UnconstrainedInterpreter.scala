@@ -263,12 +263,26 @@ object UnconstrainedInterpreter
           }
 
         case SRA =>
-          // since all values are positive, we should explicitly consider the
-          // sign bit
+          // since all values are positive, we should manually handle
+          // propagation of the sign bit
 
-          val rs1_signed_val = getSignedValue(rs1)
+          val rs1_val = state.register_file(rs1)
+          val rs1_width = definitions(rs1).variable.width
+          assert(
+            rs2_val >= 0,
+            "all values are supposed to be stored as non-negative BigInts!"
+          )
+          val sign_value = rs1_val >> (rs1_width - 1)
+
+
           if (rs2_val.isValidInt && rs2_val < 0xffff) {
-            clipped(rs1_signed_val >> rs2_val.toInt)
+            val full_mask = (BigInt(1) << rs1_width) - 1
+            val nonsigned_width = if (rs2_val > rs1_width) 0 else rs1_width - rs2_val.toInt
+            val nonsign_mask = (1 << nonsigned_width) - 1
+            val sign_mask = full_mask - nonsign_mask
+            val shifted = rs1_val >> rs2_val.toInt
+            val shifted_signed = sign_mask | shifted
+            clipped(shifted_signed)
           } else {
             logger.error("unsupported SRA shift amount", inst)
             BigInt(0)
@@ -564,6 +578,9 @@ object UnconstrainedInterpreter
       val interp = new ProcessInterpreter(source.processes.head)(context)
 
       while (cycles < context.max_cycles && interp.getException().isEmpty) {
+        logger.info(s"Starting cycle ${cycles}")
+        if (cycles == 16)
+          logger.info("TRAP")
         interp.run()
         cycles += 1
       }
