@@ -90,6 +90,7 @@ class UnconstrainedWideExpectTester extends UnconstrainedTest {
       val parsed = AssemblyParser(failing, failing_ctx)
       assertThrows[CompilationFailureException] {
         backend(parsed, failing_ctx)
+
       }
     }
   }

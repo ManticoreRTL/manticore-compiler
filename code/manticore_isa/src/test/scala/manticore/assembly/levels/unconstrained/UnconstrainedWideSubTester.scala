@@ -95,7 +95,7 @@ class UnconstrainedWideSubTester extends UnconstrainedWideTest {
 
   it should "correctly handle the wide subtraction" taggedAs Tags.WidthConversion in {
 
-    Range(0, 10) foreach { i =>
+    repeat(100) { i =>
       val prog_text = mkProgram()
 
       val parsed = AssemblyParser(prog_text, ctx)

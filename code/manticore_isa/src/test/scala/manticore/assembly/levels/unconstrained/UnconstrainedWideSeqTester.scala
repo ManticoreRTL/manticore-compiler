@@ -99,7 +99,7 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
     )
   val backend =
     UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
-  it should "correctly compute wide SEQ" in {
+  it should "correctly compute wide SEQ" taggedAs Tags.WidthConversion in {
     val prog = AssemblyParser(mkProgram(), ctx)
     backend(prog, ctx)
   }

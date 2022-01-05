@@ -554,12 +554,12 @@ object UnconstrainedBigIntTo16BitsTransform
         }
 
         inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
-        val moves = moveRegs(
+        // val moves =
+        inst_q ++= moveRegs(
           rd_uint16_array,
           rd_uint16_array_mutable,
           instruction
         )
-        inst_q ++= moves
 
       case BinaryOperator.ADDC =>
         logger.error("Unexpected instruction!", instruction)
@@ -620,12 +620,12 @@ object UnconstrainedBigIntTo16BitsTransform
         }
 
         inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
-        val moves = moveRegs(
+        // val moves =
+        inst_q ++=  moveRegs(
           rd_uint16_array,
           rd_uint16_array_mutable,
           instruction
         )
-        inst_q ++= moves
 
       case op @ (BinaryOperator.OR | BinaryOperator.AND | BinaryOperator.XOR) =>
         val ConvertedWire(rd_uint16_array, mask) =

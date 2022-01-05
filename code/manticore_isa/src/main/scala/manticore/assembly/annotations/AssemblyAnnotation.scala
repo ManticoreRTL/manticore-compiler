@@ -166,6 +166,7 @@ object AssemblyAnnotationBuilder {
       case MemInit.name     => MemInit(fields)
       case DebugSymbol.name => DebugSymbol(fields)
       case Trap.name        => Trap(fields)
+      case Echo.name        => Echo(fields)
     }
   }
 }

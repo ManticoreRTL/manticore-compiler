@@ -54,7 +54,7 @@ trait Reporter {
       error_count += 1
     }
     def countErrors: Int = error_count
-    def clearErrors: Unit = {
+    def clearErrors(): Unit = {
       warn("Clearing errors!")
       error_count = 0
     }
@@ -75,7 +75,10 @@ trait Reporter {
     def info(msg: String): Unit =
       message(s"${BLUE}INFO${RESET}: ${msg}")
 
-    def fail(msg: String): Nothing = throw new CompilationFailureException(msg)
+    def fail(msg: String): Nothing = {
+      clearErrors()
+      throw new CompilationFailureException(msg)
+    }
 
     def debug(msg: => String)(implicit ctx: AssemblyContext): Unit =
       if (ctx.debug_message)

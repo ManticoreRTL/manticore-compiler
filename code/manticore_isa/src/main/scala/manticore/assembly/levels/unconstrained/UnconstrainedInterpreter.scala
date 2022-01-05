@@ -14,6 +14,7 @@ import manticore.assembly.levels.AssemblyChecker
 import manticore.assembly.annotations.DebugSymbol
 import manticore.assembly.annotations.Trap
 import manticore.assembly.annotations.AssemblyAnnotation
+import manticore.assembly.annotations.Echo
 
 object UnconstrainedInterpreter
     extends AssemblyChecker[UnconstrainedIR.DefProgram] {
@@ -489,6 +490,15 @@ object UnconstrainedInterpreter
               logger.error(s"Missing TRAP type!", instruction)
               Some(InterpretationFailure)
           }
+        } else {
+
+          if (annons.exists{
+            case a: Echo => true
+            case _ => false
+          }) {
+            logger.info(s"values ${ref_val} and ${got_val} match.", instruction)
+          }
+
         }
 
       case Predicate(rs, annons) => ???

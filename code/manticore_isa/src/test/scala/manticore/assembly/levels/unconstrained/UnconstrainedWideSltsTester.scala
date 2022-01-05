@@ -50,7 +50,7 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
 
   behavior of "wide STLS"
 
-  it should "not throw user exceptions for a correct program" in {
+  it should "not throw user exceptions for a correct program" taggedAs Tags.WidthConversion in {
 
     repeat(200) { i =>
 
