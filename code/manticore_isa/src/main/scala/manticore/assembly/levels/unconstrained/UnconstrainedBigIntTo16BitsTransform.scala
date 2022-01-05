@@ -1463,6 +1463,7 @@ object UnconstrainedBigIntTo16BitsTransform
         }
         assumptions()
 
+
         val ConvertedWire(rs1_uint16_array, _) =
           builder.getConversion(instruction.rs1)
         val orig_rd_width = builder.originalWidth(instruction.rd)
@@ -1470,7 +1471,7 @@ object UnconstrainedBigIntTo16BitsTransform
           logger.warn("Expected Boolean result in SLTS", instruction)
         }
         val rd_uint16 = builder.getConversion(instruction.rd).parts.head
-        val rd_uint16_mutable = builder.mkWire(rd_uint16, 16)
+
         // number of used bits in the most significant short word
         val rs1_ms_half_word_bits = builder.originalWidth(instruction.rs1) % 16
 
@@ -1478,7 +1479,7 @@ object UnconstrainedBigIntTo16BitsTransform
           // the first operand is 16-bit aligned, so we can simply perform
           // SLTS on the most significant short-word
           inst_q += instruction.copy(
-            rd = rd_uint16_mutable,
+            rd = rd_uint16,
             rs1 = rs1_uint16_array.last,
             rs2 = builder.mkConstant(0)
           )
@@ -1487,22 +1488,32 @@ object UnconstrainedBigIntTo16BitsTransform
           // now we need to shift the most significant bit of the rs1_uint16_array.last
           // to the right and bring it to bit position zero, then we can just use
           // a SEQ to check the sign bit.
-          inst_q ++= Seq(
-            BinaryArithmetic(
-              BinaryOperator.SRL,
-              rd_uint16_mutable,
-              rs1_uint16_array.last,
-              builder.mkConstant(rs1_ms_half_word_bits - 1)
-            ),
-            BinaryArithmetic(
-              BinaryOperator.SEQ,
-              rd_uint16,
-              rd_uint16_mutable,
-              builder.mkConstant(1)
+          if (rs1_ms_half_word_bits == 1) {
+            // trivial case, no need to right shift
+            inst_q += instruction.copy(
+              operator = BinaryOperator.SEQ,
+              rd = rd_uint16,
+              rs1 = rs1_uint16_array.last,
+              rs2 = builder.mkConstant(1)
             )
-          )
+          } else {
+            // need to right shift the most significant bit
+            val sign_bit = builder.mkWire("sign_bit", 16)
+            inst_q += instruction.copy(
+              operator = BinaryOperator.SRL,
+              rd = sign_bit,
+              rs1 = rs1_uint16_array.last,
+              rs2 = builder.mkConstant(rs1_ms_half_word_bits - 1)
+            )
+            inst_q += instruction.copy(
+              operator = BinaryOperator.SEQ,
+              rd = rd_uint16,
+              rs1 = sign_bit,
+              rs2 = builder.mkConstant(1)
+            )
+          }
         }
-
+        // no need to mask
       case BinaryOperator.PMUX =>
         logger.error("Unexpected instruction!", instruction)
 

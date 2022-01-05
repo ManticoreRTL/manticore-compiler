@@ -16,7 +16,7 @@ trait UnconstrainedWideTest extends UnconstrainedTest {
 
     val masked = combined & ((BigInt(1) << w) - 1)
     masked
-  }
+  } ensuring (_.bitLength <= w)
   val dump_path = createDumpDirectory()
   def dumpToFile(
       file_name: String,
@@ -34,4 +34,6 @@ trait UnconstrainedWideTest extends UnconstrainedTest {
     require(x > 0)
     BigInt(x - 1).bitLength
   }
+
+  def repeat(times: Int)(gen: Int => Unit): Unit = Range(0, times) foreach { i => gen(i) }
 }
