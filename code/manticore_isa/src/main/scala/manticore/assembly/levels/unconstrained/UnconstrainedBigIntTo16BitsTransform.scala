@@ -621,7 +621,7 @@ object UnconstrainedBigIntTo16BitsTransform
 
         inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
         // val moves =
-        inst_q ++=  moveRegs(
+        inst_q ++= moveRegs(
           rd_uint16_array,
           rd_uint16_array_mutable,
           instruction
@@ -1079,7 +1079,11 @@ object UnconstrainedBigIntTo16BitsTransform
 
         } else {
 
-          inst_q ++= moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
+          inst_q ++= moveRegs(
+            rd_uint16_array_mutable,
+            rs1_uint16_array,
+            instruction
+          )
 
           val mutable_sh =
             builder.mkWire("mutable_sh", builder.originalWidth(shift_amount))
@@ -1108,7 +1112,7 @@ object UnconstrainedBigIntTo16BitsTransform
               sext_mask,
               sign_bit,
               builder.mkConstant(0),
-              builder.mkConstant((0xFFFF << msbits) & 0XFFFF)
+              builder.mkConstant((0xffff << msbits) & 0xffff)
             )
             inst_q += BinaryArithmetic(
               BinaryOperator.OR,
@@ -1158,7 +1162,7 @@ object UnconstrainedBigIntTo16BitsTransform
               sign_replicated,
               sign_bit,
               builder.mkConstant(0),
-              builder.mkConstant(0xFFFF)
+              builder.mkConstant(0xffff)
             )
             // handle the most significant short word, in this case we will actually
             // use the SRA instruction, but for the other short words we use SRL
@@ -1316,7 +1320,11 @@ object UnconstrainedBigIntTo16BitsTransform
         } else {
 
           // initialize the rd mutable array
-          inst_q ++= moveRegs(rd_uint16_array_mutable, rs1_uint16_array, instruction)
+          inst_q ++= moveRegs(
+            rd_uint16_array_mutable,
+            rs1_uint16_array,
+            instruction
+          )
 
           assert16Bit(shift_uint16, instruction) {
             "Shift amount is too large, can only support shifting up to 16-bit " +
@@ -1482,7 +1490,6 @@ object UnconstrainedBigIntTo16BitsTransform
         }
         assumptions()
 
-
         val ConvertedWire(rs1_uint16_array, _) =
           builder.getConversion(instruction.rs1)
         val orig_rd_width = builder.originalWidth(instruction.rd)
@@ -1532,7 +1539,7 @@ object UnconstrainedBigIntTo16BitsTransform
             )
           }
         }
-        // no need to mask
+      // no need to mask
       case BinaryOperator.PMUX =>
         logger.error("Unexpected instruction!", instruction)
 
@@ -1634,9 +1641,14 @@ object UnconstrainedBigIntTo16BitsTransform
       }
       val rfalse_uint16_array = builder.getConversion(rfalse).parts
       val rtrue_uint16_array = builder.getConversion(rtrue).parts
-      rd_uint16_array zip (sel_uint16_array zip (rfalse_uint16_array zip rtrue_uint16_array)) map {
-        case (rd16, (sel16, (rfalse16, rtrue16))) =>
-          i.copy(rd16, sel16, rfalse16, rtrue16).setPos(i.pos)
+      rd_uint16_array zip (rfalse_uint16_array zip rtrue_uint16_array) map {
+        case (rd16, (rfalse16, rtrue16)) =>
+          i.copy(
+            rd = rd16,
+            sel = sel_uint16_array.head,
+            rfalse = rfalse16,
+            rtrue = rtrue16
+          ).setPos(i.pos)
       } // don't need to mask the results though, rfalse and rtrue are masked
     // where they are produced and MUX cannot overflow them
     case i: AddC =>
