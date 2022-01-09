@@ -139,8 +139,22 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     BinaryOperator(i).toString()
   }
   // rest of instruction
-  lexical.reserved ++= Seq("CUST", "LLD", "LST", "GLD", "GST", "EXPECT",
-  "SEND", "SET", "MUX", "EXPECT", "PREDICATE", "NOP", "PADZERO")
+  lexical.reserved ++= Seq(
+    "CUST",
+    "LLD",
+    "LST",
+    "GLD",
+    "GST",
+    "EXPECT",
+    "SEND",
+    "SET",
+    "MUX",
+    "EXPECT",
+    "PREDICATE",
+    "NOP",
+    "PADZERO",
+    "MOV"
+  )
   lexical.reserved ++= Seq("LD", "ST") //short hand for LLD and LST
   // defs
   val RegTypes = Seq(".reg", ".wire", ".input", ".output", ".mem", ".const")
@@ -315,6 +329,10 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         Mux(rd.chars, sel.chars, rs1.chars, rs2.chars, a)
     } // only a pseudo instruction, should be translated to a binary mux later
 
+  def mov_inst: Parser[Mov] =
+    (annotations ~ keyword("MOV") ~ ident ~ "," ~ ident) ^^ {
+      case (a ~ _ ~ rd ~ _ ~ rs) => Mov(rd.chars, rs.chars, a)
+    }
   def nop_inst: Parser[Instruction] = (keyword("NOP")) ^^ { _ => Nop }
 
   def padzero_inst: Parser[Instruction] = (annotations ~ keyword(
@@ -326,7 +344,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def instruction: Parser[Instruction] = positioned(
     arith_inst | lvec_inst | lload_inst | lstore_inst | mux_inst | nop_inst
-      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst
+      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[DefReg]] = rep(positioned(def_reg))

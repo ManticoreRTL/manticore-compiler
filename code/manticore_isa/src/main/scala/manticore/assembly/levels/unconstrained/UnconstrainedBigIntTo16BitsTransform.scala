@@ -6,9 +6,12 @@ import manticore.assembly.BinaryOperator
 import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.WireType
 import manticore.assembly.annotations.DebugSymbol
+import manticore.assembly.annotations.{Reg => RegAnnotation}
 import manticore.assembly.annotations.AssemblyAnnotation
 import manticore.assembly.annotations.AssemblyAnnotationFields
 import manticore.assembly.annotations.StringValue
+import manticore.assembly.annotations.Memblock
+import manticore.assembly.annotations.IntValue
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -360,16 +363,23 @@ object UnconstrainedBigIntTo16BitsTransform
               x // return the original one with appended index and width
           }
 
+          // also append an index the reg annotation so that later passes
+          // could creating mapping from current to next registers
+          val reg_annon = orig_def.annons.collect { case x: RegAnnotation =>
+            x.withIndex(ix)
+          }.toSeq
+
           val other_annons = orig_def.annons.filter {
-            case _: DebugSymbol => false
-            case _              => true
+            case _: DebugSymbol   => false
+            case _: RegAnnotation => false
+            case _                => true
           }
 
           orig_def
             .copy(
               variable = cvar,
               value = cval,
-              annons = other_annons :+ dbgsym
+              annons = other_annons ++ reg_annon :+ dbgsym
             )
             .setPos(orig_def.pos)
 
@@ -481,11 +491,10 @@ object UnconstrainedBigIntTo16BitsTransform
       )
 
       dest zip source map { case (d, s) =>
-        orig.copy(
-          operator = BinaryOperator.ADD,
+        Mov(
           rd = d,
-          rs1 = s,
-          rs2 = builder.mkConstant(0)
+          rs = s,
+          annons = orig.annons
         )
       }
     }
@@ -516,12 +525,37 @@ object UnconstrainedBigIntTo16BitsTransform
         val rs2_uint16_array: Seq[Name] =
           builder.getConversion(instruction.rs2).parts
 
-        assertAligned(instruction)
+        val rd_width = builder.originalWidth(instruction.rd)
+        val rs1_width = builder.originalWidth(instruction.rs1)
+        val rs2_width = builder.originalWidth(instruction.rs2)
 
+        val result_size = rs1_width max rs2_width
+
+        if (result_size != rd_width) {
+          logger.error(
+            "Unaligned ADD, ensure that the width of the result aligns with the wider operand",
+            instruction
+          )
+        }
+
+        val rs_array_length =
+          rs1_uint16_array.length max rs2_uint16_array.length
+        val rs1_uint16_array_aligned = rs1_uint16_array ++ Seq.fill(
+          rs_array_length - rs1_uint16_array.length
+        ) { builder.mkConstant(0) }
+        val rs2_uint16_array_aligned = rs2_uint16_array ++ Seq.fill(
+          rs_array_length - rs2_uint16_array.length
+        ) { builder.mkConstant(0) }
+
+        // val rs1_uint16_array_aligned = rs_1
         val rd_uint16_array_mutable = rd_uint16_array.map { x =>
           builder.mkWire(x, 16)
         }
-        if (rs1_uint16_array.size != 1) {
+
+        assert(
+          rd_uint16_array.length == rs2_uint16_array_aligned.length && rd_uint16_array.length == rs2_uint16_array_aligned.length
+        )
+        if (rs1_uint16_array_aligned.length != 1) {
           val carry: Name = builder.mkWire("add_carry", 16)
           // set the carry-in to be zero for the first partial sum
           inst_q += BinaryArithmetic(
@@ -531,8 +565,8 @@ object UnconstrainedBigIntTo16BitsTransform
             rs2 = builder.mkConstant(0)
           )
 
-          rs1_uint16_array zip
-            rs2_uint16_array zip
+          rs1_uint16_array_aligned zip
+            rs2_uint16_array_aligned zip
             rd_uint16_array_mutable foreach { case ((rs1_16, rs2_16), rd_16) =>
               inst_q += AddC(
                 rd = rd_16,
@@ -547,8 +581,8 @@ object UnconstrainedBigIntTo16BitsTransform
           inst_q += instruction
             .copy(
               rd = rd_uint16_array_mutable.head,
-              rs1 = rs1_uint16_array.head,
-              rs2 = rs2_uint16_array.head
+              rs1 = rs1_uint16_array_aligned.head,
+              rs2 = rs2_uint16_array_aligned.head
             )
 
         }
@@ -569,15 +603,36 @@ object UnconstrainedBigIntTo16BitsTransform
         val rs1_uint16_array = builder.getConversion(instruction.rs1).parts
         val rs2_uint16_array = builder.getConversion(instruction.rs2).parts
         // ensure that both operands and the results are has the same width
-        assertAligned(
-          instruction
-        )
 
         val rd_uint16_array_mutable = rd_uint16_array map { n =>
           builder.mkWire(n + "_mutable", 16)
         }
+        val rd_width = builder.originalWidth(instruction.rd)
+        val rs1_width = builder.originalWidth(instruction.rs1)
+        val rs2_width = builder.originalWidth(instruction.rs2)
 
-        if (rs1_uint16_array.length != 1) {
+        val result_size = rs1_width max rs2_width
+
+        if (result_size != rd_width) {
+          logger.error(
+            "Unaligned SUB, ensure that the width of the result aligns with the wider operand",
+            instruction
+          )
+        }
+
+        val rs_array_length =
+          rs1_uint16_array.length max rs2_uint16_array.length
+        val rs1_uint16_array_aligned = rs1_uint16_array ++ Seq.fill(
+          rs_array_length - rs1_uint16_array.length
+        ) { builder.mkConstant(0) }
+        val rs2_uint16_array_aligned = rs2_uint16_array ++ Seq.fill(
+          rs_array_length - rs2_uint16_array.length
+        ) { builder.mkConstant(0) }
+
+        assert(
+          rd_uint16_array.length == rs2_uint16_array_aligned.length && rd_uint16_array.length == rs2_uint16_array_aligned.length
+        )
+        if (rs1_uint16_array_aligned.length != 1) {
 
           // we handle SUB with carry by NOTing the second operand and AddCing
           // them. However, unlike the ADD conversion, we initialize the first
@@ -593,7 +648,7 @@ object UnconstrainedBigIntTo16BitsTransform
             builder.mkConstant(0),
             builder.mkConstant(1)
           )
-          rs1_uint16_array zip rs2_uint16_array zip rd_uint16_array_mutable foreach {
+          rs1_uint16_array_aligned zip rs2_uint16_array_aligned zip rd_uint16_array_mutable foreach {
             case ((rs1_16, rs2_16), rd_16) =>
               inst_q += BinaryArithmetic(
                 BinaryOperator.XOR,
@@ -614,8 +669,8 @@ object UnconstrainedBigIntTo16BitsTransform
           // trivial case, use the dedicated SUB instruction
           inst_q += instruction.copy(
             rd = rd_uint16_array_mutable.head,
-            rs1 = rs1_uint16_array.head,
-            rs2 = rs2_uint16_array.head
+            rs1 = rs1_uint16_array_aligned.head,
+            rs2 = rs2_uint16_array_aligned.head
           )
         }
 
@@ -1569,16 +1624,29 @@ object UnconstrainedBigIntTo16BitsTransform
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
       // ensure the memory can fit in a physical BRAM
 
-      val addr_width_orig = builder.originalWidth(base)
-      val extended_addr_width =
-        log2ceil(rd_uint16_array.length) + addr_width_orig
-      if (extended_addr_width > MaxLocalAddressBits) {
-        logger.error("Can not handle large memories yet!")
+      val num_shorts = instruction.findAnnotation(Memblock.name) match {
+        case Some(mblock) =>
+          val width = mblock.getIntValue(AssemblyAnnotationFields.Width).get
+          val capacity = mblock.getIntValue(AssemblyAnnotationFields.Width).get
+          val shorts = (width - 1) / 16 + 1
+          (shorts * capacity)
+        case _ =>
+          logger.error("Could not find Memblock annotation", instruction)
+          0
+      }
+
+      if (num_shorts > (1 << MaxLocalAddressBits)) {
+        logger.error(
+          s"Can not handle large memories yet with ${num_shorts} short words!"
+        )
         // TODO: promote to global access
         Seq(i)
       } else {
         val base_uint16_head = base_uint16_array.head
-        assert(base_uint16_array.length == 1)
+        // here we discard the highest bits of base_uint16 because a valid
+        // program should not access those. In fact we have a wide base registers
+        // because of PADZERO instructions and the fact that we don't shrink
+        // on ADD, but only expand.
         if (offset != 0) {
           logger.warn(
             "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
@@ -1601,16 +1669,27 @@ object UnconstrainedBigIntTo16BitsTransform
         }
         conv.head
       }
-      val addr_width_orig = builder.originalWidth(base)
-      val extended_addr_width =
-        log2ceil(rs_uint16_array.length) + addr_width_orig
-      if (extended_addr_width > MaxLocalAddressBits) {
-        logger.error("Can not handle large memories yet!")
+
+      val num_shorts = instruction.findAnnotation(Memblock.name) match {
+        case Some(mblock) =>
+          val width = mblock.getIntValue(AssemblyAnnotationFields.Width).get
+          val capacity = mblock.getIntValue(AssemblyAnnotationFields.Width).get
+          val shorts = (width - 1) / 16 + 1
+          (shorts * capacity)
+        case _ =>
+          logger.error("Could not find Memblock annotation", instruction)
+          0
+      }
+
+      if (num_shorts > (1 << MaxLocalAddressBits)) {
+        logger.error(
+          s"Can not handle large memories yet with ${num_shorts} short words!"
+        )
         // TODO: promote to global access
         Seq(i)
       } else {
         val base_uint16_head = base_uint16_array.head
-        assert(base_uint16_array.length == 1)
+
         if (offset != 0) {
           logger.warn(
             "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
@@ -1677,6 +1756,16 @@ object UnconstrainedBigIntTo16BitsTransform
           builder.mkConstant(0),
           annons
         ).setPos(i.pos)
+      }
+    case i @ Mov(rd, rs, annons) =>
+      val rd_uint16_array = builder.getConversion(rd).parts
+      val rs_uint16_array = builder.getConversion(rs).parts
+      if (builder.originalWidth(rd) != builder.originalWidth(rs)) {
+        logger.error("Mov instruction can not change width!", i)
+      }
+
+      rd_uint16_array zip rs_uint16_array map { case (rd16, rs16) =>
+        i.copy(rd = rd16, rs = rs16).setPos(i.pos)
       }
 
     case _ =>

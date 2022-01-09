@@ -15,6 +15,7 @@ import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.MemoryType
 import manticore.assembly.levels.InputType
 import manticore.assembly.levels.OutputType
+import manticore.assembly.levels.CloseSequentialCycles
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
@@ -87,4 +88,22 @@ object UnconstrainedDeadCodeElimination
       source: DefProgram,
       context: AssemblyContext
   ): DefProgram = do_transform(source, context)
+}
+
+object UnconstrainedCloseSequentialCycles
+    extends CloseSequentialCycles
+    with AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
+
+  val flavor = UnconstrainedIR
+
+  import flavor._
+
+  override def transform(
+      source: DefProgram,
+      context: AssemblyContext
+  ): DefProgram = do_transform(source)(context)
+
 }

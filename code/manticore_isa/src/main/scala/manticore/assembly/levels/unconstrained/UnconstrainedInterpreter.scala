@@ -274,10 +274,10 @@ object UnconstrainedInterpreter
           )
           val sign_value = rs1_val >> (rs1_width - 1)
 
-
           if (rs2_val.isValidInt && rs2_val < 0xffff) {
             val full_mask = (BigInt(1) << rs1_width) - 1
-            val nonsigned_width = if (rs2_val > rs1_width) 0 else rs1_width - rs2_val.toInt
+            val nonsigned_width =
+              if (rs2_val > rs1_width) 0 else rs1_width - rs2_val.toInt
             val nonsign_mask = (1 << nonsigned_width) - 1
             val sign_mask = full_mask - nonsign_mask
             val shifted = rs1_val >> rs2_val.toInt
@@ -428,57 +428,6 @@ object UnconstrainedInterpreter
         val got_val = state.register_file(got)
         if (ref_val != got_val) {
 
-          // dump the state of registers
-          logger.dumpArtifact("interpreter_state.txt") {
-
-            case class RegDump(index: Int, value: BigInt)
-                extends Ordered[RegDump] {
-              override def compare(that: RegDump): Int =
-                Ordering[Int].compare(this.index, that.index)
-            }
-
-            val width_map = scala.collection.mutable.Map.empty[String, Int]
-            val index_map = scala.collection.mutable.Map
-              .empty[String, scala.collection.mutable.PriorityQueue[RegDump]]
-
-            state.register_file.foreach { case (n, v) =>
-              val name_def = definitions(n)
-              val dbginfo = name_def.findAnnotation(DebugSymbol.name)
-
-              // get the debug symbol, if one exits, otherwise get the info
-              // from the DefReg node
-              val (dbg_name: String, dbg_index: Int, dbg_w: Int) =
-                dbginfo match {
-                  case Some(dbgsym: DebugSymbol) =>
-                    (dbgsym.getSymbol(), dbgsym.getIndex(), dbgsym.getWidth())
-                  case _ => (name_def.variable.name, 0, name_def.variable.width)
-                }
-              if (index_map contains dbg_name) {
-                index_map(dbg_name) += RegDump(dbg_index, v)
-                assert(width_map(dbg_name) == dbg_w)
-              } else {
-                index_map += (dbg_name -> scala.collection.mutable
-                  .PriorityQueue[RegDump](RegDump(dbg_index, v)))
-                width_map += (dbg_name -> dbg_w)
-              }
-            }
-
-            index_map
-              .map { case (dbg_name, indexed_values) =>
-                val ordered_vals = indexed_values.dequeueAll.toSeq
-                if (dbg_name == "rs_2")
-                  println(ordered_vals)
-                val value: BigInt = ordered_vals.foldLeft(BigInt(0)) {
-                  case (carry, x) =>
-                    (carry << 16) | x.value
-                }
-                s"${dbg_name}[${width_map(dbg_name) - 1} : 0] = ${value}"
-              }
-              .toSeq
-              .sorted
-              .mkString("\n")
-          }
-
           val trap_source = instruction
             .findAnnotationValue(
               Trap.name,
@@ -498,7 +447,7 @@ object UnconstrainedInterpreter
             case Some(Trap.Stop) =>
               logger.info("Stop signal interpreted.")
               if (trap_source.nonEmpty)
-                logger.error(s"Stop condition from ${trap_source}", instruction)
+                logger.info(s"Stop condition from ${trap_source}", instruction)
               Some(InterpretationStop)
             case _ =>
               logger.error(s"Missing TRAP type!", instruction)
@@ -559,9 +508,64 @@ object UnconstrainedInterpreter
         state.register_file(rd) = rd_val
         state.register_file(co) = co_val
 
-      case PadZero(rd, rs, width, annons) => ???
+      case PadZero(rd, rs, width, annons) =>
+        state.register_file(rd) = state.register_file(rs)
+      case Mov(rd, rs, _) =>
+        state.register_file(rd) = state.register_file(rs)
+
     }
 
+    def dumpRegisterFile(file_name: String): Unit = {
+      // dump the state of registers
+      logger.dumpArtifact(file_name) {
+
+        case class RegDump(index: Int, value: BigInt) extends Ordered[RegDump] {
+          override def compare(that: RegDump): Int =
+            Ordering[Int].compare(this.index, that.index)
+        }
+
+        val width_map = scala.collection.mutable.Map.empty[String, Int]
+        val index_map = scala.collection.mutable.Map
+          .empty[String, scala.collection.mutable.PriorityQueue[RegDump]]
+
+        state.register_file.foreach { case (n, v) =>
+          val name_def = definitions(n)
+          val dbginfo = name_def.findAnnotation(DebugSymbol.name)
+
+          // get the debug symbol, if one exits, otherwise get the info
+          // from the DefReg node
+          val (dbg_name: String, dbg_index: Int, dbg_w: Int) =
+            dbginfo match {
+              case Some(dbgsym: DebugSymbol) =>
+                (dbgsym.getSymbol(), dbgsym.getIndex(), dbgsym.getWidth())
+              case _ => (name_def.variable.name, 0, name_def.variable.width)
+            }
+          if (index_map contains dbg_name) {
+            index_map(dbg_name) += RegDump(dbg_index, v)
+            assert(width_map(dbg_name) == dbg_w)
+          } else {
+            index_map += (dbg_name -> scala.collection.mutable
+              .PriorityQueue[RegDump](RegDump(dbg_index, v)))
+            width_map += (dbg_name -> dbg_w)
+          }
+        }
+
+        index_map
+          .map { case (dbg_name, indexed_values) =>
+            val ordered_vals = indexed_values.dequeueAll.toSeq
+            if (dbg_name == "rs_2")
+              println(ordered_vals)
+            val value: BigInt = ordered_vals.foldLeft(BigInt(0)) {
+              case (carry, x) =>
+                (carry << 16) | x.value
+            }
+            s"${dbg_name}[${width_map(dbg_name) - 1} : 0] = ${value}"
+          }
+          .toSeq
+          .sorted
+          .mkString("\n")
+      }
+    }
     def run(): Unit = proc.body.foreach { interpret }
     def getException(): Option[InterpretationTrap] = state.exception_occurred
 
@@ -579,9 +583,8 @@ object UnconstrainedInterpreter
 
       while (cycles < context.max_cycles && interp.getException().isEmpty) {
         logger.info(s"Starting cycle ${cycles}")
-        if (cycles == 16)
-          logger.info("TRAP")
         interp.run()
+        interp.dumpRegisterFile(s"state_${cycles}.txt")
         cycles += 1
       }
       logger.info(s"Finished interpretation after ${cycles} cycles")

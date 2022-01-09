@@ -121,6 +121,10 @@ trait RenameTransformation extends Flavored {
               rs2 = subst(rs2),
               ci = subst(ci)
             ).copy(rd = createNewRdDef(rd), co = createNewRdDef(co))
+          case i @ Mov(rd, rs, _) =>
+            i.copy(
+              rs = subst(rs)
+            ).copy(rd = createNewRdDef(rd))
         }
 
         body_builder += new_inst.setPos(inst.pos)

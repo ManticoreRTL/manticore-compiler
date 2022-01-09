@@ -306,4 +306,11 @@ trait ManticoreAssemblyIR {
       s"${serializedAnnons("\t\t")}\t\tPADZERO ${rd}, ${rs}, ${width}; //@${pos}"
   }
 
+  case class Mov(
+    rd: Name, rs:Name, annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\tMOV ${rd}, ${rs}; //@${pos}"
+  }
+
 }

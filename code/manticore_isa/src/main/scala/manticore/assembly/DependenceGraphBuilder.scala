@@ -73,6 +73,7 @@ trait DependenceGraphBuilder extends Flavored {
           Seq(rs)
         case AddC(rd, co, rs1, rs2, ci, annons) =>
           Seq(rs1, rs2, ci)
+        case Mov(rd, rs, _) => Seq(rs)
       }
     }
 
@@ -101,6 +102,7 @@ trait DependenceGraphBuilder extends Flavored {
         case Nop                                                     => Nil
         case PadZero(rd, rs, width, annons)                          => Seq(rd)
         case AddC(rd, co, rs1, rs2, ci, annons) => Seq(rd, co)
+        case Mov(rd, _, _) => Seq(rd)
       }
     }
 

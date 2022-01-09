@@ -288,6 +288,8 @@ trait RemoveAliases extends Flavored {
 
         case PadZero(rd, rs, width, annons) =>
           PadZero(rd, replaceName(rs), width, annons)
+
+        case Mov(rd, rs, annons) => Mov(rd, replaceName(rs), annons)
       }).setPos(instr.pos)
     }
 

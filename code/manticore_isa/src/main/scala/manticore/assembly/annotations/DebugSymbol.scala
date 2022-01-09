@@ -18,7 +18,7 @@ final class DebugSymbol private (
 
   def getSymbol() = getStringValue(AssemblyAnnotationFields.Symbol).get
   def getIndex() = getIntValue(AssemblyAnnotationFields.Index).getOrElse(0)
-  def getWidth() = getIntValue(AssemblyAnnotationFields.Width).getOrElse(0)
+  def getWidth() = getIntValue(AssemblyAnnotationFields.Width).getOrElse(1)
 
 }
 
