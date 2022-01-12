@@ -222,7 +222,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
             dot_root,
             DotNodeStmt(
               NodeId(inode.toOuter.hashCode().toString()),
-              List(DotAttr("label", inode.toOuter.serialized.trim))
+              List(DotAttr("label", inode.toOuter.toString.trim))
             )
           )
         )

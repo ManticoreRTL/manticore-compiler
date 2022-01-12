@@ -15,10 +15,15 @@ final class DebugSymbol private (
   def withWidth(w: Int) = new DebugSymbol(
     fields.updated(AssemblyAnnotationFields.Width, IntValue(w))
   )
+  def withGenerated(b: Boolean) = new DebugSymbol(
+    fields.updated(AssemblyAnnotationFields.Generated, BooleanValue(b))
+  )
 
   def getSymbol() = getStringValue(AssemblyAnnotationFields.Symbol).get
-  def getIndex() = getIntValue(AssemblyAnnotationFields.Index).getOrElse(0)
-  def getWidth() = getIntValue(AssemblyAnnotationFields.Width).getOrElse(1)
+  def getIndex() = getIntValue(AssemblyAnnotationFields.Index)
+  def getWidth() = getIntValue(AssemblyAnnotationFields.Width)
+
+  def isGenerated() = getBoolValue(AssemblyAnnotationFields.Generated)
 
 }
 

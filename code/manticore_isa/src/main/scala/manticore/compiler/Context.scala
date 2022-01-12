@@ -22,11 +22,10 @@ case class AssemblyContext(
     val dump_dir: Option[File] = None,
     val debug_message: Boolean = false,
     val max_registers: Int = 2048,
-    val max_cycles: Int = 10000
+    val max_cycles: Int = 120
 ) {
 
   var transform_index = 0
-
 
 
 }

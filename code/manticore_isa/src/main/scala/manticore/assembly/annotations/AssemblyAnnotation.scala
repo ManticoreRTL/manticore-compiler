@@ -25,6 +25,7 @@ object AssemblyAnnotationFields {
   }
   trait BindsToString
   trait BindsToInt
+  trait BindsToBoolean
 
   object Symbol extends FieldName("symbol") with BindsToString
   object Width extends FieldName("width") with BindsToInt
@@ -38,6 +39,7 @@ object AssemblyAnnotationFields {
   object Name extends FieldName("name") with BindsToString
   object Id extends FieldName("id") with BindsToString
   object Type extends FieldName("type") with BindsToString
+  object Generated extends FieldName("generated") with BindsToBoolean
 
   def parse(name: String): Option[FieldName] = name match {
     case Symbol.name   => Some(Symbol)
@@ -138,6 +140,7 @@ trait AssemblyAnnotationParser {
     bindings.foreach {
       case (_: AssemblyAnnotationFields.BindsToInt, _: IntValue)       =>
       case (_: AssemblyAnnotationFields.BindsToString, _: StringValue) =>
+      case (_: AssemblyAnnotationFields.BindsToBoolean, _: BooleanValue) =>
       case (x: FieldName, _) =>
         throw new AssemblyAnnotationParseError(
           s"Invalid ${name} annotation fields or values"

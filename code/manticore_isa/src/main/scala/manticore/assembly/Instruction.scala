@@ -147,7 +147,10 @@ trait ManticoreAssemblyIR {
       extends IRNode
       with HasSerialized
       with Positional
-      with HasAnnotations
+      with HasAnnotations {
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\t${toString}; //@${pos}"
+  }
 
   // arithmetic operations see BinaryOperators
   case class BinaryArithmetic(
@@ -158,10 +161,10 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
 
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\t${operator
-        .toString()
-        .toUpperCase()}\t${rd}, ${rs1}, ${rs2}; //@${pos}"
+    override def toString: String = s"${operator
+      .toString()
+      .toUpperCase()}\t${rd}, ${rs1}, ${rs2}"
+
   }
 
   // Custom instruction
@@ -174,8 +177,9 @@ trait ManticoreAssemblyIR {
       rs4: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tCUST ${rd}, [${func}], ${rs1}, ${rs2}, ${rs3}, ${rs4}; //@${pos}"
+    override def toString: String =
+      s"CUST ${rd}, [${func}], ${rs1}, ${rs2}, ${rs3}, ${rs4}"
+
   }
 
   // LocalLoad from the local scratchpad
@@ -185,8 +189,8 @@ trait ManticoreAssemblyIR {
       offset: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tLLD ${rd}, ${base}[${offset}]; //@${pos}"
+    override def toString: String = s"LLD ${rd}, ${base}[${offset}]"
+
   }
 
   // Store to the local scratchpad
@@ -197,10 +201,10 @@ trait ManticoreAssemblyIR {
       predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tLST ${rs}, ${base}[${offset}], ${predicate
-        .map(", " + _.toString())
-        .getOrElse("")}; //@${pos}"
+    override def toString: String = s"LST ${rs}, ${base}[${offset}], ${predicate
+      .map(", " + _.toString())
+      .getOrElse("")}"
+
   }
 
   // Load from global memory (DRAM)
@@ -209,8 +213,9 @@ trait ManticoreAssemblyIR {
       base: Tuple3[Name, Name, Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tGLD ${rd}, [${base._1}, ${base._2}, ${base._3}]; //@${pos}"
+    override def toString: String =
+      s"GLD ${rd}, [${base._1}, ${base._2}, ${base._3}]"
+
   }
 
   // Store to global memory (DRAM)
@@ -220,10 +225,11 @@ trait ManticoreAssemblyIR {
       predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tGST ${rs}, [${base._1}, ${base._2}, ${base._3}]${predicate
+    override def toString: String =
+      s"GST ${rs}, [${base._1}, ${base._2}, ${base._3}]${predicate
         .map { x => ", " + x.toString() }
-        .getOrElse("")}; //@${pos}"
+        .getOrElse("")}"
+
   }
 
   // Set a register value
@@ -232,8 +238,9 @@ trait ManticoreAssemblyIR {
       value: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tSET ${rd}, ${value}; //@${pos}"
+    override def toString: String =
+      s"SET ${rd}, ${value}"
+
   }
 
   // send a register to a process
@@ -243,8 +250,8 @@ trait ManticoreAssemblyIR {
       dest_id: ProcessId,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tSEND ${rd}, [${dest_id}], ${rs}; //@${pos}"
+    override def toString: String = s"SEND ${rd}, [${dest_id}], ${rs}"
+
   }
 
   // value assertion
@@ -254,16 +261,16 @@ trait ManticoreAssemblyIR {
       error_id: ExceptionId,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tEXPECT ${ref}, ${got}, [${error_id}]; //@${pos}"
+    override def toString: String = s"EXPECT ${ref}, ${got}, [${error_id}]"
+
   }
 
   case class Predicate(
       rs: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tPREDICATE ${rs}; //@${pos}"
+    override def toString: String = s"PREDICATE ${rs}"
+
   }
 
   case class Mux(
@@ -274,13 +281,13 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
 
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tMUX ${rd}, ${sel}, ${rfalse}, ${rtrue}; //@${pos}"
+    override def toString: String = s"MUX ${rd}, ${sel}, ${rfalse}, ${rtrue}"
+
   }
 
   case object Nop extends Instruction {
     val annons: Seq[AssemblyAnnotation] = Seq()
-    override def serialized: String = s"\t\tNOP;"
+    override def toString: String = s"\t\tNOP;"
   }
 
   case class AddC(
@@ -292,8 +299,8 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
 
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tADDCARRY ${rd}, ${co}, ${rs1}, ${rs2}, ${ci}; //@${pos}"
+    override def toString: String =
+      s"ADDCARRY ${rd}, ${co}, ${rs1}, ${rs2}, ${ci}"
   }
 
   case class PadZero(
@@ -302,15 +309,17 @@ trait ManticoreAssemblyIR {
       width: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tPADZERO ${rd}, ${rs}, ${width}; //@${pos}"
+    override def toString: String =
+      s"PADZERO ${rd}, ${rs}, ${width}"
   }
 
   case class Mov(
-    rd: Name, rs:Name, annons: Seq[AssemblyAnnotation] = Seq()
+      rd: Name,
+      rs: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\tMOV ${rd}, ${rs}; //@${pos}"
+    override def toString: String =
+      s"MOV ${rd}, ${rs}"
   }
 
 }

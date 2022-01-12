@@ -11,6 +11,7 @@ import scala.util.parsing.input.Positional
 import manticore.compiler.AssemblyContext
 import java.nio.file.Files
 import java.io.PrintWriter
+import java.io.File
 
 /** Irrecoverable compilation exception/error
   *
@@ -106,7 +107,17 @@ trait Reporter {
 
         case _ => // dot nothing
       }
+    }
 
+    def openFile(file_name: String)(implicit ctx: AssemblyContext): File = {
+      ctx.dump_dir match {
+        case Some(dir) =>
+          Files.createDirectories(dir.toPath())
+          val fpath = dir.toPath().resolve(file_name)
+          fpath.toFile()
+        case None =>
+          fail("Could not open file, make sure dump directory is defined!")
+      }
     }
   }
 

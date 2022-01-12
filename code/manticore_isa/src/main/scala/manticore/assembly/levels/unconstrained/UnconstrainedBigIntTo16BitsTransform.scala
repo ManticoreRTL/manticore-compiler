@@ -346,10 +346,16 @@ object UnconstrainedBigIntTo16BitsTransform
           val dbgsym = orig_def.annons.collect { case x: DebugSymbol =>
             // if DebugSymbol annotation exits, append the index and width
             // to it
-            if (x.fields.contains(AssemblyAnnotationFields.Index)) {
-              logger.error("did not expect debug symbol index", orig_def)
+            x.getIndex() match {
+              case Some(i) if i != 0 =>
+                // we don't want to have a non-zero index, it means this pass
+                // was run before?
+                logger.error("Did not expect non-zero debug symbol index", orig_def)
+              case _ =>
+                // do nothing
             }
-            val with_index = x.withIndex(ix)
+
+            val with_index = x.withIndex(ix).withGenerated(false)
             with_index.getIntValue(AssemblyAnnotationFields.Width) match {
               case Some(w) =>
                 with_index
@@ -358,9 +364,9 @@ object UnconstrainedBigIntTo16BitsTransform
             }
           } match {
             case Seq() => // if it does not exists, create one from scratch
-              DebugSymbol(orig_def.variable.name).withIndex(ix).withWidth(width)
-            case x +: _ =>
-              x // return the original one with appended index and width
+              DebugSymbol(orig_def.variable.name).withIndex(ix).withWidth(width).withGenerated(true)
+            case org +: _ =>
+              org // return the original one with appended index and width
           }
 
           // also append an index the reg annotation so that later passes
@@ -726,11 +732,11 @@ object UnconstrainedBigIntTo16BitsTransform
         )
         val orig_rd_width = builder.originalWidth(instruction.rd)
         if (orig_rd_width != 1) {
-          logger.error("Expected boolean wire in SEQ")
+          logger.warn("Expected boolean wire in SEQ", instruction)
         }
         val ConvertedWire(rd_uint16, _) =
           builder.getConversion(instruction.rd)
-        assert(rd_uint16.size == 1, "SEQ result should be single-bit")
+
 
         if (rs1_uint16_array.length == 1) {
           inst_q += instruction.copy(
