@@ -1,0 +1,6 @@
+*.masm
+*.masm.dumps.d
+*.masm.log
+*.vcd
+*.data
+obj_dir_*
