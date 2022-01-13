@@ -31,7 +31,7 @@ VERILATOR_FLAGS += --assert
 #VERILATOR_FLAGS += --gdbbt
 
 # Input files for Verilator
-VERILATOR_CPP_TB = @name@_tb.cpp
+VERILATOR_CPP_TB = @name@_tb.cc
 VERILATOR_TOP_FILE = @name@.sv $(VERILATOR_CPP_TB)
 VERILATOR_OTHER_FILES = $(VERILATOR_TOP_FILE) -y .
 

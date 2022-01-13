@@ -4,3 +4,6 @@
 *.vcd
 *.data
 obj_dir_*
+*.mk
+*.sv
+*.cc

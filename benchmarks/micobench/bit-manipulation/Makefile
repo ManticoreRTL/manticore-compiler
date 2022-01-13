@@ -4,7 +4,7 @@ TEST_CASES = RV32_IntegerRR RV32_Load RV32_Store
 VMAKE = VMake.mk
 VTESTER = VTester.cpp
 VERILOG = $(TEST_CASES:=.sv)
-VCPP    = $(TEST_CASES:=_tb.cpp)
+VCPP    = $(TEST_CASES:=_tb.cc)
 VMK     = $(TEST_CASES:=.mk)
 VVCD    = $(addprefix Tester_, $(TEST_CASES:=_trace.vcd))
 

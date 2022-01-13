@@ -145,7 +145,7 @@ endmodule
                 fp.write(text)
 
         writeToFile(name + ".sv", generateVerilog(name, signature))
-        writeToFile(name + "_tb.cpp", generateVerilatorTb(name))
+        writeToFile(name + "_tb.cc", generateVerilatorTb(name))
         writeToFile(name + ".mk", generateVerilatorMakeFile(name))
 
 
