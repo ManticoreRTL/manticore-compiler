@@ -5,6 +5,6 @@
 project
 target
 dumps
+dump_dir
 test_dump_dir
 operands
-benchmarks
