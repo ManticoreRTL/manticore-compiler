@@ -177,18 +177,27 @@ object UnconstrainedInterpreter
   ) {
 
     private def handleMemoryAccess(base: Name, instruction: Instruction)(
-        handler: BlockRam => Unit
+        handler: (BlockRam, Option[Int]) => Unit
     ): Unit = {
 
-      val resolved_block = instruction.findAnnotationValue(
-        Memblock.name,
-        AssemblyAnnotationFields.Block
-      ) match {
-        case Some(StringValue(block_name))
-            if state.memory_blocks.contains(block_name) =>
-          handler(state.memory_blocks(block_name))
+      // get the Memblock annotation
+      val memblock = instruction.annons.collectFirst { case x: Memblock =>
+        x
+      }
+      memblock match {
+        case Some(annon: Memblock) =>
+          val block_name =
+            annon.getStringValue(AssemblyAnnotationFields.Block).get
+          val index: Option[Int] = annon.getIntValue(
+            AssemblyAnnotationFields.Index
+          ) // sub-word index, only present if width conversion if performed
+          val block_object = state.memory_blocks(block_name)
+          handler(block_object, index)
         case _ =>
-          logger.error("Could not resolve memory access block", instruction)
+          logger.error(
+            "Could not resolve memory access block, ensure @MEMBLOCK is present",
+            instruction
+          )
       }
     }
     // A table for looking up name definitions
@@ -327,99 +336,99 @@ object UnconstrainedInterpreter
         logger.error("Custom instruction can not be interpreted yet!", i)
       case LocalLoad(rd, base, offset, _) =>
         // this is wrong, need to somehow infer the address mode (i.e., short-word or arbitrary-word)
-        handleMemoryAccess(base, instruction) { resolved_block =>
-          val addr_val = state.register_file(base) + offset
-          val block_cap = resolved_block.capacity
-          if (block_cap == 0) {
-            logger.error(
-              "Can not handle LD from memory with capacity 0!",
-              instruction
-            )
-          } else {
-            val block_index: BigInt =
-              addr_val & nextPower2BitMask(block_cap.toInt)
-            val rd_val =
-              if (block_index.toInt >= resolved_block.content.length) {
-                logger.error(
-                  s"Index out of bound! ${block_index.toInt} >= ${resolved_block.content.length}",
-                  instruction
-                )
-                BigInt(0)
-              } else {
-                resolved_block.content(block_index.toInt)
+        handleMemoryAccess(base, instruction) {
+          (resolved_block: BlockRam, subword_index: Option[Int]) =>
+            val addr_val = state.register_file(base) + offset
+            val block_cap = resolved_block.capacity
+            if (block_cap == 0) {
+              logger.error(
+                "Can not handle LD from memory with capacity 0!",
+                instruction
+              )
+            } else {
+              val block_index: BigInt =
+                addr_val & nextPower2BitMask(block_cap.toInt)
+              val rd_val =
+                if (block_index.toInt >= resolved_block.content.length) {
+                  logger.error(
+                    s"Index out of bound! ${block_index.toInt} >= ${resolved_block.content.length}",
+                    instruction
+                  )
+                  BigInt(0)
+                } else {
+                  resolved_block.content(block_index.toInt)
+                }
+              // if there is a debug symbol index, we need to shift the word to
+              // the right and only extract the relevant bits
+
+              val rd_val_actual = subword_index match {
+                case Some(index) =>
+                  // the original word was large word and is now broken into
+                  // 16-bit words, the index indicates the sub-word position
+                  // for instance, index 1 means the part we are actually concerned
+                  // with is the bits [16 : 31]
+                  val rd_val_shifted = rd_val >> (16 * index)
+                  val rd_val_masked =
+                    rd_val_shifted & 0xffff // keep only 16 bits
+                  rd_val_masked
+                case _ =>
+                  rd_val
               }
-            // if there is a debug symbol index, we need to shift the word to
-            // the right and only extract the relevant bits
-            val rd_def = definitions(rd)
-            val rd_val_actual = rd_def.findAnnotationValue(
-              DebugSymbol.name,
-              AssemblyAnnotationFields.Index
-            ) match {
-              case Some(IntValue(index)) =>
-                // the original word was large word and is now broken into
-                // 16-bit words, the index indicates the sub-word position
-                // for instance, index 1 means the part we are actually concerned
-                // with is the bits [16 : 31]
-                val rd_val_shifted = rd_val >> (16 * index)
-                val rd_val_masked = rd_val_shifted & 0xffff // keep only 16 bits
-                rd_val_masked
-              case _ =>
-                rd_val
+              vcd_writer.foreach { _.update(rd, rd_val_actual) }
+              state.register_file(rd) = rd_val_actual
             }
-            vcd_writer.foreach { _.update(rd, rd_val_actual) }
-            state.register_file(rd) = rd_val_actual
-          }
         }
       case LocalStore(rs, base, offset, predicate, annons) =>
-        handleMemoryAccess(base, instruction) { resolved_block =>
-          val addr_val = state.register_file(base) + offset
-          val block_cap: Int = resolved_block.capacity
-          if (block_cap == 0) {
-            logger.error(
-              "Can not ST from  memory with capacity 0!",
-              instruction
-            )
-          } else {
-            val block_index: BigInt =
-              addr_val & nextPower2BitMask(block_cap.toInt)
-            val rs_val = state.register_file(rs)
-            val pred_val = predicate
-              .map { x => state.register_file(x) == 1 }
-              .getOrElse(state.predicate)
+        handleMemoryAccess(base, instruction) {
+          (resolved_block: BlockRam, subword_index: Option[Int]) =>
+            val addr_val = state.register_file(base) + offset
+            val block_cap: Int = resolved_block.capacity
+            if (block_cap == 0) {
+              logger.error(
+                "Can not ST from  memory with capacity 0!",
+                instruction
+              )
+            } else {
+              val block_index: BigInt =
+                addr_val & nextPower2BitMask(block_cap.toInt)
+              val rs_val = state.register_file(rs)
+              val pred_val = predicate
+                .map { x => state.register_file(x) == 1 }
+                .getOrElse(state.predicate)
 
-            if (pred_val) {
-              assert(block_index.isValidInt, "Something went wrong handling ST")
-              val rs_def = definitions(rs)
-              val rs_val_actual = rs_def.findAnnotationValue(
-                DebugSymbol.name,
-                AssemblyAnnotationFields.Index
-              ) match {
-                case Some(IntValue(index)) =>
-                  // since the debug symbol is augmented with index, then
-                  // the original memory has gone through width conversion
-                  // and we need to only store a sub-word (it could be a full
-                  // word iff the original memory width was 16 bits)
-                  // therefore we first need to read from the memory and then
-                  // write a modified wide word to it.
-                  val old_val = resolved_block.content(block_index.toInt)
-                  val rs_val_shifted = rs_val << (16 * index)
-                  val mask: BigInt = ((BigInt(
-                    1
-                  ) << resolved_block.width) - 1) - (BigInt(
-                    0xffff
-                  ) << (16 * index))
-                  val old_val_masked = old_val & mask
-                  val new_val = old_val_masked | rs_val_shifted
-                  new_val
-                case _ =>
-                  // no valid index, so no need to handle sub-word stores
-                  rs_val
+              if (pred_val) {
+                assert(
+                  block_index.isValidInt,
+                  "Something went wrong handling ST"
+                )
 
+                val rs_val_actual = subword_index match {
+                  case Some(index) =>
+                    // since the debug symbol is augmented with index, then
+                    // the original memory has gone through width conversion
+                    // and we need to only store a sub-word (it could be a full
+                    // word iff the original memory width was 16 bits)
+                    // therefore we first need to read from the memory and then
+                    // write a modified wide word to it.
+                    val old_val = resolved_block.content(block_index.toInt)
+                    val rs_val_shifted = rs_val << (16 * index)
+                    val mask: BigInt = ((BigInt(
+                      1
+                    ) << resolved_block.width) - 1) - (BigInt(
+                      0xffff
+                    ) << (16 * index))
+                    val old_val_masked = old_val & mask
+                    val new_val = old_val_masked | rs_val_shifted
+                    new_val
+                  case _ =>
+                    // no valid index, so no need to handle sub-word stores
+                    rs_val
+
+                }
+                resolved_block.content(block_index.toInt) = rs_val_actual
               }
-              resolved_block.content(block_index.toInt) = rs_val_actual
-            }
 
-          }
+            }
         }
 
       case GlobalLoad(rd, base, annons) =>
@@ -580,7 +589,10 @@ object UnconstrainedInterpreter
           .mkString("\n")
       }
     }
-    def run(): Unit = proc.body.foreach { interpret }
+    def run(): Unit = proc.body.foreach { inst =>
+      if (getException().isEmpty)
+        interpret(inst)
+    }
     def getException(): Option[InterpretationTrap] = state.exception_occurred
 
   }
@@ -601,8 +613,9 @@ object UnconstrainedInterpreter
     private def hasUserDebugSymbol(r: DefReg): Boolean = {
       val dbg = getDebugSymbol(r)
       dbg match {
-        case Some(sym) => !sym.isGenerated().getOrElse(true)
-        case _         => false
+        case Some(sym) =>
+          !sym.isGenerated().getOrElse(true)
+        case _ => false
       }
     }
     private val sym_groups = {
@@ -669,12 +682,42 @@ object UnconstrainedInterpreter
 
       }
 
-      def apply(regs: Seq[DefReg], width: Int): ChangeRecord = new Impl(
-        content = regs.map { _.value.getOrElse(BigInt(0)) }.toArray,
-        width = width,
-        part_width = regs.map { _.variable.width }.toArray,
-        updated = false
-      )
+      /** Create VCD record for the sequence of registers that share the same
+        * debug symbol
+        *
+        * @param regs
+        *   Sequence of registers sorted by increasing order of their
+        *   DebugSymbol index
+        * @param width
+        * @return
+        */
+      def apply(regs: Seq[DefReg], width: Int): ChangeRecord = {
+        // get the indices (should be sorted)
+        val indices = regs.map { r =>
+          getDebugSymbol(r) match {
+            case None      => 0 // should not happen
+            case Some(dbg) => dbg.getIndex().getOrElse(0)
+          }
+        }
+        val max_index = indices.last
+
+        // their might be some missing indices due to optimizations, we need
+        // fill in the whole for those (not a very efficient approach but we
+        // don't care about performance here)
+        val values = regs.map { _.value.getOrElse(BigInt(0)) }
+        val defined_values = indices.zip(values).toMap
+
+        val content = Array.tabulate(max_index + 1) { i =>
+          defined_values.getOrElse(0, BigInt(0))
+        }
+
+        new Impl(
+          content = content,
+          width = width,
+          part_width = regs.map { _.variable.width }.toArray,
+          updated = false
+        )
+      }
     }
 
     def fail(msg: String): Nothing = throw new RuntimeException(msg)
@@ -733,7 +776,7 @@ object UnconstrainedInterpreter
       // we use the ascii ! as the clock symbol
       emit("var") { "wire 1 ! clock" }
 
-      val vcd_ids = Range(0, groups.size) map { case i => s"s${i}"}
+      val vcd_ids = Range(0, groups.size) map { case i => s"s${i}" }
 
       val id_map = scala.collection.mutable.Map[String, String]()
       groups zip vcd_ids foreach { case ((sym, regs), id) =>
@@ -777,7 +820,15 @@ object UnconstrainedInterpreter
         case Some(sym) =>
           val symbol: String = sym.getSymbol()
           val index = sym.getIndex().getOrElse(0)
-          record_table(symbol).write(value, index)
+          val records = record_table(symbol)
+          try {
+            record_table(symbol).write(value, index)
+          } catch {
+            case e: Exception =>
+              logger.error(
+                s"error writing VCD record for ${name} (symbol = ${symbol}, index = ${index}): ${e.getMessage()}"
+              )
+          }
         case None =>
         // name is not tracked
       }

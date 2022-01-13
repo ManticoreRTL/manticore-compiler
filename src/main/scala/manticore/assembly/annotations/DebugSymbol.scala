@@ -9,9 +9,13 @@ final class DebugSymbol private (
       new_fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
   ) =
     this(DebugSymbol.name, new_fields)
-  def withIndex(ix: Int) = new DebugSymbol(
-    fields.updated(AssemblyAnnotationFields.Index, IntValue(ix))
-  )
+  def withIndex(ix: Int) = {
+    require(ix >= 0)
+    new DebugSymbol(
+      fields.updated(AssemblyAnnotationFields.Index, IntValue(ix))
+    )
+  }
+
   def withWidth(w: Int) = new DebugSymbol(
     fields.updated(AssemblyAnnotationFields.Width, IntValue(w))
   )
@@ -22,7 +26,6 @@ final class DebugSymbol private (
   def getSymbol() = getStringValue(AssemblyAnnotationFields.Symbol).get
   def getIndex() = getIntValue(AssemblyAnnotationFields.Index)
   def getWidth() = getIntValue(AssemblyAnnotationFields.Width)
-
   def isGenerated() = getBoolValue(AssemblyAnnotationFields.Generated)
 
 }
@@ -42,7 +45,8 @@ object DebugSymbol extends AssemblyAnnotationParser {
   }
   def apply(symbol: String) = {
     new DebugSymbol(
-      name, Map(AssemblyAnnotationFields.Symbol -> StringValue(symbol))
+      name,
+      Map(AssemblyAnnotationFields.Symbol -> StringValue(symbol))
     )
   }
 }

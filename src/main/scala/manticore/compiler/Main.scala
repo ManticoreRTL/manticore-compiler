@@ -91,21 +91,28 @@ object Main {
 
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
       val unconstrained_phases = UnconstrainedNameChecker followedBy
+          UnconstrainedMakeDebugSymbols followedBy
           UnconstrainedOrderInstructions followedBy
           UnconstrainedRemoveAliases followedBy
           UnconstrainedDeadCodeElimination followedBy
+          UnconstrainedCloseSequentialCycles  followedBy
+          UnconstrainedInterpreter followedBy
+          UnconstrainedBreakSequentialCycles followedBy
           UnconstrainedBigIntTo16BitsTransform followedBy
           UnconstrainedRenameVariables followedBy
           UnconstrainedNameChecker followedBy
           UnconstrainedDeadCodeElimination followedBy
-          UnconstrainedToPlacedTransform
+          UnconstrainedCloseSequentialCycles  followedBy
+          UnconstrainedInterpreter followedBy
+          UnconstrainedBreakSequentialCycles
+
       val placed_phase = PlacedNameChecker followedBy
           ListSchedulerTransform followedBy
           PredicateInsertionTransform followedBy
           GlobalPacketSchedulerTransform
 
       val phases =
-        unconstrained_phases followedBy placed_phase
+        unconstrained_phases
 
       phases(prg, ctx)._1
     }

@@ -350,9 +350,12 @@ object UnconstrainedBigIntTo16BitsTransform
               case Some(i) if i != 0 =>
                 // we don't want to have a non-zero index, it means this pass
                 // was run before?
-                logger.error("Did not expect non-zero debug symbol index", orig_def)
+                logger.error(
+                  "Did not expect non-zero debug symbol index",
+                  orig_def
+                )
               case _ =>
-                // do nothing
+              // do nothing
             }
 
             val with_index = x.withIndex(ix).withGenerated(false)
@@ -364,7 +367,10 @@ object UnconstrainedBigIntTo16BitsTransform
             }
           } match {
             case Seq() => // if it does not exists, create one from scratch
-              DebugSymbol(orig_def.variable.name).withIndex(ix).withWidth(width).withGenerated(true)
+              DebugSymbol(orig_def.variable.name)
+                .withIndex(ix)
+                .withWidth(width)
+                .withGenerated(true)
             case org +: _ =>
               org // return the original one with appended index and width
           }
@@ -736,7 +742,6 @@ object UnconstrainedBigIntTo16BitsTransform
         }
         val ConvertedWire(rd_uint16, _) =
           builder.getConversion(instruction.rd)
-
 
         if (rs1_uint16_array.length == 1) {
           inst_q += instruction.copy(
@@ -1147,7 +1152,7 @@ object UnconstrainedBigIntTo16BitsTransform
           )
 
           val mutable_sh =
-            builder.mkWire("mutable_sh", builder.originalWidth(shift_amount))
+            builder.mkWire("mutable_sh", 16)
           inst_q += BinaryArithmetic(
             BinaryOperator.ADD,
             mutable_sh,
@@ -1360,12 +1365,16 @@ object UnconstrainedBigIntTo16BitsTransform
           builder.getConversion(instruction.rs2)
         val ConvertedWire(rd_uint16_array, rd_mask) =
           builder.getConversion(instruction.rd)
-        val rd_uint16_array_mutable = rd_uint16_array map { n =>
-          builder.mkWire(n + "_mutable", 16)
-        }
+
 
         val ConvertedWire(rs1_uint16_array, _) =
           builder.getConversion(instruction.rs1)
+
+        val mutable_array_size = rd_uint16_array.length max rs1_uint16_array.length
+
+        val rd_uint16_array_mutable = Seq.tabulate(mutable_array_size) { i =>
+          builder.mkWire(s"srl_builder_${i}", 16)
+        }
 
         if (rd_uint16_array_mutable.length == 1) {
 
@@ -1383,7 +1392,10 @@ object UnconstrainedBigIntTo16BitsTransform
           // initialize the rd mutable array
           inst_q ++= moveRegs(
             rd_uint16_array_mutable,
-            rs1_uint16_array,
+            rs1_uint16_array ++
+              Seq.fill(mutable_array_size - rs1_uint16_array.length) {
+                builder.mkConstant(0)
+            },
             instruction
           )
 
@@ -1393,7 +1405,7 @@ object UnconstrainedBigIntTo16BitsTransform
           }
 
           val mutable_sh =
-            builder.mkWire("mutable_sh", builder.originalWidth(instruction.rs2))
+            builder.mkWire("mutable_sh", 16)
           inst_q += BinaryArithmetic(
             BinaryOperator.ADD,
             mutable_sh,
@@ -1522,7 +1534,7 @@ object UnconstrainedBigIntTo16BitsTransform
         inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
         inst_q ++= moveRegs(
           rd_uint16_array,
-          rd_uint16_array_mutable,
+          rd_uint16_array_mutable.slice(0, rd_uint16_array.length),
           instruction
         )
 
@@ -1629,8 +1641,11 @@ object UnconstrainedBigIntTo16BitsTransform
       val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
       // ensure the memory can fit in a physical BRAM
+      val orig_mblock = i.annons.collectFirst { case m: Memblock =>
+        m
+      }
 
-      val num_shorts = instruction.findAnnotation(Memblock.name) match {
+      val num_shorts = orig_mblock match {
         case Some(mblock) =>
           val width = mblock.getIntValue(AssemblyAnnotationFields.Width).get
           val capacity = mblock.getIntValue(AssemblyAnnotationFields.Width).get
@@ -1659,9 +1674,30 @@ object UnconstrainedBigIntTo16BitsTransform
             i
           )
         }
-        rd_uint16_array.map { case rd_16 =>
-          i.copy(rd = rd_16, base = base_uint16_head, offset = offset)
-            .setPos(i.pos)
+
+        rd_uint16_array.zipWithIndex.map { case (rd_16, index) =>
+          // append an index to the annotation to be able to resolve this access later
+          // the index comes from the index associated with the destination register
+          // this is necessary since we are essentially creating multiple narrow
+          // memories from a wide ones. The final simulation binary or
+          // an intermediate interpreter can should be able to distinguish between
+          // the newly create memory blocks especially in the case of memories with
+          // initial values.
+          val other_annons = i.annons.filter {
+            case _: Memblock => false
+            case _           => true
+          }
+          val indexed_mblock = orig_mblock match {
+            case Some(mblock) => mblock.withIndex(index)
+            case None =>
+              logger.fail("Expected a memory block!")
+          }
+          i.copy(
+            rd = rd_16,
+            base = base_uint16_head,
+            offset = offset,
+            annons = other_annons :+ indexed_mblock
+          ).setPos(i.pos)
         }
       }
 

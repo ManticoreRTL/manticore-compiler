@@ -11,21 +11,11 @@ import manticore.UnconstrainedTest
 import scala.annotation.tailrec
 import manticore.assembly.CompilationFailureException
 
-class UnconstrainedWideExpectTester extends UnconstrainedTest {
+class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
 
   behavior of "Unconstrained wide EXPECT conversion"
 
-  val randgen = new scala.util.Random()
-  def mkWideRand(w: Int): BigInt = {
-    val shorts = Seq.fill((w - 1) / 16 + 1) { randgen.nextInt(1 << 16) }
 
-    val combined = shorts.foldLeft(BigInt(0)) { case (c, x) =>
-      (c << 16) | BigInt(x)
-    }
-
-    val masked = combined & ((BigInt(1) << w) - 1)
-    masked
-  }
   def failingProgram() = {
     val width = randgen.nextInt(1024) + 1
     val ref = mkWideRand(width)
@@ -61,9 +51,9 @@ class UnconstrainedWideExpectTester extends UnconstrainedTest {
     """
   }
 
-  val dump_path = createDumpDirectory()
-  val failing_ctx = AssemblyContext()
-  val passing_ctx = AssemblyContext()
+
+  val failing_ctx = AssemblyContext(dump_all = true, dump_dir = Some(createDumpDirectory().toFile()))
+  val passing_ctx = AssemblyContext(dump_all = true, dump_dir = Some(createDumpDirectory().toFile()))
   val interpreter = UnconstrainedInterpreter
   val backend =
     UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
