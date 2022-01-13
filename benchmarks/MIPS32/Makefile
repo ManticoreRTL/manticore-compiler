@@ -57,7 +57,7 @@ VERILATOR_TOP_FILE = mips32.sv $(VERILATOR_CPP_TB)
 VERILATOR_OTHER_FILES = $(VERILATOR_TOP_FILE) -y .
 
 # Top module, not really needed.
-VERILATOR_FLAGS += --top-module Test
+VERILATOR_FLAGS += --top-module TestVerilator
 
 ######################################################################
 
@@ -72,3 +72,7 @@ verilate: $(wildcard *.sv)
 
 clean mostlyclean distclean maintainer-clean::
 	-rm -rf obj_dir logs *.log *.dmp *.vpd coverage.dat core
+
+thyrio: $(wildcard *.sv)
+	@echo "Generating MASM"
+	thyrio_frontend -vlog_in mips32.sv -masm_out mips32.masm -top TestVerilator -no_techmap -dump

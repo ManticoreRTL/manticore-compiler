@@ -12,7 +12,7 @@
 #include <verilated.h>
 
 // Include model header, generated from Verilating the modules
-#include "VTest.h"
+#include "VTestVerilator.h"
 
 #include "verilated_vcd_c.h"
 
@@ -22,7 +22,7 @@ double sc_time_stamp() { return 0; }
 int main(int argc, char **argv, char **env) {
 
 
-  const auto top = std::make_unique<VTest>();
+  const auto top = std::make_unique<VTestVerilator>();
 
   Verilated::traceEverOn(true);
   VerilatedVcdC *tfp = new VerilatedVcdC;
@@ -45,6 +45,7 @@ int main(int argc, char **argv, char **env) {
 
   // Final model cleanup
   top->final();
+  tfp->close();
 
   return 0;
 }
