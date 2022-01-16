@@ -9,6 +9,18 @@ import manticore.assembly.annotations.{Reg => RegAnnotation}
 import manticore.assembly.levels.Flavored
 import manticore.assembly.levels.WireType
 
+
+/**
+ * A helper trait as the base of [[WidthConversion]]. It contains the
+ * implementation of a mutable Builder class that lazily converts every register
+ * in a process to a sequence of converted wires. The [[WidthConversion]] should
+ * instantiate this class and call the [[getConversion]] method to get the
+ * converted sequence of registers as it moves through the instructions. Note
+ * that the instructions are assumed to be ordered properly, i.e., registers
+ * should be written and then read if they are not constants.
+ * @author Mahyar Emami <mahyar.emami@epfl.ch>
+ */
+
 trait ConversionBuilder extends Flavored {
 
   val flavor = UnconstrainedIR
@@ -229,7 +241,7 @@ trait ConversionBuilder extends Flavored {
 
     def originalDef(original_name: Name): DefReg = m_old_defs(original_name)
 
-    def isConst(original_name: Name): Boolean =
+    def isConstant(original_name: Name): Boolean =
       m_old_defs(original_name).variable.varType == ConstType
   }
 }

@@ -23,7 +23,8 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
       (BigInt(initial_value) << i) & ((BigInt(1) << width_rd) - 1)
     }
 
-    val expected_fp = dumpToFile(s"expected_${width_rd}_${width_rs}.dat", expected_vals)
+    val expected_fp =
+      dumpToFile(s"expected_${width_rd}_${width_rs}.dat", expected_vals)
 
     val memblock =
       s"@MEMBLOCK [block = \"expected\", width = ${width_rd}, capacity = ${expected_vals.length}]"
@@ -75,38 +76,89 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     max_cycles = Int.MaxValue
   )
 
-
-
   private def test(width_rd: Int, width_rs: Int): Unit = {
     val prog_text = mkProgram(width_rd, width_rs)
     val program = AssemblyParser(prog_text, ctx)
     backend.apply(program, ctx)
   }
-  it should "handle width(rd) == width(rs)" taggedAs Tags.WidthConversion in {
+  it should "handle width(rd) == width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
 
     repeat(100) { i =>
-     val width_rs = 16 + i
-     val width_rd = width_rs
-     test(width_rd, width_rs)
+      val width_rs = 16 + i
+      val width_rd = width_rs
+      test(width_rd, width_rs)
     }
   }
 
-  it should "handle width(rd) < width(rs)" taggedAs Tags.WidthConversion in {
+  it should "handle width(rd) < width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
 
     repeat(100) { i =>
-     val width_rs = 16 + i
-     val width_rd = randgen.nextInt(width_rs) + 1
-     test(width_rd, width_rs)
+      val width_rs = 16 + i
+      val width_rd = randgen.nextInt(width_rs) + 1
+      test(width_rd, width_rs)
     }
   }
 
-  it should "handle width(rd) > width(rs)" taggedAs Tags.WidthConversion in {
+  it should "handle dynamic width(rd) > width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
 
     repeat(100) { i =>
-     val width_rs = 16 + i
-     val width_rd = width_rs + randgen.nextInt(20)
-     test(width_rd, width_rs)
+      val width_rs = 16 + i
+      val width_rd = width_rs + randgen.nextInt(20)
+      test(width_rd, width_rs)
     }
   }
+
+  def mkStaticProgram(
+      width_rd: Int,
+      width_rs: Int,
+      initial_value: BigInt,
+      sh_amount: Int
+  ): String = {
+
+    val expected_result =
+      (initial_value << sh_amount) & ((BigInt(1) << width_rd) - 1)
+
+    val input_fp = dumpToFile(
+      s"input_value_${width_rd}_${width_rs}.dat",
+      Array(initial_value)
+    )
+    val memblock =
+      s"@MEMBLOCK [block = \"input_value\", width = ${width_rs}, capacity = 1]"
+
+    s"""
+    .prog:
+    .proc proc_0_0:
+
+    .const const_sh_amount 16 ${sh_amount}
+    .const ref_result ${width_rd} ${expected_result}
+    .wire shifted ${width_rd}
+
+    ${memblock}
+     @MEMINIT [file = "${input_fp}", count = 1, width = ${width_rd}]
+    .mem input_ptr 1
+    .wire dyn_rs ${width_rs}
+    .const const_0 1 0
+    .const const_1 1 1
+
+    ${memblock}
+    LLD dyn_rs, input_ptr[0];
+    SLL shifted, dyn_rs, const_sh_amount;
+
+    @TRAP[type = "\\fail"]
+    EXPECT ref_result, shifted, ["fail"];
+
+    @TRAP[type = "\\stop"]
+    EXPECT const_0, const_1, ["stop"];
+    """
+  }
+
+  // it should "handle width(rd) == width(rs), static SLL" taggedAs Tags.WidthConversion in {
+
+  //   val prog_text = mkStaticProgram(17, 17, 1, 16)
+
+  //   val prog = AssemblyParser(prog_text, ctx)
+  //   backend(prog, ctx)
+
+  // }
 
 }

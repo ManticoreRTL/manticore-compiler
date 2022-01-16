@@ -89,7 +89,7 @@ object Main {
         dump_all = cfg.dump_all,
         dump_dir = cfg.dump_dir
       )
-    println(ctx.dump_all)
+
 
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
       val unconstrained_phases = UnconstrainedNameChecker followedBy
@@ -97,6 +97,9 @@ object Main {
         UnconstrainedOrderInstructions followedBy
         UnconstrainedRemoveAliases followedBy
         UnconstrainedDeadCodeElimination followedBy
+        UnconstrainedCloseSequentialCycles followedBy
+        UnconstrainedInterpreter followedBy
+        UnconstrainedBreakSequentialCycles followedBy
         WidthConversionCore followedBy
         UnconstrainedRenameVariables followedBy
         UnconstrainedNameChecker followedBy

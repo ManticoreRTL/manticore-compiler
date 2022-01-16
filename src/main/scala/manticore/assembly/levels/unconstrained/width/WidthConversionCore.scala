@@ -610,138 +610,7 @@ object WidthConversionCore
         val rd_uint16_array_mutable = Seq.tabulate(lossless_result_size) { i =>
           builder.mkWire(s"sra_builder_${i}", 16)
         }
-        if (shift_orig_def.variable.varType == ConstType) {
 
-          val concrete_shift_amount: Int = shift_orig_def.value match {
-            case Some(x) =>
-              if (x.isValidInt) {
-                x.toInt
-              } else {
-                logger.error(
-                  s"Can not handle SLL with shift amount larger than ${Int.MaxValue}",
-                  instruction
-                )
-                0
-              }
-
-            case None =>
-              logger.error("undefined const value!", shift_orig_def)
-              0
-          }
-          if (concrete_shift_amount >= builder.originalWidth(rd)) {
-            logger.warn("SLL discards all bits", instruction)
-            rd_uint16_array_mutable.map { rd16 =>
-              instruction.copy(
-                operator = BinaryOperator.ADD,
-                rd = rd16,
-                rs1 = builder.mkConstant(0),
-                rs2 = builder.mkConstant(0)
-              )
-            }
-          } else if (concrete_shift_amount % 16 == 0) {
-            // great! aligned shifting no need to propagate carries
-            val shifted_rs: Seq[Name] = Seq.fill(concrete_shift_amount / 16) {
-              builder.mkConstant(0)
-            } ++ rs_uint16_array
-            inst_q ++ (rd_uint16_array_mutable zip shifted_rs) map {
-              case (rd16: Name, rs16: Name) =>
-                instruction.copy(
-                  operator = BinaryOperator.ADD,
-                  rd = rd16,
-                  rs1 = rs16,
-                  rs2 = builder.mkConstant(0)
-                )
-            }
-          } else {
-            // the shift is not aligned to 16 bits, we need to handle carries
-            // the first concrete_shift_amount / 16 shift outputs would be zero
-            // very much like the aligned case, but after that point the outputs
-            // have carries from the previous short words.
-            val actual_shift =
-              concrete_shift_amount % 16 // the actual shifting that we need to do
-            assert(actual_shift != 0, "SLL translation logic is buggy?")
-            val num_zero_rds: Int = concrete_shift_amount / 16
-            val num_carries: Int =
-              rd_uint16_array_mutable.length - num_zero_rds - 1
-            assert(num_carries >= 0)
-            val carry_wires = Seq.tabulate(num_carries) { i =>
-              builder.mkWire(s"sll_carry_${i}", 16)
-            }
-
-            // zero out the low short words
-            inst_q ++= (rd_uint16_array_mutable).slice(0, num_zero_rds).map {
-              case rd16 =>
-                instruction.copy(
-                  operator = BinaryOperator.ADD,
-                  rd = rd16,
-                  rs1 = builder.mkConstant(0),
-                  rs2 = builder.mkConstant(0)
-                )
-            }
-            // compute the carry between significant short words
-            assert(
-              carry_wires.length <= rs_uint16_array.length,
-              "carries should be fewer than the original data"
-            )
-
-            /** Essentially we we'll have SRL carry_0, rs_0, (16 - actual_shift)
-              * SRL carry_1, rs_1, (16 - actual_shift) ... until the number of
-              * carries, which is the number of non-zero shift results minus one
-              * (some significant words are non-zero, starting form
-              * num_zero_rds) Note that if there are no carries, then the
-              * following piece of code won't add any instructions
-              */
-            inst_q ++= carry_wires zip rs_uint16_array map { case (co, rs16) =>
-              instruction.copy(
-                operator = BinaryOperator.SRL,
-                rd = co,
-                rs1 = rs16,
-                rs2 = builder.mkConstant(16 - actual_shift)
-              )
-            }
-            // now there are n significant words, and n - 1 carries, all we need to do is
-            // to SLL the corresponding rs word and OR is with the carry, the first carry
-            // is set to zero so we handle it differently
-
-            // first significant short word
-            assert(
-              num_zero_rds < rd_uint16_array_mutable.length,
-              "We should handle the case in which the SLL results can be computed to zero separately"
-            )
-            inst_q += instruction.copy(
-              operator = BinaryOperator.SLL,
-              rd = rd_uint16_array_mutable(num_zero_rds),
-              // the first rs short word is shifted to the num_zero_rds position
-              // in the output and then shifted by a Manticore-acceptable (less than 16) amount
-              rs1 = rs_uint16_array.head,
-              rs2 = builder.mkConstant(actual_shift)
-            )
-            // the other words are a bit more expensive, they require an extra OR operation
-            // note that if there are no carry wires, then this piece of code will not add
-            // any new instructions
-            inst_q ++= rd_uint16_array_mutable.slice(
-              num_zero_rds + 1,
-              rd_uint16_array_mutable.length
-            ) zip rs_uint16_array.tail zip carry_wires flatMap {
-              case ((rd16, rs16), ci) =>
-                Seq(
-                  instruction.copy(
-                    operator = BinaryOperator.SLL,
-                    rd = rd16,
-                    rs1 = rs16,
-                    rs2 = builder.mkConstant(actual_shift)
-                  ),
-                  instruction.copy(
-                    operator = BinaryOperator.OR,
-                    rd = rd16,
-                    rs1 = rd16,
-                    rs2 = ci
-                  )
-                )
-            }
-
-          }
-        } else { // the shift amount is fully dynamic
           if (rd_uint16_array_mutable.length == 1) {
 
             if (builder.originalWidth(shift_amount) > 16) {
@@ -903,7 +772,7 @@ object WidthConversionCore
 
             }
           }
-        }
+
 
         inst_q ++= maskRd(
           rd_uint16_array_mutable.take(rd_uint16_array.length).last,
