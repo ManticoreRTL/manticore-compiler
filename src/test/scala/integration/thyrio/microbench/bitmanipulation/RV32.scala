@@ -20,6 +20,12 @@ import manticore.assembly.levels.unconstrained.UnconstrainedInterpreter
 import manticore.assembly.levels.unconstrained.UnconstrainedBreakSequentialCycles
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
+import manticore.UnconstrainedTest
+import manticore.assembly.levels.unconstrained.width.WidthConversionCore
+import manticore.assembly.levels.AssemblyTransformer
+import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.assembly.levels.Transformation
+import manticore.assembly.levels.unconstrained.UnconstrainedRenameVariables
 
 class RV32 extends ThyrioUnitTest {
 
@@ -50,34 +56,60 @@ class RV32 extends ThyrioUnitTest {
 
   Make.invoke(Seq(), cwd.toFile()) { println(_) }
 
-  def run(test_name: String): Unit = {
+  def initialPhases() = UnconstrainedNameChecker followedBy
+    UnconstrainedMakeDebugSymbols followedBy
+    UnconstrainedOrderInstructions followedBy
+    UnconstrainedRemoveAliases followedBy
+    UnconstrainedDeadCodeElimination followedBy
+    UnconstrainedCloseSequentialCycles followedBy
+    UnconstrainedInterpreter followedBy
+    UnconstrainedBreakSequentialCycles
+  def finalPhases() = WidthConversionCore followedBy
+    UnconstrainedRenameVariables followedBy
+    UnconstrainedDeadCodeElimination followedBy
+    UnconstrainedCloseSequentialCycles followedBy
+    UnconstrainedInterpreter followedBy
+    UnconstrainedBreakSequentialCycles
+
+  type Phase =
+    Transformation[UnconstrainedIR.DefProgram, UnconstrainedIR.DefProgram]
+
+  def run(test_name: String)(phases: => Phase): Unit = {
     val ctx =
-      AssemblyContext(dump_all = true, dump_dir = Some(cwd.toFile()))
-    val backend = UnconstrainedNameChecker followedBy
-      UnconstrainedMakeDebugSymbols followedBy
-      UnconstrainedOrderInstructions followedBy
-      UnconstrainedRemoveAliases followedBy
-      UnconstrainedDeadCodeElimination followedBy
-      UnconstrainedCloseSequentialCycles followedBy
-      UnconstrainedInterpreter followedBy
-      UnconstrainedBreakSequentialCycles
+      AssemblyContext(
+        dump_all = true,
+        dump_dir = Some(cwd.resolve(test_name).toFile())
+      )
 
     val parsed = AssemblyParser(cwd.resolve(s"${test_name}.masm").toFile(), ctx)
-    backend(parsed, ctx)
+    phases(parsed, ctx)
 
   }
 
+  // def run(test_name: String): Unit = {}
 
-  it should "handle RV32_IntegerRR" in {
-      run("RV32_IntegerRR")
+  it should "handle RV32_IntegerRR initial unconstrained phases" in {
+    run("RV32_IntegerRR") { initialPhases() }
   }
 
-  it should "handle RV32_Load" in {
-      run("RV32_Load")
+  it should "handle RV32_IntegerRR final unconstrained phases" in {
+    run("RV32_IntegerRR") { initialPhases() followedBy finalPhases() }
   }
 
-  it should "handle RV32_Store" in {
-      run("RV32_Store")
+  it should "handle RV32_Load initial unconstrained phases" in {
+    run("RV32_Load") { initialPhases() }
+  }
+
+  it should "handle RV32_Load final unconstrained phases" in {
+    run("RV32_Load") { initialPhases() followedBy finalPhases() }
+  }
+
+  it should "handle RV32_Store initial unconstrained phases" in {
+    run("RV32_Store") { initialPhases() }
+  }
+
+  it should "handle RV32_Store final unconstrained phases" in {
+    run("RV32_Store") { initialPhases() followedBy finalPhases() }
   }
 
 }
