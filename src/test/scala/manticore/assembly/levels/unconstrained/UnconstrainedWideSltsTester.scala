@@ -45,8 +45,7 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
   val ctx = AssemblyContext(dump_all = true, dump_dir = Some(dump_path.toFile))
 
   val interpreter = UnconstrainedInterpreter
-  val backend =
-    UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
+
 
   behavior of "wide STLS"
 

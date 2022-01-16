@@ -54,9 +54,7 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
 
   val failing_ctx = AssemblyContext(dump_all = true, dump_dir = Some(createDumpDirectory().toFile()))
   val passing_ctx = AssemblyContext(dump_all = true, dump_dir = Some(createDumpDirectory().toFile()))
-  val interpreter = UnconstrainedInterpreter
-  val backend =
-    UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
+
 
   // do not move the passing test downwards, otherwise the checker will fail
   // unless the logger errors are cleared

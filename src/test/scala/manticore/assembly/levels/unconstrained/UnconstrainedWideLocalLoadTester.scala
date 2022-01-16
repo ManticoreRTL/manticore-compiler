@@ -61,10 +61,7 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
 
   val ctx =
     AssemblyContext(dump_all = true, dump_dir = Some(dump_path.toFile()))
-  val backend =
-    UnconstrainedBigIntTo16BitsTransform followedBy
-      UnconstrainedRenameVariables followedBy // to be able to build a dependence graph
-      UnconstrainedInterpreter
+
   it should "correctly read from memory" taggedAs Tags.WidthConversion in {
     // the test may print warnings about Thyrio that do not matter
     Range(0, 10).foreach { i =>

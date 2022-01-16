@@ -21,6 +21,7 @@ import manticore.assembly.levels.placed.GlobalPacketSchedulerTransform
 import manticore.assembly.levels.placed.PredicateInsertionTransform
 import manticore.assembly.levels.unconstrained._
 import manticore.assembly.levels.DeadCodeElimination
+import manticore.assembly.levels.unconstrained.width.WidthConversionCore
 
 case class CliConfig(
     input_file: Option[File] = None,
@@ -55,9 +56,11 @@ object Main {
           .text("print the asm program at each step of the assembler"),
         opt[Unit]("dump-all")
           .action { case (_, c) => c.copy(dump_all = true) }
-          .text("dump everything in each step in the directory given by --dump-dir"),
+          .text(
+            "dump everything in each step in the directory given by --dump-dir"
+          ),
         opt[File]("dump-dir")
-          .action { case (x, c) => c.copy(dump_dir = Some(x))}
+          .action { case (x, c) => c.copy(dump_dir = Some(x)) }
           .text("directory to place all the dump files"),
         opt[Unit]('d', "debug")
           .action { case (_, c) => c.copy(debug_en = true) }
@@ -84,39 +87,34 @@ object Main {
         source_file = cfg.input_file,
         output_file = cfg.output_file,
         dump_all = cfg.dump_all,
-        dump_dir =  cfg.dump_dir
+        dump_dir = cfg.dump_dir
       )
     println(ctx.dump_all)
 
-
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
       val unconstrained_phases = UnconstrainedNameChecker followedBy
-          UnconstrainedMakeDebugSymbols followedBy
-          UnconstrainedOrderInstructions followedBy
-          UnconstrainedRemoveAliases followedBy
-          UnconstrainedDeadCodeElimination followedBy
-          UnconstrainedCloseSequentialCycles  followedBy
-          UnconstrainedInterpreter followedBy
-          UnconstrainedBreakSequentialCycles followedBy
-          UnconstrainedBigIntTo16BitsTransform followedBy
-          UnconstrainedRenameVariables followedBy
-          UnconstrainedNameChecker followedBy
-          UnconstrainedDeadCodeElimination followedBy
-          UnconstrainedCloseSequentialCycles  followedBy
-          UnconstrainedInterpreter followedBy
-          UnconstrainedBreakSequentialCycles
+        UnconstrainedMakeDebugSymbols followedBy
+        UnconstrainedOrderInstructions followedBy
+        UnconstrainedRemoveAliases followedBy
+        UnconstrainedDeadCodeElimination followedBy
+        WidthConversionCore followedBy
+        UnconstrainedRenameVariables followedBy
+        UnconstrainedNameChecker followedBy
+        UnconstrainedDeadCodeElimination followedBy
+        UnconstrainedCloseSequentialCycles followedBy
+        UnconstrainedInterpreter followedBy
+        UnconstrainedBreakSequentialCycles
 
       val placed_phase = PlacedNameChecker followedBy
-          ListSchedulerTransform followedBy
-          PredicateInsertionTransform followedBy
-          GlobalPacketSchedulerTransform
+        ListSchedulerTransform followedBy
+        PredicateInsertionTransform followedBy
+        GlobalPacketSchedulerTransform
 
       val phases =
         unconstrained_phases
 
       phases(prg, ctx)._1
     }
-
 
     val parsed = AssemblyParser(cfg.input_file.get, ctx)
 

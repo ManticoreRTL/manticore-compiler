@@ -91,38 +91,39 @@ object UnconstrainedDeadCodeElimination
   ): DefProgram = do_transform(source, context)
 }
 
+
 object UnconstrainedCloseSequentialCycles
-    extends CloseSequentialCycles
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+      extends CloseSequentialCycles
+      with AssemblyTransformer[
+        UnconstrainedIR.DefProgram,
+        UnconstrainedIR.DefProgram
+      ] {
 
-  val flavor = UnconstrainedIR
+    val flavor = UnconstrainedIR
 
-  import flavor._
+    import flavor._
 
-  override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = do_transform(source)(context)
+    override def transform(
+        source: DefProgram,
+        context: AssemblyContext
+    ): DefProgram = do_transform(source)(context)
 
-}
+  }
 
-object UnconstrainedBreakSequentialCycles
-    extends BreakSequentialCycles
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+   object UnconstrainedBreakSequentialCycles
+      extends BreakSequentialCycles
+      with AssemblyTransformer[
+        UnconstrainedIR.DefProgram,
+        UnconstrainedIR.DefProgram
+      ] {
 
-  val flavor = UnconstrainedIR
+    val flavor = UnconstrainedIR
 
-  import flavor._
+    import flavor._
 
-  override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = do_transform(source)(context)
+    override def transform(
+        source: DefProgram,
+        context: AssemblyContext
+    ): DefProgram = do_transform(source)(context)
 
-}
+  }

@@ -52,8 +52,7 @@ class UnconstrainedWideMuxTester extends UnconstrainedWideTest {
       dump_dir = Some(dump_path.toFile()),
       max_cycles = Int.MaxValue
     )
-  val backend =
-    UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
+
 
   it should "correctly handle the wide mux" taggedAs Tags.WidthConversion in {
 

@@ -75,9 +75,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     max_cycles = Int.MaxValue
   )
 
-  val interpreter = UnconstrainedInterpreter
-  val backend =
-    UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
+
 
   private def test(width_rd: Int, width_rs: Int): Unit = {
     val prog_text = mkProgram(width_rd, width_rs)

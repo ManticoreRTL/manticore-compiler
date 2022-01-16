@@ -3,7 +3,7 @@ package manticore.assembly.levels.unconstrained
 import manticore.UnconstrainedTest
 import java.nio.file.Path
 import java.io.PrintWriter
-
+import manticore.assembly.levels.unconstrained.width.{WidthConversionCore => Transformation}
 trait UnconstrainedWideTest extends UnconstrainedTest {
 
   lazy val randgen = new scala.util.Random(0)
@@ -36,4 +36,7 @@ trait UnconstrainedWideTest extends UnconstrainedTest {
   }
 
   def repeat(times: Int)(gen: Int => Unit): Unit = Range(0, times) foreach { i => gen(i) }
+
+  val backend =
+    Transformation followedBy UnconstrainedInterpreter
 }
