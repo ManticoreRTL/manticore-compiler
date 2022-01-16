@@ -288,14 +288,18 @@ object UnconstrainedInterpreter
           val sign_value = rs1_val >> (rs1_width - 1)
 
           if (rs2_val.isValidInt && rs2_val < 0xffff) {
-            val full_mask = (BigInt(1) << rs1_width) - 1
-            val nonsigned_width =
-              if (rs2_val > rs1_width) 0 else rs1_width - rs2_val.toInt
-            val nonsign_mask = (1 << nonsigned_width) - 1
-            val sign_mask = full_mask - nonsign_mask
-            val shifted = rs1_val >> rs2_val.toInt
-            val shifted_signed = sign_mask | shifted
-            clipped(shifted_signed)
+            if (sign_value == 1) {
+              val full_mask = (BigInt(1) << rs1_width) - 1
+              val nonsigned_width =
+                if (rs2_val > rs1_width) 0 else rs1_width - rs2_val.toInt
+              val nonsign_mask = (1 << nonsigned_width) - 1
+              val sign_mask = full_mask - nonsign_mask
+              val shifted = rs1_val >> rs2_val.toInt
+              val shifted_signed = sign_mask | shifted
+              clipped(shifted_signed)
+            } else {
+              clipped(rs1_val >> rs2_val.toInt)
+            }
           } else {
             logger.error("unsupported SRA shift amount", inst)
             BigInt(0)

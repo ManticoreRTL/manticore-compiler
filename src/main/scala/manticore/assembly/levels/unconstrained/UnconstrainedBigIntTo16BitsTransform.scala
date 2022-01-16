@@ -1132,6 +1132,17 @@ object UnconstrainedBigIntTo16BitsTransform
         )
 
       case BinaryOperator.SRA =>
+        /** Unlike SLL and SRL, we can make the assumption that the input
+          * operand and the result are ALWAYS aligned. Without this assumption,
+          * there are certain complications, especially if the output is
+          * narrower than the input. For instance, suppose input is 3 bits and
+          * output is 2 bits, then the results of shifting input = 4 by zero is
+          * zero but by 1 is 2! This is very counter-intuitive and in fact the
+          * Thyrio front-end will not emit such nonsense anyways. The case that
+          * the output is wider also is possible and that requires
+          * sign-extending the input to compute the output. Yosys internally
+          * takes care of that so we don't need to handle it here either.
+          */
         val shift_amount = instruction.rs2
         val rd = instruction.rd
         val rs1 = instruction.rs1
@@ -1143,26 +1154,73 @@ object UnconstrainedBigIntTo16BitsTransform
         }
 
         val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
-        val rd_uint16_array_mutable = rd_uint16_array map { n =>
-          builder.mkWire(n + "_mutable", 16)
-        }
 
         val ConvertedWire(rs1_uint16_array, _) = builder.getConversion(rs1)
+
         val rs_width = builder.originalWidth(rs1)
+        val rd_width = builder.originalWidth(rd)
+        if (rd_width != rs_width) {
+          logger.error("SRA operand and result should be aligned!", instruction)
+        }
+        // sign extension wire, maybe needed if the output is wider than the input
+        val sign_replicated = builder.mkWire("sign_replicated", 16)
+        val sign_bit = builder.mkWire("sign", 1)
 
-        if (rd_uint16_array_mutable.length == 1) {
+        val msbits = rs_width % 16
+        if (rd_width < 16) {
 
-          if (builder.originalWidth(shift_amount) > 16) {
-            logger.error("unsafe SRA", instruction)
-          }
-          // easy case
+          val sign_extended_rs = builder.mkWire("sra_sign_extended_rs", 16)
+          // not aligned with our machine instructions, we need to manually
+          // extract the sign bit
+          inst_q += BinaryArithmetic(
+            BinaryOperator.SRL,
+            sign_bit,
+            rs1_uint16_array.last,
+            builder.mkConstant(rd_width - 1)
+          )
+          val sext_mask = builder.mkWire("sext_mask", 16)
+          inst_q += Mux(
+            sext_mask,
+            sign_bit,
+            builder.mkConstant(0),
+            builder.mkConstant((0xffff << msbits) & 0xffff)
+          )
+          inst_q += BinaryArithmetic(
+            BinaryOperator.OR,
+            sign_extended_rs,
+            rs1_uint16_array.head,
+            sext_mask
+          )
           inst_q += instruction.copy(
-            rd = rd_uint16_array_mutable.head,
+            rd = sign_extended_rs,
+            rs1 = sign_extended_rs,
+            rs2 = shift_uint16.head
+          )
+          inst_q ++= maskRd(sign_extended_rs, rd_mask, instruction)
+          inst_q ++= moveRegs(
+            rd_uint16_array,
+            Seq(sign_extended_rs),
+            instruction
+          )
+
+        } else if (rd_width == 16) {
+          // easy case, no translation needed
+          inst_q += instruction.copy(
+            rd = rd_uint16_array.head,
             rs1 = rs1_uint16_array.head,
             rs2 = shift_uint16.head
           )
 
-        } else {
+        } else { // rd_width > 16
+
+          /** We create a copy of rs and modify/shift in-place. This copy is
+            * later sign extended and moved back to the result registers if
+            * needed
+            */
+          val rd_uint16_array_mutable = Seq.tabulate(rs1_uint16_array.length) {
+            i =>
+              builder.mkWire(s"sra_builder_${i}", 16)
+          }
 
           inst_q ++= moveRegs(
             rd_uint16_array_mutable,
@@ -1180,8 +1238,7 @@ object UnconstrainedBigIntTo16BitsTransform
           )
           val msbits =
             rs_width % 16 // number of valid bits in the most significant short word
-          // we need to sign extend the most significant word if necessary
-          val sign_bit = builder.mkWire("sign", 1)
+
           val msbits_shift = builder.mkConstant(msbits - 1)
 
           if (msbits != 0) {
@@ -1214,6 +1271,13 @@ object UnconstrainedBigIntTo16BitsTransform
             )
           }
 
+          inst_q += Mux(
+            sign_replicated,
+            sign_bit,
+            builder.mkConstant(0),
+            builder.mkConstant(0xffff)
+          )
+
           for (ix <- (rd_uint16_array_mutable.length - 1) to 0 by -1) {
 
             val left_shift_amount = builder.mkWire("left_shift_amount", 16)
@@ -1242,13 +1306,7 @@ object UnconstrainedBigIntTo16BitsTransform
               )
             )
             val carry_in = builder.mkWire("carry_in", 16)
-            val sign_replicated = builder.mkWire("sign_replicated", 16)
-            inst_q += Mux(
-              sign_replicated,
-              sign_bit,
-              builder.mkConstant(0),
-              builder.mkConstant(0xffff)
-            )
+
             // handle the most significant short word, in this case we will actually
             // use the SRA instruction, but for the other short words we use SRL
             val carry_out = builder.mkWire("carry_out", 16)
@@ -1371,13 +1429,15 @@ object UnconstrainedBigIntTo16BitsTransform
               mutable_sh_minus_sixteen
             )
           }
+
+          // we have the computed output, mask and move it
+          inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+          inst_q ++= moveRegs(
+            rd_uint16_array,
+            rd_uint16_array_mutable,
+            instruction
+          )
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
-        inst_q ++= moveRegs(
-          rd_uint16_array,
-          rd_uint16_array_mutable,
-          instruction
-        )
 
       case BinaryOperator.SRL =>
         val ConvertedWire(shift_uint16, _) =

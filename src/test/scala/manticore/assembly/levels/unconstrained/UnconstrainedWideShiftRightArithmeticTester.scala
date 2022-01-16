@@ -17,30 +17,34 @@ class UnconstrainedWideShiftRightArithmeticTester
 
   // val randgen = new scala.util.Random()
   // a simple program that shifts '1' to the left 0 to 31 times
-  def mkProgram(width: Int) = {
+  def mkProgram(width_rd: Int, width_rs: Int, pos: Boolean) = {
     // val width = 32
     // require(width <= 32)
-    val initial_value = (BigInt(1) << (width - 1))
-    val rs_init_val: Long = 1.toLong
+    val initial_value =
+      if (pos) (BigInt(1) << (width_rs - 2)) else (BigInt(1) << (width_rs - 1))
+
     def computeExpected(init_val: BigInt): Seq[BigInt] = {
-      val sign = init_val >> (width - 1)
-      val sign_mask = sign << (width - 1)
+      val sign = init_val >> (width_rs - 1)
+      val rd_max = (BigInt(1) << width_rd) - 1
+      val sign_bit =
+        if (sign == 1) ((rd_max << (width_rs - 1)) & rd_max) else BigInt(0)
       @tailrec
       def generate(xs: Seq[BigInt]): Seq[BigInt] = {
-        if (xs.length == width + 1) {
+        if (xs.length == width_rs + 1) {
           xs
         } else {
-          generate(xs :+ (sign_mask | (xs.last >> 1)))
+          generate(xs :+ (sign_bit | (xs.last >> 1)))
         }
       }
-      generate(Seq(init_val))
+      generate(Seq(sign_bit | init_val))
     }
     val expected_vals = computeExpected(initial_value).toArray
 
-    val expected_fp = dumpToFile(s"expected_${width}.dat", expected_vals)
+    val expected_fp =
+      dumpToFile(s"expected_${width_rd}_${width_rs}_${pos}.dat", expected_vals)
 
     val memblock =
-      s"@MEMBLOCK [block = \"expected\", width = ${width}, capacity = ${expected_vals.length}]"
+      s"@MEMBLOCK [block = \"expected\", width = ${width_rd}, capacity = ${expected_vals.length}]"
 
     val addr_width = log2Ceil(expected_vals.length)
 
@@ -49,7 +53,7 @@ class UnconstrainedWideShiftRightArithmeticTester
     .proc proc_0_0:
 
     ${memblock}
-    @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width}]
+    @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width_rd}]
     .mem res_ref_ptr ${addr_width}
     .const const_ptr_inc ${addr_width} 1
     .reg sh_amount 16 0
@@ -59,11 +63,11 @@ class UnconstrainedWideShiftRightArithmeticTester
     .const const_1 16 1
     .const sh_amount_max 16 ${expected_vals.length}
 
-    .const const_1_wide ${width} 1
-    .wire shifted ${width}
 
-    .const init_val ${width} ${initial_value}
-    .wire shifted_ref ${width}
+    .wire shifted ${width_rd}
+
+    .const init_val ${width_rs} ${initial_value}
+    .wire shifted_ref ${width_rd}
 
 
     SRA shifted, init_val, sh_amount;
@@ -93,13 +97,38 @@ class UnconstrainedWideShiftRightArithmeticTester
   val interpreter = UnconstrainedInterpreter
   val backend =
     UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
-  it should "correctly translate wide SRA operations to 16-bit SLLs" taggedAs Tags.WidthConversion in {
 
-    repeat(100) { i =>
-      val prog_txt = mkProgram(16 + i)
-      val program = AssemblyParser(prog_txt, ctx)
-      backend.apply(program, ctx)
-    }
-
+  private def test(width_rd: Int, width_rs: Int, pos: Boolean): Unit = {
+    val prog_txt = mkProgram(width_rd, width_rs, pos)
+    val program = AssemblyParser(prog_txt, ctx)
+    backend.apply(program, ctx)
   }
+
+  it should "handle width(rd) = width(rs) < 16 and rs < 0" taggedAs Tags.WidthConversion in {
+    Range(1, 16) foreach { i =>
+      test(i, i, false)
+    }
+  }
+  it should "handle width(rd) = width(rs) < 16 and rs > 0" taggedAs Tags.WidthConversion in {
+    Range(1, 16) foreach { i =>
+      test(i, i, true)
+    }
+  }
+
+  it should "handle width(rd) = width(rs) = 16 and rs < 0" taggedAs Tags.WidthConversion in {
+    test(16, 16, true)
+  }
+
+  it should "handle width(rd) = width(rs) = 16 and rs > 0" taggedAs Tags.WidthConversion in {
+    test(16, 16, false)
+  }
+
+  it should "handle width(rd) = width(rs) > 16 and rs < 0" taggedAs Tags.WidthConversion in {
+    Range(17, 100) foreach { i => test(i, i, false) }
+  }
+
+  it should "handle width(rd) = width(rs) > 16 and rs > 0" taggedAs Tags.WidthConversion in {
+    Range(17, 100) foreach { i => test(i, i, true) }
+  }
+
 }
