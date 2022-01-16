@@ -811,8 +811,19 @@ object UnconstrainedBigIntTo16BitsTransform
 
         val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
 
-        val rd_uint16_array_mutable = rd_uint16_array.map { x =>
-          builder.mkWire(x, 16)
+        /** We create a copy of the input array (rs) and modify the copy
+          * in-place to compute the shifted value (rd). Note that although I
+          * call it "rd_uint16_array_mutable" this array is in fact as big as
+          * the larger of rd_uint16_array and rs_uint16_array. We want to
+          * correctly compute a SLL in which width(rd) > width(rs). For
+          * instance, if width(rs) = 2 and width(rd) = 4, SLL rd, rs = 1, 3
+          * should result in rd = 4 even though we are effectively overflowing
+          * the rs operand.
+          */
+        val lossless_result_size =
+          rs_uint16_array.length max rd_uint16_array.length
+        val rd_uint16_array_mutable = Seq.tabulate(lossless_result_size) { i =>
+          builder.mkWire(s"sra_builder_${i}", 16)
         }
         if (shift_orig_def.variable.varType == ConstType) {
 
@@ -987,11 +998,13 @@ object UnconstrainedBigIntTo16BitsTransform
             val tmp_tmp_res = builder.mkWire("tmp_tmp_res", 16)
             val tmp_tmp_tmp_res = builder.mkWire("tmp_tmp_tmp_res", 16)
             // initialize the rd mutable array to the values of the rs
-
-            assert(rs_uint16_array.size == rd_uint16_array.size)
+            // if rd_uint16_array is larger, we zero extend rs
             inst_q ++= moveRegs(
               rd_uint16_array_mutable,
-              rs_uint16_array,
+              rs_uint16_array
+                ++ Seq.fill(lossless_result_size - rs_uint16_array.length) {
+                  builder.mkConstant(0)
+                },
               instruction
             )
 
@@ -1003,7 +1016,7 @@ object UnconstrainedBigIntTo16BitsTransform
                 shift_uint16.head,
                 const_0
               )
-            for (ix <- 0 until rs_uint16_array.length) {
+            for (ix <- 0 until rd_uint16_array_mutable.length) {
               inst_q ++= Seq(
                 BinaryArithmetic(
                   BinaryOperator.SEQ,
@@ -1048,7 +1061,7 @@ object UnconstrainedBigIntTo16BitsTransform
                   const_16
                 )
               )
-              for (jx <- 0 until rs_uint16_array.length) {
+              for (jx <- 0 until rd_uint16_array_mutable.length) {
 
                 inst_q ++= Seq(
                   BinaryArithmetic(
@@ -1106,12 +1119,18 @@ object UnconstrainedBigIntTo16BitsTransform
             }
           }
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
-        inst_q ++= moveRegs(
-          rd_uint16_array,
-          rd_uint16_array_mutable,
+
+        inst_q ++= maskRd(
+          rd_uint16_array_mutable.take(rd_uint16_array.length).last,
+          rd_mask,
           instruction
         )
+        inst_q ++= moveRegs(
+          rd_uint16_array,
+          rd_uint16_array_mutable.take(rd_uint16_array.length),
+          instruction
+        )
+
       case BinaryOperator.SRA =>
         val shift_amount = instruction.rs2
         val rd = instruction.rd
@@ -1366,11 +1385,15 @@ object UnconstrainedBigIntTo16BitsTransform
         val ConvertedWire(rd_uint16_array, rd_mask) =
           builder.getConversion(instruction.rd)
 
-
         val ConvertedWire(rs1_uint16_array, _) =
           builder.getConversion(instruction.rs1)
 
-        val mutable_array_size = rd_uint16_array.length max rs1_uint16_array.length
+        // we create a copy of RS1 and shift it in a mutable manner
+        // and then move this array to the RD. In case width(rd) < width(rs1)
+        // we don't have any bits lost, so the shift operation can be use
+        // to extract ranges from a larger word (i.e., RS1) into a smaller one
+        // (i.e., RD)
+        val mutable_array_size = rs1_uint16_array.length
 
         val rd_uint16_array_mutable = Seq.tabulate(mutable_array_size) { i =>
           builder.mkWire(s"srl_builder_${i}", 16)
@@ -1392,10 +1415,7 @@ object UnconstrainedBigIntTo16BitsTransform
           // initialize the rd mutable array
           inst_q ++= moveRegs(
             rd_uint16_array_mutable,
-            rs1_uint16_array ++
-              Seq.fill(mutable_array_size - rs1_uint16_array.length) {
-                builder.mkConstant(0)
-            },
+            rs1_uint16_array,
             instruction
           )
 
@@ -1531,12 +1551,30 @@ object UnconstrainedBigIntTo16BitsTransform
 
           }
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
-        inst_q ++= moveRegs(
-          rd_uint16_array,
-          rd_uint16_array_mutable.slice(0, rd_uint16_array.length),
-          instruction
-        )
+
+        if (rd_uint16_array.length > rd_uint16_array_mutable.length) {
+          inst_q ++= moveRegs(
+            rd_uint16_array,
+            rd_uint16_array_mutable ++
+              Seq.fill(
+                rd_uint16_array.length - rd_uint16_array_mutable.length
+              ) {
+                builder.mkConstant(0)
+              },
+            instruction
+          )
+        } else {
+          inst_q ++= maskRd(
+            rd_uint16_array_mutable.take(rd_uint16_array.length).last,
+            rd_mask,
+            instruction
+          )
+          inst_q ++= moveRegs(
+            rd_uint16_array,
+            rd_uint16_array_mutable.take(rd_uint16_array.length),
+            instruction
+          )
+        }
 
       case BinaryOperator.SLTS =>
         // we should only handle SLTS rd, rs1, const_0, because this is the

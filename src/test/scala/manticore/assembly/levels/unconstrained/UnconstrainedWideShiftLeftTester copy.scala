@@ -15,19 +15,18 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
 
   // val randgen = new scala.util.Random()
   // a simple program that shifts '1' to the left 0 to 31 times
-  def mkProgram(width: Int) = {
+  def mkProgram(width_rd: Int, width_rs: Int) = {
     // val width = 32
     // require(width <= 32)
     val initial_value = 1
-    val rs_init_val: Long = 1.toLong
-    val expected_vals = Array.tabulate(width + 1) { i =>
-      (BigInt(initial_value) << i) & ((BigInt(1) << width) - 1)
+    val expected_vals = Array.tabulate(width_rs + 1) { i =>
+      (BigInt(initial_value) << i) & ((BigInt(1) << width_rd) - 1)
     }
 
-    val expected_fp = dumpToFile(s"expected_${width}.dat", expected_vals)
+    val expected_fp = dumpToFile(s"expected_${width_rd}_${width_rs}.dat", expected_vals)
 
     val memblock =
-      s"@MEMBLOCK [block = \"expected\", width = ${width}, capacity = ${expected_vals.length}]"
+      s"@MEMBLOCK [block = \"expected\", width = ${width_rd}, capacity = ${expected_vals.length}]"
 
     val addr_width = log2Ceil(expected_vals.length)
 
@@ -36,7 +35,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     .proc proc_0_0:
 
     ${memblock}
-    @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width}]
+    @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width_rd}]
     .mem res_ref_ptr ${addr_width}
     .const const_ptr_inc ${addr_width} 1
     .reg sh_amount 16 0
@@ -46,11 +45,10 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     .const const_1 16 1
     .const sh_amount_max 16 ${expected_vals.length}
 
-    .const const_1_wide ${width} 1
-    .wire shifted ${width}
+    .wire shifted ${width_rd}
 
-    .const init_val ${width} ${initial_value}
-    .wire shifted_ref ${width}
+    .const init_val ${width_rs} ${initial_value}
+    .wire shifted_ref ${width_rd}
 
 
     SLL shifted, init_val, sh_amount;
@@ -80,13 +78,37 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
   val interpreter = UnconstrainedInterpreter
   val backend =
     UnconstrainedBigIntTo16BitsTransform followedBy UnconstrainedInterpreter
-  it should "correctly translate wide SLL operations to 16-bit SLLs" taggedAs Tags.WidthConversion in {
+
+  private def test(width_rd: Int, width_rs: Int): Unit = {
+    val prog_text = mkProgram(width_rd, width_rs)
+    val program = AssemblyParser(prog_text, ctx)
+    backend.apply(program, ctx)
+  }
+  it should "handle width(rd) == width(rs)" taggedAs Tags.WidthConversion in {
 
     repeat(100) { i =>
-      val prog_txt = mkProgram(16 + i)
-      val program = AssemblyParser(prog_txt, ctx)
-      backend.apply(program, ctx)
+     val width_rs = 16 + i
+     val width_rd = width_rs
+     test(width_rd, width_rs)
     }
-
   }
+
+  it should "handle width(rd) < width(rs)" taggedAs Tags.WidthConversion in {
+
+    repeat(100) { i =>
+     val width_rs = 16 + i
+     val width_rd = randgen.nextInt(width_rs) + 1
+     test(width_rd, width_rs)
+    }
+  }
+
+  it should "handle width(rd) > width(rs)" taggedAs Tags.WidthConversion in {
+
+    repeat(100) { i =>
+     val width_rs = 16 + i
+     val width_rd = width_rs + randgen.nextInt(20)
+     test(width_rd, width_rs)
+    }
+  }
+
 }
