@@ -33,8 +33,12 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
       .proc proc_0_0:
         .const first ${width} ${ref}
         .const second ${width} ${different}
+        .const true 1 1
+        .const false 1 0
         @TRAP [type = "\\fail"]
         EXPECT first, second, ["failed"];
+        @TRAP [type = "\\stop"]
+        EXPECT true, false, ["stop"];
     """
   }
   def passingProgram() = {
@@ -46,8 +50,12 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
       .proc proc_0_0:
         .const first ${width} ${ref}
         .const second ${width} ${got}
+        .const true 1 1
+        .const false 1 0
         @TRAP [type = "\\fail"]
         EXPECT first, second, ["failed"];
+        @TRAP [type = "\\stop"]
+        EXPECT true, false, ["stop"];
     """
   }
 

@@ -877,10 +877,13 @@ object UnconstrainedInterpreter
         logger.info(s"Starting cycle ${cycles}")
         interp.run()
         vcd_writer.tick()
-        // interp.dumpRegisterFile(s"state_${cycles}.txt")
         cycles += 1
       }
-      logger.info(s"Finished interpretation after ${cycles} cycles")
+      if (interp.getException().isEmpty) {
+        logger.error(s"Interpretation timed out after ${cycles} cycles!")
+      } else {
+        logger.info(s"Finished interpretation after ${cycles} cycles")
+      }
       vcd_writer.flush()
       vcd_writer.close()
     }
