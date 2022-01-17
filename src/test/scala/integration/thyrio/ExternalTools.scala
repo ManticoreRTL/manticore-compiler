@@ -9,16 +9,20 @@ trait ExternalTool {
 
   import scala.sys.process._
   val name: String
+  def stdPrint(x: String): Unit = println(x)
   def invoke(args: Seq[String], work_dir: File)(
-      capture: String => Unit = _ => ()
+      capture: String => Unit = stdPrint
   ): Unit = {
     val cmd = s"${name} ${args mkString (" ")}"
-    sys.process
+    val ret = sys.process
       .Process(
         command = cmd,
         cwd = work_dir
       )
       .!(ProcessLogger(line => capture(line)))
+    if (ret != 0) {
+      throw new RuntimeException(s"${name} returned ${ret}")
+    }
 
   }
   def installed(): Boolean = s"which ${name}".! == 0

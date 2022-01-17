@@ -56,20 +56,8 @@ class RV32 extends ThyrioUnitTest {
 
   Make.invoke(Seq(), cwd.toFile()) { println(_) }
 
-  def initialPhases() = UnconstrainedNameChecker followedBy
-    UnconstrainedMakeDebugSymbols followedBy
-    UnconstrainedOrderInstructions followedBy
-    UnconstrainedRemoveAliases followedBy
-    UnconstrainedDeadCodeElimination followedBy
-    UnconstrainedCloseSequentialCycles followedBy
-    UnconstrainedInterpreter followedBy
-    UnconstrainedBreakSequentialCycles
-  def finalPhases() = WidthConversionCore followedBy
-    UnconstrainedRenameVariables followedBy
-    UnconstrainedDeadCodeElimination followedBy
-    UnconstrainedCloseSequentialCycles followedBy
-    UnconstrainedInterpreter followedBy
-    UnconstrainedBreakSequentialCycles
+  def initialPhases() = ManticoreFrontend.initialPhases()
+  def finalPhases() = ManticoreFrontend.initialPhases()
 
   type Phase =
     Transformation[UnconstrainedIR.DefProgram, UnconstrainedIR.DefProgram]
