@@ -230,7 +230,8 @@ object UnconstrainedInterpreter
     def interpret(inst: BinaryArithmetic): Unit = {
       import manticore.assembly.BinaryOperator._
       val BinaryArithmetic(op, rd, rs1, rs2, _) = inst
-      implicit val clip_width = ClipWidth(definitions(rd).variable.width)
+      val rd_width = definitions(rd).variable.width
+      implicit val clip_width = ClipWidth(rd_width)
       val rs1_val = state.register_file(rs1)
       val rs2_val = state.register_file(rs2)
       val rd_val = op match {
@@ -292,7 +293,7 @@ object UnconstrainedInterpreter
               val full_mask = (BigInt(1) << rs1_width) - 1
               val nonsigned_width =
                 if (rs2_val > rs1_width) 0 else rs1_width - rs2_val.toInt
-              val nonsign_mask = (1 << nonsigned_width) - 1
+              val nonsign_mask = (BigInt(1) << nonsigned_width) - 1
               val sign_mask = full_mask - nonsign_mask
               val shifted = rs1_val >> rs2_val.toInt
               val shifted_signed = sign_mask | shifted
@@ -619,6 +620,7 @@ object UnconstrainedInterpreter
       dbg match {
         case Some(sym) =>
           !sym.isGenerated().getOrElse(true)
+          true
         case _ => false
       }
     }
