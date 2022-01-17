@@ -712,7 +712,7 @@ object UnconstrainedInterpreter
         val defined_values = indices.zip(values).toMap
 
         val content = Array.tabulate(max_index + 1) { i =>
-          defined_values.getOrElse(0, BigInt(0))
+          defined_values.getOrElse(i, BigInt(0))
         }
 
         new Impl(
