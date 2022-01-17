@@ -39,7 +39,7 @@ endmodule
 """
         # set the seed to a fixed value for reproducibility
         random.seed(0)
-        num_tests = 10
+        num_tests = 20
 
         # generate random fields and assemble the instruction
         insts = []
