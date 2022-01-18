@@ -18,5 +18,21 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
+    - name: Install verilator
+      run: sudo apt install -y verilator
     - name: Run tests
-      run: sbt 'testOnly -- -n WidthConversion'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideSltsTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideSubTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideLocalLoadTester'
+      run: sbt 'testOnly manticore.assembly.levels.UnconstrainedAssemblyParserTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideShiftLeftTester'
+      run: sbt 'testOnly manticore.assembly.levels.OrderInstructionsTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideShiftRightArithmeticTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideSeqTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideLocalStoreTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideShiftRightLogicalTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideExpectTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideAddTester'
+      run: sbt 'testOnly manticore.assembly.levels.DeadCodeEliminationTester'
+      run: sbt 'testOnly manticore.assembly.levels.RemoveAliasesTester'
+      run: sbt 'testOnly manticore.assembly.levels.unconstrained.UnconstrainedWideMuxTester'
