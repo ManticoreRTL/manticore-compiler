@@ -67,7 +67,7 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
     Range(0, 10).foreach { i =>
       val prog_txt = mkProgram(s"ld_test_${i}")
       val prog = AssemblyParser(prog_txt, ctx)
-      println(prog.serialized)
+
       backend(prog, ctx)
     }
 

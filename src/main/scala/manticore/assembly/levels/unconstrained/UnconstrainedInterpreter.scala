@@ -620,7 +620,6 @@ object UnconstrainedInterpreter
       dbg match {
         case Some(sym) =>
           !sym.isGenerated().getOrElse(true)
-          true
         case _ => false
       }
     }
@@ -874,7 +873,7 @@ object UnconstrainedInterpreter
       val interp =
         new ProcessInterpreter(source.processes.head)(context, Some(vcd_writer))
       while (cycles < context.max_cycles && interp.getException().isEmpty) {
-        logger.info(s"Starting cycle ${cycles}")
+        // logger.info(s"Starting cycle ${cycles}")
         interp.run()
         vcd_writer.tick()
         cycles += 1

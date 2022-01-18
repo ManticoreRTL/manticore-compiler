@@ -39,7 +39,7 @@ int main(int argc, char **argv, char **env) {
     top->clock = !top->clock;
     top->eval();
     tfp->dump(time);
-    printf("Dumping %d\n", time);
+
 
   }
 

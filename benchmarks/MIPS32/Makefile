@@ -68,7 +68,7 @@ default: verilate
 verilate: $(wildcard *.sv)
 	@echo "Verilating files ..."
 	$(VERILATOR) $(VERILATOR_FLAGS) $(VERILATOR_TOP_FILE)
-
+	obj_dir/VTestVerilator
 
 clean mostlyclean distclean maintainer-clean::
 	-rm -rf obj_dir logs *.log *.dmp *.vpd coverage.dat core

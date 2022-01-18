@@ -54,7 +54,7 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
     repeat(200) { i =>
 
         val prog = mkProgram()
-        println(prog)
+
         val parsed = AssemblyParser(prog, ctx)
         backend(parsed, ctx)
 

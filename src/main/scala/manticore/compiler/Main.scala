@@ -96,14 +96,14 @@ object Main {
         UnconstrainedMakeDebugSymbols followedBy
         UnconstrainedOrderInstructions followedBy
         UnconstrainedRemoveAliases followedBy
-        UnconstrainedDeadCodeElimination followedBy
+        // UnconstrainedDeadCodeElimination followedBy
         UnconstrainedCloseSequentialCycles followedBy
         UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles followedBy
         WidthConversionCore followedBy
         UnconstrainedRenameVariables followedBy
         UnconstrainedNameChecker followedBy
-        UnconstrainedDeadCodeElimination followedBy
+        // UnconstrainedDeadCodeElimination followedBy
         UnconstrainedCloseSequentialCycles followedBy
         UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles
