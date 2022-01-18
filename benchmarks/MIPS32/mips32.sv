@@ -95,9 +95,9 @@ module Alu (
 
   always @(*) begin
     case (ctrl)
-      4'b0000: result = op1 << op2[5:0];  // sll
-      4'b0001: result = op1 >> op2[5:0];  // srl
-      4'b0010: result = op1 >>> op2[5:0];  // sra
+      4'b0000: result = op1 << op2[4:0];  // sll
+      4'b0001: result = op1 >> op2[4:0];  // srl
+      4'b0010: result = op1 >>> op2[4:0];  // sra
       4'b0011: result = op1 + op2;  // add
       4'b0100: result = op1 - op2;  // sub
       4'b0101: result = op1 & op2;  // and
@@ -447,56 +447,33 @@ module Mips32 (
   // Main Loop
   always @(posedge clock) begin
 
-    if (reset) halted_r <= 1'b0;
-    else if (instr[5:0] == 6'd13) begin
-      halted_r <= 1'b1;
+    if (reset) begin
+      pc <= 0;
+      halted_r <= 1'b0;
+    end else begin
+      if (instr[5:0] == 6'd13) begin
+        halted_r <= 1'b1;
+      end
+      if (halted_r == 1'b0) begin
+        if (jump) begin
+          pc <= jump_addr;
+        end else if (branch & zero) begin
+          pc <= branch_addr;
+        end else begin
+          pc <= pc_4;
+        end
+      end
+
     end
 
-    if (halted_r == 1'b0) begin
-      if (jump) begin
-        pc <= jump_addr;
-      end else if (branch & zero) begin
-        pc <= branch_addr;
-      end else begin
-        pc <= pc_4;
-      end
-    end
+
+
 
   end
 endmodule
 
 
-// module TestVerilator (
-//     input wire clock,
-//     input wire reset
-// );
 
-
-//   reg  [31:0] inst_mem[256:0];
-
-
-//   wire [31:0] inst;
-//   wire [31:0] addr;
-//   assign inst = inst_mem[addr];
-//   wire halted;
-//   Mips32 dut (
-//       .instr (inst),
-//       .raddr (addr),
-//       .clock (clock),
-//       .reset (reset),
-//       .halted(halted)
-//   );
-
-//   always @(posedge clock) begin
-//     if (halted) $finish;
-//   end
-
-//   initial begin
-//     $readmemh("sum.hex", inst_mem);
-//   end
-
-
-// endmodule
 
 
 module ResetDriver (
@@ -506,7 +483,7 @@ module ResetDriver (
 
 
 
-  reg reset_counter = 3;
+  reg [2:0] reset_counter = 7;
 
   always_ff @(posedge clock) begin
     if (reset_counter > 0) reset_counter <= reset_counter - 1;
@@ -556,16 +533,16 @@ module TestVerilator (
   end
 
   initial begin
-    // $readmemh("sum.hex", inst_mem);
-    inst_mem[0] = 32'h631826;
-    inst_mem[1] = 32'h2063000a;
-    inst_mem[2] = 32'h210826;
-    inst_mem[3] = 32'h421026;
-    inst_mem[4] = 32'h10230003;
-    inst_mem[5] = 32'h411020;
-    inst_mem[6] = 32'h20210001;
-    inst_mem[7] = 32'h8000004;
-    inst_mem[8] = 32'h40000d;
+    $readmemh("sum.hex", inst_mem);
+    // inst_mem[0] = 32'h631826;
+    // inst_mem[1] = 32'h2063000a;
+    // inst_mem[2] = 32'h210826;
+    // inst_mem[3] = 32'h421026;
+    // inst_mem[4] = 32'h10230003;
+    // inst_mem[5] = 32'h411020;
+    // inst_mem[6] = 32'h20210001;
+    // inst_mem[7] = 32'h8000004;
+    // inst_mem[8] = 32'h40000d;
   end
 
 
