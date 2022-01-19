@@ -6,6 +6,7 @@ import manticore.assembly.HasSerialized
 import scala.util.parsing.input.Positional
 import java.io.File
 import java.io.PrintWriter
+import java.io.PrintStream
 
 /** Irrecoverable compilation exception/error
   *
@@ -21,34 +22,36 @@ trait Logger {
   import io.AnsiColor._
 
   protected def message[N <: HasSerialized with Positional](
-      msg: String,
+      msg: => String,
       node: N
   )(implicit phase_id: TransformationID): Unit
 
-  protected def message(msg: String)(implicit phase_id: TransformationID): Unit
+  protected def message(msg: => String)(implicit
+      phase_id: TransformationID
+  ): Unit
 
   def error[N <: HasSerialized with Positional](
-      msg: String,
+      msg: => String,
       node: N
   )(implicit phase_id: TransformationID): Unit
 
-  def error(msg: String)(implicit phase_id: TransformationID): Unit
+  def error(msg: => String)(implicit phase_id: TransformationID): Unit
 
   def countErrors(): Int
   def countWarnings(): Int
   def countProgress(): Int
 
-  def warn(msg: String)(implicit phase_id: TransformationID): Unit
+  def warn(msg: => String)(implicit phase_id: TransformationID): Unit
 
-  def warn[N <: HasSerialized with Positional](msg: String, node: N)(implicit
+  def warn[N <: HasSerialized with Positional](msg: => String, node: N)(implicit
       phase_id: TransformationID
   ): Unit
 
-  def info[N <: HasSerialized with Positional](msg: String, node: N)(implicit
+  def info[N <: HasSerialized with Positional](msg: => String, node: N)(implicit
       phase_id: TransformationID
   ): Unit
-  def info(msg: String)(implicit phase_id: TransformationID): Unit
-  def fail(msg: String)(implicit phase_id: TransformationID): Nothing
+  def info(msg: => String)(implicit phase_id: TransformationID): Unit
+  def fail(msg: => String)(implicit phase_id: TransformationID): Nothing
 
   def debug(msg: => String)(implicit phase_id: TransformationID): Unit
   def debug[N <: HasSerialized with Positional](
@@ -62,8 +65,8 @@ trait Logger {
 
   def openFile(file_name: String)(implicit phase_id: TransformationID): File
 
-  def start(msg: String)(implicit phase_id: TransformationID): Unit
-  def end(msg: String)(implicit phase_id: TransformationID): Unit
+  def start(msg: => String)(implicit phase_id: TransformationID): Unit
+  def end(msg: => String)(implicit phase_id: TransformationID): Unit
 }
 
 object Logger {
@@ -95,15 +98,14 @@ object Logger {
     override val RESET: String = ""
   }
 
-
   private class VerbosePrintLogger(
       val db_en: Boolean,
       val info_en: Boolean,
       val dump_dir: Option[File],
       val dump_all: Boolean,
-      val no_colors: Boolean = true
+      val no_colors: Boolean,
+      val printer: PrintWriter
   ) extends Logger {
-
 
     val color_pallette = if (no_colors) NoColor else Colored
     import color_pallette._
@@ -113,28 +115,28 @@ object Logger {
     private var warn_count: Int = 0
 
     override protected def message[N <: HasSerialized with Positional](
-        msg: String,
+        msg: => String,
         node: N
     )(implicit phase_id: TransformationID): Unit =
-      println(
+      printer.println(
         s"${msg} \n at \n${node.serialized}:${node.pos}\n\t\t reported by ${BOLD}${phase_id}${RESET}"
       )
 
     override protected def message(
-        msg: String
+        msg: => String
     )(implicit phase_id: TransformationID): Unit =
-      println(
+      printer.println(
         s"${msg} \n\t\treported by ${BOLD}${phase_id}${RESET}"
       )
 
     def error[N <: HasSerialized with Positional](
-        msg: String,
+        msg: => String,
         node: N
     )(implicit phase_id: TransformationID): Unit = {
       message(s"[${RED}error${RESET}]${msg}", node)
       error_count += 1
     }
-    def error(msg: String)(implicit phase_id: TransformationID): Unit = {
+    def error(msg: => String)(implicit phase_id: TransformationID): Unit = {
       message(s"[${RED}error${RESET}] ${msg}")
       error_count += 1
     }
@@ -142,32 +144,33 @@ object Logger {
     def countWarnings(): Int = warn_count
     def countProgress(): Int = transform_index
 
-    def warn(msg: String)(implicit phase_id: TransformationID): Unit = {
+    def warn(msg: => String)(implicit phase_id: TransformationID): Unit = {
       message(s"[${YELLOW}warn${RESET}] ${msg}")
       warn_count += 1
     }
 
-    def warn[N <: HasSerialized with Positional](msg: String, node: N)(implicit
-        phase_id: TransformationID
+    def warn[N <: HasSerialized with Positional](msg: => String, node: N)(
+        implicit phase_id: TransformationID
     ): Unit = {
       message(s"[${YELLOW}warn]${RESET}] ${msg}", node)
       warn_count += 1
     }
 
-    def info[N <: HasSerialized with Positional](msg: String, node: N)(implicit
-        phase_id: TransformationID
+    def info[N <: HasSerialized with Positional](msg: => String, node: N)(
+        implicit phase_id: TransformationID
     ): Unit = if (info_en) {
       message(s"[${BLUE}info${RESET}] ${msg}", node)
     }
 
-    def info(msg: String)(implicit phase_id: TransformationID): Unit = if (
+    def info(msg: => String)(implicit phase_id: TransformationID): Unit = if (
       info_en
     ) {
       message(s"[${BLUE}info${RESET}] ${msg}")
     }
 
-    def fail(msg: String)(implicit phase_id: TransformationID): Nothing = {
+    def fail(msg: => String)(implicit phase_id: TransformationID): Nothing = {
 
+      printer.flush()
       throw new CompilationFailureException(msg)
     }
 
@@ -191,8 +194,8 @@ object Logger {
           Files.createDirectories(dir.toPath())
 
           info(s"Dumping ${file_name} to ${dir.toPath.toAbsolutePath}")
-          val fpath = dir.toPath().resolve(file_name)
-          val writer = new PrintWriter(fpath.toFile)
+          val xpath = dir.toPath().resolve(file_name)
+          val writer = new PrintWriter(xpath.toFile)
           writer.print(gen)
           writer.close()
 
@@ -213,11 +216,12 @@ object Logger {
       }
     }
 
-    def start(msg: String)(implicit phase_id: TransformationID): Unit = {
+    def start(msg: => String)(implicit phase_id: TransformationID): Unit = {
       info(s"${msg} ")
     }
 
-    def end(msg: String)(implicit phase_id: TransformationID): Unit = {
+    def end(msg: => String)(implicit phase_id: TransformationID): Unit = {
+      printer.flush()
       if (msg.nonEmpty)
         info(msg)
       transform_index += 1
@@ -228,7 +232,24 @@ object Logger {
       db_en: Boolean,
       info_en: Boolean,
       dump_dir: Option[File],
-      dump_all: Boolean
-  ): Logger = new VerbosePrintLogger(db_en, info_en, dump_dir, dump_all)
+      dump_all: Boolean,
+      log_file: Option[File]
+  ): Logger = {
+
+    val printer = log_file match {
+      case Some(f: File) =>
+        Files.createDirectories(f.toPath().getParent())
+        new PrintWriter(f)
+      case None          => new PrintWriter(System.out)
+    }
+    new VerbosePrintLogger(
+      db_en,
+      info_en,
+      dump_dir,
+      dump_all,
+      log_file.nonEmpty,
+      printer
+    )
+  }
 
 }

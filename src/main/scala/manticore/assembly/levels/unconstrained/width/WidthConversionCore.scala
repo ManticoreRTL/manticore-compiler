@@ -702,7 +702,7 @@ object WidthConversionCore
                   // done
                   inst_q ++= moveRegs(
                     rd_uint16_array.take(rd_uint16_array.length - 1),
-                    result_builder_array.take(rd_uint16_array.length - 1),
+                    initial_result_builder.take(rd_uint16_array.length - 1),
                     instruction
                   )
                 case None =>
@@ -710,7 +710,7 @@ object WidthConversionCore
                   // the pre-shifted operands to the final output
                   inst_q ++= moveRegs(
                     rd_uint16_array,
-                    result_builder_array.take(rs_uint16_array.length),
+                    initial_result_builder.take(rd_uint16_array.length),
                     instruction
                   )
               }

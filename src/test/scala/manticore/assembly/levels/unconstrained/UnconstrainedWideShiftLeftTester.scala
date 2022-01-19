@@ -7,6 +7,7 @@ import manticore.assembly.levels.unconstrained.UnconstrainedIR._
 import manticore.assembly.levels.UnconstrainedAssemblyParserTester
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
+import manticore.compiler.CompilationFailureException
 
 class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
 
@@ -76,32 +77,32 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     val program = AssemblyParser(prog_text, f.ctx)
     backend.apply(program, f.ctx)
   }
-  // it should "handle width(rd) == width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
+  it should "handle width(rd) == width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
+    f =>
+      repeat(100) { i =>
+        val width_rs = 16 + i
+        val width_rd = width_rs
+        test(width_rd, width_rs)(f)
+      }
+  }
 
-  //   repeat(100) { i =>
-  //     val width_rs = 16 + i
-  //     val width_rd = width_rs
-  //     test(width_rd, width_rs)
-  //   }
-  // }
+  it should "handle width(rd) < width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
+    f =>
+      repeat(100) { i =>
+        val width_rs = 16 + i
+        val width_rd = randgen.nextInt(width_rs) + 1
+        test(width_rd, width_rs)(f)
+      }
+  }
 
-  // it should "handle width(rd) < width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
-
-  //   repeat(100) { i =>
-  //     val width_rs = 16 + i
-  //     val width_rd = randgen.nextInt(width_rs) + 1
-  //     test(width_rd, width_rs)
-  //   }
-  // }
-
-  // it should "handle dynamic width(rd) > width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
-
-  //   repeat(100) { i =>
-  //     val width_rs = 16 + i
-  //     val width_rd = width_rs + randgen.nextInt(20)
-  //     test(width_rd, width_rs)
-  //   }
-  // }
+  it should "handle dynamic width(rd) > width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
+    f =>
+      repeat(100) { i =>
+        val width_rs = 16 + i
+        val width_rd = width_rs + randgen.nextInt(20)
+        test(width_rd, width_rs)(f)
+      }
+  }
 
   def mkStaticProgram(
       width_rd: Int,
@@ -147,18 +148,28 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     """
   }
 
-  Range(0, 100).foreach { i =>
-    val width = i + 1
-    Range(i, width).foreach { j =>
-      it should s"handle width(rd) == width(rs) = ${width}, static SLL" taggedAs Tags.WidthConversion in {
-      f =>
-        // repeat(width - 10) { j =>
-        val prog_text = mkStaticProgram(width, width, 1, 1)(f)
-        val prog = AssemblyParser(prog_text, f.ctx)
-        backend(prog, f.ctx)
-        // }
+  private def test_static(width_rd: Int, width_rs: Int, shift_amount: Int)(
+      f: FixtureParam
+  ): Unit = {
+    val prog_text = mkStaticProgram(width_rd, width_rs, 1, shift_amount)(f)
+    val prog = AssemblyParser(prog_text, f.ctx)
+    backend(prog, f.ctx)
+  }
 
-      }
+  val static_test_cases = Seq
+    .fill(8000) {
+      val rd_width = randgen.nextInt(70) + 1
+      val rs_width = randgen.nextInt(70) + 1
+      val shift_amount = randgen.nextInt(rs_width + 1)
+      (rd_width, rs_width, shift_amount)
+    }
+    .distinct
+
+  println(s"Generated ${static_test_cases.length} static test cases")
+
+  static_test_cases.foreach { case (rd_width, rs_width, shift_amount) =>
+    it should s"handle static SLL w${rd_width}, w${rs_width}, ${shift_amount}" in {
+      test_static(rd_width, rs_width, shift_amount)(_)
     }
   }
 

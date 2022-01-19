@@ -10,15 +10,11 @@ import scala.reflect.internal.Phase
 import manticore.assembly.levels.TransformationID
 import java.awt.Color
 
-
-
 /** Classes for diagnostics and reporting
   *
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-
-
 
 trait AssemblyContext {
   val source_file: Option[File]
@@ -33,16 +29,9 @@ trait AssemblyContext {
 
   val logger: Logger
 
-  def notify(ev: AssemblyContext.Event): Unit
-  def read(ev: AssemblyContext.Event): Int
-
 }
 
 object AssemblyContext {
-  sealed abstract class Event
-  case object Error extends Event
-  case object Progress extends Event
-  case object Warning extends Event
 
   private class ContextImpl(
       val source_file: Option[File] = None,
@@ -55,24 +44,8 @@ object AssemblyContext {
       val max_cycles: Int = 1000,
       val quiet: Boolean = false,
       val logger: Logger
-  ) extends AssemblyContext {
+  ) extends AssemblyContext {}
 
-    private var transform_index: Int = 0
-    private var error_count: Int = 0
-    private var warn_count: Int = 0
-
-    def notify(ev: Event): Unit = ev match {
-      case Error    => error_count += 1
-      case Warning  => warn_count += 1
-      case Progress => transform_index += 1
-    }
-    def read(ev: Event): Int = ev match {
-      case Error    => error_count
-      case Warning  => warn_count
-      case Progress => transform_index
-    }
-
-  }
   def apply(
       source_file: Option[File] = None,
       output_file: Option[File] = None,
@@ -82,7 +55,9 @@ object AssemblyContext {
       debug_message: Boolean = false,
       max_registers: Int = 2048,
       max_cycles: Int = 1000,
-      quiet: Boolean = false
+      quiet: Boolean = false,
+      logger: Option[Logger] = None,
+      log_file: Option[File] = None
   ): AssemblyContext = {
     new ContextImpl(
       source_file,
@@ -94,7 +69,9 @@ object AssemblyContext {
       max_registers,
       max_cycles,
       quiet,
-      Logger(debug_message, !quiet, dump_dir, dump_all)
+      logger.getOrElse(
+        Logger(debug_message, !quiet, dump_dir, dump_all, log_file)
+      )
     )
   }
 

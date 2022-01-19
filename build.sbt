@@ -33,11 +33,11 @@ lazy val root = (project in file(".")).
 
 
     Test / javaOptions ++= jvmHeapMemOptions,
-    Test / parallelExecution := false, // required because Transformations are
+    // Test / parallelExecution := false, // required because Transformations are
     // global objects and once the Logger's error count go up failing a test
     // will cause tests that would pass in isolation to fail...
     // clean generated files by tests
-    cleanFiles += baseDirectory.value / "test_dump_dir",
+    cleanFiles += baseDirectory.value / "test_run_dir",
 
     // package the tests into the jar
     Test / publishArtifact := true

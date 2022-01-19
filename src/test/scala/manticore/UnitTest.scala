@@ -37,11 +37,10 @@ trait UnconstrainedTags {
 
 trait UnitFixtureTest extends FixtureAnyFlatSpec {
 
-
   val root_dir = Path
-      .of(".")
-      .resolve("test_run_dir")
-      .resolve(this.getClass().getSimpleName())
+    .of(".")
+    .resolve("test_run_dir")
+    .resolve(this.getClass().getSimpleName())
   case class FixtureParam(test_dir: Path, ctx: AssemblyContext) {
     def dump(file_name: String, text: String): Path = {
       val fp = test_dir.resolve(file_name)
@@ -51,13 +50,19 @@ trait UnitFixtureTest extends FixtureAnyFlatSpec {
       fp
     }
     def dump(file_name: String, content: Array[BigInt]): Path =
-      dump(file_name, content mkString "\n" )
+      dump(file_name, content mkString "\n")
 
   }
 
   protected def withFixture(test: OneArgTest) = {
-    val test_dir = root_dir.resolve(test.name.replace(" ", "_").replace("/", "_/_"))
-    val ctx = AssemblyContext(dump_all = true, dump_dir = Some(test_dir.toFile), quiet = false)
+    val test_dir =
+      root_dir.resolve(test.name.replace(" ", "_").replace("/", "_/_"))
+    val ctx = AssemblyContext(
+      dump_all = false,
+      dump_dir = Some(test_dir.toFile),
+      quiet = false,
+      log_file = Some(test_dir.resolve("run.log").toFile())
+    )
     if (!test_dir.toFile().isDirectory()) Files.createDirectories(test_dir)
     else test_dir
     withFixture(test.toNoArgTest(FixtureParam(test_dir, ctx)))
@@ -67,12 +72,3 @@ trait UnitFixtureTest extends FixtureAnyFlatSpec {
 }
 
 
-class TestTest extends UnitFixtureTest {
-
-  behavior of "Test of Test"
-
-  it should "have the fixture" in { () =>
-
-    println("")
-  }
-}
