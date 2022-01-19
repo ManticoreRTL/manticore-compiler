@@ -1,6 +1,6 @@
 package manticore.assembly.levels.unconstrained
 
-import manticore.UnconstrainedTest
+
 import java.nio.file.Path
 import java.io.PrintWriter
 import manticore.compiler.AssemblyContext
@@ -8,7 +8,7 @@ import manticore.assembly.parser.AssemblyParser
 
 class UnconstrainedWideMuxTester extends UnconstrainedWideTest {
 
-  def mkProgram(): String = {
+  def mkProgram(f: FixtureParam): String = {
 
     val width = randgen.nextInt(90) + 8
     val rs1_val = mkWideRand(width)
@@ -46,22 +46,15 @@ class UnconstrainedWideMuxTester extends UnconstrainedWideTest {
 
   behavior of "unconstrained wide mux"
 
-  val ctx =
-    AssemblyContext(
-      dump_all = true,
-      dump_dir = Some(dump_path.toFile()),
-      max_cycles = Int.MaxValue
-    )
 
-
-  it should "correctly handle the wide mux" taggedAs Tags.WidthConversion in {
+  it should "correctly handle the wide mux" taggedAs Tags.WidthConversion in { f =>
 
     repeat(100) { i =>
-      val prog_text = mkProgram()
+      val prog_text = mkProgram(f)
 
-      val parsed = AssemblyParser(prog_text, ctx)
+      val parsed = AssemblyParser(prog_text, f.ctx)
 
-      backend(parsed, ctx)
+      backend(parsed, f.ctx)
     }
 
   }

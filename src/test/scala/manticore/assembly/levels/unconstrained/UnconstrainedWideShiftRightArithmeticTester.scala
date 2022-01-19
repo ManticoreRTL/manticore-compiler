@@ -7,7 +7,7 @@ import manticore.assembly.levels.unconstrained.UnconstrainedIR._
 import manticore.assembly.levels.UnconstrainedAssemblyParserTester
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
-import manticore.UnconstrainedTest
+
 import scala.annotation.tailrec
 
 class UnconstrainedWideShiftRightArithmeticTester
@@ -17,7 +17,7 @@ class UnconstrainedWideShiftRightArithmeticTester
 
   // val randgen = new scala.util.Random()
   // a simple program that shifts '1' to the left 0 to 31 times
-  def mkProgram(width_rd: Int, width_rs: Int, pos: Boolean) = {
+  def mkProgram(width_rd: Int, width_rs: Int, pos: Boolean)(f: FixtureParam) = {
     // val width = 32
     // require(width <= 32)
     val initial_value =
@@ -41,7 +41,7 @@ class UnconstrainedWideShiftRightArithmeticTester
     val expected_vals = computeExpected(initial_value).toArray
 
     val expected_fp =
-      dumpToFile(s"expected_${width_rd}_${width_rs}_${pos}.dat", expected_vals)
+      f.dump(s"expected_${width_rd}_${width_rs}_${pos}.dat", expected_vals)
 
     val memblock =
       s"@MEMBLOCK [block = \"expected\", width = ${width_rd}, capacity = ${expected_vals.length}]"
@@ -87,45 +87,45 @@ class UnconstrainedWideShiftRightArithmeticTester
     """
   }
 
-  // val dump_path = createDumpDirectory()
-  val ctx = AssemblyContext(
-    dump_all = true,
-    dump_dir = Some(dump_path.toFile),
-    max_cycles = Int.MaxValue
-  )
-
-
-  private def test(width_rd: Int, width_rs: Int, pos: Boolean): Unit = {
-    val prog_txt = mkProgram(width_rd, width_rs, pos)
-    val program = AssemblyParser(prog_txt, ctx)
-    backend.apply(program, ctx)
+  private def test(width_rd: Int, width_rs: Int, pos: Boolean)(
+      f: FixtureParam
+  ): Unit = {
+    val prog_txt = mkProgram(width_rd, width_rs, pos)(f)
+    val program = AssemblyParser(prog_txt, f.ctx)
+    backend.apply(program, f.ctx)
   }
 
   it should "handle width(rd) = width(rs) < 16 and rs < 0" taggedAs Tags.WidthConversion in {
-    Range(1, 16) foreach { i =>
-      test(i, i, false)
-    }
+    f =>
+      Range(1, 16) foreach { i =>
+        test(i, i, false)(f)
+      }
   }
   it should "handle width(rd) = width(rs) < 16 and rs > 0" taggedAs Tags.WidthConversion in {
-    Range(1, 16) foreach { i =>
-      test(i, i, true)
-    }
+    f =>
+      Range(1, 16) foreach { i =>
+        test(i, i, true)(f)
+      }
   }
 
   it should "handle width(rd) = width(rs) = 16 and rs < 0" taggedAs Tags.WidthConversion in {
-    test(16, 16, true)
+    f =>
+      test(16, 16, true)(f)
   }
 
   it should "handle width(rd) = width(rs) = 16 and rs > 0" taggedAs Tags.WidthConversion in {
-    test(16, 16, false)
+    f =>
+      test(16, 16, false)(f)
   }
 
   it should "handle width(rd) = width(rs) > 16 and rs < 0" taggedAs Tags.WidthConversion in {
-    Range(17, 100) foreach { i => test(i, i, false) }
+    f =>
+      Range(17, 100) foreach { i => test(i, i, false)(f) }
   }
 
   it should "handle width(rd) = width(rs) > 16 and rs > 0" taggedAs Tags.WidthConversion in {
-    Range(17, 100) foreach { i => test(i, i, true) }
+    f =>
+      Range(17, 100) foreach { i => test(i, i, true)(f) }
   }
 
 }

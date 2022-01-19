@@ -1,6 +1,6 @@
 package manticore.assembly.levels.unconstrained
 
-import manticore.UnconstrainedTest
+
 import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Path
@@ -56,16 +56,15 @@ class UnconstrainedWideLocalStoreTester extends UnconstrainedWideTest {
 
   }
 
-  val ctx =
-    AssemblyContext(dump_all = true, dump_dir = Some(dump_path.toFile()))
 
-  it should "correctly read from memory" taggedAs Tags.WidthConversion in {
+
+  it should "correctly read from memory" taggedAs Tags.WidthConversion in { f =>
     // the test may print warnings about Thyrio that do not matter
     Range(0, 10).foreach { i =>
       val prog_txt = mkProgram(s"st_test_${i}")
-      val prog = AssemblyParser(prog_txt, ctx)
+      val prog = AssemblyParser(prog_txt, f.ctx)
 
-      backend(prog, ctx)
+      backend(prog, f.ctx)
     }
 
 

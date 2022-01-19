@@ -1,14 +1,14 @@
 package manticore.assembly.levels.unconstrained
 
-import manticore.UnconstrainedTest
 import java.nio.file.Path
 import java.io.PrintWriter
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
+import manticore.UnitFixtureTest
 
 class UnconstrainedWideAddTester extends UnconstrainedWideTest {
 
-  def mkProgram(): String = {
+  def mkProgram(f: FixtureParam): String = {
     // don't pick too large a value, the test will fail because
     // large memories are not handled yet
     val count = 200
@@ -21,9 +21,9 @@ class UnconstrainedWideAddTester extends UnconstrainedWideTest {
       (r1 + r2) & ((BigInt(1) << width) - 1)
     }
 
-    val rs1_fp = dumpToFile("rs1_vals.dat", rs1_vals)
-    val rs2_fp = dumpToFile("rs2_vals.dat", rs2_vals)
-    val rd_fp = dumpToFile("rd_vals.dat", rd_vals)
+    val rs1_fp = f.dump("rs1_vals.dat", rs1_vals)
+    val rs2_fp = f.dump("rs2_vals.dat", rs2_vals)
+    val rd_fp = f.dump("rd_vals.dat", rd_vals)
 
     val addr_width = log2Ceil(count)
 
@@ -84,23 +84,15 @@ class UnconstrainedWideAddTester extends UnconstrainedWideTest {
 
   behavior of "unconstrained wide adder"
 
-  val ctx =
-    AssemblyContext(
-      dump_all = true,
-      dump_dir = Some(dump_path.toFile()),
-      max_cycles = Int.MaxValue
-    )
-
-
   it should "correctly handle the addition carry" taggedAs Tags.WidthConversion in {
+    f =>
+      Range(0, 10) foreach { i =>
+        val prog_text = mkProgram(f)
 
-    Range(0, 10) foreach { i =>
-      val prog_text = mkProgram()
+        val parsed = AssemblyParser(prog_text, f.ctx)
 
-      val parsed = AssemblyParser(prog_text, ctx)
-
-      backend(parsed, ctx)
-    }
+        backend(parsed, f.ctx)
+      }
 
   }
 }

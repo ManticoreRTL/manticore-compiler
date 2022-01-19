@@ -14,8 +14,9 @@ import manticore.assembly.levels.unconstrained.width.WidthConversionCore
 import manticore.assembly.levels.unconstrained.UnconstrainedRenameVariables
 import manticore.assembly.levels.Transformation
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.UnitFixtureTest
 
-trait ThyrioUnitTest extends UnitTest {
+trait ThyrioUnitTest extends UnitFixtureTest {
 
   val requiredTools: Seq[ExternalTool]
 

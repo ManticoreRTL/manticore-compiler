@@ -1,6 +1,6 @@
 package manticore.assembly.levels.unconstrained
 
-import manticore.UnconstrainedTest
+
 import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Path
@@ -12,7 +12,7 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
   behavior of "unconstrained wide local load instructions"
 
 
-  def mkProgram(program_name: String): String = {
+  def mkProgram(program_name: String)(f: FixtureParam): String = {
 
     val capacity = randgen.nextInt(100)
     val width = randgen.nextInt(82)
@@ -21,7 +21,7 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
     val init_vals = Array.fill(init_count) {
       mkWideRand(width)
     }
-    val fp = dumpToFile(program_name + ".dat", init_vals)
+    val fp = f.dump(program_name + ".dat", init_vals)
     val addr_bits = log2Ceil(capacity)
     val memblock = s"@MEMBLOCK [block=\"block0\", capacity = ${capacity}, width = ${width}]"
     s"""
@@ -59,16 +59,14 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
 
   }
 
-  val ctx =
-    AssemblyContext(dump_all = true, dump_dir = Some(dump_path.toFile()))
 
-  it should "correctly read from memory" taggedAs Tags.WidthConversion in {
+  it should "correctly read from memory" taggedAs Tags.WidthConversion in { f =>
     // the test may print warnings about Thyrio that do not matter
     Range(0, 10).foreach { i =>
-      val prog_txt = mkProgram(s"ld_test_${i}")
-      val prog = AssemblyParser(prog_txt, ctx)
+      val prog_txt = mkProgram(s"ld_test_${i}")(f)
+      val prog = AssemblyParser(prog_txt, f.ctx)
 
-      backend(prog, ctx)
+      backend(prog, f.ctx)
     }
 
 

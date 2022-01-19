@@ -1,6 +1,6 @@
 package manticore.assembly.levels.unconstrained
 
-import manticore.UnconstrainedTest
+
 import java.nio.file.Path
 import java.io.PrintWriter
 import manticore.compiler.AssemblyContext
@@ -8,7 +8,7 @@ import manticore.assembly.parser.AssemblyParser
 
 class UnconstrainedWideSubTester extends UnconstrainedWideTest {
 
-  def mkProgram(): String = {
+  def mkProgram(f: FixtureParam): String = {
     // don't pick too large a value, the test will fail because
     // large memories are not handled yet
     val count = 200
@@ -21,9 +21,9 @@ class UnconstrainedWideSubTester extends UnconstrainedWideTest {
       (r1 - r2) & ((BigInt(1) << width) - 1)
     }
 
-    val rs1_fp = dumpToFile("rs1_vals.dat", rs1_vals)
-    val rs2_fp = dumpToFile("rs2_vals.dat", rs2_vals)
-    val rd_fp = dumpToFile("rd_vals.dat", rd_vals)
+    val rs1_fp = f.dump("rs1_vals.dat", rs1_vals)
+    val rs2_fp = f.dump("rs2_vals.dat", rs2_vals)
+    val rd_fp = f.dump("rd_vals.dat", rd_vals)
 
     val addr_width = log2Ceil(count)
 
@@ -84,23 +84,19 @@ class UnconstrainedWideSubTester extends UnconstrainedWideTest {
 
   behavior of "unconstrained wide sub"
 
-  val ctx =
-    AssemblyContext(
-      dump_all = true,
-      dump_dir = Some(dump_path.toFile()),
-      max_cycles = Int.MaxValue
-    )
-
-
   it should "correctly handle the wide subtraction" taggedAs Tags.WidthConversion in {
-
-    repeat(100) { i =>
-      val prog_text = mkProgram()
-
-      val parsed = AssemblyParser(prog_text, ctx)
-
-      backend(parsed, ctx)
-    }
+    f =>
+      repeat(100) { i =>
+        val ctx =
+          AssemblyContext(
+            dump_all = true,
+            dump_dir = Some(f.test_dir.toFile()),
+            max_cycles = Int.MaxValue
+          )
+        val prog_text = mkProgram(f)
+        val parsed = AssemblyParser(prog_text, ctx)
+        backend(parsed, ctx)
+      }
 
   }
 }

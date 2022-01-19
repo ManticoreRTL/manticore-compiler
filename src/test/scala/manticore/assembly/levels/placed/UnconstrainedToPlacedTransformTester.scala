@@ -16,9 +16,10 @@ import manticore.assembly.levels.UInt16
 import manticore.compiler.AssemblyContext
 import java.io.File
 import manticore.assembly.parser.AssemblyParser
-import manticore.assembly.CompilationFailureException
+
 import manticore.assembly.annotations.StringValue
 import manticore.assembly.annotations.IntValue
+import manticore.compiler.CompilationFailureException
 
 class UnconstrainedToPlacedTransformTester extends UnitTest {
 

@@ -7,7 +7,6 @@ import manticore.assembly.levels.unconstrained.UnconstrainedIR._
 import manticore.assembly.levels.UnconstrainedAssemblyParserTester
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
-import manticore.UnconstrainedTest
 
 class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
 
@@ -15,7 +14,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
 
   // val randgen = new scala.util.Random()
   // a simple program that shifts '1' to the left 0 to 31 times
-  def mkProgram(width_rd: Int, width_rs: Int) = {
+  def mkProgram(width_rd: Int, width_rs: Int)(f: FixtureParam) = {
     // val width = 32
     // require(width <= 32)
     val initial_value = 1
@@ -24,7 +23,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     }
 
     val expected_fp =
-      dumpToFile(s"expected_${width_rd}_${width_rs}.dat", expected_vals)
+      f.dump(s"expected_${width_rd}_${width_rs}.dat", expected_vals)
 
     val memblock =
       s"@MEMBLOCK [block = \"expected\", width = ${width_rd}, capacity = ${expected_vals.length}]"
@@ -70,55 +69,51 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
   }
 
   // val dump_path = createDumpDirectory()
-  val ctx = AssemblyContext(
-    dump_all = true,
-    dump_dir = Some(dump_path.toFile),
-    max_cycles = Int.MaxValue
-  )
 
-  private def test(width_rd: Int, width_rs: Int): Unit = {
-    val prog_text = mkProgram(width_rd, width_rs)
-    val program = AssemblyParser(prog_text, ctx)
-    backend.apply(program, ctx)
+  private def test(width_rd: Int, width_rs: Int)(f: FixtureParam): Unit = {
+
+    val prog_text = mkProgram(width_rd, width_rs)(f)
+    val program = AssemblyParser(prog_text, f.ctx)
+    backend.apply(program, f.ctx)
   }
-  it should "handle width(rd) == width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
+  // it should "handle width(rd) == width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
 
-    repeat(100) { i =>
-      val width_rs = 16 + i
-      val width_rd = width_rs
-      test(width_rd, width_rs)
-    }
-  }
+  //   repeat(100) { i =>
+  //     val width_rs = 16 + i
+  //     val width_rd = width_rs
+  //     test(width_rd, width_rs)
+  //   }
+  // }
 
-  it should "handle width(rd) < width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
+  // it should "handle width(rd) < width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
 
-    repeat(100) { i =>
-      val width_rs = 16 + i
-      val width_rd = randgen.nextInt(width_rs) + 1
-      test(width_rd, width_rs)
-    }
-  }
+  //   repeat(100) { i =>
+  //     val width_rs = 16 + i
+  //     val width_rd = randgen.nextInt(width_rs) + 1
+  //     test(width_rd, width_rs)
+  //   }
+  // }
 
-  it should "handle dynamic width(rd) > width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
+  // it should "handle dynamic width(rd) > width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
 
-    repeat(100) { i =>
-      val width_rs = 16 + i
-      val width_rd = width_rs + randgen.nextInt(20)
-      test(width_rd, width_rs)
-    }
-  }
+  //   repeat(100) { i =>
+  //     val width_rs = 16 + i
+  //     val width_rd = width_rs + randgen.nextInt(20)
+  //     test(width_rd, width_rs)
+  //   }
+  // }
 
   def mkStaticProgram(
       width_rd: Int,
       width_rs: Int,
       initial_value: BigInt,
       sh_amount: Int
-  ): String = {
+  )(f: FixtureParam): String = {
 
     val expected_result =
       (initial_value << sh_amount) & ((BigInt(1) << width_rd) - 1)
 
-    val input_fp = dumpToFile(
+    val input_fp = f.dump(
       s"input_value_${width_rd}_${width_rs}.dat",
       Array(initial_value)
     )
@@ -152,13 +147,19 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     """
   }
 
-  // it should "handle width(rd) == width(rs), static SLL" taggedAs Tags.WidthConversion in {
+  Range(0, 100).foreach { i =>
+    val width = i + 1
+    Range(i, width).foreach { j =>
+      it should s"handle width(rd) == width(rs) = ${width}, static SLL" taggedAs Tags.WidthConversion in {
+      f =>
+        // repeat(width - 10) { j =>
+        val prog_text = mkStaticProgram(width, width, 1, 1)(f)
+        val prog = AssemblyParser(prog_text, f.ctx)
+        backend(prog, f.ctx)
+        // }
 
-  //   val prog_text = mkStaticProgram(17, 17, 1, 16)
-
-  //   val prog = AssemblyParser(prog_text, ctx)
-  //   backend(prog, ctx)
-
-  // }
+      }
+    }
+  }
 
 }

@@ -5,7 +5,7 @@ import manticore.assembly.parser.AssemblyParser
 
 class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
 
-  def mkProgram(): String = {
+  def mkProgram(f: FixtureParam): String = {
 
     val width = randgen.nextInt(100) + 16
     val rand_val = mkWideRand(width)
@@ -42,21 +42,14 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
 
 
 
-  val ctx = AssemblyContext(dump_all = true, dump_dir = Some(dump_path.toFile))
-
-  val interpreter = UnconstrainedInterpreter
-
-
   behavior of "wide STLS"
 
-  it should "not throw user exceptions for a correct program" taggedAs Tags.WidthConversion in {
+  it should "not throw user exceptions for a correct program" taggedAs Tags.WidthConversion in { f =>
 
     repeat(200) { i =>
-
-        val prog = mkProgram()
-
-        val parsed = AssemblyParser(prog, ctx)
-        backend(parsed, ctx)
+        val prog = mkProgram(f)
+        val parsed = AssemblyParser(prog, f.ctx)
+        backend(parsed, f.ctx)
 
     }
 

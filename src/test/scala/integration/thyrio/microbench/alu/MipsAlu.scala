@@ -24,7 +24,7 @@ class MipsAlu extends ThyrioUnitTest {
 
   checkInstalled()
 
-  val test_root_dir = createDumpDirectory()
+  val test_root_dir = root_dir
   val resource_dir =
     getClass().getResource("/integration/microbench/alu/mips32").toURI()
 
@@ -180,19 +180,20 @@ class MipsAlu extends ThyrioUnitTest {
     runTest(work_dir)(phases)
   }
   it should "successfully interpret the results before width conversion" in {
-
-    Range(0, 10) foreach { i =>
-      testIteration(i)(ManticoreFrontend.initialPhases())
-    }
+    f =>
+      Range(0, 10) foreach { i =>
+        testIteration(i)(ManticoreFrontend.initialPhases())
+      }
 
   }
   it should "successfully interpret the results before and after width conversion" in {
-    Range(0, 10) foreach { i =>
-      testIteration(i)(
-        ManticoreFrontend.initialPhases() followedBy ManticoreFrontend
-          .finalPhases()
-      )
-    }
+    f =>
+      Range(0, 10) foreach { i =>
+        testIteration(i)(
+          ManticoreFrontend.initialPhases() followedBy ManticoreFrontend
+            .finalPhases()
+        )
+      }
 
   }
 

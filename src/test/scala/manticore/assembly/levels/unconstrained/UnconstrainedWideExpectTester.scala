@@ -7,9 +7,9 @@ import manticore.assembly.levels.unconstrained.UnconstrainedIR._
 import manticore.assembly.levels.UnconstrainedAssemblyParserTester
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
-import manticore.UnconstrainedTest
+
 import scala.annotation.tailrec
-import manticore.assembly.CompilationFailureException
+import manticore.compiler.CompilationFailureException
 
 class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
 
@@ -60,32 +60,31 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
   }
 
 
-  val failing_ctx = AssemblyContext(dump_all = true, dump_dir = Some(createDumpDirectory().toFile()))
-  val passing_ctx = AssemblyContext(dump_all = true, dump_dir = Some(createDumpDirectory().toFile()))
+
 
 
   // do not move the passing test downwards, otherwise the checker will fail
   // unless the logger errors are cleared
-  it should "not fail any expect instructions" taggedAs Tags.WidthConversion in {
+  it should "not fail any expect instructions" taggedAs Tags.WidthConversion in { f =>
 
     for (ix <- 0 until 20) {
       println("Generating passing program")
       val passing = passingProgram()
       println(passing)
-      val parsed = AssemblyParser(passing, passing_ctx)
-      backend(parsed, passing_ctx)
+      val parsed = AssemblyParser(passing, f.ctx)
+      backend(parsed, f.ctx)
     }
   }
 
-  it should "catch expect failures" taggedAs Tags.WidthConversion in {
+  it should "catch expect failures" taggedAs Tags.WidthConversion in { f =>
 
     for (ix <- 0 until 20) {
       println("Generating failing program")
       val failing = failingProgram()
 
-      val parsed = AssemblyParser(failing, failing_ctx)
+      val parsed = AssemblyParser(failing, f.ctx)
       assertThrows[CompilationFailureException] {
-        backend(parsed, failing_ctx)
+        backend(parsed, f.ctx)
 
       }
     }

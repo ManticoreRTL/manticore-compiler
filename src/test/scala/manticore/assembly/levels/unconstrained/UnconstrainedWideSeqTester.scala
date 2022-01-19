@@ -8,7 +8,7 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
 
   behavior of "wide SEQ"
 
-  def mkProgram() = {
+  def mkProgram(f: FixtureParam): String = {
     val count = 200
     val width = randgen.nextInt(90)
     val rs1_vals = Array.fill(count) { mkWideRand(width) }
@@ -16,9 +16,9 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
     val rd_refs = rs1_vals.zip(rs2_vals).map { case (x, y) =>
       if (x == y) BigInt(1) else BigInt(0)
     }
-    val rs1_fp = dumpToFile("rs1", rs1_vals)
-    val rs2_fp = dumpToFile("rs2", rs2_vals)
-    val rd_fp = dumpToFile("rd", rd_refs)
+    val rs1_fp = f.dump("rs1", rs1_vals)
+    val rs2_fp = f.dump("rs2", rs2_vals)
+    val rd_fp = f.dump("rd", rd_refs)
     def mkMb(n: String, w: Int): String =
       s"@MEMBLOCK [ block = \"${n}\", capacity = ${count}, width = ${w} ]"
     def mkMemInit(p: Path): String =
@@ -91,15 +91,10 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
     """
 
   }
-  val ctx =
-    AssemblyContext(
-      dump_all = true,
-      dump_dir = Some(dump_path.toFile()),
-      max_cycles = Int.MaxValue
-    )
 
-  it should "correctly compute wide SEQ" taggedAs Tags.WidthConversion in {
-    val prog = AssemblyParser(mkProgram(), ctx)
-    backend(prog, ctx)
+
+  it should "correctly compute wide SEQ" taggedAs Tags.WidthConversion in { f =>
+    val prog = AssemblyParser(mkProgram(f), f.ctx)
+    backend(prog, f.ctx)
   }
 }

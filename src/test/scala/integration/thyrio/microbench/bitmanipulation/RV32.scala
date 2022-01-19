@@ -20,7 +20,7 @@ import manticore.assembly.levels.unconstrained.UnconstrainedInterpreter
 import manticore.assembly.levels.unconstrained.UnconstrainedBreakSequentialCycles
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
-import manticore.UnconstrainedTest
+
 import manticore.assembly.levels.unconstrained.width.WidthConversionCore
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
@@ -39,7 +39,7 @@ class RV32 extends ThyrioUnitTest {
   behavior of "RV32 bit-manipulation test"
 
   checkInstalled()
-  val cwd = createDumpDirectory()
+  val cwd = root_dir
 
   // copy the resources
   val resource_dir =
@@ -76,27 +76,27 @@ class RV32 extends ThyrioUnitTest {
 
   // def run(test_name: String): Unit = {}
 
-  it should "handle RV32_IntegerRR initial unconstrained phases" in {
+  it should "handle RV32_IntegerRR initial unconstrained phases" in { f =>
     run("RV32_IntegerRR") { initialPhases() }
   }
 
-  it should "handle RV32_IntegerRR final unconstrained phases" in {
+  it should "handle RV32_IntegerRR final unconstrained phases" in { f =>
     run("RV32_IntegerRR") { initialPhases() followedBy finalPhases() }
   }
 
-  it should "handle RV32_Load initial unconstrained phases" in {
+  it should "handle RV32_Load initial unconstrained phases" in { f =>
     run("RV32_Load") { initialPhases() }
   }
 
-  it should "handle RV32_Load final unconstrained phases" in {
+  it should "handle RV32_Load final unconstrained phases" in { f =>
     run("RV32_Load") { initialPhases() followedBy finalPhases() }
   }
 
-  it should "handle RV32_Store initial unconstrained phases" in {
+  it should "handle RV32_Store initial unconstrained phases" in { f =>
     run("RV32_Store") { initialPhases() }
   }
 
-  it should "handle RV32_Store final unconstrained phases" in {
+  it should "handle RV32_Store final unconstrained phases" in { f =>
     run("RV32_Store") { initialPhases() followedBy finalPhases() }
   }
 
