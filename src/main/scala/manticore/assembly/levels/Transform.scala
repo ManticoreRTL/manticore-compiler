@@ -1,10 +1,12 @@
 package manticore.assembly.levels
 
 import manticore.assembly.ManticoreAssemblyIR
-import manticore.assembly.Reporter
+
 import manticore.compiler.AssemblyContext
-import manticore.assembly.CompilationFailureException
+
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.CompilationFailureException
+
 
 /** Base transformation signatures, see [[AssemblyTransformer]] and
   * [[AssemblyChecker]] below
@@ -13,10 +15,16 @@ import manticore.assembly.levels.unconstrained.UnconstrainedIR
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 
+case class TransformationID(id: String) {
+  override def toString(): String = id
+}
+trait HasTransformationID {
+  implicit val phase_id = TransformationID(getClass().getSimpleName())
+}
 trait Transformation[
     -S <: ManticoreAssemblyIR#DefProgram,
     +T <: ManticoreAssemblyIR#DefProgram
-] extends ((S, AssemblyContext) => (T, AssemblyContext)) {
+] extends ((S, AssemblyContext) => (T, AssemblyContext)) with HasTransformationID {
 
   // def transform(s: S)(implicit ctx: AssemblyContext): T
   def apply(s: S, ctx: AssemblyContext): (T, AssemblyContext)
@@ -40,8 +48,7 @@ trait Transformation[
 trait AssemblyTransformer[
     -S <: ManticoreAssemblyIR#DefProgram,
     +T <: ManticoreAssemblyIR#DefProgram
-]  extends Transformation[S, T]
-    with Reporter {
+]  extends Transformation[S, T] {
 
   /** transform a tree of type S to T
     *
@@ -56,14 +63,15 @@ trait AssemblyTransformer[
       ctx: AssemblyContext
   ): (T, AssemblyContext) = {
 
-    logger.info(s"[${ctx.transform_index}] Starting transformation ${getName}")
+    ctx.logger.start(s"[${ctx.logger.countProgress()}] Starting transformation ${phase_id}")
     val res = (transform(source, ctx), ctx)
-    logger.dumpArtifact(s"dump_post_${ctx.transform_index}_${getName}.masm") {
+    ctx.logger.dumpArtifact(s"dump_post_${ctx.logger.countProgress()}_${phase_id}.masm") {
       res._1.serialized
-    }(ctx)
-    if (logger.countErrors > 0)
-      logger.fail("Compilation failed due to earlier errors")
-    ctx.transform_index += 1
+    }
+    if (ctx.logger.countErrors() > 0) {
+      ctx.logger.fail("Compilation failed due to earlier errors")
+    }
+    ctx.logger.end("")
     res
   }
 
@@ -75,8 +83,7 @@ trait AssemblyTransformer[
   * @param programIr
   */
 trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
-    extends Transformation[T, T]
-    with Reporter {
+    extends Transformation[T, T] {
 
   /** check the tree and possibly throw an exception if the check failed
     *
@@ -92,16 +99,16 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
       source: T,
       context: AssemblyContext
   ): (T, AssemblyContext) = {
-    logger.info(s"[${context.transform_index}] Starting program check ${getName}")
+    context.logger.start(s"[${context.logger.countProgress()}] Starting program check ${phase_id}")
     check(source, context)
-    if (logger.countErrors > 0)
-      logger.fail(s"Checker failed after encountering ${logger.countErrors} errors!")
+    if (context.logger.countErrors() > 0)
+      context.logger.fail(s"Checker failed after encountering ${context.logger.countErrors()} errors!")
     (source, context)
   }
 }
 
 
-trait Flavored extends Reporter {
+trait Flavored extends HasTransformationID {
 
   val flavor: ManticoreAssemblyIR
 

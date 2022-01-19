@@ -3,7 +3,7 @@ package manticore.assembly.levels
 import manticore.assembly.ManticoreAssemblyIR
 
 import scala.annotation.tailrec
-import manticore.assembly.Reporter
+
 import manticore.compiler.AssemblyContext
 
 /** A generic name checker that makes sure all the used names in the program are
@@ -30,7 +30,7 @@ trait AssemblyNameChecker extends Flavored {
       case r :: Nil => ()
       case r :: tail =>
         if (tail.contains(r)) {
-          logger.error(
+          context.logger.error(
             s"${r.name} is declared multiple times, first time at ${r.owner.pos}"
           )
 
@@ -52,7 +52,7 @@ trait AssemblyNameChecker extends Flavored {
       def checkRegs(regs: Seq[Name])(implicit inst: Instruction) =
         regs.foreach { r =>
           if (!reg_names.contains(r)) {
-            logger.error(
+            context.logger.error(
               s"undefined register ${r} at ${inst.serialized}:${inst.pos}"
             )
 
@@ -67,7 +67,7 @@ trait AssemblyNameChecker extends Flavored {
             checkRegs(Seq(rd, rs1, rs2))
           case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
             if (!func_names.contains(func)) {
-              logger.error(
+              context.logger.error(
                 s"undefined function ${func} at ${inst.serialized}:${inst.pos}"
               )
 
@@ -117,12 +117,12 @@ trait AssemblyNameChecker extends Flavored {
       p.body.filter { _.isInstanceOf[Send] }.map(_.asInstanceOf[Send]).foreach {
         case inst @ Send(rd, _, dest, _) =>
           if (dest == p.id) {
-            logger
+            context.logger
               .error(s"self-send instruction at ${inst.serialized}:${inst.pos}")
 
           }
           if (!proc_ids.contains(dest)) {
-            logger
+            context.logger
               .error(
                 s"invalid destination id at ${inst.serialized}:${inst.pos}"
               )
@@ -135,7 +135,7 @@ trait AssemblyNameChecker extends Flavored {
                 .map { r => r.variable.name }
                 .contains(rd)
             ) {
-              logger.error(
+              context.logger.error(
                 s"destination register ${rd} is not defined in process ${dest} in ${inst}:${inst.pos}"
               )
 
@@ -143,9 +143,7 @@ trait AssemblyNameChecker extends Flavored {
           }
       }
     }
-    if (logger.countErrors > 0) {
-      logger.fail("Name check failed due to earlier errors!")
-    }
+
 
   }
 }

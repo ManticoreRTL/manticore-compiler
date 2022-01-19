@@ -8,6 +8,7 @@ import manticore.assembly.annotations.{Reg => RegAnnotation}
 
 import manticore.assembly.levels.Flavored
 import manticore.assembly.levels.WireType
+import manticore.compiler.AssemblyContext
 
 
 /**
@@ -28,7 +29,7 @@ trait ConversionBuilder extends Flavored {
 
   protected case class ConvertedWire(parts: Seq[Name], mask: Option[Name])
 
-  protected class Builder(private val proc: DefProcess) {
+  protected class Builder(private val proc: DefProcess)(implicit val ctx: AssemblyContext) {
 
     private var m_name_id = 0
     // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
@@ -168,7 +169,7 @@ trait ConversionBuilder extends Flavored {
               case Some(i) if i != 0 =>
                 // we don't want to have a non-zero index, it means this pass
                 // was run before?
-                logger.error(
+                ctx.logger.error(
                   "Did not expect non-zero debug symbol index",
                   orig_def
                 )

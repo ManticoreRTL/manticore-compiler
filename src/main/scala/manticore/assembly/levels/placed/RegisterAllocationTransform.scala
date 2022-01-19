@@ -52,7 +52,7 @@ object RegisterAllocationTransform
         case rds @ _ =>
           rds.foreach { rd =>
             if (life_begin.contains(rd)) {
-              logger.error(s"Register ${rd} is defined multiple times!", inst)
+              ctx.logger.error(s"Register ${rd} is defined multiple times!", inst)
             } else {
               life_begin += (rd -> ix)
             }
@@ -60,7 +60,7 @@ object RegisterAllocationTransform
       }
       DependenceAnalysis.regUses(inst).foreach { rs =>
         if (!life_begin.contains(rs)) {
-          logger.error(s"Register ${rs} is used before being defined", inst)
+          ctx.logger.error(s"Register ${rs} is used before being defined", inst)
 
         }
         life_end += (rs -> ix)
@@ -71,7 +71,7 @@ object RegisterAllocationTransform
       life_end.get(name) match {
         case Some(end) => (name -> (beg, end))
         case None =>
-          logger.warn(
+          ctx.logger.warn(
             s"Register ${name} in process ${process.id} is never used."
           )
           (name -> (beg, beg))
@@ -152,7 +152,7 @@ object RegisterAllocationTransform
     val (memories, used_capacity) = allocateLocalMemory(process)
 
     val free_capacity = ArrayMemoryCapacity - used_capacity
-    logger.info(
+    ctx.logger.info(
       s"Process ${process.id} requires ${used_capacity} " +
         s"memory words (max usable ${ArrayMemoryCapacity})"
     )
@@ -205,14 +205,14 @@ object RegisterAllocationTransform
     // val live_names = scala.collection.mutable.PriorityQueue[
     // val active_regs = PriorityQueue.empty[]
 
-    logger.fail("Could not allocate registers")
+    ctx.logger.fail("Could not allocate registers")
   }
   override def transform(
       source: DefProgram,
       context: AssemblyContext
   ): DefProgram = {
 
-    logger.fail("Could not allocate registers")
+    context.logger.fail("Could not allocate registers")
   }
 
 }

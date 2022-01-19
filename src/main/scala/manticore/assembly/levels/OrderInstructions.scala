@@ -37,7 +37,7 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
     val sortedInstrs = ArrayBuffer[Instruction]()
     dependenceGraph.topologicalSort match {
       case Left(cycleNode) =>
-        logger.error("Dependence graph contains a cycle!")
+        ctx.logger.error("Dependence graph contains a cycle!")
       case Right(order) =>
         order.foreach { instr =>
           // Must cast the result back to flavor as this is a result from GraphBuilder
@@ -70,8 +70,8 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
       annons = asm.annons
     )
 
-    if (logger.countErrors > 0) {
-      logger.fail(s"Failed transform due to previous errors!")
+    if (ctx.logger.countErrors() > 0) {
+      ctx.logger.fail(s"Failed transform due to previous errors!")
     }
 
     out

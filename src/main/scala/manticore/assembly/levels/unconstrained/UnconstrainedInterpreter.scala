@@ -36,7 +36,7 @@ object UnconstrainedInterpreter
   case object InterpretationFailure extends InterpretationTrap
   case object InterpretationStop extends InterpretationTrap
 
-  private final class ProcessState(val proc: DefProcess) {
+  private final class ProcessState(val proc: DefProcess)(implicit val ctx: AssemblyContext) {
 
     // a mutable register file
     val register_file = scala.collection.mutable.Map[Name, BigInt]() ++
@@ -45,7 +45,7 @@ object UnconstrainedInterpreter
         val v = r.value match {
           case Some(x) =>
             if (r.variable.varType == MemoryType) {
-              logger.warn(s"ignoring memory base register initial value", r)
+              ctx.logger.warn(s"ignoring memory base register initial value", r)
               // note that we set the initial value of all .mem definitions to 0
               // because we resolve the memory address partly by name, partly
               // by a runtime offset. See how memories are initialized bellow
@@ -55,7 +55,7 @@ object UnconstrainedInterpreter
             }
           case None =>
             if (r.variable.varType == ConstType) {
-              logger.error(s"constant register without initial value!", r)
+              ctx.logger.error(s"constant register without initial value!", r)
             }
             BigInt(0)
         }
@@ -87,11 +87,11 @@ object UnconstrainedInterpreter
               ) match {
                 case Some(n: String) => n
                 case _ =>
-                  logger.error(s"missing block field in MEMBLOCK", m)
+                  ctx.logger.error(s"missing block field in MEMBLOCK", m)
                   ""
               }
             case _ =>
-              logger.error(s"missing MEMBLOCK annotation", m)
+              ctx.logger.error(s"missing MEMBLOCK annotation", m)
               ""
           }
           if (memory_blocks contains block_name) {
@@ -104,13 +104,13 @@ object UnconstrainedInterpreter
             val cap = memblock_cap match {
               case Some(IntValue(v)) =>
                 if (v == 0) {
-                  logger.error(
+                  ctx.logger.error(
                     s"memory capacity 0! Please make sure all memories are less than 4 GiBs."
                   )
                 }
                 v
               case _ =>
-                logger.error(s"missing memory block capacity!", m)
+                ctx.logger.error(s"missing memory block capacity!", m)
                 0
             }
             val memblock_width = m.findAnnotationValue(
@@ -120,7 +120,7 @@ object UnconstrainedInterpreter
             val width = memblock_width match {
               case Some(IntValue(v)) => v
               case _ =>
-                logger.error(s"missing memory block width!", m)
+                ctx.logger.error(s"missing memory block width!", m)
                 0
             }
             val meminit: Array[BigInt] = m.findAnnotation(MemInit.name) match {
@@ -133,7 +133,7 @@ object UnconstrainedInterpreter
                 val Some(count: Int) =
                   meminit_annon.getIntValue(AssemblyAnnotationFields.Count)
                 if (count > cap) {
-                  logger.error("init file overflows memory!", m)
+                  ctx.logger.error("init file overflows memory!", m)
                 }
                 import java.nio.file.{Files, Path}
                 val file_path = Path.of(file_name)
@@ -149,7 +149,7 @@ object UnconstrainedInterpreter
                     .toArray[BigInt] ++ Array.fill(cap - count)(BigInt(0))
                 } catch {
                   case e: Exception =>
-                    logger.error(
+                    ctx.logger.error(
                       s"Could not read file ${file_path.toAbsolutePath()}"
                     )
                     Array.fill(cap)(BigInt(0))
@@ -194,7 +194,7 @@ object UnconstrainedInterpreter
           val block_object = state.memory_blocks(block_name)
           handler(block_object, index)
         case _ =>
-          logger.error(
+          ctx.logger.error(
             "Could not resolve memory access block, ensure @MEMBLOCK is present",
             instruction
           )
@@ -214,7 +214,7 @@ object UnconstrainedInterpreter
     private def getSignedValue(r: Name): BigInt = {
       val unsigned_val = state.register_file(r)
       if (unsigned_val < 0) {
-        logger.error(
+        ctx.logger.error(
           "Interpreter implementation has a bug, negative value detected!"
         )
         BigInt(0)
@@ -248,7 +248,7 @@ object UnconstrainedInterpreter
           if (
             definitions(rs1).variable.width != definitions(rs2).variable.width
           ) {
-            logger.error("Width mismatch in SEQ", inst)
+            ctx.logger.error("Width mismatch in SEQ", inst)
           }
           val is_eq = rs1_val == rs2_val
           state.select = is_eq
@@ -257,7 +257,7 @@ object UnconstrainedInterpreter
           if (rs2_val.isValidInt && rs2_val <= 0xffff) {
             clipped(rs1_val << rs2_val.toInt)
           } else {
-            logger.error("unsupported SLL shift amount", inst)
+            ctx.logger.error("unsupported SLL shift amount", inst)
             BigInt(0)
           }
         case SRL =>
@@ -272,7 +272,7 @@ object UnconstrainedInterpreter
           if (rs2_val.isValidInt && rs2_val <= 0xffff) {
             clipped(rs1_val >> rs2_val.toInt)
           } else {
-            logger.error("unsupported SRL shift amount", inst)
+            ctx.logger.error("unsupported SRL shift amount", inst)
             BigInt(0)
           }
 
@@ -302,7 +302,7 @@ object UnconstrainedInterpreter
               clipped(rs1_val >> rs2_val.toInt)
             }
           } else {
-            logger.error("unsupported SRA shift amount", inst)
+            ctx.logger.error("unsupported SRA shift amount", inst)
             BigInt(0)
           }
         case SLTS =>
@@ -338,7 +338,7 @@ object UnconstrainedInterpreter
     def interpret(instruction: Instruction): Unit = instruction match {
       case i: BinaryArithmetic => interpret(i)
       case i: CustomInstruction =>
-        logger.error("Custom instruction can not be interpreted yet!", i)
+        ctx.logger.error("Custom instruction can not be interpreted yet!", i)
       case LocalLoad(rd, base, offset, _) =>
         // this is wrong, need to somehow infer the address mode (i.e., short-word or arbitrary-word)
         handleMemoryAccess(base, instruction) {
@@ -346,7 +346,7 @@ object UnconstrainedInterpreter
             val addr_val = state.register_file(base) + offset
             val block_cap = resolved_block.capacity
             if (block_cap == 0) {
-              logger.error(
+              ctx.logger.error(
                 "Can not handle LD from memory with capacity 0!",
                 instruction
               )
@@ -355,7 +355,7 @@ object UnconstrainedInterpreter
                 addr_val & nextPower2BitMask(block_cap.toInt)
               val rd_val =
                 if (block_index.toInt >= resolved_block.content.length) {
-                  logger.error(
+                  ctx.logger.error(
                     s"Index out of bound! ${block_index.toInt} >= ${resolved_block.content.length}",
                     instruction
                   )
@@ -389,7 +389,7 @@ object UnconstrainedInterpreter
             val addr_val = state.register_file(base) + offset
             val block_cap: Int = resolved_block.capacity
             if (block_cap == 0) {
-              logger.error(
+              ctx.logger.error(
                 "Can not ST from  memory with capacity 0!",
                 instruction
               )
@@ -437,13 +437,13 @@ object UnconstrainedInterpreter
         }
 
       case GlobalLoad(rd, base, annons) =>
-        logger.error("Can handle global memory access", instruction)
+        ctx.logger.error("Can handle global memory access", instruction)
       case GlobalStore(rs, base, predicate, annons) =>
-        logger.error("Can handle global memory access", instruction)
+        ctx.logger.error("Can handle global memory access", instruction)
       case SetValue(rd, value, annons) =>
-        logger.error("Can handle SET", instruction)
+        ctx.logger.error("Can handle SET", instruction)
       case Send(rd, rs, dest_id, annons) =>
-        logger.error("Can not handle SEND", instruction)
+        ctx.logger.error("Can not handle SEND", instruction)
       case Expect(ref, got, error_id, annons) =>
         val ref_val = state.register_file(ref)
         val got_val = state.register_file(got)
@@ -462,16 +462,16 @@ object UnconstrainedInterpreter
             AssemblyAnnotationFields.Type
           ) match {
             case Some(Trap.Fail) =>
-              logger.error(s"User exception caught! ${error_id}", instruction)
-              logger.error(s"Expected ${ref_val} but got ${got_val}")
+              ctx.logger.error(s"User exception caught! ${error_id}", instruction)
+              ctx.logger.error(s"Expected ${ref_val} but got ${got_val}")
               Some(InterpretationFailure)
             case Some(Trap.Stop) =>
-              logger.info("Stop signal interpreted.")
+              ctx.logger.info("Stop signal interpreted.")
               if (trap_source.nonEmpty)
-                logger.info(s"Stop condition from ${trap_source}", instruction)
+                ctx.logger.info(s"Stop condition from ${trap_source}", instruction)
               Some(InterpretationStop)
             case _ =>
-              logger.error(s"Missing TRAP type!", instruction)
+              ctx.logger.error(s"Missing TRAP type!", instruction)
               Some(InterpretationFailure)
           }
         } else {
@@ -482,7 +482,7 @@ object UnconstrainedInterpreter
               case _       => false
             }
           ) {
-            logger.info(s"values ${ref_val} and ${got_val} match.", instruction)
+            ctx.logger.info(s"values ${ref_val} and ${got_val} match.", instruction)
           }
 
         }
@@ -497,21 +497,21 @@ object UnconstrainedInterpreter
         } else if (sel_val == 0) {
           rfalse_val
         } else {
-          logger.error(s"Select has illegal value ${sel_val}", instruction)
+          ctx.logger.error(s"Select has illegal value ${sel_val}", instruction)
           BigInt(0)
         }
         vcd_writer.foreach { _.update(rd, rd_val) }
         state.register_file(rd) = rd_val
       case Nop =>
         // do nothing
-        logger.warn("Nops are unnecessary for interpretation", instruction)
+        ctx.logger.warn("Nops are unnecessary for interpretation", instruction)
       case AddC(rd, co, rs1, rs2, ci, annons) =>
         val rd_width = definitions(rd).variable.width
         val rs1_val = state.register_file(rs1)
         val rs2_val = state.register_file(rs2)
         val ci_val = state.register_file(ci)
         if (ci_val > 1) {
-          logger.error(
+          ctx.logger.error(
             "Internal interpreter error, carry computation is incorrect",
             instruction
           )
@@ -519,7 +519,7 @@ object UnconstrainedInterpreter
         val rs1_width = definitions(rs1).variable.width
         val rs2_width = definitions(rs2).variable.width
         if (rs1_width != rs2_width || rs1_width != rd_width) {
-          logger.error(
+          ctx.logger.error(
             "Interpreter can only compute ADDCARRY of numbers with equal bit width",
             instruction
           )
@@ -545,7 +545,7 @@ object UnconstrainedInterpreter
 
     def dumpRegisterFile(file_name: String): Unit = {
       // dump the state of registers
-      logger.dumpArtifact(file_name) {
+      ctx.logger.dumpArtifact(file_name) {
 
         case class RegDump(index: Int, value: BigInt) extends Ordered[RegDump] {
           override def compare(that: RegDump): Int =
@@ -760,7 +760,7 @@ object UnconstrainedInterpreter
       }
 
     private var tick_num: Long = 0
-    private val dump_file: File = logger.openFile(file_name)
+    private val dump_file: File = ctx.logger.openFile(file_name)
     private val printer: PrintWriter = new PrintWriter(dump_file)
     // initialize the file
     private def emit(header: String)(body: => String): Unit = {
@@ -830,7 +830,7 @@ object UnconstrainedInterpreter
             record_table(symbol).write(value, index)
           } catch {
             case e: Exception =>
-              logger.error(
+              ctx.logger.error(
                 s"error writing VCD record for ${name} (symbol = ${symbol}, index = ${index}): ${e.getMessage()}"
               )
           }
@@ -866,22 +866,22 @@ object UnconstrainedInterpreter
   ): Unit = {
 
     if (source.processes.length != 1) {
-      logger.error("Can not handle more than one process for now")
+      context.logger.error("Can not handle more than one process for now")
     } else {
       var cycles = 0
       val vcd_writer = new ValueChangeRecord(source, "trace.vcd")(context)
       val interp =
         new ProcessInterpreter(source.processes.head)(context, Some(vcd_writer))
       while (cycles < context.max_cycles && interp.getException().isEmpty) {
-        // logger.info(s"Starting cycle ${cycles}")
+        // context.logger.info(s"Starting cycle ${cycles}")
         interp.run()
         vcd_writer.tick()
         cycles += 1
       }
       if (interp.getException().isEmpty) {
-        logger.error(s"Interpretation timed out after ${cycles} cycles!")
+        context.logger.error(s"Interpretation timed out after ${cycles} cycles!")
       } else {
-        logger.info(s"Finished interpretation after ${cycles} cycles")
+        context.logger.info(s"Finished interpretation after ${cycles} cycles")
       }
       vcd_writer.flush()
       vcd_writer.close()

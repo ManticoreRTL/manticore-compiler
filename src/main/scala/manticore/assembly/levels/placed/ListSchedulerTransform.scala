@@ -4,10 +4,7 @@ import manticore.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import manticore.assembly.BinaryOperator
 import scala.annotation.tailrec
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
-import manticore.assembly.CompilationFailureException
+
 import manticore.assembly.DependenceGraphBuilder
 import scalax.collection.edge.LDiEdge
 import scala.collection.parallel.CollectionConverters._
@@ -77,8 +74,8 @@ object ListSchedulerTransform
     val dependence_graph =
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
     // dump the graph
-    logger.dumpArtifact(
-      s"dependence_graph_${getName}_${proc.id.id}_${ctx.transform_index}.dot"
+    ctx.logger.dumpArtifact(
+      s"dependence_graph_${phase_id}_${proc.id.id}_${ctx.logger.countProgress()}.dot"
     ) {
 
       import scalax.collection.io.dot._
@@ -103,7 +100,7 @@ object ListSchedulerTransform
             )
           )
         case t @ _ =>
-          logger.error(
+          ctx.logger.error(
             s"An edge in the dependence could not be serialized! ${t}"
           )
           None
@@ -127,7 +124,7 @@ object ListSchedulerTransform
         cNodeTransformer = Some(nodeTransformer)
       )
       dot_export
-    }(ctx)
+    }
 
     type Node = dependence_graph.NodeT
     type Edge = dependence_graph.EdgeT
@@ -213,20 +210,20 @@ object ListSchedulerTransform
     val ready_list = scala.collection.mutable.PriorityQueue[ReadyNode]()
     // initialize the ready list with instruction that have no predecessor
 
-    logger.debug(
+    ctx.logger.debug(
       dependence_graph.nodes
         .map { n =>
           s"${n.toOuter.serialized} \tindegree ${n.inDegree}\toutdegree ${n.outDegree}"
         }
         .mkString("\n")
-    )(ctx)
+    )
     ready_list ++= dependence_graph.nodes
       .filter { n => n.inDegree == 0 }
       .map { ReadyNode(_) }
 
-    logger.debug(
+    ctx.logger.debug(
       s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
-    )(ctx)
+    )
 
     // create a mutable set showing the satisfied dependencies
     val satisfied_dependence = scala.collection.mutable.Set.empty[Edge]
@@ -237,19 +234,19 @@ object ListSchedulerTransform
     // val scheduled_preds = scala.collection.mutable.Set.empty[Node]
     // LIST scheduling simulation loop
     var cycle = 0
-    logger.debug(
+    ctx.logger.debug(
       s"Distance to sink \n${distance_to_sink
         .map { case (k, v) => s"${k.serialized} : ${v} " }
         .mkString("\n")}"
-    )(ctx)
+    )
     while (unsched_list.nonEmpty && cycle < 4096) {
 
       val to_retire = active_list.filter(_._2 == 0)
       val finished_list =
         active_list.filter { _._2 == 0 } map { finished =>
-          logger.debug(
+          ctx.logger.debug(
             s"${cycle}: Committing ${finished._1.toOuter.serialized} "
-          )(ctx)
+          )
 
           val node = finished._1
 
@@ -265,9 +262,9 @@ object ListSchedulerTransform
                   satisfied_dependence.contains
                 }
               ) {
-                logger.debug(
+                ctx.logger.debug(
                   s"${cycle}: Readying ${successor.toOuter.serialized} "
-                )(ctx)
+                )
                 ready_list += ReadyNode(successor)
               }
             }
@@ -282,8 +279,8 @@ object ListSchedulerTransform
       } else {
         val head = ready_list.head
         // check if a predicate instruction is needed before scheduling the head
-        logger
-          .debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")(ctx)
+        ctx.logger
+          .debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")
         active_list.append((head.n, instructionLatency(head.n.toOuter)))
         schedule.append(head.n.toOuter)
         unsched_list -= head.n.toOuter
@@ -293,7 +290,7 @@ object ListSchedulerTransform
     }
 
     if (cycle >= 4096) {
-      logger.error(
+      ctx.logger.error(
         "Failed to schedule processes, ran out of instruction memory",
         proc
       )
@@ -312,7 +309,7 @@ object ListSchedulerTransform
       source.findAnnotationValue(LayoutAnnotation.name, dim) match {
         case Some(manticore.assembly.annotations.IntValue(v)) => v
         case _ =>
-          logger.fail("Scheduling requires a valid @LAYOUT annotation")
+          context.logger.fail("Scheduling requires a valid @LAYOUT annotation")
           0
       }
 

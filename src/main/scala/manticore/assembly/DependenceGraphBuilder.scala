@@ -170,7 +170,7 @@ trait DependenceGraphBuilder extends Flavored {
               case Left(i)  => i
               case Right(i) => i
             }
-            logger.error(s"store instruction has no memory block!", unwrapped)
+            ctx.logger.error(s"store instruction has no memory block!", unwrapped)
           }
           m.foreach { mdef =>
             val current_stores = mem_block_stores.getOrElse(
@@ -208,7 +208,7 @@ trait DependenceGraphBuilder extends Flavored {
         val stores_using_mdef = mem_block_stores.get(block) match {
           case Some(store_set) =>
             if (store_set.isEmpty)
-              logger.error(
+              ctx.logger.error(
                 s"Internal error! Found empty store set for memory ${block}",
                 inst
               )
@@ -220,10 +220,10 @@ trait DependenceGraphBuilder extends Flavored {
               }
             )
           case None =>
-            logger.debug(
+            ctx.logger.debug(
               s"Inferred ROM memory ${block}",
               inst
-            )(ctx)
+            )
         }
 
       }
@@ -235,7 +235,7 @@ trait DependenceGraphBuilder extends Flavored {
             val decls = mem_block(base)
 
             if (decls.isEmpty) {
-              logger.error("Found no memory for load instruction", inst)
+              ctx.logger.error("Found no memory for load instruction", inst)
             }
 
             decls.foreach { mdef => createLoadStoreDependence(inst, mdef) }
@@ -247,7 +247,7 @@ trait DependenceGraphBuilder extends Flavored {
               }
 
             if (used_mems.isEmpty) {
-              logger.error("Found no memory for load instruction", inst)
+              ctx.logger.error("Found no memory for load instruction", inst)
             } else {
               // make sure a single memory is used!
               used_mems.foreach { u => createLoadStoreDependence(inst, u) }
@@ -345,7 +345,7 @@ trait DependenceGraphBuilder extends Flavored {
                 }
                 // // ensure no instruction depends on to mem
                 // if (decls.count(_.nonEmpty) > 1) {
-                //   logger.debug(
+                //   ctx.logger.debug(
                 //     "instruction traces back to multiple memory blocks!",
                 //     inst
                 //   )(ctx)

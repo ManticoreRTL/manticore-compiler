@@ -50,9 +50,6 @@ import java.lang.Character.Subset
   */
 trait RemoveAliases extends Flavored {
 
-  // Object Impl is declared private so flavor does not escape its defining scope
-  // (when flavor.<something> is returned from a method).
-
   import flavor._
 
   def removeAliases(
@@ -317,14 +314,10 @@ trait RemoveAliases extends Flavored {
   ): DefProgram = {
     implicit val ctx = context
 
-    val out = DefProgram(
-      processes = asm.processes.map(process => removeAliases(process)),
-      annons = asm.annons
-    )
+    val out = asm.copy(
+      processes = asm.processes.map(process => removeAliases(process))
+    ).setPos(asm.pos)
 
-    if (logger.countErrors > 0) {
-      logger.fail(s"Failed transform due to previous errors!")
-    }
 
     out
   }

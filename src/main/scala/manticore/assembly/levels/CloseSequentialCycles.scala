@@ -36,8 +36,8 @@ trait CloseSequentialCycles extends Flavored {
             case _ =>
                 // this should never happen because of how we parse annotation, but
                 // left here for good measure
-                logger.error("Invalid @REG annotation, missing id!", r)
-                logger.fail("Failed creating user register map")
+                ctx.logger.error("Invalid @REG annotation, missing id!", r)
+                ctx.logger.fail("Failed creating user register map")
         }
     }.toMap
 
@@ -58,10 +58,10 @@ trait CloseSequentialCycles extends Flavored {
                                             r.variable.name,
                                         )
                                     case _ =>
-                                        logger.error("Register has no current value!", r)
+                                        ctx.logger.error("Register has no current value!", r)
                                 }
                             case _ =>
-                                logger.error("@REG annotation is missing id", r)
+                                ctx.logger.error("@REG annotation is missing id", r)
                         }
                     case _ =>
                         // do nothing, the reg type is RegAnnotation.Current

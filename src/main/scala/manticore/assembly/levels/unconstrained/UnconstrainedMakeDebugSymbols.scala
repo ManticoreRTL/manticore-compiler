@@ -27,7 +27,7 @@ object UnconstrainedMakeDebugSymbols
           // check that the DebugSymbol is not malformed
           annon.getIntValue(AssemblyAnnotationFields.Index) match {
             case Some(i) if (i != 0)=>
-                logger.error("invalid debug symbol, expected index to be 0", r)
+                ctx.logger.error("invalid debug symbol, expected index to be 0", r)
             case _ => // OK
           }
 

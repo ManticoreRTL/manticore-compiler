@@ -40,8 +40,8 @@ trait BreakSequentialCycles extends Flavored {
             case _ =>
                 // this should never happen because of how we parse annotation, but
                 // left here for good measure
-                logger.error("Invalid @REG annotation, missing id!", r)
-                logger.fail("Failed creating user register map")
+                ctx.logger.error("Invalid @REG annotation, missing id!", r)
+                ctx.logger.fail("Failed creating user register map")
         }
     }.toMap
 

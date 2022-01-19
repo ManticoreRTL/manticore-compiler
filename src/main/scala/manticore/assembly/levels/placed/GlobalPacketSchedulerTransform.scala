@@ -22,7 +22,7 @@ object GlobalPacketSchedulerTransform
       program.findAnnotationValue(LayoutAnnotation.name, dim) match {
         case Some(manticore.assembly.annotations.IntValue(v)) => v
         case _ =>
-          logger.fail("Scheduling requires a valid @LAYOUT annotation")
+          context.logger.fail("Scheduling requires a valid @LAYOUT annotation")
           0
       }
     val dimx = getDim(XField)
@@ -140,9 +140,9 @@ object GlobalPacketSchedulerTransform
               linkY(inst_wrapper.target.x)(y).contains(t) == false
             }
             if (can_route_vert && can_route_horiz) {
-              logger.debug(
+              context.logger.debug(
                 s"@${cycle}: Scheduling ${inst_wrapper.inst.serialized} in process ${h.proc.id}"
-              )(context)
+              )
               h.scheduled += (h.unscheduled.dequeue().inst -> cycle)
             }
           }
@@ -155,7 +155,7 @@ object GlobalPacketSchedulerTransform
     }
 
     if (to_schedule.exists(_.unscheduled.nonEmpty)) {
-      logger.error("Could not schedule Send instruction in 4096 cycles!")
+      context.logger.error("Could not schedule Send instruction in 4096 cycles!")
     }
 
     // now we have the time at which each send instruction can be scheduled,

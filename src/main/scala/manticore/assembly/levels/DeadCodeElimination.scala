@@ -14,7 +14,7 @@ import manticore.assembly.ManticoreAssemblyIR
 
 import scalax.collection.Graph
 import scalax.collection.edge.LDiEdge
-import manticore.assembly.Reporter
+
 
 /** This transform identifies dead code and removes it from the design. Dead
   * code is code that does not contribute to the output registers of a program.
@@ -182,8 +182,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
     )
 
     // Debug dump graph.
-    logger.dumpArtifact(
-      s"dependence_graph_${ctx.transform_index}_${getName}_${newProc.id}.dot"
+    ctx.logger.dumpArtifact(
+      s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${newProc.id}.dot"
     ) {
       val dp = DependenceAnalysis.build(newProc, labelingFunc)(ctx)
 
@@ -209,7 +209,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
             )
           )
         case t @ _ =>
-          logger.error(
+          ctx.logger.error(
             s"An edge in the dependence could not be serialized! ${t}"
           )
           None
@@ -233,7 +233,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
         cNodeTransformer = Some(nodeTransformer)
       )
       dot_export
-    }(ctx)
+    }
 
     newProc
   }

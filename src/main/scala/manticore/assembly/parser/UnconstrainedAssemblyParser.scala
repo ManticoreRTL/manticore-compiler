@@ -19,11 +19,12 @@ import manticore.assembly.levels.Transformation
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.AssemblyChecker
 import manticore.compiler.AssemblyContext
-import manticore.assembly.Reporter
+
 import manticore.assembly.annotations.AnnotationValue
 import manticore.assembly.annotations.IntValue
 import manticore.assembly.annotations.StringValue
 import manticore.assembly.annotations.AssemblyAnnotationFields
+import manticore.assembly.levels.HasTransformationID
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -377,13 +378,13 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
 }
 
-object AssemblyParser extends Reporter {
+object AssemblyParser extends HasTransformationID {
 
   def apply(
       source: String,
       context: AssemblyContext
   ): UnconstrainedIR.DefProgram = {
-    logger.info("Parsing from string input")
+    context.logger.info("Parsing from string input")
     UnconstrainedAssemblyParser(source)
   }
 
@@ -391,7 +392,7 @@ object AssemblyParser extends Reporter {
       source: File,
       context: AssemblyContext
   ): UnconstrainedIR.DefProgram = {
-    logger.info("Parsing from file input")
+    context.logger.info("Parsing from file input")
     UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""))
   }
 

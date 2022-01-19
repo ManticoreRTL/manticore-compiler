@@ -41,7 +41,7 @@ object UnconstrainedToPlacedTransform
     implicit val ctx = context
 
     if (isConvertible(asm) == false) {
-      logger.fail(
+      ctx.logger.fail(
         s"${S.getClass().getSimpleName()} not convertible to ${T.getClass().getSimpleName()}"
       );
     }
@@ -51,11 +51,11 @@ object UnconstrainedToPlacedTransform
         getDimensions(asm) match {
           case Some((xx, yy)) => (xx, yy)
           case None =>
-            logger.fail("invalid dimension")
+            ctx.logger.fail("invalid dimension")
             (0, 0)
         }
       else {
-        logger.fail("no @LAYOUT annotation")
+        ctx.logger.fail("no @LAYOUT annotation")
         (0, 0)
       }
 
@@ -68,7 +68,7 @@ object UnconstrainedToPlacedTransform
           val x = location.getIntValue(XField).get
           val y = location.getIntValue(YField).get
           if (x >= dimx || y >= dimy) {
-            logger.error(s"location out of bounds for process ${p.id}", p)
+            ctx.logger.error(s"location out of bounds for process ${p.id}", p)
             p.id -> None
           } else {
             p.id -> Some(T.ProcessIdImpl(p.id, x, y))
@@ -82,7 +82,7 @@ object UnconstrainedToPlacedTransform
 
     converted_ids.find { x => x._2.isEmpty } match {
       case Some(p) =>
-        logger.fail(s"process ${p._1} does not have valid @LOC annotation")
+        ctx.logger.fail(s"process ${p._1} does not have valid @LOC annotation")
       case _ =>
     }
 
@@ -92,7 +92,7 @@ object UnconstrainedToPlacedTransform
 
     // ensure no duplicate location exists
     if (proc_map.values.toSeq.toSet.size != proc_map.size) {
-      logger.error(s"duplicate locations in defined processes")
+      ctx.logger.error(s"duplicate locations in defined processes")
     }
 
     val out = T.DefProgram(
@@ -100,8 +100,8 @@ object UnconstrainedToPlacedTransform
       annons = asm.annons
     )
 
-    if (logger.countErrors > 0) {
-      logger.fail(s"Failed transform due to previous errors!")
+    if (ctx.logger.countErrors() > 0) {
+      ctx.logger.fail(s"Failed transform due to previous errors!")
     }
     out
   }
@@ -116,10 +116,10 @@ object UnconstrainedToPlacedTransform
     */
   private def convert(
       proc: S.DefProcess
-  )(implicit proc_map: Map[S.ProcessId, T.ProcessId]): T.DefProcess = {
+  )(implicit proc_map: Map[S.ProcessId, T.ProcessId], ctx: AssemblyContext): T.DefProcess = {
 
     if (proc.registers.length >= 2048) {
-      logger.info(
+      ctx.logger.info(
         s"Process ${proc.id} has ${proc.registers.length} registers."
       )
     }
@@ -175,7 +175,7 @@ object UnconstrainedToPlacedTransform
                 block_annon.getIntValue(CapacityField).get
               )
             case None =>
-              logger.error("Memory block not specified")
+              ctx.logger.error("Memory block not specified")
               T.MemoryBlock("", 0)
           }
         r.variable ->
@@ -291,7 +291,7 @@ object UnconstrainedToPlacedTransform
     * @param asm
     * @return
     */
-  private def isConvertible(asm: S.DefProgram): Boolean = {
+  private def isConvertible(asm: S.DefProgram)(implicit ctx: AssemblyContext): Boolean = {
 
     asm.processes
       .map { p =>
@@ -299,7 +299,7 @@ object UnconstrainedToPlacedTransform
           .map { r =>
             // ensure every register is 16 bits
             if (r.variable.width != 16) {
-              logger.error(
+              ctx.logger.error(
                 s"expected  16-bit register in process ${p.id}",
                 r
               )
@@ -318,14 +318,14 @@ object UnconstrainedToPlacedTransform
           .map { f =>
             // ensure every function has 16 elements
             if (f.value.values.length != 16) {
-              logger.error(
+              ctx.logger.error(
                 s"function ${f.serialized} in process ${p.id} is not 16-bit"
               )
               false
             } else {
               // ensure every equation fits in 16 bits
               if (f.value.values.forall { x => x < (1 << 16) } == false) {
-                logger.error(
+                ctx.logger.error(
                   "" +
                     s"function ${f.serialized} has illegal values"
                 )
@@ -342,17 +342,17 @@ object UnconstrainedToPlacedTransform
             i match {
               case S.LocalLoad(_, _, offset, _) =>
                 if (offset >= (1 << 16)) {
-                  logger.error(s"invalid offset in ${i.serialized}")
+                  ctx.logger.error(s"invalid offset in ${i.serialized}")
                   false
                 } else true
               case S.LocalStore(_, _, offset, _, _) =>
                 if (offset >= (1 << 16)) {
-                  logger.error(s"invalid offset in ${i.serialized}")
+                  ctx.logger.error(s"invalid offset in ${i.serialized}")
                   false
                 } else true
               case S.SetValue(_, value, _) =>
                 if (value >= (1 << 16)) {
-                  logger.error(s"invalid immediate value in ${i.serialized}")
+                  ctx.logger.error(s"invalid immediate value in ${i.serialized}")
                   false
                 } else true
               case _ => true

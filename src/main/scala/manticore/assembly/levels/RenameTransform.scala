@@ -103,7 +103,7 @@ trait RenameTransformation extends Flavored {
           case i @ Expect(ref, got, _, _) =>
             i.copy(ref = subst(ref), got = subst(got))
           case i @ Send(rd, rs, _, _) =>
-            logger.error("Can not rename Send instruction!", i)
+            ctx.logger.error("Can not rename Send instruction!", i)
             i.copy(rd = subst(rd), rs = subst(rs))
           case i @ Predicate(rs, _) => i.copy(rs = subst(rs))
           case i @ Mux(rd, sel, rs1, rs2, _) =>
