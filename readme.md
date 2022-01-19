@@ -1,3 +1,4 @@
+![Assembly Tests](https://github.com/epfl-vlsc/manticore-compiler/actions/workflows/assembly_tests.yml/badge.svg)
 # Manticore Compiler
 
 ## TODO
