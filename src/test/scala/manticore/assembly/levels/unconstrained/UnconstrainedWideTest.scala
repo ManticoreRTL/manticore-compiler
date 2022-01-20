@@ -5,7 +5,7 @@ import manticore.UnitFixtureTest
 
 import java.nio.file.Path
 import java.io.PrintWriter
-import manticore.assembly.levels.unconstrained.width.{WidthConversionCore => Transformation}
+import manticore.assembly.levels.unconstrained.width.WidthConversionCore
 import manticore.UnitFixtureTest
 trait UnconstrainedWideTest extends UnitFixtureTest  with UnconstrainedTags {
 
@@ -41,6 +41,6 @@ trait UnconstrainedWideTest extends UnitFixtureTest  with UnconstrainedTags {
   def repeat(times: Int)(gen: Int => Unit): Unit = Range(0, times) foreach { i => gen(i) }
 
   val backend =
-    Transformation followedBy UnconstrainedInterpreter
+    WidthConversionCore followedBy UnconstrainedInterpreter
 }
 

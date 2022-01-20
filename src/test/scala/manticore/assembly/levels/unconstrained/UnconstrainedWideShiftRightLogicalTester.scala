@@ -8,7 +8,6 @@ import manticore.assembly.levels.UnconstrainedAssemblyParserTester
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
 
-
 class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
 
   behavior of "Unconstrained wide SRL conversion"
@@ -74,6 +73,7 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
     val program = AssemblyParser(prog_txt, f.ctx)
     backend.apply(program, f.ctx)
   }
+
   it should "handle width(rd) == width(rs) correctly" taggedAs Tags.WidthConversion in {
     f =>
       repeat(100) { i =>
@@ -101,4 +101,81 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
         test(width_rd, width_rs)(f)
       }
   }
+
+  def mkStaticProgram(
+      width_rd: Int,
+      width_rs: Int,
+      init_val: BigInt,
+      sh_amount: Int
+  )(f: FixtureParam): String = {
+
+    val expected_val =
+      (init_val >> sh_amount) & ((BigInt(1) << width_rd) - 1)
+
+    // need to place the shift operand value in file to make it dynamic
+    val input_fp = f.dump(
+      s"input_value_${init_val}.dat",
+      Array(init_val)
+    )
+    val memblock =
+      s"@MEMBLOCK [block = \"input_value\", width = ${width_rs}, capacity = 1]"
+
+    s"""
+    .prog:
+      .proc proc_0_0:
+        .const const_sh_amount 16 ${sh_amount}
+        .const ref_result ${width_rs} ${expected_val}
+        .wire shifted ${width_rd}
+
+        ${memblock}
+        @MEMINIT [file = "${input_fp}", count = 1, width = ${width_rs}]
+        .mem rs_ptr 1
+        .wire dyn_rs ${width_rs}
+
+        .const const_0 1 0
+        .const const_1 1 1
+
+        ${memblock}
+        LLD dyn_rs, rs_ptr[0];
+        SRL shifted, dyn_rs, const_sh_amount;
+
+        @TRAP [type = "\\fail"]
+        EXPECT ref_result, shifted, ["fail"];
+
+        @TRAP[type = "\\stop"]
+        EXPECT const_0, const_1, ["stop"];
+    """
+  }
+
+  private def test_static(width_rd: Int, width_rs: Int, shift_amount: Int)(
+      f: FixtureParam
+  ): Unit = {
+    val txt = mkStaticProgram(
+      width_rd,
+      width_rs,
+      BigInt(1) << (width_rs - 1),
+      shift_amount
+    )(f)
+    val prog = AssemblyParser(txt, f.ctx)
+    backend.apply(prog, f.ctx)
+
+  }
+
+  val static_test_cases = Seq
+    .fill(8000) {
+      val rd_width = randgen.nextInt(70) + 1
+      val rs_width = randgen.nextInt(70) + 1
+      val shift_amount = randgen.nextInt(rs_width + 1)
+      (rd_width, rs_width, shift_amount)
+    }
+    .distinct
+
+  println(s"Generated ${static_test_cases.length} static test cases")
+
+  static_test_cases.foreach { case (rd_width, rs_width, shift_amount) =>
+    it should s"handle static SRL w${rd_width}, w${rs_width}, ${shift_amount}" taggedAs Tags.WidthConversion in {
+      test_static(rd_width, rs_width, shift_amount)(_)
+    }
+  }
+
 }

@@ -213,7 +213,9 @@ object WidthConversionCore
   private def assert16Bit(
       uint16_array: Seq[Name],
       inst: Instruction
-  )(msg: => String)(implicit ctx: AssemblyContext): Unit = if (uint16_array.length != 1) {
+  )(msg: => String)(implicit ctx: AssemblyContext): Unit = if (
+    uint16_array.length != 1
+  ) {
     ctx.logger.error(msg, inst)
   }
 
@@ -350,7 +352,8 @@ object WidthConversionCore
         }
 
         assert(
-          rd_uint16_array.length == rs2_uint16_array_aligned.length && rd_uint16_array.length == rs2_uint16_array_aligned.length
+          rd_uint16_array.length == rs2_uint16_array_aligned.length &&
+            rd_uint16_array.length == rs2_uint16_array_aligned.length
         )
         if (rs1_uint16_array_aligned.length != 1) {
           val carry: Name = builder.mkWire("add_carry", 16)
@@ -575,10 +578,9 @@ object WidthConversionCore
         }
 
       case BinaryOperator.SLL if builder.isConstant(instruction.rs2) =>
-        /**
-          * It is important to minimize the number of instruction here
-          * and not rely on further optimization passes to coalesce MOVs or
-          * propagate constants. A SLL/SRL with constant shift amount is likely
+        /** It is important to minimize the number of instruction here and not
+          * rely on further optimization passes to coalesce MOVs or propagate
+          * constants. A SLL/SRL with constant shift amount is likely
           * responsible for bit manipulation in circuits and we should make sure
           * to have the optimal implementation
           */
@@ -621,6 +623,10 @@ object WidthConversionCore
             rd_mask match {
               case Some(mask) => // rd_width < 16
                 val tmp = builder.mkWire("sll_non_masked", 16)
+                assert(
+                  shift_amount.toInt < 16,
+                  "internal error, invalid transformation scope!"
+                )
                 inst_q += instruction.copy(
                   rd = tmp,
                   rs1 = rs_uint16_array.head,
@@ -1014,7 +1020,10 @@ object WidthConversionCore
         val rs_width = builder.originalWidth(rs1)
         val rd_width = builder.originalWidth(rd)
         if (rd_width != rs_width) {
-          ctx.logger.error("SRA operand and result should be aligned!", instruction)
+          ctx.logger.error(
+            "SRA operand and result should be aligned!",
+            instruction
+          )
         }
         // sign extension wire, maybe needed if the output is wider than the input
         val sign_replicated = builder.mkWire("sign_replicated", 16)
@@ -1293,7 +1302,249 @@ object WidthConversionCore
           )
         }
 
-      case BinaryOperator.SRL =>
+      case BinaryOperator.SRL if builder.isConstant(instruction.rs2)  =>
+        val shift_amount = builder.originalDef(instruction.rs2).value.get
+
+        if (shift_amount > 0xffff) {
+          ctx.logger.error(
+            s"SRL shift amount ${shift_amount} is too large!",
+            instruction
+          )
+        }
+
+        val rd = instruction.rd
+        val rs = instruction.rs1
+        val rd_width = builder.originalWidth(rd)
+        val rs_width = builder.originalWidth(rs)
+
+        // Constant SRL is very useful in bit extraction, so we have to do our
+        // best to translate to a minimal representation. Constant SRL is
+        // controlled by the rs_width, that is based on shift_amount and
+        //
+        // We handle multiple cases separately:
+        //   1. shift_amount >= rs_width => probably wrong code because the
+        //      results is zero
+        //   2. shift_amount < rs_width =>
+        //      2.1 rs_width < 16 => trivial transformation, apply masking if needed
+        //      2.2 rs_width >= 16 =>
+        //         requires multiple instructions
+        //         2.2.1 shift_amount % 16 == 0 =>
+        //            shift implemented by a series of MOVs
+        //         2.2.2 shift_amount % 16 != 0 =>
+        //             shift implemented by a series of MOVs and then a chain of carries
+        //
+
+        val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
+
+        if (shift_amount.toInt >= rs_width) {
+
+          ctx.logger.warn("SRA discards all bits!", instruction)
+          inst_q ++= moveRegs(
+            rd_uint16_array,
+            Seq.fill(rd_uint16_array.length) { builder.mkConstant(0) },
+            instruction
+          )
+        } else {
+
+          val rs_uint16_array = builder.getConversion(rs).parts
+          if (rs_width <= 16) {
+            assert(shift_amount < 16, "invalid SRL transformation scope")
+            if (rd_width <= 16) {
+              rd_mask match {
+                case Some(mask) =>
+                  val rd_builder = builder.mkWire("srl_rd_builder", 16)
+                  inst_q += instruction.copy(
+                    rd = rd_builder,
+                    rs1 = rs_uint16_array.head,
+                    rs2 = builder.mkConstant(shift_amount.toInt)
+                  )
+                  inst_q += instruction.copy(
+                    operator = BinaryOperator.AND,
+                    rd = rd_uint16_array.head,
+                    rs1 = rd_builder,
+                    rs2 = mask
+                  )
+                case None =>
+                  inst_q += instruction.copy(
+                    rd = rd_uint16_array.head,
+                    rs1 = rs_uint16_array.head,
+                    rs2 = builder.mkConstant(shift_amount.toInt)
+                  )
+              }
+            } else {
+              // rd is wider, zero out the higher bits
+              inst_q += instruction.copy(
+                rd = rd_uint16_array.head,
+                rs1 = rs_uint16_array.head,
+                rs2 = builder.mkConstant(shift_amount.toInt)
+              )
+              inst_q ++= moveRegs(
+                rd_uint16_array.tail,
+                rd_uint16_array.tail.map { _ => builder.mkConstant(0) },
+                instruction
+              )
+            }
+          } else { // rs_width > 16
+
+            val num_full_shifts = shift_amount.toInt / 16
+            val last_shift_amount = shift_amount.toInt % 16
+            // num_full_shifts parts of the input are discarded so take the ones that remain
+            val pre_shifted = rs_uint16_array.takeRight(
+              rs_uint16_array.length - num_full_shifts
+            )
+            val pre_shifted_rd_aligned =
+              if (rd_uint16_array.length >= pre_shifted.length)
+                pre_shifted ++ Seq.fill(
+                  rd_uint16_array.length - pre_shifted.length
+                ) { builder.mkConstant(0) }
+              else
+                pre_shifted.take(rd_uint16_array.length)
+
+            if (last_shift_amount == 0) {
+              // shifting is fully aligned, only use MOVs
+              val movable = rd_mask match {
+                case Some(mask) =>
+                  if (pre_shifted_rd_aligned.last == builder.mkConstant(0)) {
+                    // no need to mask, the last part is already masked
+                    pre_shifted_rd_aligned
+                  } else {
+                    // need to mask the last element in the pre_shifted_rd_aligned
+                    // array
+                    val masked_last = builder.mkWire("masked_last", 16)
+                    inst_q += instruction.copy(
+                      operator = BinaryOperator.AND,
+                      rd = masked_last,
+                      rs1 = pre_shifted_rd_aligned.last,
+                      rs2 = mask
+                    )
+                    pre_shifted_rd_aligned.take(
+                      pre_shifted_rd_aligned.length - 1
+                    ) :+ masked_last
+                  }
+
+                case None =>
+                  // no mask required for the result
+                  pre_shifted_rd_aligned
+              }
+              inst_q ++= moveRegs(
+                rd_uint16_array,
+                movable,
+                instruction
+              )
+
+            } else { // non-aligned shifting :(
+
+              // now we need to start from the last element of srl_builder_array
+              // and move backwards, first computing the carry out which is the
+              // srl_builder_array element left shifted by 16 - last_shift_amount
+              // However, if rd is wider than the pre-shifted rs we shouldn't
+              // start from the last element of srl_builder because we end
+              // shifting zeros wastefully.
+
+              def constructCarryChain(
+                  rd_array: Seq[Name],
+                  rs_array: Seq[Name],
+                  initial_carry_in: Name
+              ): Unit =
+                (rd_array zip rs_array).foldRight(initial_carry_in) {
+                  case ((rd_16_t, rs_16), carry_in) =>
+                    // compute the carry out but not for the first one (carry out is not used anywhere)
+                    val carry_out = builder.mkWire("srl_co", 16)
+                    if (rd_16_t != rd_array.head) {
+                      inst_q += instruction.copy(
+                        operator = BinaryOperator.SLL,
+                        rd = carry_out,
+                        rs1 = rs_16,
+                        rs2 = builder.mkConstant(16 - last_shift_amount)
+                      )
+                    }
+                    // do the shifting
+                    if (carry_in != builder.mkConstant(0)) {
+                      val srl_builder = builder.mkWire("srl_builder", 16)
+                      inst_q += instruction.copy(
+                        rd = srl_builder,
+                        rs1 = rs_16,
+                        rs2 = builder.mkConstant(last_shift_amount)
+                      )
+                      inst_q += instruction.copy(
+                        operator = BinaryOperator.OR,
+                        rd = rd_16_t,
+                        rs1 = srl_builder,
+                        rs2 = carry_in
+                      )
+                    } else {
+                      inst_q += instruction.copy(
+                        rd = rd_16_t,
+                        rs1 = rs_16,
+                        rs2 = builder.mkConstant(last_shift_amount)
+                      )
+                    }
+
+                    carry_out
+                }
+              if (rd_uint16_array.length > pre_shifted.length) {
+                //
+
+                val non_zero_rd = rd_uint16_array.take(pre_shifted.length)
+                constructCarryChain(
+                  non_zero_rd,
+                  pre_shifted,
+                  builder.mkConstant(0)
+                )
+
+                // zero out the upper bits of rd
+                val zero_len = rd_uint16_array.length - non_zero_rd.length
+                inst_q ++= moveRegs(
+                  rd_uint16_array.takeRight(zero_len),
+                  Seq.fill(zero_len) { builder.mkConstant(0) },
+                  instruction
+                )
+              } else if (rd_uint16_array.length <= pre_shifted.length) {
+                // handle the most significant part of rd first
+                val carry_in =
+                  if (rd_uint16_array.length == pre_shifted.length) {
+                    builder.mkConstant(0)
+                  } else {
+                    val ci = builder.mkWire("srl_ci", 16)
+                    inst_q += instruction.copy(
+                      operator = BinaryOperator.SLL,
+                      rd = ci,
+                      rs1 = pre_shifted(rd_uint16_array.length),
+                      rs2 = builder.mkConstant(16 - last_shift_amount)
+                    )
+                    ci
+                  }
+                val rd_last = rd_mask match {
+                  case Some(_) =>
+                    builder.mkWire("srl_builder_last", 16)
+                  case None =>
+                    rd_uint16_array.last
+                }
+                // now build the carry chain (excluding the last element)
+                val rd_in_chain =
+                  rd_uint16_array.take(rd_uint16_array.length - 1) :+ rd_last
+                val rs_in_chain = pre_shifted_rd_aligned
+                constructCarryChain(rd_in_chain, rs_in_chain, carry_in)
+
+                rd_mask match {
+                  case Some(mask) =>
+                    inst_q += instruction.copy(
+                      operator = BinaryOperator.AND,
+                      rd = rd_uint16_array.last,
+                      rs1 = rd_last,
+                      rs2 = mask
+                    )
+                  case None =>
+                }
+              }
+
+            }
+
+          }
+
+        }
+
+      case BinaryOperator.SRL if !builder.isConstant(instruction.rs2) =>
         val ConvertedWire(shift_uint16, _) =
           builder.getConversion(instruction.rs2)
         val ConvertedWire(rd_uint16_array, rd_mask) =
@@ -1776,7 +2027,10 @@ object WidthConversionCore
       }
 
     case _ =>
-      ctx.logger.error("Can not handle this type of instruction yet", instruction)
+      ctx.logger.error(
+        "Can not handle this type of instruction yet",
+        instruction
+      )
       Seq.empty[Instruction]
 
   }

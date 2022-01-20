@@ -130,7 +130,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     .wire shifted ${width_rd}
 
     ${memblock}
-     @MEMINIT [file = "${input_fp}", count = 1, width = ${width_rd}]
+     @MEMINIT [file = "${input_fp}", count = 1, width = ${width_rs}]
     .mem input_ptr 1
     .wire dyn_rs ${width_rs}
     .const const_0 1 0
@@ -168,7 +168,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
   println(s"Generated ${static_test_cases.length} static test cases")
 
   static_test_cases.foreach { case (rd_width, rs_width, shift_amount) =>
-    it should s"handle static SLL w${rd_width}, w${rs_width}, ${shift_amount}" in {
+    it should s"handle static SLL w${rd_width}, w${rs_width}, ${shift_amount}" taggedAs Tags.WidthConversion in {
       test_static(rd_width, rs_width, shift_amount)(_)
     }
   }

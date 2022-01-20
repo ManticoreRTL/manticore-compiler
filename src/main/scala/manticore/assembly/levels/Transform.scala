@@ -101,8 +101,10 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
   ): (T, AssemblyContext) = {
     context.logger.start(s"[${context.logger.countProgress()}] Starting program check ${phase_id}")
     check(source, context)
+
     if (context.logger.countErrors() > 0)
       context.logger.fail(s"Checker failed after encountering ${context.logger.countErrors()} errors!")
+    context.logger.end("")
     (source, context)
   }
 }

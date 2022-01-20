@@ -62,6 +62,7 @@ trait UnitFixtureTest extends FixtureAnyFlatSpec {
       dump_dir = Some(test_dir.toFile),
       quiet = false,
       log_file = Some(test_dir.resolve("run.log").toFile())
+      // log_file = None
     )
     if (!test_dir.toFile().isDirectory()) Files.createDirectories(test_dir)
     else test_dir
