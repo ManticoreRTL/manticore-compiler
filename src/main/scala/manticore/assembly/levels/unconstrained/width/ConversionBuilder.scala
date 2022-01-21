@@ -10,17 +10,17 @@ import manticore.assembly.levels.Flavored
 import manticore.assembly.levels.WireType
 import manticore.compiler.AssemblyContext
 
-
-/**
- * A helper trait as the base of [[WidthConversion]]. It contains the
- * implementation of a mutable Builder class that lazily converts every register
- * in a process to a sequence of converted wires. The [[WidthConversion]] should
- * instantiate this class and call the [[getConversion]] method to get the
- * converted sequence of registers as it moves through the instructions. Note
- * that the instructions are assumed to be ordered properly, i.e., registers
- * should be written and then read if they are not constants.
- * @author Mahyar Emami <mahyar.emami@epfl.ch>
- */
+/** A helper trait as the base of [[WidthConversion]]. It contains the
+  * implementation of a mutable Builder class that lazily converts every
+  * register in a process to a sequence of converted wires. The
+  * [[WidthConversion]] should instantiate this class and call the
+  * [[getConversion]] method to get the converted sequence of registers as it
+  * moves through the instructions. Note that the instructions are assumed to be
+  * ordered properly, i.e., registers should be written and then read if they
+  * are not constants.
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 
 trait ConversionBuilder extends Flavored {
 
@@ -29,7 +29,9 @@ trait ConversionBuilder extends Flavored {
 
   protected case class ConvertedWire(parts: Seq[Name], mask: Option[Name])
 
-  protected class Builder(private val proc: DefProcess)(implicit val ctx: AssemblyContext) {
+  protected class Builder(private val proc: DefProcess)(implicit
+      val ctx: AssemblyContext
+  ) {
 
     private var m_name_id = 0
     // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
@@ -38,6 +40,8 @@ trait ConversionBuilder extends Flavored {
       scala.collection.mutable.Map.empty[Int, DefReg]
     private val m_subst =
       scala.collection.mutable.HashMap.empty[Name, ConvertedWire]
+    private val m_const_subst =
+      scala.collection.mutable.Map.empty[Name, ConvertedWire]
     private val m_old_defs = proc.registers.map { r =>
       r.variable.name -> r
     }.toMap
@@ -129,103 +133,127 @@ trait ConversionBuilder extends Flavored {
 
       val width = orig_def.variable.width
       val array_size = (width - 1) / 16 + 1
-      assert(array_size >= 1)
-      val mask_bits = width - (array_size - 1) * 16
-      assert(mask_bits <= 16)
-      val msw_mask = if (mask_bits < 16) {
-        val mask_const = mkConstant((1 << mask_bits) - 1)
-        Some(mask_const)
-      } else None
 
-      val uint16_vars = Seq.tabulate(array_size) { i =>
-        LogicVariable(
-          freshName(original + s"_$i"),
-          // if (i == array_size - 1) mask_bits else 16,
-          16, // we make every variable 16 bit and mask the computation results
-          // explicitly if necessary
-          orig_def.variable.varType
-        )
+      def convertConstToArray(big_val: BigInt): Seq[BigInt] = {
+        val max_val = (BigInt(1) << width) - 1
+        if (big_val > max_val) {
+          ctx.logger.error(
+            "constant value does not fit in the specified number of bits!",
+            orig_def
+          )
+        }
+        Seq.tabulate(array_size) { i =>
+          val small_val = (big_val >> (i * 16)) & (0xffff)
+          assert(small_val <= 0xffff)
+          small_val
+        }
       }
+      if (isConstant(original)) {
+        val values: Seq[Int] = orig_def.value match {
+          case None =>
+            ctx.logger.error("constant value is not defined!", orig_def)
+            Seq.fill(array_size)(0)
+          case Some(big_val) =>
+            convertConstToArray(big_val).map(_.toInt)
+        }
+        val constants = values.map { mkConstant }
+        // no need to mask the constants, they should be already masked
+        val converted = ConvertedWire(constants, None)
+        m_const_subst += original -> converted
+        converted
+      } else {
 
-      val values: Seq[Option[BigInt]] = orig_def.value match {
-        case None => Seq.fill(array_size)(None)
-        case Some(big_val) =>
-          Seq.tabulate(array_size) { i =>
-            val small_val_mask_bits = if (i == array_size - 1) mask_bits else 16
-            val small_val =
-              (big_val >> (i * 16)) & ((1 << small_val_mask_bits) - 1)
-            assert(small_val < (1 << 16))
-            Some(small_val)
-          }
-      }
+        assert(array_size >= 1)
+        val mask_bits = width - (array_size - 1) * 16
+        assert(mask_bits <= 16)
+        val msw_mask = if (mask_bits < 16) {
+          val mask_const = mkConstant((1 << mask_bits) - 1)
+          Some(mask_const)
+        } else None
 
-      val conv_def = (uint16_vars zip values).zipWithIndex.map {
-        case ((cvar, cval), ix) =>
-          // check if a debug symbol annotation exits
-          val dbgsym = orig_def.annons.collect { case x: DebugSymbol =>
-            // if DebugSymbol annotation exits, append the index and width
-            // to it
-            x.getIndex() match {
-              case Some(i) if i != 0 =>
-                // we don't want to have a non-zero index, it means this pass
-                // was run before?
-                ctx.logger.error(
-                  "Did not expect non-zero debug symbol index",
-                  orig_def
-                )
-              case _ =>
-              // do nothing
+        val uint16_vars = Seq.tabulate(array_size) { i =>
+          LogicVariable(
+            freshName(original + s"_$i"),
+            // if (i == array_size - 1) mask_bits else 16,
+            16, // we make every variable 16 bit and mask the computation results
+            // explicitly if necessary
+            orig_def.variable.varType
+          )
+        }
+
+        val values: Seq[Option[BigInt]] = orig_def.value match {
+          case None => Seq.fill(array_size)(None)
+          case Some(big_val) =>
+            convertConstToArray(big_val).map { Some(_) }
+        }
+
+        val conv_def = (uint16_vars zip values).zipWithIndex.map {
+          case ((cvar, cval), ix) =>
+            // check if a debug symbol annotation exits
+            val dbgsym = orig_def.annons.collect { case x: DebugSymbol =>
+              // if DebugSymbol annotation exits, append the index and width
+              // to it
+              x.getIndex() match {
+                case Some(i) if i != 0 =>
+                  // we don't want to have a non-zero index, it means this pass
+                  // was run before?
+                  ctx.logger.error(
+                    "Did not expect non-zero debug symbol index",
+                    orig_def
+                  )
+                case _ =>
+                // do nothing
+              }
+
+              val with_index = x.withIndex(ix).withGenerated(false)
+              with_index.getIntValue(AssemblyAnnotationFields.Width) match {
+                case Some(w) =>
+                  with_index
+                case None =>
+                  with_index.withWidth(width)
+              }
+            } match {
+              case Seq() => // if it does not exists, create one from scratch
+                DebugSymbol(orig_def.variable.name)
+                  .withIndex(ix)
+                  .withWidth(width)
+                  .withGenerated(true)
+              case org +: _ =>
+                org // return the original one with appended index and width
             }
 
-            val with_index = x.withIndex(ix).withGenerated(false)
-            with_index.getIntValue(AssemblyAnnotationFields.Width) match {
-              case Some(w) =>
-                with_index
-              case None =>
-                with_index.withWidth(width)
+            // also append an index the reg annotation so that later passes
+            // could creating mapping from current to next registers
+            val reg_annon = orig_def.annons.collect { case x: RegAnnotation =>
+              x.withIndex(ix)
+            }.toSeq
+
+            val other_annons = orig_def.annons.filter {
+              case _: DebugSymbol   => false
+              case _: RegAnnotation => false
+              case _                => true
             }
-          } match {
-            case Seq() => // if it does not exists, create one from scratch
-              DebugSymbol(orig_def.variable.name)
-                .withIndex(ix)
-                .withWidth(width)
-                .withGenerated(true)
-            case org +: _ =>
-              org // return the original one with appended index and width
-          }
 
-          // also append an index the reg annotation so that later passes
-          // could creating mapping from current to next registers
-          val reg_annon = orig_def.annons.collect { case x: RegAnnotation =>
-            x.withIndex(ix)
-          }.toSeq
+            orig_def
+              .copy(
+                variable = cvar,
+                value = cval,
+                annons = other_annons ++ reg_annon :+ dbgsym
+              )
+              .setPos(orig_def.pos)
 
-          val other_annons = orig_def.annons.filter {
-            case _: DebugSymbol   => false
-            case _: RegAnnotation => false
-            case _                => true
-          }
+        }
 
-          orig_def
-            .copy(
-              variable = cvar,
-              value = cval,
-              annons = other_annons ++ reg_annon :+ dbgsym
-            )
-            .setPos(orig_def.pos)
+        m_wires ++= conv_def.map { r => r.variable.name -> r }
 
+        val converted =
+          ConvertedWire(uint16_vars.map(_.name), msw_mask)
+
+        m_subst += original -> converted
+        // sanity check
+        assert(converted.mask.nonEmpty || orig_def.variable.width % 16 == 0)
+        converted
       }
-
-      m_wires ++= conv_def.map { r => r.variable.name -> r }
-
-      val converted =
-        ConvertedWire(uint16_vars.map(_.name), msw_mask)
-
-      m_subst += original -> converted
-      // sanity check
-      assert(converted.mask.nonEmpty || orig_def.variable.width % 16 == 0)
-      converted
-
     } ensuring (r => r.parts.length > 0)
 
     /** get the conversion of a given name of a wire/reg
@@ -234,7 +262,11 @@ trait ConversionBuilder extends Flavored {
       * @return
       */
     def getConversion(old_name: Name): ConvertedWire =
-      m_subst.getOrElseUpdate(old_name, convertWire(old_name))
+      if (isConstant(old_name)) {
+        m_const_subst.getOrElse(old_name, convertWire(old_name))
+      } else {
+        m_subst.getOrElseUpdate(old_name, convertWire(old_name))
+      }
 
     def originalWidth(original_name: Name): Int = m_old_defs(
       original_name

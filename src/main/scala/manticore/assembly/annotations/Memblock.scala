@@ -10,6 +10,13 @@ final class Memblock private (
   ) =
     this(Memblock.name, new_fields)
 
+  def getIndex(): Option[Int] = getIntValue(AssemblyAnnotationFields.Index)
+  def getBlock(): String =
+    getStringValue(AssemblyAnnotationFields.Block).getOrElse {
+      throw new NoSuchElementException(
+        "bad Memblock annotation, missing block field"
+      )
+    }
   def withIndex(ix: Int) = {
     require(ix >= 0)
     new Memblock(
@@ -31,6 +38,5 @@ object Memblock extends AssemblyAnnotationParser {
       parsed_fields
     )
   }
-
 
 }
