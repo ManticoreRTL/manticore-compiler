@@ -17,7 +17,7 @@ import manticore.assembly.levels.InputType
 import manticore.assembly.levels.OutputType
 import manticore.assembly.levels.CloseSequentialCycles
 import manticore.assembly.levels.BreakSequentialCycles
-import com.sourcegraph.semanticdb_javac.Semanticdb.Constant
+
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
