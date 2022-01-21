@@ -58,7 +58,7 @@ trait CloseSequentialCycles extends Flavored {
                                             r.variable.name,
                                         )
                                     case _ =>
-                                        ctx.logger.error("Register has no current value!", r)
+                                        ctx.logger.warn("Register has no current value!", r)
                                 }
                             case _ =>
                                 ctx.logger.error("@REG annotation is missing id", r)

@@ -152,7 +152,7 @@ object Logger {
     def warn[N <: HasSerialized with Positional](msg: => String, node: N)(
         implicit phase_id: TransformationID
     ): Unit = {
-      message(s"[${YELLOW}warn]${RESET}] ${msg}", node)
+      message(s"[${YELLOW}warn${RESET}] ${msg}", node)
       warn_count += 1
     }
 

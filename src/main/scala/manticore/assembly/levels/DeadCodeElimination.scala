@@ -15,7 +15,6 @@ import manticore.assembly.ManticoreAssemblyIR
 import scalax.collection.Graph
 import scalax.collection.edge.LDiEdge
 
-
 /** This transform identifies dead code and removes it from the design. Dead
   * code is code that does not contribute to the output registers of a program.
   */
@@ -55,15 +54,14 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
       .map(reg => reg.variable.name)
       .toSet
 
-    // Instructions that write to the output ports or an EXPECT instruction
+    // Instructions that write to the output ports or an EXPECT instruction or store a value to the memory
     val outputInstrs = proc.body.filter {
-      case _: Expect => true
+      case _: Expect                      => true
       case _: LocalStore | _: GlobalStore => true
-      case instr @ _ =>
-        // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
+      case instr @ _                      =>
         DependenceAnalysis.regDef(instr) match {
           case s @ h +: t => s.exists(outputNames.contains)
-          case Nil       => false
+          case Nil        => false
         }
     }
 
@@ -84,8 +82,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
         val dstNode = dependenceGraph.get(dstInstr)
         val predNodes = dstNode.diPredecessors
         predNodes.foreach { predNode =>
-          // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
-          val predInstr = predNode.toOuter.asInstanceOf[Instruction]
+
+          val predInstr = predNode.toOuter
           findLiveNodesIter(predInstr)
         }
       }
@@ -162,14 +160,12 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
     val refCounts = countWithFunction(
       newBody,
       // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
-      (instr: Instruction) =>
-        DependenceAnalysis.regUses(instr)
+      (instr: Instruction) => DependenceAnalysis.regUses(instr)
     )
     val defCounts = countWithFunction(
       newBody,
       // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
-      (instr: Instruction) =>
-        DependenceAnalysis.regDef(instr)
+      (instr: Instruction) => DependenceAnalysis.regDef(instr)
     )
     val newRegs = proc.registers.filter { reg =>
       val isReferenced = refCounts(reg.variable.name) != 0

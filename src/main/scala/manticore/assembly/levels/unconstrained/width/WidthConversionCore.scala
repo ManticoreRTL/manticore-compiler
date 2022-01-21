@@ -2007,11 +2007,9 @@ object WidthConversionCore
           rd_uint16_array.length - rs_uint16_array.length
         )(builder.mkConstant(0))
       ) map { case (rd_16, rs_16) =>
-        BinaryArithmetic(
-          BinaryOperator.ADD,
-          rd_16,
-          rs_16,
-          builder.mkConstant(0),
+        Mov(
+          rd = rd_16,
+          rs = rs_16,
           annons
         ).setPos(i.pos)
       }

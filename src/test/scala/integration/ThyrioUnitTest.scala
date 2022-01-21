@@ -41,6 +41,7 @@ trait ThyrioUnitTest extends UnitFixtureTest {
       UnconstrainedBreakSequentialCycles
     def finalPhases() = WidthConversionCore followedBy
       UnconstrainedRenameVariables followedBy
+      UnconstrainedRemoveAliases followedBy
       UnconstrainedDeadCodeElimination followedBy
       UnconstrainedCloseSequentialCycles followedBy
       UnconstrainedInterpreter followedBy
