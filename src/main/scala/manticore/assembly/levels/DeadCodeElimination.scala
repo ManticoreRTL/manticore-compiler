@@ -58,6 +58,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
     // Instructions that write to the output ports or an EXPECT instruction
     val outputInstrs = proc.body.filter {
       case _: Expect => true
+      case _: LocalStore | _: GlobalStore => true
       case instr @ _ =>
         // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
         DependenceAnalysis.regDef(instr) match {

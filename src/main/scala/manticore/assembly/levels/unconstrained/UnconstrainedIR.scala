@@ -17,7 +17,7 @@ import manticore.assembly.levels.HasVariableType
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
   */
-object  UnconstrainedIR extends ManticoreAssemblyIR {
+object UnconstrainedIR extends ManticoreAssemblyIR {
 
   // case class ConstVariable(name: String, )
   case class LogicVariable(
@@ -25,7 +25,9 @@ object  UnconstrainedIR extends ManticoreAssemblyIR {
       width: Int,
       tpe: VariableType
   ) extends Named[LogicVariable]
-      with HasSerialized with HasVariableType with HasWidth {
+      with HasSerialized
+      with HasVariableType
+      with HasWidth {
     def serialized: String = s"${tpe.typeName} ${name} ${width}"
     def varType = tpe
 
