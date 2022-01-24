@@ -21,6 +21,8 @@ import manticore.assembly.annotations.AssemblyAnnotationFields.{
   Block => BlockField,
   Capacity => CapacityField
 }
+import manticore.assembly.annotations.Memblock
+import manticore.assembly.ManticoreAssemblyIR
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
@@ -42,68 +44,47 @@ object UnconstrainedToPlacedTransform
 
     if (isConvertible(asm) == false) {
       ctx.logger.fail(
-        s"${S.getClass().getSimpleName()} not convertible to ${T.getClass().getSimpleName()}"
+        s"Can not convert program"
       );
     }
 
-    val (dimx: Int, dimy: Int) =
-      if (hasLayoutInformation(asm))
-        getDimensions(asm) match {
-          case Some((xx, yy)) => (xx, yy)
-          case None =>
-            ctx.logger.fail("invalid dimension")
-            (0, 0)
-        }
-      else {
-        ctx.logger.fail("no @LAYOUT annotation")
-        (0, 0)
-      }
-
-    val converted_ids = asm.processes
-      .map { p =>
-        try {
-          val location: AssemblyAnnotation =
-            p.annons.find(_.name == LocAnnotation.name).get
-
-          val x = location.getIntValue(XField).get
-          val y = location.getIntValue(YField).get
-          if (x >= dimx || y >= dimy) {
-            ctx.logger.error(s"location out of bounds for process ${p.id}", p)
-            p.id -> None
-          } else {
-            p.id -> Some(T.ProcessIdImpl(p.id, x, y))
+    if (ctx.use_loc) {
+      // probably in debug or test mode, check for @LOC annotations and
+      // place the processes accordingly
+      val converted_ids: Map[S.ProcessId, T.ProcessId] = asm.processes.map {
+        p: S.DefProcess =>
+          val location: Option[LocAnnotation] = p.annons.collectFirst {
+            case l: LocAnnotation => l
           }
-        } catch {
-          case _: Throwable =>
-            p.id -> None
-        }
+          if (location.isEmpty) {
+            ctx.logger.fail(
+              s"process ${p} is missing a ${LocAnnotation.name} annotation!"
+            )
+          }
+          p.id -> T.ProcessIdImpl(
+            p.id,
+            location.get.getX(),
+            location.get.getY()
+          )
+      }.toMap
 
-      }
+      T.DefProgram(
+        processes = asm.processes.map(convert(converted_ids, _)),
+        annons = asm.annons
+      )
 
-    converted_ids.find { x => x._2.isEmpty } match {
-      case Some(p) =>
-        ctx.logger.fail(s"process ${p._1} does not have valid @LOC annotation")
-      case _ =>
+    } else {
+      // normal flow, all processes are mapped to (0, 0)
+      val converted_ids = asm.processes.map { p =>
+        p.id -> T.ProcessIdImpl(p.id, 0, 0)
+      }.toMap
+      T.DefProgram(
+        processes = asm.processes.map(convert(converted_ids, _)),
+        annons = asm.annons
+      )
+
     }
 
-    implicit val proc_map: Map[S.ProcessId, T.ProcessId] = converted_ids.map {
-      case (o, n) => o -> n.get
-    }.toMap
-
-    // ensure no duplicate location exists
-    if (proc_map.values.toSeq.toSet.size != proc_map.size) {
-      ctx.logger.error(s"duplicate locations in defined processes")
-    }
-
-    val out = T.DefProgram(
-      processes = asm.processes.map(convert),
-      annons = asm.annons
-    )
-
-    if (ctx.logger.countErrors() > 0) {
-      ctx.logger.fail(s"Failed transform due to previous errors!")
-    }
-    out
   }
 
   /** Unchecked conversion of DefProcess
@@ -115,14 +96,88 @@ object UnconstrainedToPlacedTransform
     * @return
     */
   private def convert(
+      proc_map: Map[S.ProcessId, T.ProcessId],
       proc: S.DefProcess
-  )(implicit proc_map: Map[S.ProcessId, T.ProcessId], ctx: AssemblyContext): T.DefProcess = {
+  )(implicit ctx: AssemblyContext): T.DefProcess = {
+
+
+    import manticore.assembly.levels.{
+      ConstType, InputType, OutputType, RegType, WireType, MemoryType
+    }
 
     if (proc.registers.length >= 2048) {
       ctx.logger.info(
         s"Process ${proc.id} has ${proc.registers.length} registers."
       )
     }
+
+
+    val regs = proc.registers.map { r =>
+      if (r.variable.width != 16 || r.variable.width != 1) {
+        ctx.logger.error(
+          "register width is not valid! Only width 16 and 1 are acceptable!",
+          r
+        )
+      }
+      val v = r.variable.varType match {
+        case t @ (ConstType | InputType | OutputType | RegType | WireType) =>
+          T.ValueVariable(
+            name = r.variable.name,
+            id = -1, // to indicate unallocated registers
+            tpe = r.variable.tpe
+          )
+        case MemoryType =>
+          val mblock_annon_opt = r.annons.collectFirst { case m: Memblock => m }
+          if (mblock_annon_opt.isEmpty) {
+            ctx.logger.error(s"Expected @${Memblock.name} annotation", r)
+          }
+          T.MemoryVariable(
+            name = r.variable.name,
+            id = -1, // to indicate an unallocated register
+            block = T
+              .MemoryBlock(
+                block_id = mblock_annon_opt.get.getBlock(),
+                capacity = mblock_annon_opt.get.getCapacity(),
+                width = mblock_annon_opt.get.getWidth(),
+                sub_word_index = mblock_annon_opt.get.getIndex()
+              )
+          )
+      }
+      val value: Option[UInt16] = r.value match {
+        case Some(b: BigInt) =>
+          Some(if (b > 0xffff) {
+            ctx.logger.error(s"initial value is too large!", r)
+            UInt16(0)
+          } else {
+            UInt16(b.toInt)
+          })
+        case None =>
+          None
+      }
+      T.DefReg(
+        variable = v,
+        value = value
+      )
+    }
+
+    T.DefProcess(
+      id = proc_map(proc.id),
+      registers = proc.registers.map(convert),
+      functions = proc.functions.map(convert),
+      body = proc.body.map(convert(_, proc_map)),
+      annons = proc.annons
+    ).setPos(proc.pos)
+  }
+
+  /** Unchecked conversion of DefReg
+    *
+    * @param reg
+    *   original DefReg
+    * @return
+    *   converted one
+    */
+
+  private def convert(r: S.DefReg)(implicit ctx: AssemblyContext): T.DefReg = {
     import manticore.assembly.levels.{
       VariableType,
       ConstType,
@@ -132,68 +187,51 @@ object UnconstrainedToPlacedTransform
       OutputType,
       WireType
     }
-    def filterRegs(tpe: VariableType) =
-      proc.registers.filter(_.variable.tpe == tpe)
-    val const_regs = filterRegs(ConstType).zipWithIndex.map { case (r, i) =>
-      r.variable ->
-        T.ConstVariable(r.variable.name, i)
-    }.toMap
-
-    val input_regs = filterRegs(InputType).zipWithIndex.map { case (r, i) =>
-      r.variable ->
-        T.InputVariable(r.variable.name, i + const_regs.size)
-    }.toMap
-
-    val output_regs = filterRegs(OutputType).zipWithIndex.map { case (r, i) =>
-      r.variable ->
-        T.OutputVariable(r.variable.name, i + const_regs.size + input_regs.size)
-    }.toMap
-
-    val reg_regs = filterRegs(RegType).zipWithIndex.map { case (r, i) =>
-      r.variable ->
-        T.RegVariable(
-          r.variable.name,
-          i + const_regs.size + input_regs.size + output_regs.size
-        )
-    }.toMap
-
-    val wire_regs = filterRegs(WireType).zipWithIndex.map { case (r, i) =>
-      r.variable ->
-        T.RegVariable(
-          r.variable.name,
-          i + const_regs.size + input_regs.size + output_regs.size + reg_regs.size
-        )
-    }.toMap
-
-    val mem_regs = filterRegs(MemoryType).zipWithIndex.map {
-      case (r: S.DefReg, i) =>
-        val block =
-          r.findAnnotation(manticore.assembly.annotations.Memblock.name) match {
-            case Some(block_annon) =>
-              T.MemoryBlock(
-                block_annon.getStringValue(BlockField).get,
-                block_annon.getIntValue(CapacityField).get
-              )
-            case None =>
-              ctx.logger.error("Memory block not specified")
-              T.MemoryBlock("", 0)
-          }
-        r.variable ->
-          T.MemoryVariable(
-            r.variable.name,
-            i + const_regs.size + input_regs.size + output_regs.size + reg_regs.size + wire_regs.size,
-            block
-          )
+    if(r.variable.width != 16 || r.variable.width != 1) {
+      ctx.logger.error(
+        "register width is not valid! Only width 16 and 1 are acceptable!",
+        r
+      )
     }
-    implicit val subst =
-      (const_regs ++ input_regs ++ output_regs ++ reg_regs ++ wire_regs ++ mem_regs)
-    T.DefProcess(
-      id = proc_map(proc.id),
-      registers = proc.registers.map(convert),
-      functions = proc.functions.map(convert),
-      body = proc.body.map(convert),
-      annons = proc.annons
-    ).setPos(proc.pos)
+    val v = r.variable.varType match {
+      case t @ (ConstType | InputType | OutputType | RegType | WireType) =>
+        T.ValueVariable(
+          name = r.variable.name,
+          id = -1, // to indicate unallocated registers
+          tpe = r.variable.tpe
+        )
+      case MemoryType =>
+        val mblock_annon_opt = r.annons.collectFirst { case m: Memblock => m }
+        if (mblock_annon_opt.isEmpty) {
+          ctx.logger.error(s"Expected @${Memblock.name} annotation", r)
+        }
+        T.MemoryVariable(
+          name = r.variable.name,
+          id = -1, // to indicate an unallocated register
+          block = T
+            .MemoryBlock(
+              block_id = mblock_annon_opt.get.getBlock(),
+              capacity = mblock_annon_opt.get.getCapacity(),
+              width = mblock_annon_opt.get.getWidth(),
+              sub_word_index = mblock_annon_opt.get.getIndex()
+            )
+        )
+    }
+    val value: Option[UInt16] = r.value match {
+      case Some(b: BigInt) =>
+        Some(if (b > 0xffff) {
+          ctx.logger.error(s"initial value is too large!", r)
+          UInt16(0)
+        } else {
+          UInt16(b.toInt)
+        })
+      case None =>
+        None
+    }
+    T.DefReg(
+      variable = v,
+      value = value
+    ).setPos(r.pos)
   }
 
   /** Unchecked conversion of DefFunc
@@ -210,21 +248,6 @@ object UnconstrainedToPlacedTransform
       func.annons
     ).setPos(func.pos)
 
-  /** Unchecked conversion of DefReg
-    *
-    * @param reg
-    *   original DefReg
-    * @return
-    *   converted one
-    */
-  private def convert(
-      reg: S.DefReg
-  )(implicit subst: Map[S.LogicVariable, T.PlacedVariable]): T.DefReg =
-    T.DefReg(
-      subst(reg.variable),
-      reg.value.map { v => UInt16(v.toInt) },
-      reg.annons
-    ).setPos(reg.pos)
 
   /** Unchecked conversion of instructions
     *
@@ -233,7 +256,7 @@ object UnconstrainedToPlacedTransform
     */
   private def convert(
       inst: S.Instruction
-  )(implicit proc_map: Map[String, T.ProcessId]): T.Instruction = (inst match {
+  , proc_map: Map[S.ProcessId, T.ProcessId])(implicit ctx: AssemblyContext): T.Instruction = (inst match {
 
     case S.BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
       T.BinaryArithmetic(operator, rd, rs1, rs2, annons)
@@ -257,41 +280,25 @@ object UnconstrainedToPlacedTransform
       T.Predicate(rs, annons)
     case S.Mux(rd, sel, rs1, rs2, annons) =>
       T.Mux(rd, sel, rs1, rs2, annons)
+    case S.Mov(rd, rs, annons) => T.Mov(rd, rs, annons)
+    case S.PadZero(rd, rs, width, annons) =>
+      ctx.logger.error("Unsupported instruction", inst)
+      T.PadZero(rd, rs, UInt16(16), annons)
+    case S.AddC(rd, co, rs1, rs2, ci, annons) =>
+      T.AddC(rd, co, rs1, rs2, ci, annons)
     case S.Nop => T.Nop
   }).setPos(inst.pos)
 
-  /** Checks if the @LAYOUT annotation exists
-    *
-    * @param asm
-    *   original assmebly
-    * @return
-    *   true if @LAYOUT exists
-    */
-  private def hasLayoutInformation(asm: S.DefProgram): Boolean =
-    asm.findAnnotation("LAYOUT").nonEmpty
 
-  /** Retrieves the dimension info from @LAYOUT
-    *
-    * @param asm
-    * @return
-    */
-  private def getDimensions(asm: S.DefProgram): Option[(Int, Int)] =
-    try {
-      val layout = asm.findAnnotation("LAYOUT").get
-      val x = layout.getIntValue(XField).get
-      val y = layout.getIntValue(YField).get
-      Some((x, y))
-    } catch {
-      case _: Throwable =>
-        None
-    }
 
   /** Check is [[asm: S.DefProgram]] is convertible to [[T.DefProgram]]
     *
     * @param asm
     * @return
     */
-  private def isConvertible(asm: S.DefProgram)(implicit ctx: AssemblyContext): Boolean = {
+  private def isConvertible(
+      asm: S.DefProgram
+  )(implicit ctx: AssemblyContext): Boolean = {
 
     asm.processes
       .map { p =>
@@ -352,7 +359,9 @@ object UnconstrainedToPlacedTransform
                 } else true
               case S.SetValue(_, value, _) =>
                 if (value >= (1 << 16)) {
-                  ctx.logger.error(s"invalid immediate value in ${i.serialized}")
+                  ctx.logger.error(
+                    s"invalid immediate value in ${i.serialized}"
+                  )
                   false
                 } else true
               case _ => true

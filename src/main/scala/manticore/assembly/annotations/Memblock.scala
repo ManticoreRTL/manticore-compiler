@@ -17,6 +17,8 @@ final class Memblock private (
         "bad Memblock annotation, missing block field"
       )
     }
+  def getWidth(): Int = getIntValue(AssemblyAnnotationFields.Width).get
+  def getCapacity(): Int = getIntValue(AssemblyAnnotationFields.Capacity).get
   def withIndex(ix: Int) = {
     require(ix >= 0)
     new Memblock(

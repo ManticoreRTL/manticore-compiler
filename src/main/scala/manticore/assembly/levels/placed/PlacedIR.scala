@@ -15,14 +15,15 @@ object PlacedIR extends ManticoreAssemblyIR {
 
   import manticore.assembly.HasSerialized
 
-  sealed abstract class PlacedVariable(val tpe: VariableType)
+  sealed abstract trait PlacedVariable
       extends Named[PlacedVariable]
       with HasSerialized
       with HasVariableType
       with HasWidth {
-    override def serialized: String = s"${tpe.typeName} ${name} 16"
-    override def varType = tpe
+    override def serialized: String = s"${varType.typeName} ${name} 16"
     override def width = 16
+    val id: Int
+
 
   }
   import manticore.assembly.levels.{
@@ -33,29 +34,20 @@ object PlacedIR extends ManticoreAssemblyIR {
     OutputType,
     MemoryType
   }
-  case class MemoryBlock(block_id: Name, capacity: Int)
-  case class WireVariable(name: Name, id: Int) extends PlacedVariable(WireType) {
-    def withName(n: Name) = this.copy(name)
+
+  case class ValueVariable(name: Name,  id: Int, tpe: VariableType) extends PlacedVariable {
+    override def varType: VariableType = tpe
+    def withName(new_name: Name): PlacedVariable = this.copy(name = new_name)
   }
-  case class RegVariable(name: Name, id: Int) extends PlacedVariable(RegType)  {
-    def withName(n: Name) = this.copy(name)
-  }
-  case class InputVariable(name: Name, id: Int)
-      extends PlacedVariable(InputType)  {
-    def withName(n: Name) = this.copy(name)
-  }
-  case class ConstVariable(name: Name, id: Int)
-      extends PlacedVariable(ConstType)  {
-    def withName(n: Name) = this.copy(name)
-  }
-  case class OutputVariable(name: Name, id: Int)
-      extends PlacedVariable(OutputType)  {
-    def withName(n: Name) = this.copy(name)
-  }
+
   case class MemoryVariable(name: Name, id: Int, block: MemoryBlock)
-      extends PlacedVariable(MemoryType)  {
+  extends PlacedVariable  {
     def withName(n: Name) = this.copy(name)
+    override def varType: VariableType = MemoryType
+
   }
+
+  case class MemoryBlock(block_id: Name, capacity: Int, width: Int, sub_word_index: Option[Int])
 
   case class CustomFunctionImpl(values: Seq[UInt16]) extends HasSerialized {
     def serialized: String = s"[${values.map(_.toInt).mkString(", ")}]"
