@@ -7,6 +7,8 @@ final class Reg private (
 
   def this(new_fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]) = this(Reg.name, new_fields)
 
+  def getId(): String = getStringValue(AssemblyAnnotationFields.Id).get
+  def getIndex(): Option[Int] = getIntValue(AssemblyAnnotationFields.Index)
   // create a new annotation with a sub-word index
   def withIndex(index: Int): Reg =
     new Reg(fields ++ Map(AssemblyAnnotationFields.Index -> IntValue(index)))

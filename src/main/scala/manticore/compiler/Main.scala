@@ -21,8 +21,10 @@ import manticore.assembly.levels.placed.GlobalPacketSchedulerTransform
 import manticore.assembly.levels.placed.PredicateInsertionTransform
 import manticore.assembly.levels.unconstrained._
 import manticore.assembly.levels.DeadCodeElimination
-import manticore.assembly.levels.unconstrained.width.WidthConversionCore
+import manticore.assembly.levels.unconstrained.width.WidthConversion
 import java.io.PrintStream
+import manticore.assembly.levels.placed.MakeProcessFromOutput
+import manticore.assembly.levels.placed.PlacedIRDeadCodeElimination
 
 
 
@@ -99,25 +101,30 @@ object Main {
         UnconstrainedMakeDebugSymbols followedBy
         UnconstrainedOrderInstructions followedBy
         UnconstrainedRemoveAliases followedBy
-        // UnconstrainedDeadCodeElimination followedBy
+        UnconstrainedDeadCodeElimination followedBy
         UnconstrainedCloseSequentialCycles followedBy
         UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles followedBy
-        WidthConversionCore followedBy
+        WidthConversion.transformation followedBy
         UnconstrainedRenameVariables followedBy
         UnconstrainedNameChecker followedBy
-        // UnconstrainedDeadCodeElimination followedBy
+        UnconstrainedRemoveAliases followedBy
+        UnconstrainedDeadCodeElimination followedBy
         UnconstrainedCloseSequentialCycles followedBy
         UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles
 
-      val placed_phase = PlacedNameChecker followedBy
-        ListSchedulerTransform followedBy
-        PredicateInsertionTransform followedBy
-        GlobalPacketSchedulerTransform
+      val placed_phases =
+        UnconstrainedToPlacedTransform followedBy
+        MakeProcessFromOutput followedBy
+        PlacedIRDeadCodeElimination
+        // PlacedNameChecker followedBy
+        // ListSchedulerTransform followedBy
+        // PredicateInsertionTransform followedBy
+        // GlobalPacketSchedulerTransform
 
       val phases =
-        unconstrained_phases
+        unconstrained_phases followedBy placed_phases
 
       phases(prg, ctx)._1
     }

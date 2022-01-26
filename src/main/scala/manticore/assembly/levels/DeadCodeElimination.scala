@@ -227,7 +227,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
       val dot_export: String = dp.toDot(
         dotRoot = dot_root,
         edgeTransformer = edgeTransform,
-        cNodeTransformer = Some(nodeTransformer)
+        cNodeTransformer = Some(nodeTransformer), // connected nodes
+        iNodeTransformer = Some(nodeTransformer) // isolated nodes
       )
       dot_export
     }

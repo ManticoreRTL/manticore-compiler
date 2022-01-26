@@ -5,6 +5,7 @@ import manticore.assembly.levels.HasVariableType
 import manticore.assembly.HasWidth
 import manticore.assembly.levels.UInt16
 import manticore.assembly.DependenceGraphBuilder
+import manticore.assembly.annotations.{Memblock => MemblockAnnotation}
 
 /** IR level with placed processes and allocated registers.
   *
@@ -24,7 +25,6 @@ object PlacedIR extends ManticoreAssemblyIR {
     override def width = 16
     val id: Int
 
-
   }
   import manticore.assembly.levels.{
     WireType,
@@ -35,19 +35,29 @@ object PlacedIR extends ManticoreAssemblyIR {
     MemoryType
   }
 
-  case class ValueVariable(name: Name,  id: Int, tpe: VariableType) extends PlacedVariable {
+  case class ValueVariable(name: Name, id: Int, tpe: VariableType)
+      extends PlacedVariable {
     override def varType: VariableType = tpe
     def withName(new_name: Name): PlacedVariable = this.copy(name = new_name)
   }
 
   case class MemoryVariable(name: Name, id: Int, block: MemoryBlock)
-  extends PlacedVariable  {
+      extends PlacedVariable {
     def withName(n: Name) = this.copy(name)
     override def varType: VariableType = MemoryType
 
   }
 
-  case class MemoryBlock(block_id: Name, capacity: Int, width: Int, sub_word_index: Option[Int])
+  case class MemoryBlock(
+      block_id: Name,
+      capacity: Int,
+      width: Int,
+      sub_word_index: Option[Int]
+  )
+  object MemoryBlock {
+    def fromAnnotation(a: MemblockAnnotation) =
+      MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth(), a.getIndex())
+  }
 
   case class CustomFunctionImpl(values: Seq[UInt16]) extends HasSerialized {
     def serialized: String = s"[${values.map(_.toInt).mkString(", ")}]"
@@ -66,8 +76,6 @@ object PlacedIR extends ManticoreAssemblyIR {
   type ExceptionId = UInt16
 
 }
-
-
 
 object LatencyAnalysis {
 

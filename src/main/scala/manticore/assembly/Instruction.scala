@@ -201,7 +201,7 @@ trait ManticoreAssemblyIR {
       predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
-    override def toString: String = s"LST ${rs}, ${base}[${offset}], ${predicate
+    override def toString: String = s"LST ${rs}, ${base}[${offset}] ${predicate
       .map(", " + _.toString())
       .getOrElse("")}"
 

@@ -67,6 +67,8 @@ trait Logger {
 
   def start(msg: => String)(implicit phase_id: TransformationID): Unit
   def end(msg: => String)(implicit phase_id: TransformationID): Unit
+
+  def flush(): Unit
 }
 
 object Logger {
@@ -226,6 +228,8 @@ object Logger {
         info(msg)
       transform_index += 1
     }
+
+    def flush(): Unit = printer.flush()
   }
 
   def apply(

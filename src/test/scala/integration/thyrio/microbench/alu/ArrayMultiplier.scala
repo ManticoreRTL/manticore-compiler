@@ -24,14 +24,14 @@ class ArrayMultiplier extends ThyrioUnitTest {
     getClass().getResource("/integration/microbench/alu/multiplier").toURI()
 
   val test_size = 300
-  val width = 32
+  val width = 8
   val randGen = new scala.util.Random(0)
   def generateTest(work_dir: Path): Unit = {
 
     println("Generating random test")
     assert(width <= 32)
-    val mask: Long = 0xffffffffL
-    val res_mask: Long = 0xffffffffffffffffL
+    val mask: Long = 0xffL
+    val res_mask: Long = 0xffffL
     val op1 = Seq.fill(test_size) { randGen.nextLong() & mask }
     val op2 = Seq.fill(test_size) { randGen.nextLong() & mask }
     val res = op1 zip op2 map { case (r1, r2) => (r1 * r2) & res_mask }
@@ -97,13 +97,13 @@ class ArrayMultiplier extends ThyrioUnitTest {
     runTest(work_dir)(phases)
   }
 
-//   it should "successfully interpret the results before width conversion" in {
-//     f =>
-//       Range(0, 1) foreach { i =>
-//         testIteration(i)(ManticoreFrontend.initialPhases())
-//       }
+  it should "successfully interpret the results before width conversion" in {
+    f =>
+      Range(0, 1) foreach { i =>
+        testIteration(i)(ManticoreFrontend.initialPhases())
+      }
 
-//   }
+  }
 
   it should "successfully interpret the results after width conversion" in {
     f =>

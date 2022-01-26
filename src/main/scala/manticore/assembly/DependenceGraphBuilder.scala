@@ -175,6 +175,8 @@ trait DependenceGraphBuilder extends Flavored {
         }
 
       raw_dependence_graph
+    }.ensuring { g =>
+      g.nodes.length == process.body.length
     }
 
     /** Create mapping from names to the instruction defining them (i.e.,
