@@ -23,8 +23,10 @@ import manticore.assembly.levels.unconstrained._
 import manticore.assembly.levels.DeadCodeElimination
 import manticore.assembly.levels.unconstrained.width.WidthConversion
 import java.io.PrintStream
-import manticore.assembly.levels.placed.MakeProcessFromOutput
+import manticore.assembly.levels.placed.ProcessSplittingTransform
 import manticore.assembly.levels.placed.PlacedIRDeadCodeElimination
+import manticore.assembly.levels.placed.PlacedIROrderInstructions
+import manticore.assembly.levels.placed.ProcessMergingTransform
 
 
 
@@ -106,8 +108,6 @@ object Main {
         UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles followedBy
         WidthConversion.transformation followedBy
-        UnconstrainedRenameVariables followedBy
-        UnconstrainedNameChecker followedBy
         UnconstrainedRemoveAliases followedBy
         UnconstrainedDeadCodeElimination followedBy
         UnconstrainedCloseSequentialCycles followedBy
@@ -116,7 +116,11 @@ object Main {
 
       val placed_phases =
         UnconstrainedToPlacedTransform followedBy
-        MakeProcessFromOutput followedBy
+        ProcessSplittingTransform followedBy
+        PlacedIROrderInstructions followedBy
+        PlacedIRDeadCodeElimination followedBy
+        ProcessMergingTransform followedBy
+        PlacedIROrderInstructions followedBy
         PlacedIRDeadCodeElimination
         // PlacedNameChecker followedBy
         // ListSchedulerTransform followedBy

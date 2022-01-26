@@ -25,7 +25,7 @@ import scalax.collection.GraphTraversal
   *
   * @author Mahyar Emami <mahyar.emami@epfl.ch>
   */
-object MakeProcessFromOutput
+object ProcessSplittingTransform
     extends DependenceGraphBuilder
     with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
@@ -370,3 +370,5 @@ object MakeProcessFromOutput
     .setPos(source.pos)
 
 }
+
+
