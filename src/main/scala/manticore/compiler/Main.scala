@@ -29,6 +29,7 @@ import manticore.assembly.levels.placed.PlacedIROrderInstructions
 import manticore.assembly.levels.placed.ProcessMergingTransform
 import manticore.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.assembly.levels.placed.SendInsertionTransform
+import manticore.assembly.levels.placed.PlacedIRCloseSequentialCycles
 
 
 
@@ -126,6 +127,7 @@ object Main {
         PlacedIRDeadCodeElimination followedBy
         RoundRobinPlacerTransform followedBy
         SendInsertionTransform followedBy
+        PlacedIRCloseSequentialCycles followedBy
         ListSchedulerTransform followedBy
         PredicateInsertionTransform followedBy
         GlobalPacketSchedulerTransform

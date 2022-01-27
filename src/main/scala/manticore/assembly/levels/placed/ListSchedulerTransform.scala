@@ -16,6 +16,8 @@ import manticore.assembly.annotations.AssemblyAnnotationFields.{
 }
 import manticore.assembly.annotations.{Layout => LayoutAnnotation}
 import scalax.collection.GraphTraversal
+import manticore.assembly.levels.CloseSequentialCycles
+import manticore.assembly.ManticoreAssemblyIR
 
 object TestTraverser extends App {
   import scalax.collection.Graph
@@ -110,7 +112,14 @@ object ListSchedulerTransform
     // import manticore.assembly.levels.placed.
     val dependence_graph =
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
+
+    // note that the dependence graph is obtained from a program in which the
+    // output registers are not MOVed to the inputs. So before anything else,
+    // we create extra dependency nodes and add the needed
     // dump the graph
+
+
+
     ctx.logger.dumpArtifact(
       s"dependence_graph_${phase_id}_${proc.id.id}_${ctx.logger.countProgress()}.dot"
     ) {
@@ -173,8 +182,12 @@ object ListSchedulerTransform
       "dependence graph is mal-formed!"
     )
 
-    require(dependence_graph.isAcyclic, "Dependence graph is cyclic!")
-    // require(dependence_graph.nodes.size == proc.body.size)
+    if (!dependence_graph.isAcyclic) {
+      ctx.logger.error(s"Dependence graph for process ${proc.id} is cyclic!")
+      ctx.logger.fail("Failed to schedule process")
+    }
+
+
 
     def traverseAndSetDistanceToSinkNonRecursive(node: Node): Int = {
 

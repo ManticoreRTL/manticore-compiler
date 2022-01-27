@@ -30,7 +30,7 @@
 //   )(implicit ctx: AssemblyContext): Map[Name, (Int, Int)] = {
 
 //     // initialize liveness scopes, constants are always live, therefore,
-//     // their liveness internal is 0 to infinity.
+//     // their liveness interval is 0 to infinity.
 //     val life_begin = scala.collection.mutable.Map(
 //       process.registers.collect {
 //         case DefReg(v, Some(_), _) if v.varType == ConstType =>
@@ -46,7 +46,7 @@
 //       * the instruction.
 //       */
 
-//     process.body.zipWithIndex.foreach { case (inst, ix) =>
+//     process.body.zipWithIndex.foreach { case (inst, cycle) =>
 //       DependenceAnalysis.regDef(inst) match {
 //         case Seq() =>
 //         case rds @ _ =>
@@ -54,7 +54,7 @@
 //             if (life_begin.contains(rd)) {
 //               ctx.logger.error(s"Register ${rd} is defined multiple times!", inst)
 //             } else {
-//               life_begin += (rd -> ix)
+//               life_begin += (rd -> cycle)
 //             }
 //           }
 //       }
@@ -63,7 +63,7 @@
 //           ctx.logger.error(s"Register ${rs} is used before being defined", inst)
 
 //         }
-//         life_end += (rs -> ix)
+//         life_end += (rs -> cycle)
 //       }
 //     }
 

@@ -18,12 +18,14 @@ import manticore.assembly.levels.Flavored
 import manticore.assembly.annotations.Memblock
 import scala.util.Success
 import scala.util.Failure
+import manticore.assembly.levels.CloseSequentialCycles
+import manticore.assembly.levels.InputOutputPairs
 
 /** Generic dependence graph builder, to use it, mix this trait with your
   * transformation
   * @param flavor
   */
-trait DependenceGraphBuilder extends Flavored {
+trait DependenceGraphBuilder extends InputOutputPairs {
 
   val flavor: ManticoreAssemblyIR
   object DependenceAnalysis {
@@ -128,28 +130,32 @@ trait DependenceGraphBuilder extends Flavored {
         ctx: AssemblyContext
     ): MutableGraph[Instruction, LDiEdge] = {
 
-
-
       // A map from registers to the instruction defining it (if any), useful for back tracking
       val def_instructions = definingInstructionMap(process)
 
       // create a mapping from unique memory blocks to store instructions
       val blocks_to_stores = memoryBlockStores(process)
-      val loads = process.body.collect { case x @ (_: LocalLoad | _: GlobalLoad) => x -> extractBlock(x).get}
-      val load_to_store = loads.map { case (l, b) => l -> blocks_to_stores.get(b) }.toMap
+      val loads = process.body.collect {
+        case x @ (_: LocalLoad | _: GlobalLoad) => x -> extractBlock(x).get
+      }
+      val load_to_store = loads.map { case (l, b) =>
+        l -> blocks_to_stores.get(b)
+      }.toMap
       val raw_dependence_graph =
         process.body.foldLeft(
           MutableGraph[Instruction, LDiEdge](process.body: _*)
         ) { case (g, inst) =>
-          // first add an edge for register to register dependency
-          val raw_deps = regUses(inst).foldLeft(g + inst) { case (gg, use) =>
-            def_instructions.get(use) match {
-              case Some(pred) =>
-                gg += LDiEdge[Instruction, L](pred, inst)(label(pred, inst))
-              case None =>
-                gg
+          // create register to register dependencies
+          val raw_deps =
+            regUses(inst).foldLeft(g += inst) { case (gg, use) =>
+              def_instructions.get(use) match {
+                case Some(pred) =>
+                  gg += LDiEdge[Instruction, L](pred, inst)(label(pred, inst))
+                case None =>
+                  gg
+              }
             }
-          }
+
           // now add a load to store dependency if the instruction is a load
           inst match {
             case load @ (_: LocalLoad | _: GlobalLoad) =>
@@ -186,8 +192,29 @@ trait DependenceGraphBuilder extends Flavored {
       * @param proc
       * @return
       */
-    def definingInstructionMap(proc: DefProcess): Map[Name, Instruction] =
-      proc.body.flatMap { inst => regDef(inst) map { rd => rd -> inst } }.toMap
+    def definingInstructionMap(
+        proc: DefProcess
+    )(implicit ctx: AssemblyContext): Map[Name, Instruction] = {
+
+      val input_output_pairs = createInputOutputPairs(proc).map {
+        case (curr, next) => curr.variable.name -> next.variable.name
+      }.toSet
+
+      val name_def_map = scala.collection.mutable.Map.empty[Name, Instruction]
+      proc.body.foreach { inst =>
+        inst match {
+          case Mov(current, next, _)
+              if (input_output_pairs.contains((current, next))) =>
+          // a MOVing output register to input registers do not really define them, we
+          // only do this close sequential cycles
+
+          case _ =>
+            name_def_map ++= regDef(inst) map { rd => rd -> inst }
+        }
+
+      }
+      name_def_map.toMap
+    }
 
     def extractBlock(
         n: Instruction
