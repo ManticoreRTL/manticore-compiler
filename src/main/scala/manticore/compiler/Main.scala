@@ -27,6 +27,8 @@ import manticore.assembly.levels.placed.ProcessSplittingTransform
 import manticore.assembly.levels.placed.PlacedIRDeadCodeElimination
 import manticore.assembly.levels.placed.PlacedIROrderInstructions
 import manticore.assembly.levels.placed.ProcessMergingTransform
+import manticore.assembly.levels.placed.RoundRobinPlacerTransform
+import manticore.assembly.levels.placed.SendInsertionTransform
 
 
 
@@ -121,11 +123,14 @@ object Main {
         PlacedIRDeadCodeElimination followedBy
         ProcessMergingTransform followedBy
         PlacedIROrderInstructions followedBy
-        PlacedIRDeadCodeElimination
+        PlacedIRDeadCodeElimination followedBy
+        RoundRobinPlacerTransform followedBy
+        SendInsertionTransform followedBy
+        ListSchedulerTransform followedBy
+        PredicateInsertionTransform followedBy
+        GlobalPacketSchedulerTransform
         // PlacedNameChecker followedBy
         // ListSchedulerTransform followedBy
-        // PredicateInsertionTransform followedBy
-        // GlobalPacketSchedulerTransform
 
       val phases =
         unconstrained_phases followedBy placed_phases

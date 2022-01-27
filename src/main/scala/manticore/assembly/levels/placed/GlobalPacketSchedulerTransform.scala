@@ -18,15 +18,8 @@ object GlobalPacketSchedulerTransform
       context: AssemblyContext
   ): DefProgram = {
 
-    def getDim(dim: FieldName): Int =
-      program.findAnnotationValue(LayoutAnnotation.name, dim) match {
-        case Some(manticore.assembly.annotations.IntValue(v)) => v
-        case _ =>
-          context.logger.fail("Scheduling requires a valid @LAYOUT annotation")
-          0
-      }
-    val dimx = getDim(XField)
-    val dimy = getDim(YField)
+    val dimx = context.max_dimx
+    val dimy = context.max_dimy
 
     // a wrapper class for Send instruction
     case class SendWrapper(
@@ -52,14 +45,18 @@ object GlobalPacketSchedulerTransform
       val path_y: Seq[(Int, Int)] = // a tuple of y location and occupancy time
         Seq.tabulate(y_dist) { i =>
           val y_v = (source.y + i) % dimy
-          y_v -> (path_x.last._2 + i + 1)
+          path_x match {
+            case _ :+ last => y_v -> (path_x.last._2 + i + 1)
+            case Seq() => y_v -> (earliest + LatencyAnalysis.latency(inst) + i + 1)
+          }
+
         }
 
       // A send instruction that becomes available earlier, has higher priority
       // locally, this is somehow enforced, i.e., the List scheduler assumes
       // that Sends are scheduled in the order in which their data is produced.
       // Without this assumption it is not possible to compute a valid early time
-      // since scheduling one Send will change the earliest time unscheduled ones
+      // since scheduling one Send will change the earliest time of unscheduled ones
       def compare(that: SendWrapper): Int =
         Ordering[Int]
           .compare(this.earliest, that.earliest)

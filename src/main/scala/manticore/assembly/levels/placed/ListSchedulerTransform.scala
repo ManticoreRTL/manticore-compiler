@@ -9,8 +9,46 @@ import manticore.assembly.DependenceGraphBuilder
 import scalax.collection.edge.LDiEdge
 import scala.collection.parallel.CollectionConverters._
 import manticore.assembly.levels.UInt16
-import manticore.assembly.annotations.AssemblyAnnotationFields.{X => XField, Y => YField, FieldName}
+import manticore.assembly.annotations.AssemblyAnnotationFields.{
+  X => XField,
+  Y => YField,
+  FieldName
+}
 import manticore.assembly.annotations.{Layout => LayoutAnnotation}
+import scalax.collection.GraphTraversal
+
+object TestTraverser extends App {
+  import scalax.collection.Graph
+  import scalax.collection.edge.WDiEdge
+  import scalax.collection.edge.Implicits._
+
+  val g = scalax.collection.mutable.Graph(
+    (1 ~%> 2)(2),
+    (2 ~%> 3)(1),
+    (3 ~%> 4)(1),
+    (3 ~%> 6)(2),
+    (3 ~%> 7)(2),
+    (7 ~%> 8)(2),
+    (5 ~%> 3)(4),
+    (5 ~%> 4)(1)
+  )
+
+  val root = g.get(1)
+
+  root.outerNodeTraverser.withKind(GraphTraversal.BreadthFirst).foreach { n =>
+    println(s"${n}")
+  }
+  root.outerNodeDownUpTraverser.foreach { case (downwards, node) =>
+    val dir = downwards match {
+      case true  => "down"
+      case false => "up"
+    }
+    println(s"${dir}:\t ${node}")
+
+  }
+
+}
+
 /** List scheduler transformation, the output of this transformation is a
   * program with locally scheduled processes. If the input program has Nops,
   * they will be all ignored.
@@ -18,9 +56,9 @@ import manticore.assembly.annotations.{Layout => LayoutAnnotation}
   * IMPORTANT:
   *
   * All the Stores are scheduled after loads since all memories are assumed to
-  * have async read and sync write. Therefore, so if a register allocator needs
-  * to spill to the array memory it has to store and load registers then it can
-  * not use this transformation again.
+  * have async read and sync write. Therefore, if a register allocator needs to
+  * spill to the array memory it has to store and load registers then it can not
+  * use this transformation again.
   *
   * @author
   *   Mahyar emami <mahyar.emami@epfl.ch>
@@ -69,7 +107,6 @@ object ListSchedulerTransform
       ctx: AssemblyContext
   ): DefProcess = {
 
-
     // import manticore.assembly.levels.placed.
     val dependence_graph =
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
@@ -113,7 +150,7 @@ object ListSchedulerTransform
             dot_root,
             DotNodeStmt(
               NodeId(inode.toOuter.hashCode().toString()),
-              List(DotAttr("label", inode.toOuter.serialized.trim))
+              List(DotAttr("label", inode.toOuter.toString().trim))
             )
           )
         )
@@ -121,7 +158,8 @@ object ListSchedulerTransform
       val dot_export: String = dependence_graph.toDot(
         dotRoot = dot_root,
         edgeTransformer = edgeTransform,
-        cNodeTransformer = Some(nodeTransformer)
+        cNodeTransformer = Some(nodeTransformer),
+        iNodeTransformer = Some(nodeTransformer)
       )
       dot_export
     }
@@ -138,10 +176,9 @@ object ListSchedulerTransform
     require(dependence_graph.isAcyclic, "Dependence graph is cyclic!")
     // require(dependence_graph.nodes.size == proc.body.size)
 
-    def traverseGraphNodesAndRecordDistanceToSink(node: Node): Int = {
+    def traverseAndSetDistanceToSinkNonRecursive(node: Node): Int = {
 
-      if (node.edges.filter(_.from == node).isEmpty) {
-
+      def sinkDistance(n: Node): Int = n.toOuter match {
         // Nodes that do not introduce any RAW dependence should usually
         // have a distance to sink equal to instruction latency, except for
         // Send instruction, because they need to traverse NoC hops. In
@@ -150,6 +187,52 @@ object ListSchedulerTransform
         // message to reach its destination. But since each Send becomes a
         // SetValue at the target we should also include an additional
         // latency into our calculation
+        case inst @ Send(rd, _, target, _) =>
+          instructionLatency(inst) + // local instruction latency
+            manhattanDistance(
+              proc.id,
+              target,
+              dim
+            ) + // time to traverse the NoC
+            instructionLatency(
+              SetValue(rd, UInt16(0))
+            ) // remote instruction latency
+        case inst @ _ =>
+          instructionLatency(inst)
+      }
+
+      distance_to_sink.get(node) match {
+        case Some(dist) => dist // distance already cached
+        case None => // need to perform a depth first traversal
+          node.innerNodeDownUpTraverser
+            .withFilter { case (_, node) =>
+              distance_to_sink.contains(node) == false
+            }
+            .foreach { case (downwards, inode) =>
+              if (!downwards) {
+                if (inode.outDegree == 0) {
+                  val dist = sinkDistance(inode)
+                  distance_to_sink(inode) = dist
+                } else {
+                  val dist = inode.outgoing.map { edge =>
+                    val Label(v) = edge.label
+                    val succ_dist = distance_to_sink(edge.target) + v
+                    succ_dist
+                  }.max
+                  distance_to_sink(inode) = dist
+                }
+              }
+            }
+          distance_to_sink(node)
+      }
+
+    }
+
+    // somehow faster, both have the same complexity though I think (visit each node twice)
+    def traverseAndSetDistanceToSinkRecursive(node: Node): Int = {
+
+      if (node.outDegree == 0) {
+
         val dist = node.toOuter match {
           case inst @ Send(rd, _, target, _) =>
             instructionLatency(inst) + // local instruction latency
@@ -170,44 +253,40 @@ object ListSchedulerTransform
         // answer already known
         distance_to_sink(node)
       } else {
-        node.edges.map { edge =>
-          if (edge.from == node) {
-            val dist: Int =
-              traverseGraphNodesAndRecordDistanceToSink(edge.to) + edge.label
-                .asInstanceOf[Label]
-                .v
-            distance_to_sink(node) = dist
-            dist
-          } else {
-            0 // irrelevant, the edge is inwards
-          }
+        node.outgoing.map { edge =>
+          val Label(v) = edge.label
+          val dist: Int =
+            traverseAndSetDistanceToSinkRecursive(edge.to) + v
+          distance_to_sink(node) = dist
+          dist
         }.max
       }
     }
 
+    // val some_root_node = dependence_graph.
     // find the distance of each node to sinks
-    dependence_graph.nodes.foreach { x =>
-      traverseGraphNodesAndRecordDistanceToSink(x)
-    }
+    val now = System.nanoTime()
+    dependence_graph.nodes filter { _.inDegree == 0} foreach { traverseAndSetDistanceToSinkRecursive }
+    val end = System.nanoTime()
 
-    val send_instructions = proc.body.collect { case i @ Send(_, _, _, _) => i }
+    val send_instructions = proc.body.collect { case i: Send => i }
 
-    val unsched_list = scala.collection.mutable.ListBuffer[Instruction](
+    val unsched_list = scala.collection.mutable.Queue[Instruction](
       proc.body.filter(_ != Nop): _* // remove nops, they can not be
       // scheduled because they never become ready (no operands) and they
       // don't matter anyways.
     )
 
-    val schedule = scala.collection.mutable.ListBuffer[Instruction]()
+    val schedule = scala.collection.mutable.Queue[Instruction]()
 
-    case class ReadyNode(n: Node) extends Ordered[ReadyNode] {
+    case class ReadyNode(n: Node, dist: Int) extends Ordered[ReadyNode] {
       def compare(that: ReadyNode) =
-        Ordering[Double].reverse
-          .compare(distance_to_sink(this.n), distance_to_sink(that.n))
+        Ordering[Int].reverse
+          .compare(this.dist, that.dist)
 
     }
 
-    val ready_list = scala.collection.mutable.PriorityQueue[ReadyNode]()
+    val ready_list = scala.collection.mutable.PriorityQueue.empty[ReadyNode]
     // initialize the ready list with instruction that have no predecessor
 
     ctx.logger.debug(
@@ -217,9 +296,9 @@ object ListSchedulerTransform
         }
         .mkString("\n")
     )
-    ready_list ++= dependence_graph.nodes
-      .filter { n => n.inDegree == 0 }
-      .map { ReadyNode(_) }
+    ready_list ++= dependence_graph.nodes.collect {
+      case n if n.inDegree == 0 => ReadyNode(n, distance_to_sink(n))
+    }
 
     ctx.logger.debug(
       s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
@@ -230,7 +309,8 @@ object ListSchedulerTransform
 
     // dependence_graph.OuterEdgeTraverser
 
-    var active_list = scala.collection.mutable.ListBuffer[(Node, Double)]()
+    class ActiveNode(val node: Node, var time_left: Int)
+    var active_list = scala.collection.mutable.ListBuffer[ActiveNode]()
     // val scheduled_preds = scala.collection.mutable.Set.empty[Node]
     // LIST scheduling simulation loop
     var cycle = 0
@@ -240,39 +320,25 @@ object ListSchedulerTransform
         .mkString("\n")}"
     )
     while (unsched_list.nonEmpty && cycle < 4096) {
-
-      val to_retire = active_list.filter(_._2 == 0)
       val finished_list =
-        active_list.filter { _._2 == 0 } map { finished =>
+        active_list.filter { _.time_left == 0 } map { f =>
+          val node = f.node
           ctx.logger.debug(
-            s"${cycle}: Committing ${finished._1.toOuter.serialized} "
+            s"${cycle}: Committing ${node.toOuter} "
           )
-
-          val node = finished._1
-
-          node.edges
-            .filter { e => e.from == node }
-            .foreach { outbound_edge =>
-              // mark any dependency from this node as satisfied
-              satisfied_dependence.add(outbound_edge)
-              // and check if any instruction has become ready
-              val successor = outbound_edge.to
-              if (
-                successor.edges.filter { _.to == successor }.forall {
-                  satisfied_dependence.contains
-                }
-              ) {
-                ctx.logger.debug(
-                  s"${cycle}: Readying ${successor.toOuter.serialized} "
-                )
-                ready_list += ReadyNode(successor)
-              }
+          node.diSuccessors.foreach { succ =>
+            if (succ.inDegree == 1) {
+              ctx.logger.debug(
+                s"${cycle}: Readying ${succ.toOuter.serialized} "
+              )
+              ready_list += ReadyNode(succ, distance_to_sink(succ))
             }
-          finished
+          }
+          dependence_graph -= node
+          f
         }
       active_list --= finished_list
-      val new_active_list = active_list.map { case (n, d) => (n, d - 1) }
-      active_list = new_active_list
+      active_list.foreach { an => an.time_left -= 1 }
 
       if (ready_list.isEmpty) {
         schedule.append(Nop)
@@ -281,7 +347,9 @@ object ListSchedulerTransform
         // check if a predicate instruction is needed before scheduling the head
         ctx.logger
           .debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")
-        active_list.append((head.n, instructionLatency(head.n.toOuter)))
+        active_list.append(
+          new ActiveNode(head.n, instructionLatency(head.n.toOuter))
+        )
         schedule.append(head.n.toOuter)
         unsched_list -= head.n.toOuter
         ready_list.dequeue()
@@ -305,24 +373,13 @@ object ListSchedulerTransform
       context: AssemblyContext
   ): DefProgram = {
 
-    def getDim(dim: FieldName): Int =
-      source.findAnnotationValue(LayoutAnnotation.name, dim) match {
-        case Some(manticore.assembly.annotations.IntValue(v)) => v
-        case _ =>
-          context.logger.fail("Scheduling requires a valid @LAYOUT annotation")
-          0
-      }
-
-    val dimx = getDim(XField)
-    val dimy = getDim(YField)
-
     if (context.debug_message) { // run single-threaded if debug enabled
       source.copy(processes = source.processes.map { p =>
-        createLocalSchedule(p, (dimx, dimy), context)
+        createLocalSchedule(p, (context.max_dimx, context.max_dimy), context)
       })
     } else {
       source.copy(processes = source.processes.par.map { p =>
-        createLocalSchedule(p, (dimx, dimy), context)
+        createLocalSchedule(p, (context.max_dimx, context.max_dimy), context)
       }.seq)
     }
     // createGlobalSchedule(source, context)

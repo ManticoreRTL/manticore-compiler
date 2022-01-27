@@ -118,16 +118,17 @@ trait DependenceGraphBuilder extends Flavored {
       * @param ctx
       *   compilation context
       * @return
-      *   An immutable dependence graph
+      *   An mutable dependence graph
       */
+    import scalax.collection.mutable.{Graph => MutableGraph}
     def build[L](
         process: DefProcess,
         label: (Instruction, Instruction) => L
     )(implicit
         ctx: AssemblyContext
-    ): Graph[Instruction, LDiEdge] = {
+    ): MutableGraph[Instruction, LDiEdge] = {
 
-      import scalax.collection.mutable.{Graph => MutableGraph}
+
 
       // A map from registers to the instruction defining it (if any), useful for back tracking
       val def_instructions = definingInstructionMap(process)
