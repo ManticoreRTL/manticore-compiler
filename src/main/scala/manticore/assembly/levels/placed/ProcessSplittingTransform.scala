@@ -75,6 +75,7 @@ object ProcessSplittingTransform
             true
           case None =>
             ctx.logger.warn("output register is missing input correspondent", r)
+            ctx.logger.flush()
             false
         }
       case _ =>
@@ -281,14 +282,24 @@ object ProcessSplittingTransform
         dot_export
       }
 
-      val leaves = constraint_graph.nodes.filter { inode =>
-        inode.toOuter match {
-          case _: InstLeaf => true
-          case _           => false
+      // val leaves = constraint_graph.nodes.filter { inode =>
+      //   inode.toOuter match {
+      //     case _: InstLeaf => true
+      //     case _           => false
+      //   }
+      // }
+
+      val leaves = constraint_graph.nodes.collect {
+        case n if n.toOuter.isInstanceOf[InstLeaf] => n.toOuter.asInstanceOf[InstLeaf].inst
+      }
+      if (leaves.size != proc.body.size) {
+        val left_out = proc.body.toSet[Instruction].diff(leaves).toSeq
+
+        left_out.foreach { i =>
+          ctx.logger.warn("removing unused instruction", i)
         }
       }
-
-      assert(leaves.size == proc.body.size, "no instruction should be left out")
+      // assert(leaves.size == proc.body.size, "no instruction should be left out")
       ctx.logger.info(
         s"Found ${res.size} parallel processes from ${proc.body.size} instruction "
       )

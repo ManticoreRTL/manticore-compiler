@@ -58,7 +58,7 @@ trait UnitFixtureTest extends FixtureAnyFlatSpec {
     val test_dir =
       root_dir.resolve(test.name.replace(" ", "_").replace("/", "_/_"))
     val ctx = AssemblyContext(
-      dump_all = false,
+      dump_all = true,
       dump_dir = Some(test_dir.toFile),
       quiet = false,
       log_file = Some(test_dir.resolve("run.log").toFile())

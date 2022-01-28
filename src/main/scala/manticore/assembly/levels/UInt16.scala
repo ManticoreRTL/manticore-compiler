@@ -26,6 +26,7 @@ final class UInt16 private (private val v: Int) extends AnyVal {
   def <=(that: UInt16): Boolean = this.v <= that.v
   def >(that: UInt16): Boolean = this.v > that.v
   def >=(that: UInt16): Boolean = this.v >= that.v
+  def ==(that: UInt16): Boolean = this.v == that.v
 
   /**
     * Logical left shift

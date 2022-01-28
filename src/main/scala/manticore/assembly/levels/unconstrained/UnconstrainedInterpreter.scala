@@ -36,7 +36,9 @@ object UnconstrainedInterpreter
   case object InterpretationFailure extends InterpretationTrap
   case object InterpretationStop extends InterpretationTrap
 
-  private final class ProcessState(val proc: DefProcess)(implicit val ctx: AssemblyContext) {
+  private final class ProcessState(val proc: DefProcess)(implicit
+      val ctx: AssemblyContext
+  ) {
 
     // a mutable register file
     val register_file = scala.collection.mutable.Map[Name, BigInt]() ++
@@ -462,13 +464,19 @@ object UnconstrainedInterpreter
             AssemblyAnnotationFields.Type
           ) match {
             case Some(Trap.Fail) =>
-              ctx.logger.error(s"User exception caught! ${error_id}", instruction)
+              ctx.logger.error(
+                s"User exception caught! ${error_id}",
+                instruction
+              )
               ctx.logger.error(s"Expected ${ref_val} but got ${got_val}")
               Some(InterpretationFailure)
             case Some(Trap.Stop) =>
               ctx.logger.info("Stop signal interpreted.")
               if (trap_source.nonEmpty)
-                ctx.logger.info(s"Stop condition from ${trap_source}", instruction)
+                ctx.logger.info(
+                  s"Stop condition from ${trap_source}",
+                  instruction
+                )
               Some(InterpretationStop)
             case _ =>
               ctx.logger.error(s"Missing TRAP type!", instruction)
@@ -482,7 +490,10 @@ object UnconstrainedInterpreter
               case _       => false
             }
           ) {
-            ctx.logger.info(s"values ${ref_val} and ${got_val} match.", instruction)
+            ctx.logger.info(
+              s"values ${ref_val} and ${got_val} match.",
+              instruction
+            )
           }
 
         }
@@ -540,6 +551,14 @@ object UnconstrainedInterpreter
         val rs_val = state.register_file(rs)
         vcd_writer.foreach { _.update(rd, rs_val) }
         state.register_file(rd) = rs_val
+      case SetCarry(rd, _) =>
+        val rd_val = BigInt(1)
+        vcd_writer.foreach { _.update(rd, rd_val) }
+        state.register_file(rd) = rd_val
+      case ClearCarry(rd, _) =>
+        val rd_val = BigInt(0)
+        vcd_writer.foreach { _.update(rd, rd_val) }
+        state.register_file(rd) = rd_val
 
     }
 
@@ -869,22 +888,31 @@ object UnconstrainedInterpreter
       context.logger.error("Can not handle more than one process for now")
     } else {
       var cycles = 0
-      val vcd_writer = new ValueChangeRecord(source, "trace.vcd")(context)
+      val vcd_writer =
+        if (context.dump_all)
+          Some(new ValueChangeRecord(source, "trace.vcd")(context))
+        else None
       val interp =
-        new ProcessInterpreter(source.processes.head)(context, Some(vcd_writer))
+        new ProcessInterpreter(source.processes.head)(context, vcd_writer)
       while (cycles < context.max_cycles && interp.getException().isEmpty) {
         // context.logger.info(s"Starting cycle ${cycles}")
         interp.run()
-        vcd_writer.tick()
+        if (vcd_writer.nonEmpty)
+          vcd_writer.get.tick()
         cycles += 1
       }
       if (interp.getException().isEmpty) {
-        context.logger.error(s"Interpretation timed out after ${cycles} cycles!")
+        context.logger.error(
+          s"Interpretation timed out after ${cycles} cycles!"
+        )
       } else {
         context.logger.info(s"Finished interpretation after ${cycles} cycles")
       }
-      vcd_writer.flush()
-      vcd_writer.close()
+      if (vcd_writer.nonEmpty) {
+        vcd_writer.get.flush()
+        vcd_writer.get.close()
+      }
+
     }
 
   }

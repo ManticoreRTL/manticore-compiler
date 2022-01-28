@@ -6,7 +6,7 @@ import manticore.assembly.HasWidth
 import manticore.assembly.levels.UInt16
 import manticore.assembly.DependenceGraphBuilder
 import manticore.assembly.annotations.{Memblock => MemblockAnnotation}
-
+import manticore.assembly.levels.AssemblyPrinter
 /** IR level with placed processes and allocated registers.
   *
   * @author
@@ -21,9 +21,11 @@ object PlacedIR extends ManticoreAssemblyIR {
       with HasSerialized
       with HasVariableType
       with HasWidth {
-    override def serialized: String = s"${varType.typeName} ${name} 16"
+    override def serialized: String = s"${varType.typeName} ${name} -> ${id} 16"
     override def width = 16
     val id: Int
+
+    def withId(new_id: Int): PlacedVariable
 
   }
   import manticore.assembly.levels.{
@@ -39,13 +41,14 @@ object PlacedIR extends ManticoreAssemblyIR {
       extends PlacedVariable {
     override def varType: VariableType = tpe
     def withName(new_name: Name): PlacedVariable = this.copy(name = new_name)
+    def withId(new_id: Int): PlacedVariable = this.copy(id = new_id)
   }
 
   case class MemoryVariable(name: Name, id: Int, block: MemoryBlock)
       extends PlacedVariable {
-    def withName(n: Name) = this.copy(name)
+    def withName(n: Name) = this.copy(name = n)
     override def varType: VariableType = MemoryType
-
+    def withId(new_id: Int) = this.copy(id = new_id)
   }
 
   case class MemoryBlock(
@@ -67,6 +70,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
     override def toString(): String = id.toString()
   }
+
 
   type Name = String
   type Variable = PlacedVariable
@@ -101,3 +105,6 @@ object LatencyAnalysis {
     manhattan
   }
 }
+
+
+object PlacedIRPrinter extends AssemblyPrinter[PlacedIR.DefProgram] {}

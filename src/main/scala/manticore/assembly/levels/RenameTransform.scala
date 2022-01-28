@@ -14,19 +14,18 @@ trait RenameTransformation extends Flavored {
 
   private object Impl {
 
-    private var unique_id: Long = 0
+    // private var unique_id: Long = 0
 
-    private def nextName(orig: DefReg): Name = {
+    private def nextName(orig: DefReg)(implicit ctx: AssemblyContext): Name = {
+      val unique_id = ctx.uniqueNumber()
       val new_name: Name =
         mkName(unique_id, orig.variable.name, orig.variable.varType)
-      unique_id += 1
       new_name
     }
 
     def rename(
         prog: DefProgram
     )(implicit ctx: AssemblyContext): DefProgram = {
-      unique_id = 0
       prog.copy(processes = prog.processes.map(rename)).setPos(prog.pos)
     }
 
@@ -125,6 +124,10 @@ trait RenameTransformation extends Flavored {
             i.copy(
               rs = subst(rs)
             ).copy(rd = createNewRdDef(rd))
+          case i @ ClearCarry(rd, _) =>
+            i.copy(carry = createNewRdDef(rd))
+          case i @ SetCarry(rd, _) =>
+            i.copy(carry = createNewRdDef(rd))
         }
 
         body_builder += new_inst.setPos(inst.pos)

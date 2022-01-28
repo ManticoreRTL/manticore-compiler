@@ -6,7 +6,9 @@ import manticore.compiler.AssemblyContext
 
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.CompilationFailureException
-
+import java.nio.file.Files
+import java.io.BufferedWriter
+import java.io.PrintWriter
 
 /** Base transformation signatures, see [[AssemblyTransformer]] and
   * [[AssemblyChecker]] below
@@ -24,7 +26,8 @@ trait HasTransformationID {
 trait Transformation[
     -S <: ManticoreAssemblyIR#DefProgram,
     +T <: ManticoreAssemblyIR#DefProgram
-] extends ((S, AssemblyContext) => (T, AssemblyContext)) with HasTransformationID {
+] extends ((S, AssemblyContext) => (T, AssemblyContext))
+    with HasTransformationID {
 
   // def transform(s: S)(implicit ctx: AssemblyContext): T
   def apply(s: S, ctx: AssemblyContext): (T, AssemblyContext)
@@ -38,8 +41,6 @@ trait Transformation[
 
 }
 
-
-
 /** Signature class for IR transformation, taking the [[S]] IR flavor as input
   * and producing a [[T]] flavored IR as output
   *
@@ -48,7 +49,7 @@ trait Transformation[
 trait AssemblyTransformer[
     -S <: ManticoreAssemblyIR#DefProgram,
     +T <: ManticoreAssemblyIR#DefProgram
-]  extends Transformation[S, T] {
+] extends Transformation[S, T] {
 
   /** transform a tree of type S to T
     *
@@ -63,9 +64,13 @@ trait AssemblyTransformer[
       ctx: AssemblyContext
   ): (T, AssemblyContext) = {
 
-    ctx.logger.start(s"[${ctx.logger.countProgress()}] Starting transformation ${phase_id}")
+    ctx.logger.start(
+      s"[${ctx.logger.countProgress()}] Starting transformation ${phase_id}"
+    )
     val res = (transform(source, ctx), ctx)
-    ctx.logger.dumpArtifact(s"dump_post_${ctx.logger.countProgress()}_${phase_id}.masm") {
+    ctx.logger.dumpArtifact(
+      s"dump_post_${ctx.logger.countProgress()}_${phase_id}.masm"
+    ) {
       res._1.serialized
     }
     if (ctx.logger.countErrors() > 0) {
@@ -99,20 +104,48 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
       source: T,
       context: AssemblyContext
   ): (T, AssemblyContext) = {
-    context.logger.start(s"[${context.logger.countProgress()}] Starting program check ${phase_id}")
+    context.logger.start(
+      s"[${context.logger.countProgress()}] Starting program check ${phase_id}"
+    )
     check(source, context)
 
     if (context.logger.countErrors() > 0)
-      context.logger.fail(s"Checker failed after encountering ${context.logger.countErrors()} errors!")
+      context.logger.fail(
+        s"Checker failed after encountering ${context.logger.countErrors()} errors!"
+      )
     context.logger.end("")
     (source, context)
   }
 }
 
+trait AssemblyPrinter[T <: ManticoreAssemblyIR#DefProgram]
+    extends Transformation[T, T] {
+
+  override def apply(
+      source: T,
+      ctx: AssemblyContext
+  ): (T, AssemblyContext) = {
+    ctx.logger.start(
+      s"[${ctx.logger.countProgress()}] Printing assembly"
+    )
+
+    ctx.output_file match {
+      case Some(f) =>
+        Files.createDirectories(f.toPath().getParent())
+        ctx.logger.info(s"Printing assembly to ${f.toPath().toAbsolutePath()}")
+        val writer = new PrintWriter(f)
+        writer.print(source.serialized)
+        writer.close()
+      case None =>
+        ctx.logger.warn("Output file not specified!")
+    }
+    ctx.logger.end("")
+    (source, ctx)
+  }
+}
 
 trait Flavored extends HasTransformationID {
 
   val flavor: ManticoreAssemblyIR
-
 
 }

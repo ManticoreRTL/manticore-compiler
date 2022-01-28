@@ -90,7 +90,7 @@ trait RemoveAliases extends Flavored {
             head match {
               case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
                 operator match {
-                  case BinaryOperator.ADD | BinaryOperator.OR =>
+                  case BinaryOperator.ADD =>
                     // If rs1 is 0, then rd is an alias of rs2.
                     consts.get(rs1) match {
                       // We don't care about the width of the 0.
@@ -287,6 +287,8 @@ trait RemoveAliases extends Flavored {
             rs2 = replaceName(rs2),
             ci = replaceName(ci)
           )
+        case i @(_:SetCarry | _:ClearCarry)  => i
+
       }).setPos(instr.pos)
     }
 

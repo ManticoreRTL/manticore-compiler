@@ -30,6 +30,10 @@ import manticore.assembly.levels.placed.ProcessMergingTransform
 import manticore.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.assembly.levels.placed.SendInsertionTransform
 import manticore.assembly.levels.placed.PlacedIRCloseSequentialCycles
+import manticore.assembly.levels.placed.RegisterAllocationTransform
+import manticore.assembly.levels.placed.PlacedIRPrinter
+import manticore.assembly.levels.AssemblyPrinter
+import manticore.assembly.ManticoreAssemblyIR
 
 
 
@@ -116,6 +120,7 @@ object Main {
         UnconstrainedCloseSequentialCycles followedBy
         UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles
+        //UnconstrainedPrinter
 
       val placed_phases =
         UnconstrainedToPlacedTransform followedBy
@@ -130,7 +135,9 @@ object Main {
         PlacedIRCloseSequentialCycles followedBy
         ListSchedulerTransform followedBy
         PredicateInsertionTransform followedBy
-        GlobalPacketSchedulerTransform
+        GlobalPacketSchedulerTransform followedBy
+        RegisterAllocationTransform followedBy
+        PlacedIRPrinter
         // PlacedNameChecker followedBy
         // ListSchedulerTransform followedBy
 

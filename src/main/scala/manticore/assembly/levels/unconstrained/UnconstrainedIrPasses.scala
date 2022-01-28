@@ -1,6 +1,7 @@
 package manticore.assembly.levels.unconstrained
 
 import manticore.assembly.levels.AssemblyNameChecker
+import manticore.assembly.levels.AssemblyPrinter
 import manticore.assembly.levels.OrderInstructions
 import manticore.assembly.levels.RemoveAliases
 import manticore.assembly.levels.DeadCodeElimination
@@ -17,6 +18,7 @@ import manticore.assembly.levels.InputType
 import manticore.assembly.levels.OutputType
 import manticore.assembly.levels.CloseSequentialCycles
 import manticore.assembly.levels.BreakSequentialCycles
+import manticore.assembly.levels.CarryType
 
 
 object UnconstrainedNameChecker
@@ -48,6 +50,7 @@ object UnconstrainedRenameVariables
       case ConstType  => s"%c${id}"
       case InputType  => s"%i${id}"
       case OutputType => s"%o${id}"
+      case CarryType  => s"%s${id}"
     }
   override def transform(p: DefProgram, ctx: AssemblyContext) =
     do_transform(p, ctx)
@@ -129,3 +132,5 @@ object UnconstrainedCloseSequentialCycles
     ): DefProgram = do_transform(source)(context)
 
   }
+
+  object UnconstrainedPrinter extends AssemblyPrinter[UnconstrainedIR.DefProgram] {}

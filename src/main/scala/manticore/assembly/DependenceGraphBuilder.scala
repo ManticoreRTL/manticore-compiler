@@ -64,7 +64,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
           Seq(rs, base._1, base._2, base._3) ++ pred
         case Send(rd, rs, dest_id, annons) =>
           Seq(rs)
-        case SetValue(rd, value, annons) =>
+        case _: SetValue | _: ClearCarry | _: SetCarry =>
           Seq.empty
         case Mux(rd, sel, rs1, rs2, annons) =>
           Seq(sel, rs1, rs2)
@@ -79,6 +79,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case AddC(rd, co, rs1, rs2, ci, annons) =>
           Seq(rs1, rs2, ci)
         case Mov(rd, rs, _) => Seq(rs)
+
       }
     }
 
@@ -108,6 +109,8 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case PadZero(rd, rs, width, annons)                          => Seq(rd)
         case AddC(rd, co, rs1, rs2, ci, annons) => Seq(rd, co)
         case Mov(rd, _, _)                      => Seq(rd)
+        case ClearCarry(rd, _)                  => Seq(rd)
+        case SetCarry(rd, _)                    => Seq(rd)
       }
     }
 
@@ -147,7 +150,8 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         ) { case (g, inst) =>
           // create register to register dependencies
           val raw_deps =
-            regUses(inst).foldLeft(g += inst) { case (gg, use) =>
+            g += inst
+            regUses(inst).foldLeft(g) { case (gg, use) =>
               def_instructions.get(use) match {
                 case Some(pred) =>
                   gg += LDiEdge[Instruction, L](pred, inst)(label(pred, inst))

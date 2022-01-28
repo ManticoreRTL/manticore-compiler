@@ -24,6 +24,7 @@ trait AssemblyContext {
   val dump_dir: Option[File] // location to dump intermediate steps
   val debug_message: Boolean // print debug messages
   val max_registers: Int // maximum number of registers usable in a process
+  val max_carries: Int // maximum number of carry bit registers
   val max_local_memory: Int // maximum local memory size in KB
   val max_instructions: Int // maximum number of instruction a processor can host
   val max_instructions_threshold: Int // the threshold number of instructions for merging processes
@@ -34,6 +35,7 @@ trait AssemblyContext {
   val use_loc: Boolean // use @LOC annotation instead of automatic placement
   val logger: Logger // logger object
 
+  def uniqueNumber(): Int
 }
 
 object AssemblyContext {
@@ -46,6 +48,7 @@ object AssemblyContext {
       val dump_dir: Option[File],
       val debug_message: Boolean,
       val max_registers: Int,
+      val max_carries: Int,
       val max_local_memory: Int,
       val max_instructions: Int,
       val max_instructions_threshold: Int,
@@ -55,7 +58,20 @@ object AssemblyContext {
       val max_dimy: Int,
       val use_loc: Boolean,
       val logger: Logger
-  ) extends AssemblyContext {}
+  ) extends AssemblyContext {
+
+
+    var unique_int: Int = 0
+
+    def uniqueNumber(): Int = {
+      val res = unique_int
+      unique_int += 1
+      res
+    }
+
+
+
+  }
 
   def apply(
       source_file: Option[File] = None,
@@ -64,7 +80,8 @@ object AssemblyContext {
       dump_all: Boolean = false,
       dump_dir: Option[File] = None,
       debug_message: Boolean = false,
-      max_registers: Int = 2048,
+      max_registers: Int = 512,
+      max_carries: Int = 4,
       max_local_memory: Int = 2048 * 2,
       max_instructions: Int = 4096,
       max_instructions_threshold: Int = 4096 - 512,
@@ -84,6 +101,7 @@ object AssemblyContext {
       dump_dir = dump_dir,
       debug_message = debug_message,
       max_registers = max_registers,
+      max_carries = max_carries,
       max_local_memory = max_local_memory,
       max_instructions = max_instructions,
       max_instructions_threshold = max_instructions_threshold,

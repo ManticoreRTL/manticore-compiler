@@ -23,6 +23,7 @@ import manticore.assembly.annotations.AssemblyAnnotationFields.{
 }
 import manticore.assembly.annotations.Memblock
 import manticore.assembly.ManticoreAssemblyIR
+import manticore.assembly.levels.CarryType
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
@@ -131,7 +132,7 @@ object UnconstrainedToPlacedTransform
     val regs = proc.registers.map { r =>
 
       val v = r.variable.varType match {
-        case t @ (ConstType | InputType | OutputType | RegType | WireType) =>
+        case t @ (ConstType | InputType | OutputType | RegType | WireType | CarryType) =>
           T.ValueVariable(
             name = r.variable.name,
             id = -1, // to indicate unallocated registers
@@ -200,12 +201,6 @@ object UnconstrainedToPlacedTransform
     }
 
     val v = r.variable.varType match {
-      case t @ (ConstType | InputType | OutputType | RegType | WireType) =>
-        T.ValueVariable(
-          name = r.variable.name,
-          id = -1, // to indicate unallocated registers
-          tpe = r.variable.tpe
-        )
       case MemoryType =>
         val mblock_annon_opt = r.annons.collectFirst { case m: Memblock => m }
         if (mblock_annon_opt.isEmpty) {
@@ -221,6 +216,12 @@ object UnconstrainedToPlacedTransform
               width = mblock_annon_opt.get.getWidth(),
               sub_word_index = mblock_annon_opt.get.getIndex()
             )
+        )
+      case t @ _ =>
+        T.ValueVariable(
+          name = r.variable.name,
+          id = -1, // to indicate unallocated registers
+          tpe = r.variable.tpe
         )
     }
     val value: Option[UInt16] = r.value match {
@@ -293,6 +294,8 @@ object UnconstrainedToPlacedTransform
       T.PadZero(rd, rs, UInt16(16), annons)
     case S.AddC(rd, co, rs1, rs2, ci, annons) =>
       T.AddC(rd, co, rs1, rs2, ci, annons)
+    case S.SetCarry(rd, annons) => T.SetCarry(rd, annons)
+    case S.ClearCarry(rd, annons) => T.ClearCarry(rd, annons)
     case S.Nop => T.Nop
   }).setPos(inst.pos)
 

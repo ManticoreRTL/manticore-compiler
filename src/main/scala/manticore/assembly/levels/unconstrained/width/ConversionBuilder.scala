@@ -8,6 +8,7 @@ import manticore.assembly.annotations.{Reg => RegAnnotation}
 
 import manticore.assembly.levels.Flavored
 import manticore.assembly.levels.WireType
+import manticore.assembly.levels.CarryType
 import manticore.compiler.AssemblyContext
 
 /** A helper trait as the base of [[WidthConversion]]. It contains the
@@ -36,6 +37,7 @@ trait ConversionBuilder extends Flavored {
     private var m_name_id = 0
     // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
     private val m_wires = scala.collection.mutable.Map.empty[Name, DefReg]
+    private val m_carries = scala.collection.mutable.Queue.empty[DefReg]
     private val m_constants =
       scala.collection.mutable.Map.empty[Int, DefReg]
     private val m_subst =
@@ -54,7 +56,8 @@ trait ConversionBuilder extends Flavored {
     def buildFrom(instructions: Seq[Instruction]): DefProcess =
       proc
         .copy(
-          registers = (m_wires.values ++ m_constants.values).toSeq.distinct,
+          registers =
+            (m_wires.values ++ m_constants.values ++ m_carries).toSeq.distinct,
           body = instructions
         )
         .setPos(proc.pos)
@@ -91,6 +94,17 @@ trait ConversionBuilder extends Flavored {
         )
         .variable
         .name
+    }
+
+    def mkCarry(): Name = {
+      val new_carry =
+        DefReg(
+          LogicVariable(freshName(s"carry"), 1, CarryType),
+          Some(0)
+        )
+      m_carries += new_carry
+      new_carry.variable.name
+
     }
 
     /** Helper function to create temp wires, do not use this function if you

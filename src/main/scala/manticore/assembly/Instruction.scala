@@ -107,7 +107,7 @@ trait ManticoreAssemblyIR {
   ) extends Declaration
       with HasSerialized {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\t${variable.serialized} ${value.getOrElse("")}; // @${pos}"
+      s"${serializedAnnons("\t\t")}\t\t${variable.serialized} ${value.getOrElse("")} // @${pos}"
 
   }
 
@@ -301,6 +301,22 @@ trait ManticoreAssemblyIR {
 
     override def toString: String =
       s"ADDCARRY ${rd}, ${co}, ${rs1}, ${rs2}, ${ci}"
+  }
+
+  case class ClearCarry(
+      carry: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+    override def toString(): String =
+      s"CLEARCARRY ${carry}"
+  }
+
+  case class SetCarry(
+      carry: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+    override def toString(): String =
+      s"SETCARRY ${carry}"
   }
 
   case class PadZero(

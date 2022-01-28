@@ -356,14 +356,9 @@ object WidthConversionCore
             rd_uint16_array.length == rs2_uint16_array_aligned.length
         )
         if (rs1_uint16_array_aligned.length != 1) {
-          val carry: Name = builder.mkWire("add_carry", 16)
+          val carry: Name = builder.mkCarry()
           // set the carry-in to be zero for the first partial sum
-          inst_q += BinaryArithmetic(
-            operator = BinaryOperator.ADD,
-            rd = carry,
-            rs1 = builder.mkConstant(0),
-            rs2 = builder.mkConstant(0)
-          )
+          inst_q += ClearCarry(carry)
 
           rs1_uint16_array_aligned zip
             rs2_uint16_array_aligned zip
@@ -437,17 +432,13 @@ object WidthConversionCore
           // we handle SUB with carry by NOTing the second operand and AddCing
           // them. However, unlike the ADD conversion, we initialize the first
           // carry to 1
-          val carry = builder.mkWire("carry", 16)
+          val carry = builder.mkCarry()
           val rs2_16_neg = builder.mkWire(instruction.rs2 + "_neg", 16)
           val const_0xFFFF = builder.mkConstant(0xffff)
 
           // set the initial carry to 1
-          inst_q += BinaryArithmetic(
-            BinaryOperator.ADD,
-            carry,
-            builder.mkConstant(0),
-            builder.mkConstant(1)
-          )
+          inst_q += SetCarry(carry)
+
           rs1_uint16_array_aligned zip rs2_uint16_array_aligned zip rd_uint16_array_mutable foreach {
             case ((rs1_16, rs2_16), rd_16) =>
               inst_q += BinaryArithmetic(
@@ -544,12 +535,10 @@ object WidthConversionCore
             ctx.logger.error("SEQ is too wide!", instruction)
           }
           // init sum of results to zero
-          inst_q += BinaryArithmetic(
-            BinaryOperator.ADD,
-            seq_add_res,
-            builder.mkConstant(0),
-            builder.mkConstant(0)
+          inst_q += Mov(
+            seq_add_res, builder.mkConstant(0)
           )
+
           // compute partial equalities by computing the equality of
           // the partial operands and then summing up the results and
           // checking whether sum is equal to the number of partial results
@@ -569,6 +558,13 @@ object WidthConversionCore
               )
           }
 
+          // zero out the upper bits
+          inst_q ++= moveRegs(
+            rd_uint16.tail,
+            Seq.fill(rd_uint16.tail.length) { builder.mkConstant(0) },
+            instruction
+          )
+          // set the least significant bit
           inst_q += BinaryArithmetic(
             BinaryOperator.SEQ,
             rd_uint16.head,

@@ -90,6 +90,9 @@ trait AssemblyNameChecker extends Flavored {
           case PadZero(rd, rs, width, annons) => checkRegs(Seq(rd, rs))
           case AddC(rd, co, rs1, rs2, ci, annons) => checkRegs(Seq(rd, co, rs1, rs2, ci))
           case Mov(rd, rs, _) => checkRegs(Seq(rd, rs))
+          case ClearCarry(rd, _) => checkRegs(Seq(rd))
+          case SetCarry(rd, _) => checkRegs(Seq(rd))
+
 
         }
       }
