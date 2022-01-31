@@ -56,7 +56,13 @@ object PlacedIR extends ManticoreAssemblyIR {
       capacity: Int,
       width: Int,
       initial_content: Seq[UInt16] = Seq.empty[UInt16]
-  )
+  ) {
+    def capacityInShorts(): Int = {
+      capacity * numShortsPerWord()
+    }
+    def numShortsPerWord(): Int =
+      ((width - 1) / 16 + 10)
+  }
   object MemoryBlock {
     def fromAnnotation(a: MemblockAnnotation) =
       MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth())

@@ -169,6 +169,11 @@ object UnconstrainedToPlacedTransform
           ctx.logger.fail(s"failed transformation")
         }
 
+        val mblock = T.MemoryBlock(
+          block_id = mblock_annon_opt.get.getBlock(),
+          capacity = mblock_annon_opt.get.getCapacity(),
+          width = mblock_annon_opt.get.getWidth()
+        )
         val initial_content: Seq[UInt16] = r.annons.collectFirst {
           case i: MemInit =>
             i
@@ -199,8 +204,7 @@ object UnconstrainedToPlacedTransform
                   .map { l: String =>
                     val big_word = BigInt(l)
 
-                    val num_shorts = (width - 1) / 16 + 1
-
+                    val num_shorts = mblock.numShortsPerWord()
                     Seq.tabulate(num_shorts) { sub_word_index =>
                       val shifted = big_word >> (sub_word_index * 16)
                       val masked = shifted & 0xffff
@@ -227,13 +231,7 @@ object UnconstrainedToPlacedTransform
         T.MemoryVariable(
           name = r.variable.name,
           id = -1, // to indicate an unallocated register
-          block = T
-            .MemoryBlock(
-              block_id = mblock_annon_opt.get.getBlock(),
-              capacity = mblock_annon_opt.get.getCapacity(),
-              width = mblock_annon_opt.get.getWidth(),
-              initial_content = initial_content
-            )
+          block = mblock.copy(initial_content = initial_content)
         )
       case t @ _ =>
         T.ValueVariable(
@@ -291,9 +289,11 @@ object UnconstrainedToPlacedTransform
     case S.Expect(ref, got, error_id, annons) =>
       T.Expect(ref, got, UInt16(0), annons)
     case S.LocalLoad(rd, base, offset, annons) =>
-      T.LocalLoad(rd, base, UInt16(offset.toInt), annons)
+      val new_offset: Int = computeOffset(inst, offset)
+      T.LocalLoad(rd, base, UInt16(new_offset), annons)
     case S.LocalStore(rs, base, offset, p, annons) =>
-      T.LocalStore(rs, base, UInt16(offset.toInt), p, annons)
+      val new_offset: Int = computeOffset(inst, offset)
+      T.LocalStore(rs, base, UInt16(new_offset), p, annons)
     case S.GlobalLoad(rd, base, annons) =>
       T.GlobalLoad(rd, base, annons)
     case S.GlobalStore(rs, base, p, annons) =>
@@ -320,6 +320,35 @@ object UnconstrainedToPlacedTransform
     case S.Nop                    => T.Nop
 
   }).setPos(inst.pos)
+
+  private def computeOffset(
+      inst: S.Instruction, old_offset: BigInt
+  )(implicit ctx: AssemblyContext): Int = {
+    val new_offset: Int = inst.annons.collectFirst { case a: Memblock =>
+      a
+    } match {
+      case Some(mblock_annon: Memblock) =>
+        mblock_annon.getIndex() match {
+          case Some(ix) =>
+            if (old_offset != 0) {
+              ctx.logger.error(
+                "Can not handle offset with subword index!",
+                inst
+              )
+              old_offset.toInt
+            } else {
+              val cap = mblock_annon.getCapacity()
+              ix * cap
+            }
+          case None =>
+            old_offset.toInt
+        }
+      case None =>
+        ctx.logger.error(s"Expected @${Memblock.name}", inst)
+        0
+    }
+    new_offset
+  }
 
   /** Check is [[asm: S.DefProgram]] is convertible to [[T.DefProgram]]
     *

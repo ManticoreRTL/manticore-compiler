@@ -1944,7 +1944,7 @@ object WidthConversionCore
         val base_uint16_head = base_uint16_array.head
 
         if (offset != 0) {
-          ctx.logger.warn(
+          ctx.logger.error(
             "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
             i
           )

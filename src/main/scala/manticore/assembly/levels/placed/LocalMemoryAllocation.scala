@@ -18,21 +18,17 @@ object LocalMemoryAllocation
       proc.registers.foldLeft((0, Seq.empty[DefReg])) {
         case ((base: Int, prev_regs: Seq[DefReg]), r: DefReg) =>
           r.variable match {
-            case MemoryVariable(_, _, block @ MemoryBlock(_, cap, width, _)) =>
+            case MemoryVariable(_, _, block : MemoryBlock) =>
               val with_base = r.copy(value = Some(UInt16(base))).setPos(r.pos)
-              val next_base = if (width <= 16) {
-                base + cap
-              } else { // wide words
-                val num_shorts_in_words = (width - 1) / 16 + 1
-                val usage = cap * num_shorts_in_words
-                base + usage
-              }
+              val next_base = base + block.capacityInShorts()
               (next_base, prev_regs :+ with_base)
             case _ =>
               (base, prev_regs :+ r)
           }
       }
 
+
+    // maximum number of short we can fit in a local memory
     val max_local_mem_size = ctx.max_local_memory / (16 / 8)
     if (mem_end > max_local_mem_size) {
       ctx.logger.error(
