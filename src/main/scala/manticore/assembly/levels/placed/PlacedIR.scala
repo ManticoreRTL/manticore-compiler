@@ -55,11 +55,11 @@ object PlacedIR extends ManticoreAssemblyIR {
       block_id: Name,
       capacity: Int,
       width: Int,
-      sub_word_index: Option[Int]
+      initial_content: Seq[UInt16] = Seq.empty[UInt16]
   )
   object MemoryBlock {
     def fromAnnotation(a: MemblockAnnotation) =
-      MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth(), a.getIndex())
+      MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth())
   }
 
   case class CustomFunctionImpl(values: Seq[UInt16]) extends HasSerialized {
@@ -89,6 +89,8 @@ object LatencyAnalysis {
     case Nop             => 0
     case _               => 3
   }
+
+  def maxLatency(): Int = 3
   def manhattan(
       source: ProcessId,
       target: ProcessId,

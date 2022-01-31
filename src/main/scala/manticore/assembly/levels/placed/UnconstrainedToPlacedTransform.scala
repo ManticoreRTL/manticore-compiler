@@ -24,6 +24,10 @@ import manticore.assembly.annotations.AssemblyAnnotationFields.{
 import manticore.assembly.annotations.Memblock
 import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.CarryType
+import manticore.assembly.annotations.MemInit
+import scala.util.Try
+import scala.util.Failure
+import scala.util.Success
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
@@ -129,49 +133,6 @@ object UnconstrainedToPlacedTransform
       )
     }
 
-    val regs = proc.registers.map { r =>
-
-      val v = r.variable.varType match {
-        case t @ (ConstType | InputType | OutputType | RegType | WireType | CarryType) =>
-          T.ValueVariable(
-            name = r.variable.name,
-            id = -1, // to indicate unallocated registers
-            tpe = r.variable.tpe
-          )
-        case MemoryType =>
-          val mblock_annon_opt = r.annons.collectFirst { case m: Memblock => m }
-          if (mblock_annon_opt.isEmpty) {
-            ctx.logger.error(s"Expected @${Memblock.name} annotation", r)
-          }
-          T.MemoryVariable(
-            name = r.variable.name,
-            id = -1, // to indicate an unallocated register
-            block = T
-              .MemoryBlock(
-                block_id = mblock_annon_opt.get.getBlock(),
-                capacity = mblock_annon_opt.get.getCapacity(),
-                width = mblock_annon_opt.get.getWidth(),
-                sub_word_index = mblock_annon_opt.get.getIndex()
-              )
-          )
-      }
-      val value: Option[UInt16] = r.value match {
-        case Some(b: BigInt) =>
-          Some(if (b > 0xffff) {
-            ctx.logger.error(s"initial value is too large!", r)
-            UInt16(0)
-          } else {
-            UInt16(b.toInt)
-          })
-        case None =>
-          None
-      }
-      T.DefReg(
-        variable = v,
-        value = value
-      )
-    }
-
     T.DefProcess(
       id = proc_map(proc.id),
       registers = proc.registers.map(convert),
@@ -205,6 +166,63 @@ object UnconstrainedToPlacedTransform
         val mblock_annon_opt = r.annons.collectFirst { case m: Memblock => m }
         if (mblock_annon_opt.isEmpty) {
           ctx.logger.error(s"Expected @${Memblock.name} annotation", r)
+          ctx.logger.fail(s"failed transformation")
+        }
+
+        val initial_content: Seq[UInt16] = r.annons.collectFirst {
+          case i: MemInit =>
+            i
+        } match {
+          case Some(init) =>
+            Try {
+              val count = init.getCount()
+              val width = init.getWidth()
+              if (width != mblock_annon_opt.get.getWidth()) {
+                ctx.logger.error(
+                  s"memory init width is different from the block width!"
+                )
+              }
+              val lines = scala.io.Source
+                .fromFile(init.getFileName())
+                .getLines()
+                .slice(0, count)
+
+              if (width <= 16) {
+                lines.map { l: String => UInt16(l.toInt) }.toSeq
+              } else {
+                // create an initial memory with
+                // least significant shorts first followed by
+                // most significant shorts
+                // [0xE 0xFFFF, 0x2 0x0001] becomes
+                // [0xFFFF, 0x0001, 0x000E, 0x0002]
+                lines
+                  .map { l: String =>
+                    val big_word = BigInt(l)
+
+                    val num_shorts = (width - 1) / 16 + 1
+
+                    Seq.tabulate(num_shorts) { sub_word_index =>
+                      val shifted = big_word >> (sub_word_index * 16)
+                      val masked = shifted & 0xffff
+                      UInt16(masked.toInt)
+                    }
+                  }
+                  .toSeq
+                  .transpose
+                  .flatten
+              }
+            } match {
+              case Failure(exception) =>
+                ctx.logger.error("could not initialize memory properly", r)
+                ctx.logger.error(
+                  s"Exception occurred while initializing memory: ${exception.getMessage()}"
+                )
+                Seq.empty[UInt16]
+              case Success(value) =>
+                value
+            }
+          case None =>
+            Seq.empty[UInt16]
         }
         T.MemoryVariable(
           name = r.variable.name,
@@ -214,7 +232,7 @@ object UnconstrainedToPlacedTransform
               block_id = mblock_annon_opt.get.getBlock(),
               capacity = mblock_annon_opt.get.getCapacity(),
               width = mblock_annon_opt.get.getWidth(),
-              sub_word_index = mblock_annon_opt.get.getIndex()
+              initial_content = initial_content
             )
         )
       case t @ _ =>
@@ -292,11 +310,15 @@ object UnconstrainedToPlacedTransform
     case S.PadZero(rd, rs, width, annons) =>
       ctx.logger.error("Unsupported instruction", inst)
       T.PadZero(rd, rs, UInt16(16), annons)
+    case S.Recv(rd, id, rs, a) =>
+      ctx.logger.error("Illegal instruction", inst)
+      T.Recv(rd, rs, T.ProcessIdImpl(id, -1, -1), a)
     case S.AddC(rd, co, rs1, rs2, ci, annons) =>
       T.AddC(rd, co, rs1, rs2, ci, annons)
-    case S.SetCarry(rd, annons) => T.SetCarry(rd, annons)
+    case S.SetCarry(rd, annons)   => T.SetCarry(rd, annons)
     case S.ClearCarry(rd, annons) => T.ClearCarry(rd, annons)
-    case S.Nop => T.Nop
+    case S.Nop                    => T.Nop
+
   }).setPos(inst.pos)
 
   /** Check is [[asm: S.DefProgram]] is convertible to [[T.DefProgram]]

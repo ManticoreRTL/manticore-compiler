@@ -254,6 +254,18 @@ trait ManticoreAssemblyIR {
 
   }
 
+  // a place holder for Send in the destination. This instruction is never
+  // translated to machine code.
+  // (i.e., )
+  case class Recv(
+      rd: Name,
+      rs: Name,
+      source_id: ProcessId,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+    override def toString: String = s"RECV ${rd}, [${source_id}], ${rs}"
+  }
+
   // value assertion
   case class Expect(
       ref: Name,

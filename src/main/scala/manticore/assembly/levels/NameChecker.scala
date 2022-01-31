@@ -92,7 +92,9 @@ trait AssemblyNameChecker extends Flavored {
           case Mov(rd, rs, _) => checkRegs(Seq(rd, rs))
           case ClearCarry(rd, _) => checkRegs(Seq(rd))
           case SetCarry(rd, _) => checkRegs(Seq(rd))
-
+          case _: Recv =>
+            context.logger.error("can not check instruction", inst)
+            context.logger.fail("Failed checkInst")
 
         }
       }

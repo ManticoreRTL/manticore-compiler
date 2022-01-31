@@ -46,7 +46,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
   def findLiveInstrs(
       proc: DefProcess
   )(
-      ctx: AssemblyContext
+    implicit ctx: AssemblyContext
   ): Set[Instruction] = {
     // Output ports of the process.
     val outputNames = proc.registers
@@ -146,7 +146,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
   def dce(
       proc: DefProcess
   )(
-      ctx: AssemblyContext
+    implicit  ctx: AssemblyContext
   ): DefProcess = {
 
     // Remove dead instructions.
@@ -243,7 +243,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
     implicit val ctx = context
 
     val out = DefProgram(
-      processes = asm.processes.map(process => dce(process)(ctx)),
+      processes = asm.processes.map(process => dce(process)),
       annons = asm.annons
     )
 

@@ -128,12 +128,17 @@ trait RenameTransformation extends Flavored {
             i.copy(carry = createNewRdDef(rd))
           case i @ SetCarry(rd, _) =>
             i.copy(carry = createNewRdDef(rd))
+          case _: Recv =>
+            ctx.logger.error("can not rename RECV", inst)
+            ctx.logger.fail("Failed renaming")
         }
 
         body_builder += new_inst.setPos(inst.pos)
       }
 
-      proc.copy(registers = regs ++ new_regs.toSeq, body = body_builder.toSeq).setPos(proc.pos)
+      proc
+        .copy(registers = regs ++ new_regs.toSeq, body = body_builder.toSeq)
+        .setPos(proc.pos)
 
     }
   }

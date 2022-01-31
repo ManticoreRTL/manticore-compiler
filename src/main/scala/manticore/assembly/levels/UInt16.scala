@@ -79,7 +79,7 @@ object UInt16 {
     * @return Wrapped 16-bit number
     */
   def apply(v: Int): UInt16 = {
-    require(v < (1 << 16))
+    require(v < (1 << 16), s"${v} does not fit in 16 bits!")
     new UInt16(v)
   }
 

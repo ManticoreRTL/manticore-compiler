@@ -34,6 +34,7 @@ import manticore.assembly.levels.placed.RegisterAllocationTransform
 import manticore.assembly.levels.placed.PlacedIRPrinter
 import manticore.assembly.levels.AssemblyPrinter
 import manticore.assembly.ManticoreAssemblyIR
+import manticore.assembly.levels.placed.LocalMemoryAllocation
 
 
 
@@ -128,6 +129,7 @@ object Main {
         PlacedIROrderInstructions followedBy
         PlacedIRDeadCodeElimination followedBy
         ProcessMergingTransform followedBy
+        LocalMemoryAllocation followedBy
         PlacedIROrderInstructions followedBy
         PlacedIRDeadCodeElimination followedBy
         RoundRobinPlacerTransform followedBy

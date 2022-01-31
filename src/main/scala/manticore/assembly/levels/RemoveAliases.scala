@@ -55,7 +55,7 @@ trait RemoveAliases extends Flavored {
 
   def removeAliases(
       proc: DefProcess
-  ): DefProcess = {
+  )(implicit ctx: AssemblyContext): DefProcess = {
 
     /** Finds all aliases in the instruction sequence.
       *
@@ -288,6 +288,7 @@ trait RemoveAliases extends Flavored {
             ci = replaceName(ci)
           )
         case i @(_:SetCarry | _:ClearCarry)  => i
+        case _: Recv => ctx.logger.fail("can not handle RECV")
 
       }).setPos(instr.pos)
     }

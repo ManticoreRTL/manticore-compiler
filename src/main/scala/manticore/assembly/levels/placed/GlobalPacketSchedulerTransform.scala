@@ -5,10 +5,15 @@ import manticore.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import scala.collection.parallel.CollectionConverters._
 import manticore.assembly.DependenceGraphBuilder
-import manticore.assembly.annotations.AssemblyAnnotationFields.{X => XField, Y => YField, FieldName}
+import manticore.assembly.annotations.AssemblyAnnotationFields.{
+  X => XField,
+  Y => YField,
+  FieldName
+}
 import manticore.assembly.annotations.{Layout => LayoutAnnotation}
 object GlobalPacketSchedulerTransform
-    extends DependenceGraphBuilder with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    extends DependenceGraphBuilder
+    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
   val flavor = PlacedIR
   import flavor._
 
@@ -47,7 +52,8 @@ object GlobalPacketSchedulerTransform
           val y_v = (source.y + i) % dimy
           path_x match {
             case _ :+ last => y_v -> (path_x.last._2 + i + 1)
-            case Seq() => y_v -> (earliest + LatencyAnalysis.latency(inst) + i + 1)
+            case Seq() =>
+              y_v -> (earliest + LatencyAnalysis.latency(inst) + i + 1)
           }
 
         }
@@ -103,11 +109,20 @@ object GlobalPacketSchedulerTransform
         }
         ProcessWrapper(
           proc,
-          MutableQueue(), // scheduled sends
+          MutableQueue.empty[(Send, Int)], // scheduled sends
           MutableQueue() ++ sends
         )
 
       }
+
+    object RecvOrdering extends Ordering[(Recv, Int)] {
+      override def compare(x: (Recv, Int), y: (Recv, Int)): Int =
+        Ordering[Int].reverse.compare(x._2, y._2)
+    }
+    // a table that maps processes to a queue of Recv instructions
+    val recv_queue = program.processes.map { proc =>
+      proc.id -> PriorityQueue.empty[(Recv, Int)](RecvOrdering)
+    }.toMap
 
     def createLinks = {
       type LinkOccupancy = scala.collection.mutable.Set[Int]
@@ -140,7 +155,19 @@ object GlobalPacketSchedulerTransform
               context.logger.debug(
                 s"@${cycle}: Scheduling ${inst_wrapper.inst.serialized} in process ${h.proc.id}"
               )
-              h.scheduled += (h.unscheduled.dequeue().inst -> cycle)
+
+              val send_inst = h.unscheduled.dequeue()
+
+              h.scheduled += (send_inst.inst -> cycle)
+
+              // create a receive instruction
+              val recv_inst_time = cycle + send_inst.manhattan
+              val recv = Recv(
+                rd = send_inst.inst.rd,
+                rs = send_inst.inst.rs,
+                source_id = send_inst.source
+              )
+              recv_queue(send_inst.target) += (recv -> recv_inst_time)
             }
           }
 
@@ -152,40 +179,78 @@ object GlobalPacketSchedulerTransform
     }
 
     if (to_schedule.exists(_.unscheduled.nonEmpty)) {
-      context.logger.error("Could not schedule Send instruction in 4096 cycles!")
+      context.logger.error(
+        "Could not schedule Send instruction in 4096 cycles!"
+      )
     }
 
     // now we have the time at which each send instruction can be scheduled,
     // so we are going to "patch" the partial instruction accordingly
-    program.copy(
-      processes = program.processes.par.map { p =>
-        val body: Seq[Instruction] = to_schedule.find(_.proc == p) match {
-          case Some(ProcessWrapper(_, send_schedule, _)) =>
-            val nonsend_sched =
-              MutableQueue[Instruction]() ++ p.body.filter {_.isInstanceOf[Send] == false }
-            val sched_len = p.body.length
-            val full_sched = MutableQueue[Instruction]()
-            var cycle = 0
-            while (nonsend_sched.nonEmpty || send_schedule.nonEmpty) {
-              if (send_schedule.nonEmpty && cycle == send_schedule.head._2) {
-                full_sched.enqueue(send_schedule.dequeue()._1)
-              } else if (nonsend_sched.nonEmpty) {
-                full_sched.enqueue(nonsend_sched.dequeue())
-              } else {
-                full_sched enqueue Nop
-              }
-              cycle += 1
-            }
+    val scheduled =
+      to_schedule.map { case ProcessWrapper(p: DefProcess, send_schedule, _) =>
+        val nonsend_sched =
+          MutableQueue[Instruction]() ++ p.body.filter {
+            _.isInstanceOf[Send] == false
+          }
 
-            full_sched.toSeq
-          case None =>
-            p.body
-
+        val full_sched = MutableQueue[Instruction]()
+        var cycle = 0
+        while (nonsend_sched.nonEmpty || send_schedule.nonEmpty) {
+          if (send_schedule.nonEmpty && cycle == send_schedule.head._2) {
+            full_sched.enqueue(send_schedule.dequeue()._1)
+          } else if (nonsend_sched.nonEmpty) {
+            full_sched.enqueue(nonsend_sched.dequeue())
+          } else {
+            full_sched enqueue Nop
+          }
+          cycle += 1
         }
-        p.copy(body = body)
-      }.seq
-    )
+        // append the RECV instructions if any
+        val recv_to_sched = recv_queue(p.id)
+        if (recv_to_sched.nonEmpty) {
+          val first_recv = recv_to_sched.head
+          val recv_time = first_recv._2
+          // insert NOPs if messages are arriving later
+          full_sched enqueueAll Seq.fill(recv_time - cycle) { Nop }
+          val recv_to_enqueue =
+            recv_to_sched.dequeueAll[(Recv, Int)].map { case (inst, _) => inst }
+          full_sched enqueueAll recv_to_enqueue
+        }
 
+        p.copy(body = full_sched.toSeq).setPos(p.pos)
+      }.toSeq
+
+    // now we need to normalize the virtual cycle length across all processes
+    // this can be done by finding the largest process body and append NOPs to
+    // the others
+
+    val slowest_process = scheduled.maxBy(_.body.length)
+    val virtual_cycle_length: Int = {
+      // need to account for the ramp down of the pipeline and append NOPs
+      // to ensure the few last instructions write back before the next virtual
+      // cycle begins
+      // val final_instructions = slowest_process.body.takeRight(LatencyAnalysis.maxLatency())
+      // val ramp_down_size = final_instructions.length
+
+      // TODO: Only insert NOPs at ramp down if necessary
+      // Depending on the type of instructions in the ramp down, we may not need
+      // to add extra NOPs, but I am not dealing with this petty optimization
+      // here that can save us a couple of cycles...
+      LatencyAnalysis.maxLatency() + slowest_process.body.length
+    }
+
+
+    val balanced = scheduled.map { p =>
+      p.copy(body = p.body ++ Seq.fill(virtual_cycle_length - p.body.length) {
+        Nop
+      }).setPos(p.pos)
+    }
+
+    program
+      .copy(
+        processes = balanced
+      )
+      .setPos(program.pos)
   }
 
 }

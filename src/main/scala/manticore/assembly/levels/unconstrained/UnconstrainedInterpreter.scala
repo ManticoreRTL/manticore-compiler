@@ -440,12 +440,16 @@ object UnconstrainedInterpreter
 
       case GlobalLoad(rd, base, annons) =>
         ctx.logger.error("Can handle global memory access", instruction)
+        state.exception_occurred = Some(InterpretationFailure)
       case GlobalStore(rs, base, predicate, annons) =>
         ctx.logger.error("Can handle global memory access", instruction)
+        state.exception_occurred = Some(InterpretationFailure)
       case SetValue(rd, value, annons) =>
         ctx.logger.error("Can handle SET", instruction)
+        state.exception_occurred = Some(InterpretationFailure)
       case Send(rd, rs, dest_id, annons) =>
         ctx.logger.error("Can not handle SEND", instruction)
+        state.exception_occurred = Some(InterpretationFailure)
       case Expect(ref, got, error_id, annons) =>
         val ref_val = state.register_file(ref)
         val got_val = state.register_file(got)
@@ -559,7 +563,9 @@ object UnconstrainedInterpreter
         val rd_val = BigInt(0)
         vcd_writer.foreach { _.update(rd, rd_val) }
         state.register_file(rd) = rd_val
-
+      case _: Recv =>
+        ctx.logger.error("Illegal instruction", instruction)
+        state.exception_occurred = Some(InterpretationFailure)
     }
 
     def dumpRegisterFile(file_name: String): Unit = {
@@ -903,7 +909,7 @@ object UnconstrainedInterpreter
       }
       if (interp.getException().isEmpty) {
         context.logger.error(
-          s"Interpretation timed out after ${cycles} cycles!"
+          s"Interpretation timed out after ${cycles} virtual cycles!"
         )
       } else {
         context.logger.info(s"Finished interpretation after ${cycles} cycles")

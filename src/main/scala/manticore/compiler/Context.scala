@@ -25,7 +25,7 @@ trait AssemblyContext {
   val debug_message: Boolean // print debug messages
   val max_registers: Int // maximum number of registers usable in a process
   val max_carries: Int // maximum number of carry bit registers
-  val max_local_memory: Int // maximum local memory size in KB
+  val max_local_memory: Int // maximum local memory size in bytes
   val max_instructions: Int // maximum number of instruction a processor can host
   val max_instructions_threshold: Int // the threshold number of instructions for merging processes
   val max_cycles: Int // maximum number of cycles to interpret before erroring out
@@ -82,7 +82,7 @@ object AssemblyContext {
       debug_message: Boolean = false,
       max_registers: Int = 512,
       max_carries: Int = 4,
-      max_local_memory: Int = 2048 * 2,
+      max_local_memory: Int = 4096,
       max_instructions: Int = 4096,
       max_instructions_threshold: Int = 4096 - 512,
       max_cycles: Int = 1000,
