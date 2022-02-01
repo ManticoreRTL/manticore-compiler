@@ -77,13 +77,21 @@ object PlacedIR extends ManticoreAssemblyIR {
     override def toString(): String = id.toString()
   }
 
+  sealed trait ExceptionKind
+  case object ExpectFail extends ExceptionKind
+  case object ExpectStop extends ExceptionKind
+
+
+  case class ExceptionIdImpl(id: UInt16, msg: String, kind: ExceptionKind) {
+    override def toString(): String = msg
+  }
 
   type Name = String
   type Variable = PlacedVariable
   type CustomFunction = CustomFunctionImpl
   type ProcessId = ProcessIdImpl
   type Constant = UInt16
-  type ExceptionId = UInt16
+  type ExceptionId = ExceptionIdImpl
 
 }
 

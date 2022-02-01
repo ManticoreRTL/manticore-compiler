@@ -28,6 +28,8 @@ import manticore.assembly.annotations.MemInit
 import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
+import manticore.assembly.annotations.Trap
+import manticore.assembly.annotations.AssemblyAnnotationFields
 
 /** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
   * and [[@LOC]] annotations for placement information
@@ -287,7 +289,28 @@ object UnconstrainedToPlacedTransform
     case S.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
       T.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons)
     case S.Expect(ref, got, error_id, annons) =>
-      T.Expect(ref, got, UInt16(0), annons)
+      val kind = annons.collectFirst { case x: Trap => x } match {
+        case Some(trap) =>
+          trap.get(AssemblyAnnotationFields.Type) match {
+            case Trap.Fail => T.ExpectFail
+            case Trap.Stop => T.ExpectStop
+            case t @ _ =>
+              ctx.logger.warn(s"invalid @${Trap.name} type ${t}")
+              T.ExpectFail
+          }
+        case None =>
+          ctx.logger.warn(
+            s"@${Trap.name} not specified! Assuming trap ${Trap.Fail}",
+            inst
+          )
+          T.ExpectFail
+      }
+      T.Expect(
+        ref,
+        got,
+        T.ExceptionIdImpl(id = UInt16(-1), msg = error_id, kind = kind),
+        annons
+      )
     case S.LocalLoad(rd, base, offset, annons) =>
       val new_offset: Int = computeOffset(inst, offset)
       T.LocalLoad(rd, base, UInt16(new_offset), annons)
@@ -322,7 +345,8 @@ object UnconstrainedToPlacedTransform
   }).setPos(inst.pos)
 
   private def computeOffset(
-      inst: S.Instruction, old_offset: BigInt
+      inst: S.Instruction,
+      old_offset: BigInt
   )(implicit ctx: AssemblyContext): Int = {
     val new_offset: Int = inst.annons.collectFirst { case a: Memblock =>
       a

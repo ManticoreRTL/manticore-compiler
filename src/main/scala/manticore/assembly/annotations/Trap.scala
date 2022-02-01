@@ -3,7 +3,11 @@ package manticore.assembly.annotations
 final class Trap private (
     val name: String,
     val fields: Map[AssemblyAnnotationFields.FieldName, AnnotationValue]
-) extends AssemblyAnnotation {}
+) extends AssemblyAnnotation {
+
+  def getType(): String = getStringValue(AssemblyAnnotationFields.Type).get
+
+}
 
 object Trap extends AssemblyAnnotationParser {
 
