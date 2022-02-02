@@ -35,6 +35,7 @@ import manticore.assembly.levels.placed.PlacedIRPrinter
 import manticore.assembly.levels.AssemblyPrinter
 import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.placed.LocalMemoryAllocation
+import manticore.assembly.levels.placed.interpreter.AtomicInterpreter
 
 
 
@@ -113,35 +114,36 @@ object Main {
         UnconstrainedRemoveAliases followedBy
         UnconstrainedDeadCodeElimination followedBy
         UnconstrainedCloseSequentialCycles followedBy
-        UnconstrainedInterpreter followedBy
+        // UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles followedBy
         WidthConversion.transformation followedBy
         UnconstrainedRemoveAliases followedBy
         UnconstrainedDeadCodeElimination followedBy
         UnconstrainedCloseSequentialCycles followedBy
-        UnconstrainedInterpreter followedBy
+        // UnconstrainedInterpreter followedBy
         UnconstrainedBreakSequentialCycles
         //UnconstrainedPrinter
 
       val placed_phases =
         UnconstrainedToPlacedTransform followedBy
-        ProcessSplittingTransform followedBy
-        PlacedIROrderInstructions followedBy
-        PlacedIRDeadCodeElimination followedBy
-        ProcessMergingTransform followedBy
-        LocalMemoryAllocation followedBy
-        PlacedIROrderInstructions followedBy
-        PlacedIRDeadCodeElimination followedBy
-        RoundRobinPlacerTransform followedBy
-        SendInsertionTransform followedBy
         PlacedIRCloseSequentialCycles followedBy
-        ListSchedulerTransform followedBy
-        PredicateInsertionTransform followedBy
-        GlobalPacketSchedulerTransform followedBy
-        RegisterAllocationTransform followedBy
-        PlacedIRPrinter
-        // PlacedNameChecker followedBy
+        AtomicInterpreter
+        // ProcessSplittingTransform followedBy
+        // PlacedIROrderInstructions followedBy
+        // PlacedIRDeadCodeElimination
+        // ProcessMergingTransform followedBy
+        // LocalMemoryAllocation followedBy
+        // PlacedIROrderInstructions followedBy
+        // PlacedIRDeadCodeElimination followedBy
+        // RoundRobinPlacerTransform followedBy
+        // SendInsertionTransform followedBy
+        // PlacedIRCloseSequentialCycles followedBy
         // ListSchedulerTransform followedBy
+        // PredicateInsertionTransform followedBy
+        // GlobalPacketSchedulerTransform followedBy
+        // RegisterAllocationTransform followedBy
+        // PlacedIRPrinter
+
 
       val phases =
         unconstrained_phases followedBy placed_phases

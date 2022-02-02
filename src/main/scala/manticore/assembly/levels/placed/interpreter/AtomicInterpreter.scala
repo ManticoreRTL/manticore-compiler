@@ -6,8 +6,10 @@ import manticore.assembly.levels.UInt16
 import manticore.compiler.AssemblyContext
 import manticore.assembly.levels.TransformationID
 import manticore.assembly.levels.ConstType
+import manticore.assembly.levels.AssemblyChecker
+import manticore.assembly.levels.placed.interpreter.PlacedValueChangeWriter
 
-object AtomicInterpreter {
+object AtomicInterpreter extends AssemblyChecker[DefProgram] {
 
   case class AtomicMessage(
       source_id: ProcessId,
@@ -16,7 +18,10 @@ object AtomicInterpreter {
       value: UInt16
   ) extends MessageBase
 
-  final class AtomicProcessInterpreter(val proc: DefProcess)(implicit
+  final class AtomicProcessInterpreter(
+      val proc: DefProcess,
+      val vcd: Option[PlacedValueChangeWriter]
+  )(implicit
       val ctx: AssemblyContext
   ) extends ProcessInterpreter {
 
@@ -35,13 +40,48 @@ object AtomicInterpreter {
           r.variable.name -> r.value.getOrElse(UInt16(0))
       }
     override def write(rd: Name, value: UInt16): Unit = {
-      register_file += (rd -> value)
+      register_file(rd) = value
+      vcd.foreach(_.update(rd, value))
     }
 
     private val local_memory = {
-      // initialize the local memory if needed
-      val underlying = Array.fill(ctx.max_local_memory / (16 / 8)) { UInt16(0) }
-      proc.registers.foreach {
+
+      def allocateIfNeeded(regs: Seq[DefReg]): (Int, Seq[DefReg]) = {
+
+        val memories = proc.registers.collect {
+          case m @ DefReg(v: MemoryVariable, _, _) => m
+        }
+        val max_avail = ctx.max_local_memory / (16 / 8)
+        val needs_alloc = memories.exists(_.value.isEmpty)
+        if (needs_alloc) {
+          ctx.logger.warn(
+            "Memories are not allocated, assuming unbounded local memory"
+          )
+
+          val required = memories.map { m =>
+            m.variable.asInstanceOf[MemoryVariable].block.capacityInShorts()
+          }.sum
+
+          val mem_with_offset = memories.foldLeft(0, Seq.empty[DefReg]) {
+            case ((base, with_offset), m) =>
+              val memvar = m.variable.asInstanceOf[MemoryVariable]
+              val new_base = base + memvar.block.capacityInShorts()
+              (new_base, with_offset :+ m.copy(value = Some(UInt16(base))))
+          }
+          if (required > max_avail) {
+            ctx.logger.warn(
+              s"Program uses more memory (${required} shorts) than available (${max_avail} shorts)"
+            )
+
+          }
+          (max_avail.max(required), mem_with_offset._2)
+        } else {
+          (max_avail, memories)
+        }
+      }
+      val (mem_size, memories) = allocateIfNeeded(proc.registers)
+      val underlying = Array.fill(mem_size) { UInt16(0) }
+      memories.foreach {
         case m @ DefReg(
               v @ MemoryVariable(_, _, MemoryBlock(_, _, _, initial_content)),
               offset_opt,
@@ -49,14 +89,15 @@ object AtomicInterpreter {
             ) => ///
           val offset = offset_opt match {
             case Some(v) => v
-            case None =>
+            case None    =>
+              // should not happen
               ctx.logger.error(s"memory not allocated", m)
               UInt16(0)
           }
           initial_content.zipWithIndex.foreach { case (v, ix) =>
             underlying(ix + offset.toInt) = v
           }
-        case _ => // do nothing
+        case _ => // do nothing, does not happen
       }
       underlying
     }
@@ -170,7 +211,10 @@ object AtomicInterpreter {
     }
   }
 
-  final class AtomicProgramInterpreter(val program: DefProgram)(implicit
+  final class AtomicProgramInterpreter(
+      val program: DefProgram,
+      val vcd: Option[PlacedValueChangeWriter]
+  )(implicit
       val ctx: AssemblyContext
   ) extends ProgramInterpreter {
 
@@ -179,7 +223,7 @@ object AtomicInterpreter {
     )
 
     val cores = program.processes.map { p =>
-      p.id -> new AtomicProcessInterpreter(p)(ctx)
+      p.id -> new AtomicProcessInterpreter(p, vcd)(ctx)
     }.toMap
 
     val vcycle_length = program.processes.map { _.body.length }.max
@@ -201,6 +245,7 @@ object AtomicInterpreter {
             cores(msg.target_id).enqueueInbox(msg)
           }
         }
+
         cycle += 1
       }
       // virtual cycle is done, or some error has occurred
@@ -218,6 +263,7 @@ object AtomicInterpreter {
 
       while (vcycle < ctx.max_cycles && traps.isEmpty) {
         interpretVirtualCycle()
+        vcd.foreach(_.tick())
         vcycle += 1
       }
 
@@ -234,5 +280,18 @@ object AtomicInterpreter {
       }
     }
 
+  }
+
+  override def check(source: DefProgram, context: AssemblyContext): Unit = {
+
+    val vcd = context.dump_dir.map(_ =>
+      PlacedValueChangeWriter(source, "atomic_trace.vcd")(context)
+    )
+    val interp = new AtomicProgramInterpreter(source, vcd)(context)
+
+    interp.interpretCompletion()
+
+    vcd.foreach(_.flush())
+    vcd.foreach(_.close())
   }
 }
