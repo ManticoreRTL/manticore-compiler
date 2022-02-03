@@ -8,6 +8,13 @@ import manticore.assembly.annotations.{Reg => RegAnnotation}
 import manticore.assembly.levels.InputType
 import manticore.assembly.levels.OutputType
 
+
+/**
+  * Insert send instructions between processes, should be executed once
+  * after the processes are merged.
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 object SendInsertionTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 

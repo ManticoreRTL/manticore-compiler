@@ -20,6 +20,12 @@ import java.io.File
 import scala.collection.immutable.NumericRange
 import manticore.assembly.levels.ValueChangeWriterBase
 
+
+/**
+  * Simple interpreter for unconstrained flavored programs with a single process
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 object UnconstrainedInterpreter
     extends AssemblyChecker[UnconstrainedIR.DefProgram] {
   val flavor = UnconstrainedIR

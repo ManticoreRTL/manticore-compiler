@@ -10,6 +10,12 @@ import scala.collection.mutable.{
 import manticore.compiler.AssemblyContext
 import manticore.assembly.levels.MemoryType
 
+
+/**
+  * Shrink the number of processes to the available number of cores
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 object ProcessMergingTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 

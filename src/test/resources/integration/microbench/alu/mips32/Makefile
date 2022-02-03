@@ -53,7 +53,7 @@ verilate_run: verilate_compile
 
 thyrio: verilate_run
 	@echo "Calling thyrio"
-	thyrio_frontend -vlog_in alu.sv -masm_out AluTester.masm -top AluTester -no_techmap -dump
+	thyrio_frontend -vlog_in alu.sv -masm_out AluTester.masm -top AluTester -track track.yml -no_techmap -dump
 
 
 clean mostlyclean distclean maintainer-clean::

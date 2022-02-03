@@ -6,6 +6,8 @@ import manticore.assembly.annotations.DebugSymbol
 /** Template transformation for renaming all variable. You need to override the
   * `flavor` and the `mkName` function to specialize this transformation
   * ATTENTION: This transform assumes that the instructions are ordered
+  *
+  * @author Mahyar Emami <mahyar.emami@epfl.ch>
   */
 trait RenameTransformation extends Flavored {
 

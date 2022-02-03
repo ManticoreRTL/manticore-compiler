@@ -3,8 +3,8 @@ package manticore.assembly
 /** DependenceGraph.scala
   *
   * @author
-  *   Sahand Kashani <sahand.kashani@epfl.ch> Mahyar Emami
-  *   <mahyar.emami@eplf.ch>
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  *   Sahand Kashani <sahand.kashani@epfl.ch>
   */
 
 import manticore.assembly.levels.AssemblyTransformer

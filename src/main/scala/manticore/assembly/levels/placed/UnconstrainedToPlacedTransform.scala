@@ -31,9 +31,8 @@ import scala.util.Success
 import manticore.assembly.annotations.Trap
 import manticore.assembly.annotations.AssemblyAnnotationFields
 
-/** Transform an Unconstrained assembly to a placed one, looking for [[@LAYOUT]]
-  * and [[@LOC]] annotations for placement information
-  *
+/**
+  * Changes IR flavor to PlacedIR
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */

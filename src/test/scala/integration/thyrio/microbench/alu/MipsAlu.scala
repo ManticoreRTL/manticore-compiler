@@ -70,7 +70,7 @@ class MipsAlu extends ThyrioUnitTest {
     (actual_res, actual_res == 0)
   }
 
-  val test_size = 300
+  val test_size = 3
   def generateTest(work_dir: Path): Unit = {
 
     println("Generating random tests")
@@ -79,7 +79,8 @@ class MipsAlu extends ThyrioUnitTest {
     val ctrl = Seq.fill(test_size) {
       val ix = randGen.nextInt(controls.length)
       // val ix = randGen.nextInt(4)
-      controls(ix)
+      // controls(ix)
+      SLL
       // SUB
       // SLT
     }
@@ -155,6 +156,7 @@ class MipsAlu extends ThyrioUnitTest {
     )
     copy("VTester.cpp")
     copy("Makefile")
+    copy("track.yml")
 
   }
 
@@ -186,26 +188,37 @@ class MipsAlu extends ThyrioUnitTest {
     Make.invoke(Seq("thyrio"), work_dir.toFile()) { println(_) }
     runTest(work_dir)(phases)
   }
-  it should "successfully interpret the results before width conversion" in {
-    f =>
-      Range(0, 10) foreach { i =>
-        testIteration(i)(
-          ManticorePasses.frontend followedBy
-          ManticorePasses.frontend_interpreter
-        )
-      }
+  // it should "successfully interpret the results before width conversion" in {
+  //   f =>
+  //     Range(0, 10) foreach { i =>
+  //       testIteration(i)(
+  //         ManticorePasses.frontend followedBy
+  //         ManticorePasses.frontend_interpreter
+  //       )
+  //     }
 
-  }
-  it should "successfully interpret the results before and after width conversion" in {
+  // }
+  // it should "successfully interpret the results before and after width conversion" in {
+  //   f =>
+  //     Range(0, 1) foreach { i =>
+  //       testIteration(i)(
+  //         ManticorePasses.frontend followedBy
+  //         ManticorePasses.middleend followedBy
+  //         ManticorePasses.frontend_interpreter
+  //       )
+  //     }
+  // }
+
+  it should "successfully pass atomic interpretation test" in {
     f =>
-      Range(0, 10) foreach { i =>
+      Range(0, 1) foreach { i =>
         testIteration(i)(
           ManticorePasses.frontend followedBy
           ManticorePasses.middleend followedBy
-          ManticorePasses.frontend_interpreter
+          ManticorePasses.backend followedBy
+          ManticorePasses.backend_atomic_interpreter
         )
       }
-
   }
 
 }

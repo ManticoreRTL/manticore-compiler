@@ -3,6 +3,12 @@ package manticore.assembly.levels.placed
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 
+
+/**
+  * Adhoc placer
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 object RoundRobinPlacerTransform extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
     import PlacedIR._
     override def transform(program: DefProgram, ctx: AssemblyContext): DefProgram = {

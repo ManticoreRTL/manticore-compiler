@@ -10,6 +10,14 @@ import manticore.assembly.annotations.AssemblyAnnotationFields.{
   Y => YField,
   FieldName
 }
+
+
+/**
+  * A pass to globally schedule/route messages across processes.
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
+
 import manticore.assembly.annotations.{Layout => LayoutAnnotation}
 object GlobalPacketSchedulerTransform
     extends DependenceGraphBuilder

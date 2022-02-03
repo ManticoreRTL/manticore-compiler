@@ -12,6 +12,7 @@ import manticore.assembly.levels.ConstType
 import manticore.assembly.BinaryOperator
 import manticore.assembly.ManticoreAssemblyIR
 import java.lang.Character.Subset
+import manticore.assembly.annotations.Track
 
 /** This transform identifies and removes aliases from the design. Processing
   * the following input program:
@@ -64,12 +65,15 @@ trait RemoveAliases extends Flavored {
       * @param consts
       *   Constants referenced in `body`. Each constant is defined by a width
       *   and a value.
+      * @param keep
+      *   A set of names not to remove even if aliased
       * @return
       *   Map of aliases in `body` and `consts`.
       */
     def findAliases(
         body: Seq[Instruction],
-        consts: Map[Name, (Int, Constant)]
+        consts: Map[Name, (Int, Constant)],
+        keep: Set[Name]
     ): Map[Name, Name] = {
 
       def findBodyAliases(
@@ -84,11 +88,10 @@ trait RemoveAliases extends Flavored {
 
           case head +: tail =>
             val newAliases = collection.mutable.Map[Name, Name]()
-            // Must use capital letter for first char, otherwise the pattern match below will not work!
-
 
             head match {
-              case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
+              case BinaryArithmetic(operator, rd, rs1, rs2, annons)
+                  if !keep.contains(rd) =>
                 operator match {
                   case BinaryOperator.ADD =>
                     // If rs1 is 0, then rd is an alias of rs2.
@@ -108,7 +111,7 @@ trait RemoveAliases extends Flavored {
                   // ADD, ADDC, SUB, OR, AND, XOR, MUL, SEQ, SLL, SRL, SLTU, SLTS, SGTU, SGTS
                   case _ =>
                 }
-              case Mov(rd, rs, _) =>
+              case Mov(rd, rs, _) if !keep.contains(rd) =>
                 newAliases += rd -> rs
               // Handle aliases in MUX, LOADs, STOREs, ...
               case _ =>
@@ -287,7 +290,7 @@ trait RemoveAliases extends Flavored {
             rs2 = replaceName(rs2),
             ci = replaceName(ci)
           )
-        case i @(_:SetCarry | _:ClearCarry)  => i
+        case i @ (_: SetCarry | _: ClearCarry) => i
         case _: Recv => ctx.logger.fail("can not handle RECV")
 
       }).setPos(instr.pos)
@@ -301,14 +304,33 @@ trait RemoveAliases extends Flavored {
         reg.variable.name -> (reg.variable.width, reg.value.get)
       }
       .toMap
-
-    val aliases = findAliases(proc.body, consts)
-    val resolvedAliases = resolveAliases(aliases)
+    // we want to disable alias removal for names that are being tracked:
+    // mov x1, y0
+    // mov x2, x1
+    // mov x3, x2
+    // mov x4, x3
+    // would normally be reduced to
+    // mov x4, y0
+    // but if x2 is tracked we end up having
+    // mov x2, x0
+    // mov x4, x2
+    // which is not prefect because we can actually replace x4 with x2, but
+    // this won't work if the same wire is tracked at multiple points because
+    // in that case we will have to keep multiple copies for wave form dumps.
+    val names_to_keep = proc.registers.collect {
+      case DefReg(v, _, annons) if annons.collectFirst { case x: Track =>
+            x
+          }.nonEmpty =>
+        v.name
+    }.toSet
+    val aliases = findAliases(proc.body, consts, names_to_keep)
+    val resolved_aliases = resolveAliases(aliases)
     // Note that we do not map on the registers of the assembly program as "resolvedAliases" already
     // contains constant-to-constant aliases as well and these are automatically replaced in the body.
-    val newBody = proc.body.map(instr => replaceAliases(instr, resolvedAliases))
+    val new_body =
+      proc.body.map(instr => replaceAliases(instr, resolved_aliases))
 
-    proc.copy(body = newBody)
+    proc.copy(body = new_body)
   }
 
   def do_transform(

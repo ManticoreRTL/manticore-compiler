@@ -8,6 +8,12 @@ import manticore.assembly.annotations.StringValue
 import manticore.assembly.annotations.AssemblyAnnotationFields
 import java.util.function.BinaryOperator
 
+
+/**
+  * Close sequential cycles to persist register values across virtual cycles
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 trait CloseSequentialCycles extends InputOutputPairs {
 
   import flavor._

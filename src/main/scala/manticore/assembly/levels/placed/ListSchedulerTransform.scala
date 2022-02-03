@@ -19,37 +19,7 @@ import scalax.collection.GraphTraversal
 import manticore.assembly.levels.CloseSequentialCycles
 import manticore.assembly.ManticoreAssemblyIR
 
-object TestTraverser extends App {
-  import scalax.collection.Graph
-  import scalax.collection.edge.WDiEdge
-  import scalax.collection.edge.Implicits._
 
-  val g = scalax.collection.mutable.Graph(
-    (1 ~%> 2)(2),
-    (2 ~%> 3)(1),
-    (3 ~%> 4)(1),
-    (3 ~%> 6)(2),
-    (3 ~%> 7)(2),
-    (7 ~%> 8)(2),
-    (5 ~%> 3)(4),
-    (5 ~%> 4)(1)
-  )
-
-  val root = g.get(1)
-
-  root.outerNodeTraverser.withKind(GraphTraversal.BreadthFirst).foreach { n =>
-    println(s"${n}")
-  }
-  root.outerNodeDownUpTraverser.foreach { case (downwards, node) =>
-    val dir = downwards match {
-      case true  => "down"
-      case false => "up"
-    }
-    println(s"${dir}:\t ${node}")
-
-  }
-
-}
 
 /** List scheduler transformation, the output of this transformation is a
   * program with locally scheduled processes. If the input program has Nops,

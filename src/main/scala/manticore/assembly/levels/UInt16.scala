@@ -62,9 +62,9 @@ final class UInt16 private (private val v: Int) extends AnyVal {
   def >>>(shamnt: Int): UInt16 = {
     require(shamnt < 16)
     val sign = this.v >> 15
-    val sign_extension = if (sign == 1) (((1 << 16) - 1) << 16) else 0
+    val sign_extension = if (sign == 1) ((0xFFFF) << 16) else 0
     val extended = this.v | sign_extension
-    UInt16.clipped(extended >>> shamnt)
+    UInt16.clipped(extended >> shamnt)
   }
 
   override def toString(): String = v.toString()

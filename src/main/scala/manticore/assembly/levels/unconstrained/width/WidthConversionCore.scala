@@ -811,7 +811,7 @@ object WidthConversionCore
         val lossless_result_size =
           rs_uint16_array.length max rd_uint16_array.length
         val rd_uint16_array_mutable = Seq.tabulate(lossless_result_size) { i =>
-          builder.mkWire(s"sra_builder_${i}", 16)
+          builder.mkWire(s"sll_builder_${i}", 16)
         }
 
         if (rd_uint16_array_mutable.length == 1) {

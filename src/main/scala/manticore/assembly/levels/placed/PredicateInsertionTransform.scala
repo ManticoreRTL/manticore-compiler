@@ -6,6 +6,13 @@ import manticore.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import scala.collection.parallel.CollectionConverters._
 
+
+/**
+  * Inserts Predicate instruction before stores and sets the store instruction
+  * predicate field to [[None]].
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 object PredicateInsertionTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 

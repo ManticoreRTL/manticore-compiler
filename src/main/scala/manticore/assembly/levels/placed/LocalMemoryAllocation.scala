@@ -7,6 +7,13 @@ import manticore.compiler.AssemblyContext
 import manticore.assembly.levels.MemoryType
 import manticore.assembly.levels.UInt16
 
+
+/**
+  * A pass to set the pointer values in each process or fail if more memory
+  * is needed than available.
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 object LocalMemoryAllocation
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 

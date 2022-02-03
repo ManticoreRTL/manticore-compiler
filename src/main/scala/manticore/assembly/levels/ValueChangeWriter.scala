@@ -5,6 +5,12 @@ import manticore.assembly.annotations.DebugSymbol
 import java.io.File
 import java.io.PrintWriter
 
+/**
+  * Base trait and class implementation for dumping interpretation results to
+  * a Value Change Dump (.vcd) file to view with a waveform viewer
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 trait ValueChangeWriter extends Flavored {
   import flavor._
   def update(name: Name, value: Constant): Unit

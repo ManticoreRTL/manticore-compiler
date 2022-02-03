@@ -47,6 +47,18 @@ trait ProcessInterpreter extends InterpreterBase {
     val BinaryArithmetic(op, rd, rs1, rs2, _) = inst
     val rs1_val = read(rs1)
     val rs2_val = read(rs2)
+    def shiftAmount(v: UInt16): Int = {
+      if (v.toInt >= 16) {
+        // note that this is only a warning because the result of shift
+        // might not actually be used in computing the outputs, but we end
+        // up computing the shift result anyways because there are no branches
+        // in the program, only predicates and MUXes
+        ctx.logger.debug(s"invalid shift amount ${v}", inst)
+        v.toInt & 0xF // take the lowest 4 bits
+      } else {
+        v.toInt
+      }
+    }
     val rd_val: UInt16 = op match {
       case ADD => rs1_val + rs2_val
       case ADDC =>
@@ -61,26 +73,17 @@ trait ProcessInterpreter extends InterpreterBase {
         val is_eq = rs1_val == rs2_val
         UInt16(if (is_eq) 1 else 0)
       case SLL =>
-        if (rs2_val.toInt >= 16) {
-          ctx.logger.error("invalid shift amount", inst)
-          UInt16(0)
-        } else {
-          rs1_val << rs2_val.toInt
-        }
+        val shift_amount = shiftAmount(rs2_val)
+        if (rd == "%w375" || rd == "%w133")
+          println("trap")
+        rs1_val << shift_amount
       case SRL =>
-        if (rs2_val.toInt >= 16) {
-          ctx.logger.error("invalid shift amount", inst)
-          UInt16(0)
-        } else {
-          rs1_val >> rs2_val.toInt
-        }
+        val shift_amount = shiftAmount(rs2_val)
+        rs1_val >> shift_amount
+
       case SRA =>
-        if (rs2_val.toInt >= 16) {
-          ctx.logger.error("invalid shift amount", inst)
-          UInt16(0)
-        } else {
-          rs1_val >>> rs2_val.toInt
-        }
+        val shift_amount = shiftAmount(rs2_val)
+        rs1_val >>> shift_amount
       case SLTS =>
         val rs1_sign = (rs1_val >> 15) == UInt16(1)
         val rs2_sign = (rs2_val >> 15) == UInt16(1)
@@ -221,7 +224,7 @@ trait ProcessInterpreter extends InterpreterBase {
       val rd_val = recv(rd, source_id)
       rd_val match {
         case Some(v) => write(rd, v)
-        case None => // do nothing
+        case None    => // do nothing
       }
 
     case Nop => // nothing
@@ -232,6 +235,3 @@ trait ProcessInterpreter extends InterpreterBase {
   }
 
 }
-
-
-

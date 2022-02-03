@@ -7,6 +7,12 @@ import manticore.assembly.annotations.AssemblyAnnotation
 import manticore.assembly.annotations.AssemblyAnnotationFields
 import manticore.assembly.levels.ConstType
 
+
+/**
+  * A pass to run immediately after parsing to create debug symbols
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 object UnconstrainedMakeDebugSymbols
     extends AssemblyTransformer[
       UnconstrainedIR.DefProgram,

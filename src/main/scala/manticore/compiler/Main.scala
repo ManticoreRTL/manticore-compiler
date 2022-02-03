@@ -37,8 +37,6 @@ import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.placed.LocalMemoryAllocation
 import manticore.assembly.levels.placed.interpreter.AtomicInterpreter
 
-
-
 case class CliConfig(
     input_file: Option[File] = None,
     print_tree: Boolean = false,
@@ -106,19 +104,29 @@ object Main {
         dump_dir = cfg.dump_dir
       )
 
-
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
 
       import ManticorePasses._
 
       val phases =
-        frontend followedBy middleend followedBy backend
+        frontend followedBy
+          middleend followedBy
+          frontend_interpreter followedBy
+      // frontend_interpreter followedBy
+      // frontend_interpreter followedBy
+      UnconstrainedToPlacedTransform followedBy
+        // ProcessSplittingTransform followedBy
+        // PlacedIROrderInstructions followedBy
+        PlacedIRDeadCodeElimination followedBy
+        // ProcessMergingTransform followedBy
+        LocalMemoryAllocation followedBy
+        PlacedIRCloseSequentialCycles followedBy
+        backend_atomic_interpreter
 
       phases(prg, ctx)._1
     }
 
     val parsed = AssemblyParser(cfg.input_file.get, ctx)
-
     runPhases(parsed)
 
   }

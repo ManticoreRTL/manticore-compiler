@@ -8,6 +8,11 @@ import manticore.assembly.annotations.StringValue
 import manticore.assembly.annotations.AssemblyAnnotationFields
 import java.util.function.BinaryOperator
 
+/**
+  * Break sequential cycles (undo [[manticore.assembly.levels.CloseSequentialCycles]])
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 trait BreakSequentialCycles extends Flavored {
 
   import flavor._

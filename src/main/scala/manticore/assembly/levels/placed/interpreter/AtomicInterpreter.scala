@@ -148,7 +148,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
           inbox -= msg
           Some(value)
         case _ =>
-          ctx.logger.warn(
+          ctx.logger.debug(
             s"Could not find a message for value of ${rd} from ${process_id}. Will have to check for message in roll over."
           )
           missing_messages += ((rd, process_id))

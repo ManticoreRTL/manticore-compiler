@@ -7,7 +7,7 @@ final class MemInit private (
 
   def getFileName(): String = getStringValue(AssemblyAnnotationFields.File).get
   def getWidth(): Int = getIntValue(AssemblyAnnotationFields.Width).get
-  def getCount(): Int = getIntValue(AssemblyAnnotationFields.Width).get
+  def getCount(): Int = getIntValue(AssemblyAnnotationFields.Count).get
 }
 
 object MemInit extends AssemblyAnnotationParser {

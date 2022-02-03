@@ -5,6 +5,15 @@ import manticore.compiler.AssemblyContext
 import manticore.assembly.annotations.{Reg => RegAnnotation}
 import manticore.assembly.annotations.AssemblyAnnotationFields
 
+
+
+/**
+  * Helper functional trait for building passes in which input and output
+  * pairs need to be "closed". See [[manticore.assembly.levels.CloseSequentialCycles]]
+  * for an example.
+  * @author
+  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  */
 trait InputOutputPairs extends Flavored {
 
   val flavor: ManticoreAssemblyIR
