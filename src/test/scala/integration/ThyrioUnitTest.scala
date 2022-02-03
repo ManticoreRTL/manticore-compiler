@@ -28,24 +28,7 @@ trait ThyrioUnitTest extends UnitFixtureTest {
 
     }
 
-  object ManticoreFrontend {
-    type Phase =
-      Transformation[UnconstrainedIR.DefProgram, UnconstrainedIR.DefProgram]
-    def initialPhases() = UnconstrainedNameChecker followedBy
-      UnconstrainedMakeDebugSymbols followedBy
-      UnconstrainedOrderInstructions followedBy
-      UnconstrainedRemoveAliases followedBy
-      UnconstrainedDeadCodeElimination followedBy
-      UnconstrainedCloseSequentialCycles followedBy
-      UnconstrainedInterpreter followedBy
-      UnconstrainedBreakSequentialCycles
-    def finalPhases() = WidthConversionCore followedBy
-      UnconstrainedRenameVariables followedBy
-      UnconstrainedRemoveAliases followedBy
-      UnconstrainedDeadCodeElimination followedBy
-      UnconstrainedCloseSequentialCycles followedBy
-      UnconstrainedInterpreter followedBy
-      UnconstrainedBreakSequentialCycles
-  }
+
+
 
 }

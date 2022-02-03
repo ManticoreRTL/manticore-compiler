@@ -11,6 +11,10 @@ import java.nio.file.StandardCopyOption
 import integration.thyrio.integration.thyrio.Make
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
+import manticore.assembly.ManticoreAssemblyIR
+import manticore.assembly.levels.Transformation
+import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.ManticorePasses
 
 class ArrayMultiplier extends ThyrioUnitTest {
 
@@ -72,7 +76,9 @@ class ArrayMultiplier extends ThyrioUnitTest {
 
   }
 
-  def runTest(work_dir: Path)(phase: => ManticoreFrontend.Phase): Unit = {
+  def runTest[T <: ManticoreAssemblyIR#DefProgram](
+      work_dir: Path
+  )(phase: => Transformation[UnconstrainedIR.DefProgram, T]): Unit = {
     val ctx =
       AssemblyContext(
         dump_all = true,
@@ -87,7 +93,9 @@ class ArrayMultiplier extends ThyrioUnitTest {
     phase(parsed, ctx)
   }
 
-  def testIteration(i: Int)(phases: ManticoreFrontend.Phase): Unit = {
+  def testIteration[T <: ManticoreAssemblyIR#DefProgram](
+      i: Int
+  )(phases: => Transformation[UnconstrainedIR.DefProgram, T]): Unit = {
     println(s"Test iteration ${i}")
     val work_dir = root_dir.resolve(s"t${i}")
     Files.createDirectories(work_dir)
@@ -100,7 +108,10 @@ class ArrayMultiplier extends ThyrioUnitTest {
   it should "successfully interpret the results before width conversion" in {
     f =>
       Range(0, 1) foreach { i =>
-        testIteration(i)(ManticoreFrontend.initialPhases())
+        testIteration(i)(
+          ManticorePasses.frontend followedBy
+            ManticorePasses.frontend_interpreter
+        )
       }
 
   }
@@ -109,8 +120,9 @@ class ArrayMultiplier extends ThyrioUnitTest {
     f =>
       Range(0, 1) foreach { i =>
         testIteration(i)(
-          ManticoreFrontend.initialPhases() followedBy ManticoreFrontend
-            .finalPhases()
+          ManticorePasses.frontend followedBy
+            ManticorePasses.middleend followedBy
+            ManticorePasses.frontend_interpreter
         )
       }
 

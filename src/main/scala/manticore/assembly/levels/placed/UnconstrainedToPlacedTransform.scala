@@ -292,8 +292,8 @@ object UnconstrainedToPlacedTransform
       val kind = annons.collectFirst { case x: Trap => x } match {
         case Some(trap) =>
           trap.get(AssemblyAnnotationFields.Type) match {
-            case Trap.Fail => T.ExpectFail
-            case Trap.Stop => T.ExpectStop
+            case Some(Trap.Fail) => T.ExpectFail
+            case Some(Trap.Stop) => T.ExpectStop
             case t @ _ =>
               ctx.logger.warn(s"invalid @${Trap.name} type ${t}")
               T.ExpectFail

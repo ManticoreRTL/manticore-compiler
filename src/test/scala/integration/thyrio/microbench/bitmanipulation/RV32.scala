@@ -26,6 +26,8 @@ import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.assembly.levels.Transformation
 import manticore.assembly.levels.unconstrained.UnconstrainedRenameVariables
+import manticore.compiler.ManticorePasses
+import manticore.assembly.ManticoreAssemblyIR
 
 class RV32 extends ThyrioUnitTest {
 
@@ -57,43 +59,73 @@ class RV32 extends ThyrioUnitTest {
 
   Make.invoke(Seq(), cwd.toFile()) { println(_) }
 
-  def initialPhases() = ManticoreFrontend.initialPhases()
-  def finalPhases() = ManticoreFrontend.finalPhases()
+  type Phase[T <: ManticoreAssemblyIR#DefProgram] =
+    Transformation[UnconstrainedIR.DefProgram, T]
 
-  type Phase =
-    Transformation[UnconstrainedIR.DefProgram, UnconstrainedIR.DefProgram]
+  def run[T <: ManticoreAssemblyIR#DefProgram](
+      test_name: String,
+      f: FixtureParam
+  )(phases: => Transformation[UnconstrainedIR.DefProgram, T]): Unit = {
 
-  def run(test_name: String, f: FixtureParam)(phases: => Phase): Unit = {
-
-    val parsed = AssemblyParser(cwd.resolve(s"${test_name}.masm").toFile(), f.ctx)
+    val parsed =
+      AssemblyParser(cwd.resolve(s"${test_name}.masm").toFile(), f.ctx)
     phases(parsed, f.ctx)
 
   }
 
   // def run(test_name: String): Unit = {}
 
-  it should "handle RV32_IntegerRR initial unconstrained phases" in { f =>
-    run("RV32_IntegerRR", f) { initialPhases() }
-  }
+  // it should "handle RV32_IntegerRR initial unconstrained phases" in { f =>
+  //   run("RV32_IntegerRR", f) {
+  //     ManticorePasses.frontend followedBy
+  //       ManticorePasses.frontend_interpreter
+  //   }
+  // }
 
-  it should "handle RV32_IntegerRR final unconstrained phases" in { f =>
-    run("RV32_IntegerRR", f) { initialPhases() followedBy finalPhases() }
-  }
+  // it should "handle RV32_IntegerRR final unconstrained phases" in { f =>
+  //   run("RV32_IntegerRR", f) {
+  //     ManticorePasses.frontend followedBy
+  //       ManticorePasses.middleend followedBy
+  //       ManticorePasses.frontend_interpreter
+  //   }
+  // }
 
-  it should "handle RV32_Load initial unconstrained phases" in { f =>
-    run("RV32_Load", f) { initialPhases() }
-  }
+  // it should "handle RV32_Load initial unconstrained phases" in { f =>
+  //   run("RV32_Load", f) {
+  //     ManticorePasses.frontend followedBy
+  //       ManticorePasses.frontend_interpreter
+  //   }
+  // }
 
-  it should "handle RV32_Load final unconstrained phases" in { f =>
-    run("RV32_Load", f) { initialPhases() followedBy finalPhases() }
-  }
+  // it should "handle RV32_Load final unconstrained phases" in { f =>
+  //   run("RV32_Load", f) {
+  //     ManticorePasses.frontend followedBy
+  //       ManticorePasses.middleend followedBy
+  //       ManticorePasses.frontend_interpreter
+  //   }
+  // }
 
-  it should "handle RV32_Store initial unconstrained phases" in { f =>
-    run("RV32_Store", f) { initialPhases() }
-  }
+  // it should "handle RV32_Store initial unconstrained phases" in { f =>
+  //   run("RV32_Store", f) {
+  //     ManticorePasses.frontend followedBy
+  //       ManticorePasses.frontend_interpreter
+  //   }
+  // }
 
-  it should "handle RV32_Store final unconstrained phases" in { f =>
-    run("RV32_Store", f) { initialPhases() followedBy finalPhases() }
+  // it should "handle RV32_Store final unconstrained phases" in { f =>
+  //   run("RV32_Store", f) {
+  //     ManticorePasses.frontend followedBy
+  //       ManticorePasses.middleend followedBy
+  //       ManticorePasses.frontend_interpreter
+  //   }
+  // }
+  it should "handle RV32_Store final placed phases" in { f =>
+    run("RV32_Store", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.middleend followedBy
+        ManticorePasses.backend followedBy
+        ManticorePasses.backend_atomic_interpreter
+    }
   }
 
 }

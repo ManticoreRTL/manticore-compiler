@@ -149,7 +149,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
           Some(value)
         case _ =>
           ctx.logger.warn(
-            s"Could not find a message for value of ${rd} from ${process_id}"
+            s"Could not find a message for value of ${rd} from ${process_id}. Will have to check for message in roll over."
           )
           missing_messages += ((rd, process_id))
           None
@@ -191,8 +191,9 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
           missing_messages -= entry
         } else {
           // something is up
-          ctx.logger.error(
-            s"did not expect message, writing to ${msg.target_id} from process ${msg.source_id}"
+          ctx.logger.warn(
+            s"did not expect message, writing to " +
+              s"${msg.target_id}:${msg.target_register} value of ${msg.value} from process ${msg.source_id}"
           )
           trap(InternalTrap)
 
@@ -213,7 +214,8 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
 
   final class AtomicProgramInterpreter(
       val program: DefProgram,
-      val vcd: Option[PlacedValueChangeWriter]
+      val vcd: Option[PlacedValueChangeWriter],
+      val expected_cycles: Option[Int]
   )(implicit
       val ctx: AssemblyContext
   ) extends ProgramInterpreter {
@@ -227,18 +229,20 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     }.toMap
 
     val vcycle_length = program.processes.map { _.body.length }.max
-    var cycle: Int = 0
 
     override def interpretVirtualCycle(): Seq[InterpretationTrap] = {
 
-      val break = scala.collection.mutable.Queue.empty[InterpretationTrap]
-
-      while (break.isEmpty && cycle < vcycle_length) {
+      val traps = scala.collection.mutable.Queue.empty[InterpretationTrap]
+      var break = false
+      var cycle: Int = 0
+      while (!break && cycle < vcycle_length) {
         // step through each core
         cores.foreach { case (_, core) => core.step() }
         cores.foreach { case (cid, c) =>
-          val traps = c.dequeueTraps()
-          break ++= traps
+          traps ++= c.dequeueTraps()
+          if (traps.nonEmpty) {
+            break = true
+          }
           val outbound = c.dequeueOutbox()
           // deliver messages
           outbound.foreach { msg =>
@@ -252,7 +256,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       // roll every core back to their first instruction and consume any outstanding
       // messages
       cores.foreach { _._2.roll() }
-      break.toSeq
+      traps.toSeq
     }
 
     override def interpretCompletion(): Boolean = {
@@ -260,34 +264,57 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       var vcycle = 0
 
       val traps = scala.collection.mutable.Queue.empty[InterpretationTrap]
-
+      var break = false
       while (vcycle < ctx.max_cycles && traps.isEmpty) {
-        interpretVirtualCycle()
+        traps ++= interpretVirtualCycle()
         vcd.foreach(_.tick())
         vcycle += 1
       }
 
-      if (vcycle >= ctx.max_cycles) {
+      val cycles_match = expected_cycles match {
+        case None    => true
+        case Some(v) => v == vcycle
+      }
+
+      if (!cycles_match) {
+        ctx.logger.error(
+          s"Interpretation finished after ${vcycle} virtual cycles, " +
+            s"but expected it to finish in ${expected_cycles.get} virtual cycles!"
+        )
+        false
+      } else if (vcycle >= ctx.max_cycles) {
         ctx.logger.error(
           s"Interpretation timed out after ${vcycle} virtual cycles!"
         )
         false
       } else { // if (traps.nonEmpty) {
-        traps.forall {
+        val no_error = traps.forall {
           case FailureTrap | InternalTrap => false
           case StopTrap                   => true
         }
+        ctx.logger.info(
+          s"Interpretation finished after ${vcycle} virtual cycles " +
+            s"${if (!no_error) "with error(s)" else "without errors"}"
+        )
+        no_error
       }
     }
 
   }
+
+  def mkInterpreter(
+      prog: DefProgram,
+      vcd: Option[PlacedValueChangeWriter] = None,
+      expected_cycles: Option[Int] = None
+  )(implicit ctx: AssemblyContext): AtomicProgramInterpreter =
+    new AtomicProgramInterpreter(prog, vcd, expected_cycles)
 
   override def check(source: DefProgram, context: AssemblyContext): Unit = {
 
     val vcd = context.dump_dir.map(_ =>
       PlacedValueChangeWriter(source, "atomic_trace.vcd")(context)
     )
-    val interp = new AtomicProgramInterpreter(source, vcd)(context)
+    val interp = mkInterpreter(source, vcd)(context)
 
     interp.interpretCompletion()
 

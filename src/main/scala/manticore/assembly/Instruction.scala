@@ -245,9 +245,9 @@ trait ManticoreAssemblyIR {
 
   // send a register to a process
   case class Send(
-      rd: Name,
-      rs: Name,
-      dest_id: ProcessId,
+      rd: Name, // register name in the destination process
+      rs: Name, // register name in the source process
+      dest_id: ProcessId, // destination process id
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
     override def toString: String = s"SEND ${rd}, [${dest_id}], ${rs}"

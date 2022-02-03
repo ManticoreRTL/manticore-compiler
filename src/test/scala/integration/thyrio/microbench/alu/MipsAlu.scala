@@ -11,7 +11,10 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
-
+import manticore.assembly.levels.Transformation
+import manticore.assembly.ManticoreAssemblyIR
+import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.ManticorePasses
 class MipsAlu extends ThyrioUnitTest {
 
   val requiredTools: Seq[ExternalTool] = Seq(
@@ -157,7 +160,9 @@ class MipsAlu extends ThyrioUnitTest {
 
   // generateTest()
 
-  def runTest(work_dir: Path)(phase: => ManticoreFrontend.Phase): Unit = {
+  def runTest[T <: ManticoreAssemblyIR#DefProgram](
+      work_dir: Path
+  )(phase: => Transformation[UnconstrainedIR.DefProgram, T]): Unit = {
 
     val ctx =
       AssemblyContext(
@@ -170,7 +175,9 @@ class MipsAlu extends ThyrioUnitTest {
     phase(parsed, ctx)
   }
 
-  def testIteration(i: Int)(phases: ManticoreFrontend.Phase): Unit = {
+  def testIteration[T <: ManticoreAssemblyIR#DefProgram](
+      i: Int
+  )(phases: Transformation[UnconstrainedIR.DefProgram, T]): Unit = {
     println(s"Test iteration ${i}")
     val work_dir = test_root_dir.resolve(s"t${i}")
     Files.createDirectories(work_dir)
@@ -182,7 +189,10 @@ class MipsAlu extends ThyrioUnitTest {
   it should "successfully interpret the results before width conversion" in {
     f =>
       Range(0, 10) foreach { i =>
-        testIteration(i)(ManticoreFrontend.initialPhases())
+        testIteration(i)(
+          ManticorePasses.frontend followedBy
+          ManticorePasses.frontend_interpreter
+        )
       }
 
   }
@@ -190,8 +200,9 @@ class MipsAlu extends ThyrioUnitTest {
     f =>
       Range(0, 10) foreach { i =>
         testIteration(i)(
-          ManticoreFrontend.initialPhases() followedBy ManticoreFrontend
-            .finalPhases()
+          ManticorePasses.frontend followedBy
+          ManticorePasses.middleend followedBy
+          ManticorePasses.frontend_interpreter
         )
       }
 
