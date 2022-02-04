@@ -29,4 +29,3 @@ jobs:
         export PATH=${PATH}:thyrio-frontend/src/thyrio
         sbt 'testOnly integration.thyrio.microbench.alu.MipsAlu'
 
-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
