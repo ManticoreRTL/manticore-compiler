@@ -79,8 +79,8 @@ class MipsAlu extends ThyrioUnitTest {
     val ctrl = Seq.fill(test_size) {
       val ix = randGen.nextInt(controls.length)
       // val ix = randGen.nextInt(4)
-      // controls(ix)
-      SLL
+      controls(ix)
+      // SLL
       // SUB
       // SLT
     }

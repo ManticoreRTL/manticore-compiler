@@ -139,14 +139,13 @@ import manticore.assembly.levels.unconstrained.UnconstrainedIR
   *       var carry_in = UInt16(0)
   *       val msh_minus_16 = msh - 16
   *       for (jx <- 0 until i.vs.length) {
-  *         // val right_shifted = rd(jx) >> hsm.toInt
+  *
   *         val carry_out =
   *           if (msh_gt_eq_16) // ms > 16
   *             rd(jx)
   *           else
-  *             rd(jx) >> right_shift_amount // val right_shifted
+  *             rd(jx) >> right_shift_amount
   *
-  *         // val res = rd(jx) << msh
   *         val new_res =
   *           if (msh_gt_eq_16) // msh > 16
   *             UInt16(0)
@@ -828,7 +827,7 @@ object WidthConversionCore
 
         } else {
           val shift_amount_mutable = builder.mkWire(
-            shift_amount + "_mutable",
+            "sh_mutable",
             16
           )
 
@@ -839,15 +838,15 @@ object WidthConversionCore
           val shift_amount_mutable_eq_0 =
             builder.mkWire("shift_amount_mutable_eq_0", 1)
           val sixteen_minus_shift_amount_mutable =
-            builder.mkWire("sixteen_minus_" + shift_amount_mutable, 16)
+            builder.mkWire("sixteen_minus_mutable_sh", 16)
           val fifteen_minus_shift_amount_mutable =
-            builder.mkWire("fifteen_minus_" + shift_amount_mutable, 16)
+            builder.mkWire("fifteen_minus_sh_mutable", 16)
           val shift_amount_mutable_gt_eq_16 =
-            builder.mkWire(shift_amount_mutable + "gt_eq_16", 1)
+            builder.mkWire("sh_mutable_gt_eq_16", 1)
           val shift_amount_mutable_minus_16 =
-            builder.mkWire(shift_amount_mutable + "_minus_16", 16)
+            builder.mkWire("sh_mutable_minus_16", 16)
           val shift_right_amount_mutable =
-            builder.mkWire(shift_amount + "_right_mutable", 16)
+            builder.mkWire("sh_right_mutable", 16)
           val right_shifted = builder.mkWire("right_shifted", 16)
           val carry_in = builder.mkWire("carry_in", 16)
           val carry_out = builder.mkWire("carry_out", 16)
@@ -948,7 +947,7 @@ object WidthConversionCore
                 BinaryArithmetic(
                   BinaryOperator.OR,
                   tmp_tmp_tmp_res,
-                  tmp_res,
+                  tmp_tmp_res,
                   carry_in
                 ),
                 Mux(

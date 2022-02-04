@@ -55,6 +55,7 @@ trait ProcessInterpreter extends InterpreterBase {
         // in the program, only predicates and MUXes
         ctx.logger.debug(s"invalid shift amount ${v}", inst)
         v.toInt & 0xF // take the lowest 4 bits
+
       } else {
         v.toInt
       }
@@ -74,8 +75,6 @@ trait ProcessInterpreter extends InterpreterBase {
         UInt16(if (is_eq) 1 else 0)
       case SLL =>
         val shift_amount = shiftAmount(rs2_val)
-        if (rd == "%w375" || rd == "%w133")
-          println("trap")
         rs1_val << shift_amount
       case SRL =>
         val shift_amount = shiftAmount(rs2_val)
@@ -84,6 +83,7 @@ trait ProcessInterpreter extends InterpreterBase {
       case SRA =>
         val shift_amount = shiftAmount(rs2_val)
         rs1_val >>> shift_amount
+
       case SLTS =>
         val rs1_sign = (rs1_val >> 15) == UInt16(1)
         val rs2_sign = (rs2_val >> 15) == UInt16(1)

@@ -19,8 +19,6 @@ import scalax.collection.GraphTraversal
 import manticore.assembly.levels.CloseSequentialCycles
 import manticore.assembly.ManticoreAssemblyIR
 
-
-
 /** List scheduler transformation, the output of this transformation is a
   * program with locally scheduled processes. If the input program has Nops,
   * they will be all ignored.
@@ -88,8 +86,6 @@ object ListSchedulerTransform
     // we create extra dependency nodes and add the needed
     // dump the graph
 
-
-
     ctx.logger.dumpArtifact(
       s"dependence_graph_${phase_id}_${proc.id.id}_${ctx.logger.countProgress()}.dot"
     ) {
@@ -156,8 +152,6 @@ object ListSchedulerTransform
       ctx.logger.error(s"Dependence graph for process ${proc.id} is cyclic!")
       ctx.logger.fail("Failed to schedule process")
     }
-
-
 
     def traverseAndSetDistanceToSinkNonRecursive(node: Node): Int = {
 
@@ -249,23 +243,37 @@ object ListSchedulerTransform
     // val some_root_node = dependence_graph.
     // find the distance of each node to sinks
     val now = System.nanoTime()
-    dependence_graph.nodes filter { _.inDegree == 0} foreach { traverseAndSetDistanceToSinkRecursive }
+    dependence_graph.nodes filter { _.inDegree == 0 } foreach {
+      traverseAndSetDistanceToSinkRecursive
+    }
     val end = System.nanoTime()
 
     val send_instructions = proc.body.collect { case i: Send => i }
 
-    val unsched_list = scala.collection.mutable.Queue[Instruction](
-      proc.body.filter(_ != Nop): _* // remove nops, they can not be
-      // scheduled because they never become ready (no operands) and they
-      // don't matter anyways.
-    )
+    val unsched_list = scala.collection.mutable.Queue.empty[Instruction] ++
+      proc.body.filter(_ != Nop) // remove nops, they can not be
+    // scheduled because they never become ready (no operands) and they
+    // don't matter anyways.
 
     val schedule = scala.collection.mutable.Queue[Instruction]()
 
     case class ReadyNode(n: Node, dist: Int) extends Ordered[ReadyNode] {
-      def compare(that: ReadyNode) =
-        Ordering[Int].reverse
-          .compare(this.dist, that.dist)
+      def compare(that: ReadyNode) = {
+        (this.n.toOuter, that.n.toOuter) match {
+          case (
+                Expect(_, _, this_id: ExceptionIdImpl, _),
+                Expect(_, _, that_id: ExceptionIdImpl, _)
+              ) =>
+            (this_id.kind, that_id.kind) match {
+              // case (ExpectFail, ExpectStop) => 1
+              // case (ExpectStop, ExpectFail) => -1
+              case (_, _) => Ordering[Int].reverse.compare(this.dist, that.dist)
+            }
+          case (_, _) =>
+            Ordering[Int].reverse
+              .compare(this.dist, that.dist)
+        }
+      }
 
     }
 
@@ -302,7 +310,7 @@ object ListSchedulerTransform
         .map { case (k, v) => s"${k.serialized} : ${v} " }
         .mkString("\n")}"
     )
-    while (unsched_list.nonEmpty && cycle < 4096) {
+    while (unsched_list.nonEmpty) {
       val finished_list =
         active_list.filter { _.time_left == 0 } map { f =>
           val node = f.node
@@ -340,11 +348,22 @@ object ListSchedulerTransform
       cycle += 1
     }
 
-    if (cycle >= 4096) {
+    if (cycle >= ctx.max_instructions_threshold) {
       ctx.logger.error(
         "Failed to schedule processes, ran out of instruction memory",
         proc
       )
+    }
+
+    val new_body = schedule.toSeq
+
+    if (ctx.debug_message) {
+      // make sure no instruction is left out
+      val old_inst_set = proc.body.filter(_ != Nop).toSet
+      val new_inst_set = new_body.filter(_!= Nop).toSet
+      if (old_inst_set != new_inst_set) {
+        ctx.logger.error(s"some instructions are not present in the final schedule of process ${proc.id}")
+      }
     }
 
     proc.copy(body = schedule.toSeq)

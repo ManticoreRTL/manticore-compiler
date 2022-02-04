@@ -121,6 +121,7 @@ object Main {
         // ProcessMergingTransform followedBy
         LocalMemoryAllocation followedBy
         PlacedIRCloseSequentialCycles followedBy
+        ListSchedulerTransform followedBy
         backend_atomic_interpreter
 
       phases(prg, ctx)._1
