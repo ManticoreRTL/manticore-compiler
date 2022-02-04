@@ -73,18 +73,50 @@ object ListSchedulerTransform
 
   private def createLocalSchedule(
       proc: DefProcess,
-      dim: (Int, Int),
-      ctx: AssemblyContext
-  ): DefProcess = {
+      dim: (Int, Int)
+  )(implicit ctx: AssemblyContext): DefProcess = {
 
     // import manticore.assembly.levels.placed.
     val dependence_graph =
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
 
-    // note that the dependence graph is obtained from a program in which the
-    // output registers are not MOVed to the inputs. So before anything else,
-    // we create extra dependency nodes and add the needed
-    // dump the graph
+    // instructions require to close sequential cycles
+    val output_input_pairs = createInputOutputPairs(proc)(ctx).map {
+      case (curr, next) =>  next.variable.name -> curr.variable.name
+    }.toMap
+
+    val move_instructions = output_input_pairs.map { case (next, curr) =>
+      curr -> Mov(curr, next)
+    }.toMap
+
+
+    // create WAR between input(current) register uses and update instructions
+    // of the form Mov(curr, next) that we are adding now.
+
+    proc.body.foreach { inst =>
+      val uses = DependenceAnalysis.regUses(inst)(ctx)
+      val defs = DependenceAnalysis.regDef(inst)(ctx)
+      defs.foreach { d =>
+        // is this instruction defining the next value of a register?
+        // If so create a RAW dependency
+        output_input_pairs.get(d) match {
+          case Some(curr) =>
+            val mov = move_instructions(curr)
+            dependence_graph += LDiEdge(inst, mov)(labelingFunc(inst, mov))
+          case _ => // do nothing
+        }
+      }
+      uses.foreach { u =>
+        // is this instruction using an input? If so create a WAR dependency
+        move_instructions.get(u) match {
+          case Some(mov) => dependence_graph += LDiEdge(inst, mov)(Label(1))
+          // notice that if an input register is never used, we don't
+          // create an edge (hence a MOV node) here.
+          case _ => // nothing to be done
+        }
+      }
+    }
+
 
     ctx.logger.dumpArtifact(
       s"dependence_graph_${phase_id}_${proc.id.id}_${ctx.logger.countProgress()}.dot"
@@ -139,6 +171,7 @@ object ListSchedulerTransform
       dot_export
     }
 
+    ctx.logger.flush()
     type Node = dependence_graph.NodeT
     type Edge = dependence_graph.EdgeT
     val distance_to_sink = scala.collection.mutable.Map[Node, Int]()
@@ -207,9 +240,7 @@ object ListSchedulerTransform
 
     // somehow faster, both have the same complexity though I think (visit each node twice)
     def traverseAndSetDistanceToSinkRecursive(node: Node): Int = {
-
       if (node.outDegree == 0) {
-
         val dist = node.toOuter match {
           case inst @ Send(rd, _, target, _) =>
             instructionLatency(inst) + // local instruction latency
@@ -248,10 +279,13 @@ object ListSchedulerTransform
     }
     val end = System.nanoTime()
 
-    val send_instructions = proc.body.collect { case i: Send => i }
 
-    val unsched_list = scala.collection.mutable.Queue.empty[Instruction] ++
-      proc.body.filter(_ != Nop) // remove nops, they can not be
+
+    val unsched_list =
+      scala.collection.mutable.Queue.empty[Instruction] ++
+        dependence_graph.nodes.collect {
+          case n if n.toOuter != Nop => n.toOuter
+        } // remove nops, they can not be
     // scheduled because they never become ready (no operands) and they
     // don't matter anyways.
 
@@ -265,8 +299,12 @@ object ListSchedulerTransform
                 Expect(_, _, that_id: ExceptionIdImpl, _)
               ) =>
             (this_id.kind, that_id.kind) match {
-              // case (ExpectFail, ExpectStop) => 1
-              // case (ExpectStop, ExpectFail) => -1
+              case (ExpectFail, ExpectStop) => 1
+              // prioritize Fail type so that we don't end up
+              // stopping without checking for the error. Note that we don't
+              // need to add any edges in the dependence graph because EXPECTs
+              // are going to always be "source" nodes and always ready.
+              case (ExpectStop, ExpectFail) => -1
               case (_, _) => Ordering[Int].reverse.compare(this.dist, that.dist)
             }
           case (_, _) =>
@@ -295,10 +333,6 @@ object ListSchedulerTransform
       s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
     )
 
-    // create a mutable set showing the satisfied dependencies
-    val satisfied_dependence = scala.collection.mutable.Set.empty[Edge]
-
-    // dependence_graph.OuterEdgeTraverser
 
     class ActiveNode(val node: Node, var time_left: Int)
     var active_list = scala.collection.mutable.ListBuffer[ActiveNode]()
@@ -360,9 +394,11 @@ object ListSchedulerTransform
     if (ctx.debug_message) {
       // make sure no instruction is left out
       val old_inst_set = proc.body.filter(_ != Nop).toSet
-      val new_inst_set = new_body.filter(_!= Nop).toSet
-      if (old_inst_set != new_inst_set) {
-        ctx.logger.error(s"some instructions are not present in the final schedule of process ${proc.id}")
+      val new_inst_set = new_body.filter(_ != Nop).toSet
+      if (old_inst_set.size > new_inst_set.size) {
+        ctx.logger.error(
+          s"some instructions are not present in the final schedule of process ${proc.id}"
+        )
       }
     }
 
@@ -377,11 +413,11 @@ object ListSchedulerTransform
 
     if (context.debug_message) { // run single-threaded if debug enabled
       source.copy(processes = source.processes.map { p =>
-        createLocalSchedule(p, (context.max_dimx, context.max_dimy), context)
+        createLocalSchedule(p, (context.max_dimx, context.max_dimy))(context)
       })
     } else {
       source.copy(processes = source.processes.par.map { p =>
-        createLocalSchedule(p, (context.max_dimx, context.max_dimy), context)
+        createLocalSchedule(p, (context.max_dimx, context.max_dimy))(context)
       }.seq)
     }
     // createGlobalSchedule(source, context)

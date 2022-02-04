@@ -70,7 +70,7 @@ class MipsAlu extends ThyrioUnitTest {
     (actual_res, actual_res == 0)
   }
 
-  val test_size = 3
+  val test_size = 100
   def generateTest(work_dir: Path): Unit = {
 
     println("Generating random tests")
@@ -170,7 +170,9 @@ class MipsAlu extends ThyrioUnitTest {
       AssemblyContext(
         dump_all = true,
         dump_dir = Some(work_dir.resolve("AluTester").toFile()),
-        max_cycles = test_size + 2
+        max_cycles = test_size + 2,
+        debug_message =  false,
+        expected_cycles = Some(test_size + 1)
       )
     val parsed =
       AssemblyParser(work_dir.resolve(s"AluTester.masm").toFile(), ctx)
@@ -188,33 +190,34 @@ class MipsAlu extends ThyrioUnitTest {
     Make.invoke(Seq("thyrio"), work_dir.toFile()) { println(_) }
     runTest(work_dir)(phases)
   }
-  // it should "successfully interpret the results before width conversion" in {
-  //   f =>
-  //     Range(0, 10) foreach { i =>
-  //       testIteration(i)(
-  //         ManticorePasses.frontend followedBy
-  //         ManticorePasses.frontend_interpreter
-  //       )
-  //     }
-
-  // }
-  // it should "successfully interpret the results before and after width conversion" in {
-  //   f =>
-  //     Range(0, 1) foreach { i =>
-  //       testIteration(i)(
-  //         ManticorePasses.frontend followedBy
-  //         ManticorePasses.middleend followedBy
-  //         ManticorePasses.frontend_interpreter
-  //       )
-  //     }
-  // }
-
-  it should "successfully pass atomic interpretation test" in {
+  it should "successfully interpret the results before width conversion" in {
     f =>
-      Range(0, 1) foreach { i =>
+      Range(0, 10) foreach { i =>
+        testIteration(i)(
+          ManticorePasses.frontend followedBy
+          ManticorePasses.frontend_interpreter
+        )
+      }
+
+  }
+  it should "successfully interpret the results before and after width conversion" in {
+    f =>
+      Range(0, 10) foreach { i =>
         testIteration(i)(
           ManticorePasses.frontend followedBy
           ManticorePasses.middleend followedBy
+          ManticorePasses.frontend_interpreter
+        )
+      }
+  }
+
+  it should "successfully pass atomic interpretation test" in {
+    f =>
+      Range(0, 10) foreach { i =>
+        testIteration(i)(
+          ManticorePasses.frontend followedBy
+          ManticorePasses.middleend followedBy
+          ManticorePasses.frontend_interpreter followedBy
           ManticorePasses.backend followedBy
           ManticorePasses.backend_atomic_interpreter
         )

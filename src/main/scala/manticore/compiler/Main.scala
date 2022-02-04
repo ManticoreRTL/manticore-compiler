@@ -120,7 +120,6 @@ object Main {
         PlacedIRDeadCodeElimination followedBy
         // ProcessMergingTransform followedBy
         LocalMemoryAllocation followedBy
-        PlacedIRCloseSequentialCycles followedBy
         ListSchedulerTransform followedBy
         backend_atomic_interpreter
 

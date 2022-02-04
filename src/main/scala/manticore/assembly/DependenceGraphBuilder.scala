@@ -3,8 +3,8 @@ package manticore.assembly
 /** DependenceGraph.scala
   *
   * @author
-  *   Mahyar Emami   <mahyar.emami@eplf.ch>
-  *   Sahand Kashani <sahand.kashani@epfl.ch>
+  *   Mahyar Emami <mahyar.emami@eplf.ch> Sahand Kashani
+  *   <sahand.kashani@epfl.ch>
   */
 
 import manticore.assembly.levels.AssemblyTransformer
@@ -78,11 +78,10 @@ trait DependenceGraphBuilder extends InputOutputPairs {
           Seq(rs)
         case AddC(rd, co, rs1, rs2, ci, annons) =>
           Seq(rs1, rs2, ci)
-        case Mov(rd, rs, _) => Seq(rs)
+        case Mov(rd, rs, _)                  => Seq(rs)
         case Recv(rd, rs, source_id, annons) =>
           // purely synthetic instruction, should be regarded as NOP
           Seq.empty
-
 
       }
     }
@@ -115,7 +114,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case Mov(rd, _, _)                      => Seq(rd)
         case ClearCarry(rd, _)                  => Seq(rd)
         case SetCarry(rd, _)                    => Seq(rd)
-        case _:Recv => Nil
+        case _: Recv                            => Nil
 
       }
     }
@@ -150,47 +149,49 @@ trait DependenceGraphBuilder extends InputOutputPairs {
       val load_to_store = loads.map { case (l, b) =>
         l -> blocks_to_stores.get(b)
       }.toMap
-      val raw_dependence_graph =
-        process.body.foldLeft(
-          MutableGraph[Instruction, LDiEdge](process.body: _*)
-        ) { case (g, inst) =>
-          // create register to register dependencies
-          val raw_deps =
-            g += inst
-            regUses(inst).foldLeft(g) { case (gg, use) =>
-              def_instructions.get(use) match {
-                case Some(pred) =>
-                  gg += LDiEdge[Instruction, L](pred, inst)(label(pred, inst))
-                case None =>
-                  gg
-              }
-            }
 
-          // now add a load to store dependency if the instruction is a load
-          inst match {
-            case load @ (_: LocalLoad | _: GlobalLoad) =>
-              // find the memory block associated with this load
-              extractBlock(load) match {
-                case Some(block) =>
-                  blocks_to_stores.get(block) match {
-                    case Some(store) =>
-                      raw_deps += LDiEdge[Instruction, L](load, store)(
-                        label(load, store)
-                      )
-                    case None =>
-                      ctx.logger.info("Inferring read-only memory", load)
-                    // read only memory
-                  }
-                case _ =>
-                  ctx.logger.error(s"Missing valid @${Memblock.name}", load)
+      val raw_dependence_graph = MutableGraph.empty[Instruction, LDiEdge]
 
-              }
-            case _ =>
-            // do nothing
+      process.body.foreach { inst =>
+        // create register to register dependencies
+        raw_dependence_graph += inst
+        regUses(inst).foreach { use =>
+          def_instructions.get(use) match {
+            case Some(pred) =>
+              raw_dependence_graph += LDiEdge[Instruction, L](pred, inst)(
+                label(pred, inst)
+              )
+            case None =>
+            // nothing
           }
-          raw_deps
         }
 
+        // now add a load to store dependency if the instruction is a load
+        inst match {
+          case load @ (_: LocalLoad | _: GlobalLoad) =>
+            // find the memory block associated with this load
+            extractBlock(load) match {
+              case Some(block) =>
+                blocks_to_stores.get(block) match {
+                  case Some(store) =>
+                    raw_dependence_graph += LDiEdge[Instruction, L](
+                      load,
+                      store
+                    )(
+                      label(load, store)
+                    )
+                  case None =>
+                    ctx.logger.info("Inferring read-only memory", load)
+                  // read only memory
+                }
+              case _ =>
+                ctx.logger.error(s"Missing valid @${Memblock.name}", load)
+
+            }
+          case _ =>
+          // do nothing
+        }
+      }
       raw_dependence_graph
     }.ensuring { g =>
       g.nodes.length == process.body.length
@@ -205,23 +206,9 @@ trait DependenceGraphBuilder extends InputOutputPairs {
     def definingInstructionMap(
         proc: DefProcess
     )(implicit ctx: AssemblyContext): Map[Name, Instruction] = {
-
-      val input_output_pairs = createInputOutputPairs(proc).map {
-        case (curr, next) => curr.variable.name -> next.variable.name
-      }.toSet
-
       val name_def_map = scala.collection.mutable.Map.empty[Name, Instruction]
       proc.body.foreach { inst =>
-        inst match {
-          case Mov(current, next, _)
-              if (input_output_pairs.contains((current, next))) =>
-          // a MOVing output register to input registers do not really define them, we
-          // only do this close sequential cycles
-
-          case _ =>
-            name_def_map ++= regDef(inst) map { rd => rd -> inst }
-        }
-
+        name_def_map ++= regDef(inst) map { rd => rd -> inst }
       }
       name_def_map.toMap
     }

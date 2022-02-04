@@ -314,7 +314,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     val vcd = context.dump_dir.map(_ =>
       PlacedValueChangeWriter(source, "atomic_trace.vcd")(context)
     )
-    val interp = mkInterpreter(source, vcd)(context)
+    val interp = mkInterpreter(source, vcd, context.expected_cycles)(context)
 
     interp.interpretCompletion()
 

@@ -99,7 +99,8 @@ object LatencyAnalysis {
 
   import PlacedIR._
   def latency(inst: Instruction): Int = inst match {
-    case Predicate(_, _) => 0
+    case _: Predicate    => 0
+    case _: Expect       => 0
     case Nop             => 0
     case _               => 3
   }

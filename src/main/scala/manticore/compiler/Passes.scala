@@ -55,7 +55,7 @@ object ManticorePasses {
       PlacedIRDeadCodeElimination followedBy
       RoundRobinPlacerTransform followedBy
       SendInsertionTransform followedBy
-      PlacedIRCloseSequentialCycles followedBy
+      // PlacedIRCloseSequentialCycles followedBy
       ListSchedulerTransform followedBy
       PredicateInsertionTransform followedBy
       GlobalPacketSchedulerTransform followedBy
