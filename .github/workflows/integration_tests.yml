@@ -16,6 +16,7 @@ jobs:
       with:
         repository: epfl-vlsc/thyrio-frontend
         token: ${{ secrets.THYRIO_CLONE_ACCESS }}
+        path: thyrio-frontend
     - name: Set up JDK 11
       uses: actions/setup-java@v2
       with:
