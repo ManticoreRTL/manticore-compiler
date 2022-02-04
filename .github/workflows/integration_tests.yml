@@ -12,11 +12,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - name: "Clone Yosys"
+      uses: actions/checkout@v2
+      with:
+        repository: "epfl-vlsc/yosys"
+        token : ${{ secrets.THYRIO_CLONE_ACCESS }}
+        path  : yosys
+    - name: Install Yosys Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install g++ gperf build-essential bison flex libreadline-dev gawk tcl-dev libffi-dev git graphviz xdot pkg-config python python3 libboost-system-dev libboost-python-dev libboost-filesystem-dev zlib1g-dev
+    - name: Install Yosys
+      run: |
+        sudo make -C yosys install
+    - name: Clone thyrio
+      uses: actions/checkout@v2
       with:
         repository: epfl-vlsc/thyrio-frontend
-        token: ${{ secrets.THYRIO_CLONE_ACCESS }}
-        path: thyrio-frontend
+        token : ${{ secrets.THYRIO_CLONE_ACCESS }}
+        path  : thyrio-frontend
     - name: Set up JDK 11
       uses: actions/setup-java@v2
       with:
@@ -24,9 +38,13 @@ jobs:
         distribution: 'temurin'
     - name: Install verilator
       run: sudo apt install -y verilator
-    - uses: actions/checkout@v2
+    - name: Clone Manticore compiler
+      uses: actions/checkout@v2
     - name: Run tests
       run: |
-        export PATH=${PATH}:`pwd`/thyrio-frontend/src/thyrio
+        export THYRIO_PATH=`pwd`/thyrio-frontend/src/thyrio
+        export PATH=${PATH}:${THYRIO_PATH}
+        echo ${THYRIO_PATH}
+        chmod +x ${THYRIO_PATH}/thyrio_frontend
         sbt 'testOnly integration.thyrio.microbench.alu.MipsAlu'
 
