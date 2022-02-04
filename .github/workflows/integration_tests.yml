@@ -13,7 +13,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/checkout@v1
       with:
         repository: epfl-vlsc/thyrio-frontend
         token: ${{ secrets.THYRIO_CLONE_ACCESS }}
@@ -24,6 +23,7 @@ jobs:
         distribution: 'temurin'
     - name: Install verilator
       run: sudo apt install -y verilator
+    - uses: actions/checkout@v2
     - name: Run tests
       run: |
         export PATH=${PATH}:thyrio-frontend/src/thyrio
