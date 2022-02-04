@@ -112,16 +112,8 @@ object Main {
         frontend followedBy
           middleend followedBy
           frontend_interpreter followedBy
-      // frontend_interpreter followedBy
-      // frontend_interpreter followedBy
-      UnconstrainedToPlacedTransform followedBy
-        // ProcessSplittingTransform followedBy
-        // PlacedIROrderInstructions followedBy
-        PlacedIRDeadCodeElimination followedBy
-        // ProcessMergingTransform followedBy
-        LocalMemoryAllocation followedBy
-        ListSchedulerTransform followedBy
-        backend_atomic_interpreter
+          backend followedBy
+          backend_atomic_interpreter
 
       phases(prg, ctx)._1
     }

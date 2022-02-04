@@ -46,16 +46,15 @@ object ManticorePasses {
 
   val backend =
       UnconstrainedToPlacedTransform followedBy
-      // ProcessSplittingTransform followedBy
+      ProcessSplittingTransform followedBy
       PlacedIROrderInstructions followedBy
       PlacedIRDeadCodeElimination followedBy
-      // ProcessMergingTransform followedBy
+      ProcessMergingTransform followedBy
       LocalMemoryAllocation followedBy
       PlacedIROrderInstructions followedBy
       PlacedIRDeadCodeElimination followedBy
       RoundRobinPlacerTransform followedBy
       SendInsertionTransform followedBy
-      // PlacedIRCloseSequentialCycles followedBy
       ListSchedulerTransform followedBy
       PredicateInsertionTransform followedBy
       GlobalPacketSchedulerTransform followedBy

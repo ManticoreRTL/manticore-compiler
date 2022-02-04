@@ -1,0 +1,31 @@
+name: Assembly Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: epfl-vlsc/thyrio-frontend
+        token: ${{ secrets.THYRIO_CLONE }}
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+    - name: Install verilator
+      run: sudo apt install -y verilator
+    - name: Run tests
+      run: |
+        export PATH=${PATH}:thyrio-frontend/src/thyrio
+        sbt 'testOnly integration.thyrio.microbench.alu.MipsAlu'
+

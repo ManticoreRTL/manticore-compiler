@@ -83,7 +83,8 @@ class ArrayMultiplier extends ThyrioUnitTest {
       AssemblyContext(
         dump_all = true,
         dump_dir = Some(work_dir.resolve("ArrayMultiplier").toFile()),
-        max_cycles = test_size + 200
+        max_cycles = test_size + 200,
+        expected_cycles = Some(test_size + width * 2 + 1)
       )
     val parsed =
       AssemblyParser(
@@ -105,24 +106,35 @@ class ArrayMultiplier extends ThyrioUnitTest {
     runTest(work_dir)(phases)
   }
 
-  it should "successfully interpret the results before width conversion" in {
-    f =>
-      Range(0, 1) foreach { i =>
-        testIteration(i)(
-          ManticorePasses.frontend followedBy
-            ManticorePasses.frontend_interpreter
-        )
-      }
+  // it should "successfully interpret the results before width conversion" in {
+  //   f =>
+  //     Range(0, 1) foreach { i =>
+  //       testIteration(i)(
+  //         ManticorePasses.frontend followedBy
+  //           ManticorePasses.frontend_interpreter
+  //       )
+  //     }
+  // }
 
-  }
+  // it should "successfully interpret the results after width conversion" in {
+  //   f =>
+  //     Range(0, 1) foreach { i =>
+  //       testIteration(i)(
+  //         ManticorePasses.frontend followedBy
+  //           ManticorePasses.middleend followedBy
+  //           ManticorePasses.frontend_interpreter
+  //       )
+  //     }
+  // }
 
-  it should "successfully interpret the results after width conversion" in {
+  it should "successfully atomically interpret the results" in {
     f =>
       Range(0, 1) foreach { i =>
         testIteration(i)(
           ManticorePasses.frontend followedBy
             ManticorePasses.middleend followedBy
-            ManticorePasses.frontend_interpreter
+            ManticorePasses.backend followedBy
+            ManticorePasses.backend_atomic_interpreter
         )
       }
 
