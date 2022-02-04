@@ -18,6 +18,7 @@ jobs:
         repository: "epfl-vlsc/yosys"
         token : ${{ secrets.THYRIO_CLONE_ACCESS }}
         path  : yosys
+        ref   : masm_frontend
     - name: Install Yosys Dependencies
       run: |
         sudo apt-get update
