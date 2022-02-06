@@ -1,0 +1,4 @@
+wires:
+  - ShiftRegisterFIFOTester/cycle_counter
+  - ShiftRegisterFIFOTester/reading
+  - ShiftRegisterFIFOTester/dout

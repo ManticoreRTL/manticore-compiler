@@ -399,7 +399,7 @@ module Mips32 (
   RegisterFile #(5, 32) regs (
       .clock(clock),
       .wen(c_reg_write),
-      .raddr1(instr[25:21]),
+      .raddr1(halted_r ? 5'd2 : instr[25:21]),
       .rdata1(reg_read1),
       .raddr2(instr[20:16]),
       .rdata2(reg_read2),
@@ -462,6 +462,14 @@ module Mips32 (
         end else begin
           pc <= pc_4;
         end
+      end else begin
+`ifdef VERILATOR
+        assert (reg_read1 == 45);
+        $finish;
+`else
+        $masm_expect(reg_read1 == 45, "expected 45");
+        $masm_stop;
+`endif
       end
 
     end
@@ -520,29 +528,9 @@ module TestVerilator (
       .halted(halted)
   );
 
-  always @(posedge clock) begin
-    if (halted) begin
-`ifdef VERILATOR
-      assert (dut.regs.mem[2] == 45);
-      $finish;
-`else
-      $masm_expect(dut.regs.mem[2] == 45, "expected 45");
-      $masm_stop;
-`endif
-    end
-  end
 
   initial begin
     $readmemh("sum.hex", inst_mem);
-    // inst_mem[0] = 32'h631826;
-    // inst_mem[1] = 32'h2063000a;
-    // inst_mem[2] = 32'h210826;
-    // inst_mem[3] = 32'h421026;
-    // inst_mem[4] = 32'h10230003;
-    // inst_mem[5] = 32'h411020;
-    // inst_mem[6] = 32'h20210001;
-    // inst_mem[7] = 32'h8000004;
-    // inst_mem[8] = 32'h40000d;
   end
 
 
