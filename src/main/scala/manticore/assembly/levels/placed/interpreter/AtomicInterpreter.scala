@@ -9,6 +9,13 @@ import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.AssemblyChecker
 import manticore.assembly.levels.placed.interpreter.PlacedValueChangeWriter
 
+/**
+ * Basic interpreter for placed programs. The program needs to have Send and
+ * Recv instructions but does not check for NoC contention and does not require
+ * allocated registers.
+ *
+ * @author Mahyar Emami <mahyar.emami@epfl.ch>
+ */
 object AtomicInterpreter extends AssemblyChecker[DefProgram] {
 
   case class AtomicMessage(
@@ -127,6 +134,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     }
 
     override def send(dest: ProcessId, rd: Name, value: UInt16): Unit = {
+      ctx.logger.debug(s"Sending ${rd} <- ${value} from ${proc.id} to ${dest}")
       outbox.enqueue(
         AtomicMessage(
           source_id = proc.id,
@@ -149,7 +157,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
           Some(value)
         case _ =>
           ctx.logger.debug(
-            s"Could not find a message for value of ${rd} from ${process_id}. Will have to check for message in roll over."
+            s"Could not find a message for value of ${rd} from ${process_id} in ${proc.id}. Will have to check for message in roll over."
           )
           missing_messages += ((rd, process_id))
           None
@@ -268,6 +276,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       while (vcycle < ctx.max_cycles && traps.isEmpty) {
         traps ++= interpretVirtualCycle()
         vcd.foreach(_.tick())
+        ctx.logger.debug(s"Finished vcycle ${vcycle}")
         vcycle += 1
       }
 
