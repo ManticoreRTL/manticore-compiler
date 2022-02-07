@@ -39,6 +39,13 @@ trait Transformation[
     g.apply(target_ir, target_ctx)
   }
 
+  def andFinally(
+      g: (T, AssemblyContext) => Unit
+  ): (S, AssemblyContext) => Unit = { case (source_ir, source_ctx) =>
+    val (target_ir, target_ctx) = this.apply(source_ir, source_ctx)
+    g.apply(target_ir, target_ctx)
+  }
+
 }
 
 /** Signature class for IR transformation, taking the [[S]] IR flavor as input

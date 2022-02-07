@@ -389,8 +389,7 @@ object WidthConversionCore
           instruction
         )
 
-      case BinaryOperator.ADDC =>
-        ctx.logger.error("Unexpected instruction!", instruction)
+
       case BinaryOperator.SUB =>
         val ConvertedWire(rd_uint16_array, rd_mask) =
           builder.getConversion(instruction.rd)
@@ -1811,8 +1810,7 @@ object WidthConversionCore
           }
         }
       // no need to mask
-      case BinaryOperator.PMUX =>
-        ctx.logger.error("Unexpected instruction!", instruction)
+
 
     }
     // set the position

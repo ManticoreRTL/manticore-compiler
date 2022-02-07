@@ -62,10 +62,7 @@ trait ProcessInterpreter extends InterpreterBase {
     }
     val rd_val: UInt16 = op match {
       case ADD => rs1_val + rs2_val
-      case ADDC =>
-        ctx.logger.error(s"ADDC is not supported", inst)
-        trap(InternalTrap)
-        UInt16(0)
+
       case SUB => rs1_val - rs2_val
       case OR  => rs1_val | rs2_val
       case AND => rs1_val & rs2_val
@@ -113,10 +110,7 @@ trait ProcessInterpreter extends InterpreterBase {
             UInt16(0)
           }
         }
-      case PMUX =>
-        ctx.logger.error(s"PMUX not supported!", inst)
-        trap(InternalTrap)
-        UInt16(0)
+
 
     }
     write(rd, rd_val)

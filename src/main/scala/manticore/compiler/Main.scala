@@ -36,7 +36,8 @@ import manticore.assembly.levels.AssemblyPrinter
 import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.placed.LocalMemoryAllocation
 import manticore.assembly.levels.placed.interpreter.AtomicInterpreter
-
+import manticore.assembly.levels.codegen.MachineCodeGenerator
+import manticore.assembly.parser.AssemblyLexical
 case class CliConfig(
     input_file: Option[File] = None,
     print_tree: Boolean = false,
@@ -108,14 +109,16 @@ object Main {
 
       import ManticorePasses._
 
+
       val phases =
-        frontend followedBy
+          frontend followedBy
           middleend followedBy
           frontend_interpreter followedBy
           backend followedBy
-          backend_atomic_interpreter
+          backend_atomic_interpreter andFinally
+          MachineCodeGenerator
 
-      phases(prg, ctx)._1
+      phases(prg, ctx)
     }
 
     val parsed = AssemblyParser(cfg.input_file.get, ctx)

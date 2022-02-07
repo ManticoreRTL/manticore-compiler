@@ -11,11 +11,9 @@ import manticore.assembly.annotations.AssemblyAnnotationFields.{
   FieldName
 }
 
-
-/**
-  * A pass to globally schedule/route messages across processes.
+/** A pass to globally schedule/route messages across processes.
   * @author
-  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
 
 import manticore.assembly.annotations.{Layout => LayoutAnnotation}
@@ -215,48 +213,22 @@ object GlobalPacketSchedulerTransform
         }
         // append the RECV instructions if any
         val recv_to_sched = recv_queue(p.id)
-        if (recv_to_sched.nonEmpty) {
+        while (recv_to_sched.nonEmpty) {
           val first_recv = recv_to_sched.head
           val recv_time = first_recv._2
           // insert NOPs if messages are arriving later
           full_sched enqueueAll Seq.fill(recv_time - cycle) { Nop }
-          val recv_to_enqueue =
-            recv_to_sched.dequeueAll[(Recv, Int)].map { case (inst, _) => inst }
-          full_sched enqueueAll recv_to_enqueue
+          full_sched enqueue first_recv._1
+          cycle = recv_time
+          recv_to_sched.dequeue()
         }
 
         p.copy(body = full_sched.toSeq).setPos(p.pos)
       }.toSeq
 
-    // now we need to normalize the virtual cycle length across all processes
-    // this can be done by finding the largest process body and append NOPs to
-    // the others
-
-    val slowest_process = scheduled.maxBy(_.body.length)
-    val virtual_cycle_length: Int = {
-      // need to account for the ramp down of the pipeline and append NOPs
-      // to ensure the few last instructions write back before the next virtual
-      // cycle begins
-      // val final_instructions = slowest_process.body.takeRight(LatencyAnalysis.maxLatency())
-      // val ramp_down_size = final_instructions.length
-
-      // TODO: Only insert NOPs at ramp down if necessary
-      // Depending on the type of instructions in the ramp down, we may not need
-      // to add extra NOPs, but I am not dealing with this petty optimization
-      // here that can save us a couple of cycles...
-      LatencyAnalysis.maxLatency() + slowest_process.body.length
-    }
-
-
-    val balanced = scheduled.map { p =>
-      p.copy(body = p.body ++ Seq.fill(virtual_cycle_length - p.body.length) {
-        Nop
-      }).setPos(p.pos)
-    }
-
     program
       .copy(
-        processes = balanced
+        processes = scheduled.sortBy(p => (p.id.x, p.id.y))
       )
       .setPos(program.pos)
   }

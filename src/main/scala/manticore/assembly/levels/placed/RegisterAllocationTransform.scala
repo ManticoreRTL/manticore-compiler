@@ -36,9 +36,9 @@ object RegisterAllocationTransform
     override def compare(x: LiveRegister, y: LiveRegister): Int =
       Ordering[Int].compare(x.lifetime._2, y.lifetime._2)
   }
-  /**
-    * Compute liveness intervals and return them in increasing order
-    * of start times.
+
+  /** Compute liveness intervals and return them in increasing order of start
+    * times.
     *
     * @param process
     * @param ctx
@@ -97,21 +97,31 @@ object RegisterAllocationTransform
       }
     }
 
-    val queue = scala.collection.mutable.PriorityQueue.empty[LiveRegister](LivenessStartOrdering)
+    val queue = scala.collection.mutable.PriorityQueue
+      .empty[LiveRegister](LivenessStartOrdering)
     life_begin.foreach { case (rdef, beg) =>
       life_end.get(rdef) match {
-        case Some(end) => queue += LiveRegister(rdef, (beg, end))
+        case Some(end) =>
+          if (rdef.value.isDefined) {
+            ctx.logger.warn(
+              s"only .input and .const definitions can have an initial value!",
+              rdef
+            )
+          }
+          queue += LiveRegister(rdef, (beg, end))
         case None =>
           ctx.logger.warn(
             s"Register ${rdef.variable.name} in process ${process.id} is never used.",
             rdef
           )
+          queue += LiveRegister(rdef, (beg, beg))
       }
     }
     queue
   }
 
-  private def withId(r: DefReg, new_id: Int): DefReg = r.copy(variable = r.variable.withId(new_id)).setPos(r.pos)
+  private def withId(r: DefReg, new_id: Int): DefReg =
+    r.copy(variable = r.variable.withId(new_id)).setPos(r.pos)
 
   private def isImmortal(r: DefReg): Boolean = {
     val tpe = r.variable.varType
@@ -212,21 +222,24 @@ object RegisterAllocationTransform
     val to_allocate = computeLiveness(process)
 
     // a sorted queue of active (allocated) registers, sorted by increasing end time
-    val active_list = scala.collection.mutable.PriorityQueue.empty[LiveRegister](LivenessEndOrdering)
+    val active_list = scala.collection.mutable.PriorityQueue
+      .empty[LiveRegister](LivenessEndOrdering)
 
     object DefRegOrdering extends Ordering[DefReg] {
       override def compare(x: DefReg, y: DefReg): Int =
         Ordering[Int].reverse.compare(x.variable.id, y.variable.id)
     }
-    val allocated_list = scala.collection.mutable.PriorityQueue.empty[DefReg](DefRegOrdering) ++ immortals
-    val allocated_carry_list = scala.collection.mutable.PriorityQueue.empty[DefReg](DefRegOrdering)
+    val allocated_list = scala.collection.mutable.PriorityQueue
+      .empty[DefReg](DefRegOrdering) ++ immortals
+    val allocated_carry_list =
+      scala.collection.mutable.PriorityQueue.empty[DefReg](DefRegOrdering)
     var failed = false
-    while(to_allocate.nonEmpty && !failed) {
+    while (to_allocate.nonEmpty && !failed) {
 
       val LiveRegister(reg, interval @ (start_time, _)) = to_allocate.dequeue()
 
       val to_release = active_list.dropWhile(x => x.lifetime._2 < start_time)
-      to_release.foreach {case LiveRegister(dead_reg, _) =>
+      to_release.foreach { case LiveRegister(dead_reg, _) =>
         if (dead_reg.variable.varType == CarryType) {
           free_carries += dead_reg.variable.id
         } else {
@@ -257,9 +270,11 @@ object RegisterAllocationTransform
       }
     }
 
-    process.copy(
-      registers = allocated_list.toSeq ++ allocated_carry_list.toSeq
-    ).setPos(process.pos)
+    process
+      .copy(
+        registers = allocated_list.toSeq ++ allocated_carry_list.toSeq
+      )
+      .setPos(process.pos)
 
   }
   override def transform(

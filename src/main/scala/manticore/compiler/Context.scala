@@ -6,7 +6,6 @@ import java.io.PrintWriter
 import java.nio.file.Files
 import manticore.assembly.HasSerialized
 import scala.util.parsing.input.Positional
-import scala.reflect.internal.Phase
 import manticore.assembly.levels.TransformationID
 import java.awt.Color
 

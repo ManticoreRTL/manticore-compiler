@@ -3,7 +3,7 @@ package manticore.compiler
 import manticore.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.assembly.levels.placed.PlacedIR
 import manticore.assembly.levels.placed.PlacedNameChecker
-import scala.language.postfixOps
+
 import manticore.assembly.levels.placed.ListSchedulerTransform
 import manticore.assembly.levels.placed.GlobalPacketSchedulerTransform
 import manticore.assembly.levels.placed.PredicateInsertionTransform

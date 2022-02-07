@@ -78,8 +78,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     LD  o, m[0x01]; // LD or LLD are the same
     ST  i, mi[0x02], p; // ST or LST are the same, predicate p is optional
     SET  mi, 0x12123;
-    MUX  x, sel, xi, xi; // use if the instructions are not scheuled
-    PMUX  x, xi, xi; // don't use if the insturctions are not scheduled!
+    MUX  x, sel, xi, xi;
 
 
   """,
@@ -95,8 +94,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
       LocalLoad("o", "m", BigInt(0x01)),
       LocalStore("i", "mi", BigInt(0x02), Some("p")),
       SetValue("mi", BigInt(0x12123)),
-      Mux("x", "sel", "xi", "xi"),
-      BinaryArithmetic(BinaryOperator.PMUX, "x", "xi", "xi")
+      Mux("x", "sel", "xi", "xi")
     )
   )
 

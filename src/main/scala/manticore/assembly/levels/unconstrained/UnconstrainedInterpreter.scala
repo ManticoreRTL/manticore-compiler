@@ -245,10 +245,6 @@ object UnconstrainedInterpreter
       val rs2_val = state.register_file(rs2)
       val rd_val = op match {
         case ADD => clipped(rs1_val + rs2_val)
-        case ADDC =>
-          val sum = rs1_val + rs2_val + BigInt(if (state.carry) 1 else 0)
-          state.carry = sum.testBit(clip_width.w)
-          clipped(sum)
         case SUB => clipped(rs1_val - rs2_val)
         case OR  => clipped(rs1_val | rs2_val)
         case AND => clipped(rs1_val & rs2_val)
@@ -322,11 +318,6 @@ object UnconstrainedInterpreter
           val is_less = rs1_signed_val < rs2_signed_val
           state.select = is_less
           BigInt(if (is_less) 1 else 0)
-        case PMUX =>
-          if (state.select)
-            rs2_val
-          else
-            rs1_val
       }
 
       vcd_writer.foreach { _.update(rd, rd_val) }

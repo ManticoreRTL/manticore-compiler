@@ -106,26 +106,26 @@ class ArrayMultiplier extends ThyrioUnitTest {
     runTest(work_dir)(phases)
   }
 
-  // it should "successfully interpret the results before width conversion" in {
-  //   f =>
-  //     Range(0, 1) foreach { i =>
-  //       testIteration(i)(
-  //         ManticorePasses.frontend followedBy
-  //           ManticorePasses.frontend_interpreter
-  //       )
-  //     }
-  // }
+  it should "successfully interpret the results before width conversion" in {
+    f =>
+      Range(0, 1) foreach { i =>
+        testIteration(i)(
+          ManticorePasses.frontend followedBy
+            ManticorePasses.frontend_interpreter
+        )
+      }
+  }
 
-  // it should "successfully interpret the results after width conversion" in {
-  //   f =>
-  //     Range(0, 1) foreach { i =>
-  //       testIteration(i)(
-  //         ManticorePasses.frontend followedBy
-  //           ManticorePasses.middleend followedBy
-  //           ManticorePasses.frontend_interpreter
-  //       )
-  //     }
-  // }
+  it should "successfully interpret the results after width conversion" in {
+    f =>
+      Range(0, 1) foreach { i =>
+        testIteration(i)(
+          ManticorePasses.frontend followedBy
+            ManticorePasses.middleend followedBy
+            ManticorePasses.frontend_interpreter
+        )
+      }
+  }
 
   it should "successfully atomically interpret the results" in {
     f =>
