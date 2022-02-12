@@ -6,7 +6,6 @@ import manticore.assembly.levels.placed.PlacedIR._
 import manticore.assembly.levels.UInt16
 import manticore.compiler.AssemblyContext
 import manticore.assembly.levels.TransformationID
-import com.sourcegraph.semanticdb_javac.Semanticdb.ConstantType
 import manticore.assembly.levels.ConstType
 import manticore.assembly.levels.placed.LatencyAnalysis
 

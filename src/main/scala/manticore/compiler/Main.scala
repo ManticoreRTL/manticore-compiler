@@ -43,7 +43,7 @@ case class CliConfig(
     print_tree: Boolean = false,
     dump_all: Boolean = false,
     dump_dir: Option[File] = None,
-    output_file: Option[File] = None,
+    output_dir: Option[File] = None,
     debug_en: Boolean = false,
     jump_to_placed: Boolean =
       false // jump to placed IR, for Mahyar only.. temp option
@@ -64,8 +64,8 @@ object Main {
           .required()
           .text("input assembly file"),
         opt[File]('o', "output")
-          .action { case (x, c) => c.copy(output_file = Some(x)) }
-          .text("output binary file"),
+          .action { case (x, c) => c.copy(output_dir = Some(x)) }
+          .text("output directory"),
         opt[Unit]('t', "print-tree")
           .action { case (_, c) => c.copy(print_tree = true) }
           .text("print the asm program at each step of the assembler"),
@@ -100,7 +100,7 @@ object Main {
         debug_message = cfg.debug_en,
         print_tree = cfg.print_tree,
         source_file = cfg.input_file,
-        output_file = cfg.output_file,
+        output_dir = cfg.output_dir,
         dump_all = cfg.dump_all,
         dump_dir = cfg.dump_dir
       )
@@ -114,9 +114,9 @@ object Main {
           frontend followedBy
           middleend followedBy
           frontend_interpreter followedBy
-          backend followedBy
-          backend_atomic_interpreter andFinally
-          MachineCodeGenerator
+          backend
+          // backend_atomic_interpreter andFinally
+          // MachineCodeGenerator
 
       phases(prg, ctx)
     }

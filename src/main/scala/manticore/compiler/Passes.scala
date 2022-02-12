@@ -43,7 +43,8 @@ object ManticorePasses {
     UnconstrainedDeadCodeElimination
 
 
-
+  val backend_atomic_interpreter =
+      AtomicInterpreter
   val backend =
       UnconstrainedToPlacedTransform followedBy
       ProcessSplittingTransform followedBy
@@ -59,8 +60,7 @@ object ManticorePasses {
       PredicateInsertionTransform followedBy
       GlobalPacketSchedulerTransform followedBy
       RegisterAllocationTransform
-   val backend_atomic_interpreter =
-      AtomicInterpreter
+
 
 
 }
