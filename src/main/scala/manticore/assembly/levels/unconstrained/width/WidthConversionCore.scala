@@ -12,6 +12,7 @@ import manticore.assembly.annotations.AssemblyAnnotation
 import manticore.assembly.annotations.AssemblyAnnotationFields
 import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.assembly.levels.MemoryType
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -381,7 +382,23 @@ object WidthConversionCore
 
         }
 
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+        // if the ADD has one MemoryType operand, it should not be masked
+        // otherwise, when the memory is allocated (i.e., initial value is
+        // set) we may end up truncating addresses.
+        if (builder.originalDef(instruction.rs1).variable.varType != MemoryType) {
+
+          inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
+        } else {
+          // the first operand is a memory base pointer!
+          if (rs1_uint16_array.length > 1) {
+            // ONLY TEMPORARY, NEED TO IMPLEMENT!
+            ctx.logger.error(s"Global memory not implemented yet!", instruction)
+          }
+        }
+        if (builder.originalDef(instruction.rs2).variable.varType == MemoryType) {
+          ctx.logger.error(s"Can not have memory variable as the second operand!", instruction)
+        }
+
         // val moves =
         inst_q ++= moveRegs(
           rd_uint16_array,

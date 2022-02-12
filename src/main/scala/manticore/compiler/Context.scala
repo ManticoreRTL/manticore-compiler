@@ -8,6 +8,7 @@ import manticore.assembly.HasSerialized
 import scala.util.parsing.input.Positional
 import manticore.assembly.levels.TransformationID
 import java.awt.Color
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Classes for diagnostics and reporting
   *
@@ -17,7 +18,7 @@ import java.awt.Color
 
 trait AssemblyContext {
   val source_file: Option[File]
-  val output_file: Option[File]
+  val output_dir: Option[File]
   val print_tree: Boolean // deprecated, use dump_all
   val dump_all: Boolean // dump all intermediate steps
   val dump_dir: Option[File] // location to dump intermediate steps
@@ -42,7 +43,7 @@ object AssemblyContext {
 
   private class ContextImpl(
       val source_file: Option[File],
-      val output_file: Option[File],
+      val output_dir: Option[File],
       val print_tree: Boolean,
       val dump_all: Boolean,
       val dump_dir: Option[File],
@@ -62,12 +63,10 @@ object AssemblyContext {
   ) extends AssemblyContext {
 
 
-    var unique_int: Int = 0
+    var unique_int: AtomicInteger = new AtomicInteger(0)
 
     def uniqueNumber(): Int = {
-      val res = unique_int
-      unique_int += 1
-      res
+      unique_int.getAndAdd(1)
     }
 
 
@@ -76,7 +75,7 @@ object AssemblyContext {
 
   def apply(
       source_file: Option[File] = None,
-      output_file: Option[File] = None,
+      output_dir: Option[File] = None,
       print_tree: Boolean = false,
       dump_all: Boolean = false,
       dump_dir: Option[File] = None,
@@ -97,7 +96,7 @@ object AssemblyContext {
   ): AssemblyContext = {
     new ContextImpl(
       source_file = source_file,
-      output_file = output_file,
+      output_dir = output_dir,
       print_tree = print_tree,
       dump_all = dump_all,
       dump_dir = dump_dir,

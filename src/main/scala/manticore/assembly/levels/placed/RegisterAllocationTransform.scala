@@ -104,7 +104,7 @@ object RegisterAllocationTransform
         case Some(end) =>
           if (rdef.value.isDefined) {
             ctx.logger.warn(
-              s"only .input and .const definitions can have an initial value!",
+              s"only .input, .mem, and .const definitions can have an initial value!",
               rdef
             )
           }

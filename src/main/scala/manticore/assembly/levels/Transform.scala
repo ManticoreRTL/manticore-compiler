@@ -71,10 +71,17 @@ trait AssemblyTransformer[
       ctx: AssemblyContext
   ): (T, AssemblyContext) = {
 
+
     ctx.logger.start(
       s"[${ctx.logger.countProgress()}] Starting transformation ${phase_id}"
     )
+    val start_time = System.nanoTime()
+
     val res = (transform(source, ctx), ctx)
+
+    val duration_time = System.nanoTime() - start_time
+
+    ctx.logger.info(f"Finished after ${duration_time * 1e-7}%.3f ms")
     ctx.logger.dumpArtifact(
       s"dump_post_${ctx.logger.countProgress()}_${phase_id}.masm"
     ) {
@@ -136,9 +143,11 @@ trait AssemblyPrinter[T <: ManticoreAssemblyIR#DefProgram]
       s"[${ctx.logger.countProgress()}] Printing assembly"
     )
 
-    ctx.output_file match {
-      case Some(f) =>
-        Files.createDirectories(f.toPath().getParent())
+    ctx.output_dir match {
+      case Some(dir) =>
+        if (!dir.isDirectory())
+          Files.createDirectories(dir.toPath())
+        val f = dir.toPath().resolve("out.masm").toFile()
         ctx.logger.info(s"Printing assembly to ${f.toPath().toAbsolutePath()}")
         val writer = new PrintWriter(f)
         writer.print(source.serialized)

@@ -180,10 +180,10 @@ class MipsAlu extends ThyrioUnitTest {
   }
 
   def testIteration[T <: ManticoreAssemblyIR#DefProgram](
-      i: Int
+      i: Int, fixture: FixtureParam
   )(phases: Transformation[UnconstrainedIR.DefProgram, T]): Unit = {
     println(s"Test iteration ${i}")
-    val work_dir = test_root_dir.resolve(s"t${i}")
+    val work_dir = fixture.test_dir.resolve(s"t${i}")
     Files.createDirectories(work_dir)
     generateTest(work_dir)
     Make.invoke(Seq("verilate_run"), work_dir.toFile()) { println(_) }
@@ -193,7 +193,7 @@ class MipsAlu extends ThyrioUnitTest {
   it should "successfully interpret the results before width conversion" in {
     f =>
       Range(0, 10) foreach { i =>
-        testIteration(i)(
+        testIteration(i, f)(
           ManticorePasses.frontend followedBy
           ManticorePasses.frontend_interpreter
         )
@@ -203,7 +203,7 @@ class MipsAlu extends ThyrioUnitTest {
   it should "successfully interpret the results before and after width conversion" in {
     f =>
       Range(0, 10) foreach { i =>
-        testIteration(i)(
+        testIteration(i, f)(
           ManticorePasses.frontend followedBy
           ManticorePasses.middleend followedBy
           ManticorePasses.frontend_interpreter
@@ -214,7 +214,7 @@ class MipsAlu extends ThyrioUnitTest {
   it should "successfully pass atomic interpretation test" in {
     f =>
       Range(0, 10) foreach { i =>
-        testIteration(i)(
+        testIteration(i, f)(
           ManticorePasses.frontend followedBy
           ManticorePasses.middleend followedBy
           ManticorePasses.frontend_interpreter followedBy
