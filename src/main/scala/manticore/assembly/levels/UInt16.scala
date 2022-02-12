@@ -13,6 +13,7 @@ package manticore.assembly.levels
 final class UInt16 private (private val v: Int) extends AnyVal {
 
   def toInt: Int = v
+  def toShort: Short = v.toShort
   def +(that: UInt16): UInt16 = UInt16.clipped(this.v + that.v)
   def -(that: UInt16): UInt16 = UInt16.clipped(this.v - that.v)
   def *(that: UInt16): UInt16 = UInt16.clipped(this.v * that.v)

@@ -90,12 +90,15 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       val underlying = Array.fill(mem_size) { UInt16(0) }
       memories.foreach {
         case m @ DefReg(
-              v @ MemoryVariable(_, _, MemoryBlock(_, _, _, initial_content)),
+              mvar @ MemoryVariable(_, _, MemoryBlock(_, _, _, initial_content)),
               offset_opt,
               _
             ) => ///
           val offset = offset_opt match {
-            case Some(v) => v
+            case Some(v) =>
+              // make sure the offset value is set in the register file
+              register_file(mvar.name) = v
+              v
             case None    =>
               // should not happen
               ctx.logger.error(s"memory not allocated", m)

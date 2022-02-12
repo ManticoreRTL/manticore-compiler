@@ -1,6 +1,6 @@
 package manticore.assembly.levels.codegen
 
-import scala.annotation.meta.field
+
 import manticore.compiler.AssemblyContext
 
 import manticore.assembly.levels.placed.PlacedIR._
@@ -10,11 +10,13 @@ import manticore.assembly.levels.AssemblyTransformer
 import manticore.assembly.levels.HasTransformationID
 import manticore.assembly.levels.TransformationID
 import manticore.assembly.levels.placed.LatencyAnalysis
-import java.io.FileOutputStream
+
 import java.io.File
-import java.io.BufferedWriter
 import java.io.PrintWriter
 import java.nio.file.Files
+import manticore.assembly.levels.ConstType
+import manticore.assembly.levels.InputType
+import manticore.assembly.levels.UInt16
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
@@ -89,34 +91,45 @@ object MachineCodeGenerator
           (vcycle_length - total_length).toShort
         )
     }
-    ctx.output_file match {
-      case Some(file_name: File) =>
-        Files.createDirectories(file_name.toPath().getParent())
-        val name_parts = file_name.toPath().getFileName().toString().split('.')
-        if (name_parts.length > 1) {
-          name_parts.last match {
-            case "bin" => // emit binary
-              val file_writer = new FileOutputStream(file_name)
-              file_writer.write(
-                binary_stream
-                  .flatMap { shrt => Seq(shrt & 0xff, (shrt >> 8) & 0xff) }
-                  .map(_.toByte)
-                  .toArray
-              )
-              file_writer.close()
-            case "hex" => // emit ASCII hex
-              val file_writer = new PrintWriter(file_name)
-              binary_stream.foreach { x => file_writer.println(f"${x}%x") }
-              file_writer.close()
-              ctx.logger.info(
-                s"Finished writing ${file_name.toPath.toAbsolutePath}"
-              )
-            case ext @ _ =>
-              ctx.logger.error(s"unsupported file type ${ext}")
-          }
-        } else {
 
-          ctx.logger.error("output file name requires valid extension")
+    def writeToFile(file_name: File, data: Iterable[Short]): Unit = {
+      val file_writer = new PrintWriter(file_name)
+      data.foreach { x => file_writer.println(f"${x}%x") }
+      file_writer.close()
+      ctx.logger.info(s"Finished writing ${file_name.toPath.toAbsolutePath}")
+    }
+    ctx.output_dir match {
+      case Some(dir_name: File) =>
+        Files.createDirectories(dir_name.toPath())
+        val exe_file = dir_name.toPath().resolve("exec.dat").toFile()
+        writeToFile(exe_file, binary_stream)
+        // write initial register values
+        // note that at this point registers are allocated and the ones with
+        // initial values (constants and inputs) are placed first
+
+        prog.processes.foreach { p =>
+
+
+          // write initial register values
+          val initial_reg_vals = p.registers
+            .takeWhile { r =>
+              r.variable.varType == ConstType || r.variable.varType == InputType
+            }
+            .map { v => v.value.getOrElse(UInt16(0)).toShort }
+          val rf_file =
+            dir_name.toPath().resolve(s"rf_${p.id.x}_${p.id.y}.dat").toFile()
+          writeToFile(rf_file, initial_reg_vals)
+
+          // write initial memory values
+
+          val initial_mem_values = Array.fill(ctx.max_local_memory) { 0.toShort }
+          p.registers.foreach {
+            case _@DefReg(v: MemoryVariable, Some(UInt16(offset)), _) =>
+              v.block.initial_content.zipWithIndex.foreach { case (value, ix) => initial_mem_values(offset + ix) = value.toShort }
+            case _ => // do nothing
+          }
+          val ra_file = dir_name.toPath().resolve(s"ra_${p.id.x}_${p.id.y}.dat").toFile()
+          writeToFile(ra_file, initial_mem_values)
 
         }
 

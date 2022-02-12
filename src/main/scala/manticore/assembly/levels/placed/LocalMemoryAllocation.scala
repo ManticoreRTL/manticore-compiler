@@ -21,6 +21,7 @@ object LocalMemoryAllocation
       proc: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
 
+
     val (mem_end: Int, new_regs: Seq[DefReg]) =
       proc.registers.foldLeft((0, Seq.empty[DefReg])) {
         case ((base: Int, prev_regs: Seq[DefReg]), r: DefReg) =>

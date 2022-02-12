@@ -18,6 +18,5 @@ MUX cond_2, cond, c_0, c_1;
 ```
 should coalesce cond_2 and cond
 
-## BUG FOUND
-handling of shift conversion is wrong, I cannot expect x >> y or x << y
-with y > 16 results in zero.
+## TEST TO ADD
+Add a test to ensure that no memory address is truncated during width conversion

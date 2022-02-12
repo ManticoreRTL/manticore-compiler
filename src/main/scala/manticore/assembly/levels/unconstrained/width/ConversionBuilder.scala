@@ -99,8 +99,7 @@ trait ConversionBuilder extends Flavored {
     def mkCarry(): Name = {
       val new_carry =
         DefReg(
-          LogicVariable(freshName(s"carry"), 1, CarryType),
-          Some(0)
+          LogicVariable(freshName(s"carry"), 1, CarryType)
         )
       m_carries += new_carry
       new_carry.variable.name
