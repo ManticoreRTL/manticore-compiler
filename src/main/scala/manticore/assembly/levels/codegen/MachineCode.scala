@@ -1,6 +1,5 @@
 package manticore.assembly.levels.codegen
 
-
 import manticore.compiler.AssemblyContext
 
 import manticore.assembly.levels.placed.PlacedIR._
@@ -22,13 +21,32 @@ object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
     with HasTransformationID {
 
+  private def assignExpectIds(proc: DefProcess): DefProcess = {
+    var ii = 0;
+    val with_id = scala.collection.mutable.Queue.empty[Instruction]
+
+    proc.body.foreach {
+      case e @ Expect(_, _, error_id, _) =>
+        val id = ii
+        ii += 1
+        with_id += e.copy(error_id = error_id.copy(id = UInt16(id)))
+      case i @ _ => with_id += i
+    }
+
+    proc.copy(body = with_id.toSeq)
+
+  }
   override def apply(prog: DefProgram, ctx: AssemblyContext): Unit = {
 
     val ids = prog.processes.flatMap { p =>
       p.registers.map { r => r.variable.name -> r.variable.id }
     }.toMap
     // compute the virtual cycle length
-    val assembled = prog.processes.map { assembleProcess(_)(ctx, ids) }
+
+    val assembled =
+      (assignExpectIds(prog.processes.head) +: prog.processes.tail).map {
+        assembleProcess(_)(ctx, ids)
+      }
 
     // +++++++++++++++++++++++ BINARY STREAM FORMAT+++++++++++++++++++++++++++++
     // the binary format of a manticore program consists of uint16: each process
@@ -74,27 +92,32 @@ object MachineCodeGenerator
     // for each process p , we need to compute the SLEEP_LENGTH as
     // vcycle_length - p.total (total is the total execution time including epilogue)
 
-    val binary_stream: Seq[Short] = assembled.sortBy(p => p.place).flatMap {
+    val binary_stream: Seq[Int] = assembled.sortBy(p => p.place).flatMap {
       case AssembledProcess(body, loc, epilogue_length, total_length) =>
         Seq(
-          (loc._2 << 8 | loc._1).toShort,
-          (total_length - epilogue_length).toShort
+          (loc._2 << 8 | loc._1).toInt,
+          (total_length - epilogue_length).toInt
         ) ++ body.flatMap { w64: Long =>
           Seq(
             w64 & 0xffff,
             (w64 >> 16L) & 0xffff,
             (w64 >> 32L) & 0xffff,
             (w64 >> 64L) & 0xffff
-          ).map(_.toShort)
+          ).map(_.toInt)
         } ++ Seq(
-          epilogue_length.toShort,
-          (vcycle_length - total_length).toShort
+          epilogue_length.toInt,
+          (vcycle_length - total_length).toInt
         )
     }
 
-    def writeToFile(file_name: File, data: Iterable[Short]): Unit = {
+    def writeToFile(file_name: File, data: Iterable[Int]): Unit = {
       val file_writer = new PrintWriter(file_name)
-      data.foreach { x => file_writer.println(f"${x}%x") }
+      // write in ASCII binary format, not very efficient, but only used for
+      // prototyping
+      data.foreach { x =>
+        require(x <= 0xffff)
+        file_writer.println(f"${x.toBinaryString}%16s".replace(' ', '0'))
+      }
       file_writer.close()
       ctx.logger.info(s"Finished writing ${file_name.toPath.toAbsolutePath}")
     }
@@ -108,27 +131,30 @@ object MachineCodeGenerator
         // initial values (constants and inputs) are placed first
 
         prog.processes.foreach { p =>
-
-
           // write initial register values
           val initial_reg_vals = p.registers
             .takeWhile { r =>
               r.variable.varType == ConstType || r.variable.varType == InputType
             }
-            .map { v => v.value.getOrElse(UInt16(0)).toShort }
+            .map { v => v.value.getOrElse(UInt16(0)).toInt }
           val rf_file =
             dir_name.toPath().resolve(s"rf_${p.id.x}_${p.id.y}.dat").toFile()
           writeToFile(rf_file, initial_reg_vals)
 
           // write initial memory values
 
-          val initial_mem_values = Array.fill(ctx.max_local_memory) { 0.toShort }
+          val initial_mem_values = Array.fill(ctx.max_local_memory) {
+            0
+          }
           p.registers.foreach {
-            case _@DefReg(v: MemoryVariable, Some(UInt16(offset)), _) =>
-              v.block.initial_content.zipWithIndex.foreach { case (value, ix) => initial_mem_values(offset + ix) = value.toShort }
+            case _ @DefReg(v: MemoryVariable, Some(UInt16(offset)), _) =>
+              v.block.initial_content.zipWithIndex.foreach { case (value, ix) =>
+                initial_mem_values(offset + ix) = value.toShort
+              }
             case _ => // do nothing
           }
-          val ra_file = dir_name.toPath().resolve(s"ra_${p.id.x}_${p.id.y}.dat").toFile()
+          val ra_file =
+            dir_name.toPath().resolve(s"ra_${p.id.x}_${p.id.y}.dat").toFile()
           writeToFile(ra_file, initial_mem_values)
 
         }
@@ -168,7 +194,7 @@ object MachineCodeGenerator
   sealed abstract class Field(val startIndex: Int, val bitLength: Int) {
     val endIndex = startIndex + bitLength - 1
   }
-  case object OpcodeField extends Field(0, 5)
+  case object OpcodeField extends Field(0, 4)
   case object RdField extends Field(OpcodeField.endIndex + 1, 11)
   case object FunctField extends Field(RdField.endIndex + 1, 5)
   case object Rs1Field extends Field(FunctField.endIndex + 1, 11)
@@ -212,7 +238,8 @@ object MachineCodeGenerator
     private def <<(value: Int, field: Field): Assembler =
       <<(value, field.bitLength)
     private def <<(value: Int, bit_length: Int): Assembler = {
-      inst |= value.toLong << pos
+      require(value >= 0)
+      inst = inst | (value.toLong << pos)
       pos += bit_length
       this
     }
@@ -252,8 +279,12 @@ object MachineCodeGenerator
   }
   def assemble(
       inst: Instruction
-  )(implicit ctx: AssemblyContext, asm: Assembler, ids: Map[Name, Int]): Long =
-    inst match {
+  )(implicit
+      ctx: AssemblyContext,
+      asm: Assembler,
+      ids: Map[Name, Int]
+  ): Long = {
+    val res = inst match {
       case i: BinaryArithmetic => assemble(i)
       case i: CustomInstruction =>
         ctx.logger.error(s"Can not generate code", i)
@@ -367,5 +398,7 @@ object MachineCodeGenerator
         0L
 
     }
+    res
+  }
 
 }

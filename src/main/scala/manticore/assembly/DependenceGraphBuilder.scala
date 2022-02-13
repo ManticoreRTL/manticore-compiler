@@ -181,7 +181,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
                       label(load, store)
                     )
                   case None =>
-                    ctx.logger.info("Inferring read-only memory", load)
+                    ctx.logger.debug("Inferring read-only memory", load)
                   // read only memory
                 }
               case _ =>

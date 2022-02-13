@@ -114,9 +114,9 @@ object Main {
           frontend followedBy
           middleend followedBy
           frontend_interpreter followedBy
-          backend
-          // backend_atomic_interpreter andFinally
-          // MachineCodeGenerator
+          backend followedBy
+          backend_atomic_interpreter andFinally
+          MachineCodeGenerator
 
       phases(prg, ctx)
     }

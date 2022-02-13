@@ -21,7 +21,7 @@ case class TransformationID(id: String) {
   override def toString(): String = id
 }
 trait HasTransformationID {
-  implicit val phase_id = TransformationID(getClass().getSimpleName())
+  implicit val phase_id = TransformationID(getClass().getSimpleName().takeWhile(_ != '$'))
 }
 trait Transformation[
     -S <: ManticoreAssemblyIR#DefProgram,
