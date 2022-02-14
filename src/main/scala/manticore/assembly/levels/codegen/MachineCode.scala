@@ -22,7 +22,7 @@ object MachineCodeGenerator
     with HasTransformationID {
 
   private def assignExpectIds(proc: DefProcess): DefProcess = {
-    var ii = 0;
+    var ii = 1;
     val with_id = scala.collection.mutable.Queue.empty[Instruction]
 
     proc.body.foreach {
@@ -38,8 +38,8 @@ object MachineCodeGenerator
   }
   override def apply(prog: DefProgram, ctx: AssemblyContext): Unit = {
 
-    val ids = prog.processes.flatMap { p =>
-      p.registers.map { r => r.variable.name -> r.variable.id }
+    val ids: Map[ProcessId, Map[Name, Int]] = prog.processes.map { p =>
+      p.id -> p.registers.map { r => r.variable.name -> r.variable.id }.toMap
     }.toMap
     // compute the virtual cycle length
 
@@ -49,7 +49,7 @@ object MachineCodeGenerator
       }
 
     // +++++++++++++++++++++++ BINARY STREAM FORMAT+++++++++++++++++++++++++++++
-    // the binary format of a manticore program consists of uint16: each process
+    // the binary format of a manticore program consists of uint16s: each process
     // get its own contiguous block starting with a header and a ending with a
     // footer illustrate below:
     // ==================BINARY FORMAT FOR A PROCESS============================
@@ -102,7 +102,7 @@ object MachineCodeGenerator
             w64 & 0xffff,
             (w64 >> 16L) & 0xffff,
             (w64 >> 32L) & 0xffff,
-            (w64 >> 64L) & 0xffff
+            (w64 >> 48L) & 0xffff
           ).map(_.toInt)
         } ++ Seq(
           epilogue_length.toInt,
@@ -175,7 +175,10 @@ object MachineCodeGenerator
   )
   def assembleProcess(
       proc: DefProcess
-  )(implicit ctx: AssemblyContext, ids: Map[Name, Int]): AssembledProcess = {
+  )(implicit
+      ctx: AssemblyContext,
+      ids: ProcessId => Name => Int
+  ): AssembledProcess = {
 
     val recv_count = proc.body.filter {
       case _: Recv => true
@@ -183,7 +186,48 @@ object MachineCodeGenerator
     }.length
     implicit val asm = Assembler()
     // the schedule length on this process is the proc.body.length + recv_count
-    val assembled = proc.body.map(assemble)
+    implicit val local: Name => Int = ids(proc.id)
+    implicit val remote: (ProcessId, Name) => Int = (i, n) => ids(i)(n)
+
+    val assembled = proc.body.map(assemble(proc, _))
+
+    // print the instructions in ASCII format for debugging
+    ctx.output_dir match {
+      case Some(dir: File) =>
+        if (!dir.isDirectory()) {
+          Files.createDirectories(dir.toPath())
+        }
+        val f = dir.toPath().resolve(s"${proc.id}.masm")
+        val printer = new PrintWriter(f.toFile())
+        printer.println(s".proc ${proc.id}:")
+        printer.println("//--------------- REGISTERS ----------------------//")
+        proc.registers
+          .groupBy { r => r.variable.id }
+          .toSeq
+          .sortBy(_._1)
+          .foreach { case (id, regs) =>
+            printer.println(s"\tr${id}:")
+            regs.foreach { rr =>
+              printer.println(
+                s"\t\t${rr.variable.varType.typeName} ${rr.variable.name} ${if (rr.value.nonEmpty) rr.value.get.toInt.toString
+                else ""}"
+              )
+            }
+          }
+        printer.println("// ---------------- BODY ---------------------- //")
+        proc.body.zipWithIndex.zip(assembled).foreach {
+          case ((inst, ix), bincode) =>
+            val bin_str = f"${bincode.toBinaryString}%64s".replace(' ', '0')
+            printer.println(
+              f"${ix}%4d |${inst.toString().strip()}%-50s \t | ${bin_str}"
+            )
+        }
+        printer.flush()
+        printer.close()
+
+      case None =>
+        ctx.logger.warn(s"output directory not specified!")
+    }
     AssembledProcess(
       assembled,
       (proc.id.x, proc.id.y),
@@ -216,9 +260,7 @@ object MachineCodeGenerator
     val GSTORE = Value(0x8)
     val SEND = Value(0x9)
     val PREDICATE = Value(0xa)
-    val ADDCARRY = Value(0xb)
-    val MUX = Value(0xc)
-    val SETCARRY = Value(0xd)
+    val SETCARRY = Value(0xb)
   }
 
   final class Assembler() {
@@ -262,7 +304,7 @@ object MachineCodeGenerator
   )(implicit
       ctx: AssemblyContext,
       asm: Assembler,
-      ids: Map[Name, Int]
+      ids: Name => Int
   ): Long = {
 
     val rd = ids(inst.rd)
@@ -278,12 +320,15 @@ object MachineCodeGenerator
       .toLong
   }
   def assemble(
+      proc: DefProcess,
       inst: Instruction
   )(implicit
       ctx: AssemblyContext,
       asm: Assembler,
-      ids: Map[Name, Int]
+      local: Name => Int,
+      remote: (ProcessId, Name) => Int
   ): Long = {
+
     val res = inst match {
       case i: BinaryArithmetic => assemble(i)
       case i: CustomInstruction =>
@@ -292,9 +337,9 @@ object MachineCodeGenerator
       case LocalLoad(rd, base, offset, annons) =>
         asm
           .Opcode(Opcodes.LLOAD)
-          .Rd(ids(rd))
+          .Rd(local(rd))
           .Funct(BinaryOperator.ADD)
-          .Rs1(ids(base))
+          .Rs1(local(base))
           .Zero(
             Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 16
           )
@@ -308,31 +353,37 @@ object MachineCodeGenerator
           .Opcode(Opcodes.LSTORE)
           .Zero(RdField.bitLength)
           .Funct(BinaryOperator.ADD)
-          .Rs1(ids(base))
-          .Rs2(ids(rs))
+          .Rs1(local(base))
+          .Rs2(local(rs))
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
           .Immediate(offset.toInt)
           .toLong
       case Send(rd, rs, dest_id, annons) =>
+
+        // in the machine code, we don't really specify the
+        // destination, but rather the path to the destination
+        // in terms of x and y hops
+        val x_hops = LatencyAnalysis.xHops(proc.id, dest_id, (ctx.max_dimx, ctx.max_dimy))
+        val y_hops = LatencyAnalysis.yHops(proc.id, dest_id, (ctx.max_dimx, ctx.max_dimy))
         asm
           .Opcode(Opcodes.SEND)
-          .Rd(ids(rd))
+          .Rd(remote(dest_id, rd))
           .Funct(BinaryOperator.ADD)
           .Zero(Rs1Field.bitLength)
-          .Rs2(ids(rs))
-          .Zero(Rs3Field.bitLength + Rs4Field.bitLength)
-          .DestX(dest_id.x)
-          .DestY(dest_id.y)
+          .Rs2(local(rs))
+          .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
+          .DestX(x_hops)
+          .DestY(y_hops)
           .toLong
-      case Recv(rd, rs, source_id, annons) => assemble(Nop)
+      case _: Recv => assemble(proc, Nop)
       case Expect(ref, got, error_id, annons) =>
         asm
           .Opcode(Opcodes.EXPECT)
           .Zero(RdField.bitLength)
           .Funct(BinaryOperator.SEQ)
-          .Rs1(ids(ref))
-          .Rs2(ids(got))
-          .Zero(Rs3Field.bitLength + Rs4Field.bitLength)
+          .Rs1(local(ref))
+          .Rs2(local(got))
+          .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
           .Immediate(error_id.id.toInt)
           .toLong
       case Predicate(rs, annons) =>
@@ -340,24 +391,24 @@ object MachineCodeGenerator
           .Opcode(Opcodes.PREDICATE)
           .Zero(RdField.bitLength)
           .Funct(BinaryOperator.ADD)
-          .Rs1(ids(rs))
+          .Rs1(local(rs))
           .Zero(Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength)
           .toLong
       case Mux(rd, sel, rfalse, rtrue, annons) =>
         asm
-          .Opcode(Opcodes.ARITH)
-          .Rd(ids(rd))
+          .Opcode(Opcodes.ARITH) // MUX is not a real Opcode
+          .Rd(local(rd))
           .Funct(BinaryOperator.MUX)
-          .Rs1(ids(rfalse))
-          .Rs2(ids(rtrue))
-          .Rs3(ids(sel))
+          .Rs1(local(rfalse))
+          .Rs2(local(rtrue))
+          .Rs3(local(sel))
           .Zero(Rs4Field.bitLength)
           .toLong
       case Nop => asm.Opcode(Opcodes.NOP).toLong
       case ClearCarry(carry, annons) =>
         asm
           .Opcode(Opcodes.SETCARRY)
-          .Rd(ids(carry))
+          .Rd(local(carry))
           .Funct(BinaryOperator.ADD)
           .Zero(
             Rs1Field.bitLength + Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 16
@@ -367,7 +418,7 @@ object MachineCodeGenerator
       case SetCarry(carry, annons) =>
         asm
           .Opcode(Opcodes.SETCARRY)
-          .Rd(ids(carry))
+          .Rd(local(carry))
           .Funct(BinaryOperator.ADD)
           .Zero(
             Rs1Field.bitLength + Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 16
@@ -377,21 +428,21 @@ object MachineCodeGenerator
       case Mov(rd, rs, _) =>
         asm
           .Opcode(Opcodes.ARITH)
-          .Rd(ids(rd))
+          .Rd(local(rd))
           .Funct(BinaryOperator.ADD)
-          .Rs1(ids(rs))
+          .Rs1(local(rs))
           .Rs2(0) // reg 0 is tied to zero
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength)
           .toLong
       case AddC(rd, co, rs1, rs2, ci, _) =>
         asm
-          .Opcode(Opcodes.ADDCARRY)
-          .Rd(ids(rd))
-          .Funct(BinaryOperator.ADD)
-          .Rs1(ids(rs1))
-          .Rs2(ids(rs2))
-          .Rs3(ids(ci))
-          .Rs4(ids(co))
+          .Opcode(Opcodes.ARITH) // Note that ADDCARRY is not a real opcode
+          .Rd(local(rd))
+          .Funct(BinaryOperator.ADDC)
+          .Rs1(local(rs1))
+          .Rs2(local(rs2))
+          .Rs3(local(ci))
+          .Rs4(local(co))
           .toLong
       case _ =>
         ctx.logger.error("can not handle instruction", inst)

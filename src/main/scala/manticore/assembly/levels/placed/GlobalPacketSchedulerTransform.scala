@@ -223,6 +223,13 @@ object GlobalPacketSchedulerTransform
           recv_to_sched.dequeue()
         }
 
+        if (full_sched.last.isInstanceOf[Recv]) {
+          // in case the last instruction is a RECV, put a NOP to ensure the
+          // RECV gets translated to an instruction. Note that if there are
+          // multiple RECV, this is not necessary. So this can be optimized
+          full_sched enqueue Nop
+        }
+
         p.copy(body = full_sched.toSeq).setPos(p.pos)
       }.toSeq
 

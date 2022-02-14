@@ -133,7 +133,12 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       .tabulate(BinaryOperator.maxId) { i =>
         BinaryOperator(i).toString() -> BinaryOperator(i)
       }
-      .filter { case (k, _) => k != BinaryOperator.MUX.toString() }
+      .filter { case (k, _) => //
+        // we treat MUX and ADDC differently, because they are not
+        // really binops
+        k != BinaryOperator.MUX.toString() && k != BinaryOperator.ADDC
+          .toString()
+      }
       .toMap
 
   // Arithmetic instruction opcodes

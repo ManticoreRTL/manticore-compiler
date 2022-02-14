@@ -15,6 +15,7 @@ import manticore.assembly.levels.Transformation
 import manticore.assembly.ManticoreAssemblyIR
 import manticore.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.ManticorePasses
+
 class MipsAlu extends ThyrioUnitTest {
 
   val requiredTools: Seq[ExternalTool] = Seq(

@@ -105,20 +105,22 @@ object LatencyAnalysis {
     case _               => 3
   }
 
+  def xHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =
+    if (source.x > target.x) dim._2 - source.x + target.x
+    else target.x - source.x
+  def yHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =
+    if (source.y > target.y) dim._2 - source.y + target.y
+    else target.y - source.y
+
   def maxLatency(): Int = 3
   def manhattan(
       source: ProcessId,
       target: ProcessId,
       dim: (Int, Int)
   ) = {
-    val x_dist =
-      if (source.x > target.x) dim._2 - source.x + target.x
-      else target.x - source.x
-    val y_dist =
-      if (source.y > target.y) dim._2 - source.y + target.y
-      else target.y - source.y
-    val manhattan =
-      x_dist + y_dist
+    val x_dist = xHops(source, target, dim)
+    val y_dist = yHops(source, target, dim)
+    val manhattan = x_dist + y_dist
     manhattan
   }
 }

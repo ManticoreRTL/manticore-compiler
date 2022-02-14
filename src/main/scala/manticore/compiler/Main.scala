@@ -38,6 +38,7 @@ import manticore.assembly.levels.placed.LocalMemoryAllocation
 import manticore.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.assembly.levels.codegen.MachineCodeGenerator
 import manticore.assembly.parser.AssemblyLexical
+
 case class CliConfig(
     input_file: Option[File] = None,
     print_tree: Boolean = false,
