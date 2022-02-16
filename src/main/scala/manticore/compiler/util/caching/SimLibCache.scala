@@ -2,7 +2,7 @@ package manticore.compiler.util.caching
 
 import java.nio.file.Path
 import manticore.compiler.Logger
-import manticore.assembly.levels.TransformationID
+import manticore.compiler.assembly.levels.TransformationID
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import scala.sys.process.ProcessLogger

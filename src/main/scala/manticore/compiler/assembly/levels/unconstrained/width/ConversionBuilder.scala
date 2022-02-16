@@ -1,0 +1,293 @@
+package manticore.compiler.assembly.levels.unconstrained.width
+
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.assembly.levels.ConstType
+import manticore.compiler.assembly.annotations.DebugSymbol
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
+import manticore.compiler.assembly.annotations.{Reg => RegAnnotation}
+
+import manticore.compiler.assembly.levels.Flavored
+import manticore.compiler.assembly.levels.WireType
+import manticore.compiler.assembly.levels.CarryType
+import manticore.compiler.AssemblyContext
+
+/** A helper trait as the base of [[WidthConversion]]. It contains the
+  * implementation of a mutable Builder class that lazily converts every
+  * register in a process to a sequence of converted wires. The
+  * [[WidthConversion]] should instantiate this class and call the
+  * [[getConversion]] method to get the converted sequence of registers as it
+  * moves through the instructions. Note that the instructions are assumed to be
+  * ordered properly, i.e., registers should be written and then read if they
+  * are not constants.
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
+
+trait ConversionBuilder extends Flavored {
+
+  val flavor = UnconstrainedIR
+  import flavor._
+
+  protected case class ConvertedWire(parts: Seq[Name], mask: Option[Name])
+
+  protected class Builder(private val proc: DefProcess)(implicit
+      val ctx: AssemblyContext
+  ) {
+
+    private var m_name_id = 0
+    // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
+    private val m_wires = scala.collection.mutable.Map.empty[Name, DefReg]
+    private val m_carries = scala.collection.mutable.Queue.empty[DefReg]
+    private val m_constants =
+      scala.collection.mutable.Map.empty[Int, DefReg]
+    private val m_subst =
+      scala.collection.mutable.HashMap.empty[Name, ConvertedWire]
+    private val m_const_subst =
+      scala.collection.mutable.Map.empty[Name, ConvertedWire]
+    private val m_old_defs = proc.registers.map { r =>
+      r.variable.name -> r
+    }.toMap
+
+    /** Build the converted process from the given sequence of instructions
+      *
+      * @param instructions
+      * @return
+      */
+    def buildFrom(instructions: Seq[Instruction]): DefProcess =
+      proc
+        .copy(
+          registers =
+            (m_wires.values ++ m_constants.values ++ m_carries).toSeq.distinct,
+          body = instructions
+        )
+        .setPos(proc.pos)
+
+    /** Create a unique name
+      *
+      * @param suggestion
+      * @return
+      */
+    private def freshName(suggestion: Name): Name = {
+      val n = s"${suggestion.toString()}_$$${m_name_id}$$"
+      m_name_id += 1
+      return n
+    }
+
+    /** Create a new 16-bit constant
+      *
+      * @param value
+      * @return
+      */
+    def mkConstant(value: Int): Name = {
+      require(value < (1 << 16), "constants should fit in 16 bits")
+      m_constants
+        .getOrElseUpdate(
+          value,
+          DefReg(
+            LogicVariable(
+              freshName(s"const_${value}"),
+              16,
+              ConstType
+            ),
+            Some(value)
+          )
+        )
+        .variable
+        .name
+    }
+
+    def mkCarry(): Name = {
+      val new_carry =
+        DefReg(
+          LogicVariable(freshName(s"carry"), 1, CarryType)
+        )
+      m_carries += new_carry
+      new_carry.variable.name
+
+    }
+
+    /** Helper function to create temp wires, do not use this function if you
+      * are converting a wire
+      *
+      * @param suggestion
+      * @param width
+      * @return
+      */
+    def mkWire(suggestion: Name, width: Int): Name = {
+      require(width <= 16, "cannot create wide wire")
+      require(width >= 1, "cannot create empty wire")
+      require(
+        m_old_defs.contains(suggestion) == false,
+        "can not create a new wire for something that is defined in the original program"
+      )
+      val wire_name = freshName(suggestion)
+      val new_wire =
+        DefReg(LogicVariable(freshName(suggestion), width, WireType), None)
+      m_wires += wire_name -> new_wire
+      new_wire.variable.name
+    }
+
+    /** Converts a wire in the original program to a sequence of wires that are
+      * 16-bit wide at max
+      *
+      * @param original
+      *   the name of the original wire, should be defined in the original
+      *   program
+      * @return
+      *   a converted wire
+      */
+    private def convertWire(original: Name): ConvertedWire = {
+      require(
+        m_old_defs.contains(original),
+        s"can not convert undefined wire ${original}"
+      )
+      require(m_subst.contains(original) == false, "conversion already exists!")
+      val orig_def = m_old_defs(original)
+
+      val width = orig_def.variable.width
+      val array_size = (width - 1) / 16 + 1
+
+      def convertConstToArray(big_val: BigInt): Seq[BigInt] = {
+        val max_val = (BigInt(1) << width) - 1
+        if (big_val > max_val) {
+          ctx.logger.error(
+            "constant value does not fit in the specified number of bits!",
+            orig_def
+          )
+        }
+        Seq.tabulate(array_size) { i =>
+          val small_val = (big_val >> (i * 16)) & (0xffff)
+          assert(small_val <= 0xffff)
+          small_val
+        }
+      }
+      if (isConstant(original)) {
+        val values: Seq[Int] = orig_def.value match {
+          case None =>
+            ctx.logger.error("constant value is not defined!", orig_def)
+            Seq.fill(array_size)(0)
+          case Some(big_val) =>
+            convertConstToArray(big_val).map(_.toInt)
+        }
+        val constants = values.map { mkConstant }
+        // no need to mask the constants, they should be already masked
+        val converted = ConvertedWire(constants, None)
+        m_const_subst += original -> converted
+        converted
+      } else {
+
+        assert(array_size >= 1)
+        val mask_bits = width - (array_size - 1) * 16
+        assert(mask_bits <= 16)
+        val msw_mask = if (mask_bits < 16) {
+          val mask_const = mkConstant((1 << mask_bits) - 1)
+          Some(mask_const)
+        } else None
+
+        val uint16_vars = Seq.tabulate(array_size) { i =>
+          LogicVariable(
+            freshName(original + s"_$i"),
+            // if (i == array_size - 1) mask_bits else 16,
+            16, // we make every variable 16 bit and mask the computation results
+            // explicitly if necessary
+            orig_def.variable.varType
+          )
+        }
+
+        val values: Seq[Option[BigInt]] = orig_def.value match {
+          case None => Seq.fill(array_size)(None)
+          case Some(big_val) =>
+            convertConstToArray(big_val).map { Some(_) }
+        }
+
+        val conv_def = (uint16_vars zip values).zipWithIndex.map {
+          case ((cvar, cval), ix) =>
+            // check if a debug symbol annotation exits
+            val dbgsym = orig_def.annons.collect { case x: DebugSymbol =>
+              // if DebugSymbol annotation exits, append the index and width
+              // to it
+              x.getIndex() match {
+                case Some(i) if i != 0 =>
+                  // we don't want to have a non-zero index, it means this pass
+                  // was run before?
+                  ctx.logger.error(
+                    "Did not expect non-zero debug symbol index",
+                    orig_def
+                  )
+                case _ =>
+                // do nothing
+              }
+
+              val with_index = x.withIndex(ix).withGenerated(false)
+              with_index.getIntValue(AssemblyAnnotationFields.Width) match {
+                case Some(w) =>
+                  with_index
+                case None =>
+                  with_index.withWidth(width)
+              }
+            } match {
+              case Seq() => // if it does not exists, create one from scratch
+                DebugSymbol(orig_def.variable.name)
+                  .withIndex(ix)
+                  .withWidth(width)
+                  .withGenerated(true)
+              case org +: _ =>
+                org // return the original one with appended index and width
+            }
+
+            // also append an index the reg annotation so that later passes
+            // could creating mapping from current to next registers
+            val reg_annon = orig_def.annons.collect { case x: RegAnnotation =>
+              x.withIndex(ix)
+            }.toSeq
+
+            val other_annons = orig_def.annons.filter {
+              case _: DebugSymbol   => false
+              case _: RegAnnotation => false
+              case _                => true
+            }
+
+            orig_def
+              .copy(
+                variable = cvar,
+                value = cval,
+                annons = other_annons ++ reg_annon :+ dbgsym
+              )
+              .setPos(orig_def.pos)
+
+        }
+
+        m_wires ++= conv_def.map { r => r.variable.name -> r }
+
+        val converted =
+          ConvertedWire(uint16_vars.map(_.name), msw_mask)
+
+        m_subst += original -> converted
+        // sanity check
+        assert(converted.mask.nonEmpty || orig_def.variable.width % 16 == 0)
+        converted
+      }
+    } ensuring (r => r.parts.length > 0)
+
+    /** get the conversion of a given name of a wire/reg
+      *
+      * @param old_name
+      * @return
+      */
+    def getConversion(old_name: Name): ConvertedWire =
+      if (isConstant(old_name)) {
+        m_const_subst.getOrElse(old_name, convertWire(old_name))
+      } else {
+        m_subst.getOrElseUpdate(old_name, convertWire(old_name))
+      }
+
+    def originalWidth(original_name: Name): Int = m_old_defs(
+      original_name
+    ).variable.width
+
+    def originalDef(original_name: Name): DefReg = m_old_defs(original_name)
+
+    def isConstant(original_name: Name): Boolean =
+      m_old_defs(original_name).variable.varType == ConstType
+  }
+}

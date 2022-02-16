@@ -6,38 +6,38 @@ package manticore.compiler
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 import java.io.File
-import manticore.assembly.levels.unconstrained.{
+import manticore.compiler.assembly.levels.unconstrained.{
   UnconstrainedIR,
   UnconstrainedNameChecker
 }
 import scopt.OParser
-import manticore.assembly.parser.AssemblyParser
-import manticore.assembly.levels.placed.UnconstrainedToPlacedTransform
-import manticore.assembly.levels.placed.PlacedIR
-import manticore.assembly.levels.placed.PlacedNameChecker
+import manticore.compiler.assembly.parser.AssemblyParser
+import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
+import manticore.compiler.assembly.levels.placed.PlacedIR
+import manticore.compiler.assembly.levels.placed.PlacedNameChecker
 import scala.language.postfixOps
-import manticore.assembly.levels.placed.ListSchedulerTransform
-import manticore.assembly.levels.placed.GlobalPacketSchedulerTransform
-import manticore.assembly.levels.placed.PredicateInsertionTransform
-import manticore.assembly.levels.unconstrained._
-import manticore.assembly.levels.DeadCodeElimination
-import manticore.assembly.levels.unconstrained.width.WidthConversion
+import manticore.compiler.assembly.levels.placed.ListSchedulerTransform
+import manticore.compiler.assembly.levels.placed.GlobalPacketSchedulerTransform
+import manticore.compiler.assembly.levels.placed.PredicateInsertionTransform
+import manticore.compiler.assembly.levels.unconstrained._
+import manticore.compiler.assembly.levels.DeadCodeElimination
+import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import java.io.PrintStream
-import manticore.assembly.levels.placed.ProcessSplittingTransform
-import manticore.assembly.levels.placed.PlacedIRDeadCodeElimination
-import manticore.assembly.levels.placed.PlacedIROrderInstructions
-import manticore.assembly.levels.placed.ProcessMergingTransform
-import manticore.assembly.levels.placed.RoundRobinPlacerTransform
-import manticore.assembly.levels.placed.SendInsertionTransform
-import manticore.assembly.levels.placed.PlacedIRCloseSequentialCycles
-import manticore.assembly.levels.placed.RegisterAllocationTransform
-import manticore.assembly.levels.placed.PlacedIRPrinter
-import manticore.assembly.levels.AssemblyPrinter
-import manticore.assembly.ManticoreAssemblyIR
-import manticore.assembly.levels.placed.LocalMemoryAllocation
-import manticore.assembly.levels.placed.interpreter.AtomicInterpreter
-import manticore.assembly.levels.codegen.MachineCodeGenerator
-import manticore.assembly.parser.AssemblyLexical
+import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
+import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
+import manticore.compiler.assembly.levels.placed.PlacedIROrderInstructions
+import manticore.compiler.assembly.levels.placed.ProcessMergingTransform
+import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
+import manticore.compiler.assembly.levels.placed.SendInsertionTransform
+import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
+import manticore.compiler.assembly.levels.placed.RegisterAllocationTransform
+import manticore.compiler.assembly.levels.placed.PlacedIRPrinter
+import manticore.compiler.assembly.levels.AssemblyPrinter
+import manticore.compiler.assembly.ManticoreAssemblyIR
+import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
+import manticore.compiler.assembly.parser.AssemblyLexical
 
 case class CliConfig(
     input_file: Option[File] = None,

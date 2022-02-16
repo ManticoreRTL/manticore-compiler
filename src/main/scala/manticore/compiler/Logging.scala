@@ -1,8 +1,8 @@
 package manticore.compiler
 
 import java.nio.file.Files
-import manticore.assembly.levels.TransformationID
-import manticore.assembly.HasSerialized
+import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.assembly.HasSerialized
 import scala.util.parsing.input.Positional
 import java.io.File
 import java.io.PrintWriter
