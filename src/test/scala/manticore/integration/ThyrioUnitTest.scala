@@ -1,7 +1,7 @@
-package integration
+package manticore.integration
 
 import manticore.UnitTest
-import integration.thyrio.integration.thyrio.ExternalTool
+import manticore.integration.thyrio.ExternalTool
 import manticore.assembly.levels.unconstrained.UnconstrainedNameChecker
 import manticore.assembly.levels.unconstrained.UnconstrainedMakeDebugSymbols
 import manticore.assembly.levels.unconstrained.UnconstrainedOrderInstructions

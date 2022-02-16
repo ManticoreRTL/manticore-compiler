@@ -1,10 +1,10 @@
 package integration.thyrio.microbench.alu
 
-import integration.ThyrioUnitTest
-import integration.thyrio.integration.thyrio.ExternalTool
-import integration.thyrio.integration.thyrio.ThyrioFrontend
-import integration.thyrio.integration.thyrio.Verilator
-import integration.thyrio.integration.thyrio.Make
+import manticore.integration.ThyrioUnitTest
+import manticore.integration.thyrio.ExternalTool
+import manticore.integration.thyrio.ThyrioFrontend
+import manticore.integration.thyrio.Verilator
+import manticore.integration.thyrio.Make
 import java.io.PrintWriter
 import java.nio.file.Path
 import java.nio.file.Files
@@ -196,7 +196,7 @@ class MipsAlu extends ThyrioUnitTest {
       Range(0, 10) foreach { i =>
         testIteration(i, f)(
           ManticorePasses.frontend followedBy
-          ManticorePasses.frontend_interpreter
+          ManticorePasses.FrontendInterpreter(true)
         )
       }
 
@@ -207,7 +207,7 @@ class MipsAlu extends ThyrioUnitTest {
         testIteration(i, f)(
           ManticorePasses.frontend followedBy
           ManticorePasses.middleend followedBy
-          ManticorePasses.frontend_interpreter
+          ManticorePasses.FrontendInterpreter(true)
         )
       }
   }
@@ -218,9 +218,9 @@ class MipsAlu extends ThyrioUnitTest {
         testIteration(i, f)(
           ManticorePasses.frontend followedBy
           ManticorePasses.middleend followedBy
-          ManticorePasses.frontend_interpreter followedBy
+          ManticorePasses.FrontendInterpreter(true) followedBy
           ManticorePasses.backend followedBy
-          ManticorePasses.backend_atomic_interpreter
+          ManticorePasses.BackendInterpreter(true)
         )
       }
   }

@@ -26,9 +26,9 @@ import manticore.assembly.levels.placed.LocalMemoryAllocation
 import manticore.assembly.levels.placed.interpreter.AtomicInterpreter
 object ManticorePasses {
 
-  val frontend_interpreter =
+  def FrontendInterpreter(cond: Boolean) =
     UnconstrainedCloseSequentialCycles followedBy
-    UnconstrainedInterpreter followedBy
+    UnconstrainedInterpreter.guard(cond) followedBy
     UnconstrainedBreakSequentialCycles
 
   val frontend = UnconstrainedNameChecker followedBy
@@ -43,8 +43,9 @@ object ManticorePasses {
     UnconstrainedDeadCodeElimination
 
 
-  val backend_atomic_interpreter =
-      AtomicInterpreter
+  def BackendInterpreter(cond: Boolean) =
+      AtomicInterpreter.guard(cond)
+
   val backend =
       UnconstrainedToPlacedTransform followedBy
       ProcessSplittingTransform followedBy

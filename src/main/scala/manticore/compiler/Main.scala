@@ -46,6 +46,16 @@ case class CliConfig(
     dump_dir: Option[File] = None,
     output_dir: Option[File] = None,
     debug_en: Boolean = false,
+
+    /** Machine configurations **/
+    dimx: Int = 1,
+    dimy: Int = 1,
+
+
+
+    /** Dev configurations **/
+    simulate: Boolean = false,
+    interpret: Boolean = false,
     jump_to_placed: Boolean =
       false // jump to placed IR, for Mahyar only.. temp option
 )
@@ -81,10 +91,24 @@ object Main {
         opt[Unit]('d', "debug")
           .action { case (_, c) => c.copy(debug_en = true) }
           .text("print debug information"),
-        opt[Unit]("--placed")
+        opt[Unit]("placed")
           .action { case (_, c) => c.copy(jump_to_placed = true) }
           .text("jump to placed IR")
           .hidden(),
+        opt[Int]('X', "dimx")
+          .action { case (x, c) => c.copy(dimx = x) }
+          .text("number of cores in X"),
+        opt[Int]('Y', "dimy")
+          .action { case (y, c) => c.copy(dimy = y) }
+          .text("number of cores in y"),
+        opt[Unit]("simulate")
+          .action { case (_, c) => c.copy(simulate = true) }
+          .hidden()
+          .text("simulate the program using Verilator"),
+        opt[Unit]("interpret")
+          .action { case (_, c) => c.copy(interpret = true) }
+          .hidden()
+          .text("interpret the program in software"),
         help('h', "help").text("print usage text and exit")
       )
     }
@@ -103,22 +127,22 @@ object Main {
         source_file = cfg.input_file,
         output_dir = cfg.output_dir,
         dump_all = cfg.dump_all,
-        dump_dir = cfg.dump_dir
+        dump_dir = cfg.dump_dir,
+        max_dimx = cfg.dimx,
+        max_dimy = cfg.dimy
       )
 
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
 
       import ManticorePasses._
 
-
       val phases =
-          frontend followedBy
+        frontend followedBy
           middleend followedBy
-          frontend_interpreter followedBy
+          FrontendInterpreter(cfg.interpret) followedBy
           backend followedBy
-          backend_atomic_interpreter andFinally
+          BackendInterpreter(cfg.interpret) andFinally
           MachineCodeGenerator
-
       phases(prg, ctx)
     }
 

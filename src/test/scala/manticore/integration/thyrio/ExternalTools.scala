@@ -1,6 +1,6 @@
-package integration.thyrio
+package manticore.integration.thyrio
 
-package integration.thyrio
+
 
 import java.io.File
 import scala.sys.process.ProcessLogger

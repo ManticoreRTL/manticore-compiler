@@ -21,7 +21,9 @@ case class TransformationID(id: String) {
   override def toString(): String = id
 }
 trait HasTransformationID {
-  implicit val phase_id = TransformationID(getClass().getSimpleName().takeWhile(_ != '$'))
+  implicit val phase_id = TransformationID(
+    getClass().getSimpleName().takeWhile(_ != '$')
+  )
 }
 trait Transformation[
     -S <: ManticoreAssemblyIR#DefProgram,
@@ -71,7 +73,6 @@ trait AssemblyTransformer[
       ctx: AssemblyContext
   ): (T, AssemblyContext) = {
 
-
     ctx.logger.start(
       s"[${ctx.logger.countProgress()}] Starting transformation ${phase_id}"
     )
@@ -114,6 +115,18 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
   @throws(classOf[CompilationFailureException])
   def check(source: T, context: AssemblyContext): Unit
 
+  /** create another checker that only executes if the guard is satisfied
+    *
+    * @param cond
+    */
+  def guard(cond: Boolean): AssemblyChecker[T] = {
+    if (cond) {
+      this
+    } else {
+      new SkippedCheck[T](phase_id) {}
+    }
+  }
+
   override final def apply(
       source: T,
       context: AssemblyContext
@@ -130,6 +143,15 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
     context.logger.end("")
     (source, context)
   }
+}
+
+abstract class SkippedCheck[T <: ManticoreAssemblyIR#DefProgram](
+    original: TransformationID
+) extends AssemblyChecker[T] {
+  override implicit val phase_id: TransformationID = TransformationID(
+    original.id + "(skipped)"
+  )
+  override def check(source: T, context: AssemblyContext): Unit = ()
 }
 
 trait AssemblyPrinter[T <: ManticoreAssemblyIR#DefProgram]

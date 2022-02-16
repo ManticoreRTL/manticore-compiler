@@ -1,14 +1,15 @@
 package integration.thyrio.microbench.alu
 
-import integration.ThyrioUnitTest
-import integration.thyrio.integration.thyrio.ExternalTool
-import integration.thyrio.integration.thyrio.Verilator
-import integration.thyrio.integration.thyrio.ThyrioFrontend
+import manticore.integration.ThyrioUnitTest
+import manticore.integration.thyrio.ExternalTool
+import manticore.integration.thyrio.Verilator
+import manticore.integration.thyrio.ThyrioFrontend
+import manticore.integration.thyrio.Make
 import java.nio.file.Path
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
-import integration.thyrio.integration.thyrio.Make
+
 import manticore.compiler.AssemblyContext
 import manticore.assembly.parser.AssemblyParser
 import manticore.assembly.ManticoreAssemblyIR
@@ -111,7 +112,7 @@ class ArrayMultiplier extends ThyrioUnitTest {
       Range(0, 1) foreach { i =>
         testIteration(i)(
           ManticorePasses.frontend followedBy
-            ManticorePasses.frontend_interpreter
+            ManticorePasses.FrontendInterpreter(true)
         )
       }
   }
@@ -122,7 +123,7 @@ class ArrayMultiplier extends ThyrioUnitTest {
         testIteration(i)(
           ManticorePasses.frontend followedBy
             ManticorePasses.middleend followedBy
-            ManticorePasses.frontend_interpreter
+            ManticorePasses.FrontendInterpreter(true)
         )
       }
   }
@@ -134,7 +135,7 @@ class ArrayMultiplier extends ThyrioUnitTest {
           ManticorePasses.frontend followedBy
             ManticorePasses.middleend followedBy
             ManticorePasses.backend followedBy
-            ManticorePasses.backend_atomic_interpreter
+            ManticorePasses.BackendInterpreter(true)
         )
       }
 
