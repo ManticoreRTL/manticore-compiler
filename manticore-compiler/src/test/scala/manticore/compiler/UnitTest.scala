@@ -35,12 +35,16 @@ trait UnconstrainedTags {
 
 }
 
-trait UnitFixtureTest extends FixtureAnyFlatSpec {
-
+trait HasRootTestDirectory {
   val root_dir = Path
     .of(".")
     .resolve("test_run_dir")
     .resolve(this.getClass().getSimpleName())
+}
+
+trait UnitFixtureTest extends FixtureAnyFlatSpec with HasRootTestDirectory {
+
+
   case class FixtureParam(test_dir: Path, ctx: AssemblyContext) {
     def dump(file_name: String, text: String): Path = {
       val fp = test_dir.resolve(file_name)

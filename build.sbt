@@ -31,7 +31,8 @@ lazy val compiler = (project in file("manticore-compiler")).settings(
     // we import chisel for integration tests and not the compiler itself
     "edu.berkeley.cs" %% "chisel3" % chiselVersion % Test,
     "edu.berkeley.cs" %% "chiseltest" % "0.5.1" % Test,
-    "ch.epfl.vlsc" %% "manticore-machine" % "0.1.0-SNAPSHOT" % Test
+    "ch.epfl.vlsc" %% "manticore-machine" % "0.1.0-SNAPSHOT" % Test,
+    "net.java.dev.jna" % "jna" % "5.10.0" % Test
   ),
   Test / javaOptions ++= jvmHeapMemOptions,
 

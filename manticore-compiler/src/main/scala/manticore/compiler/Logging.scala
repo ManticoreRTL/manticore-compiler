@@ -244,7 +244,7 @@ object Logger {
       case Some(f: File) =>
         Files.createDirectories(f.toPath().getParent())
         new PrintWriter(f)
-      case None          => new PrintWriter(System.out)
+      case None          => new PrintWriter(System.out, true)
     }
     new VerbosePrintLogger(
       db_en,

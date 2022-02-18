@@ -15,27 +15,14 @@ import java.io.PrintWriter
 import java.nio.file.Files
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.InputType
+import manticore.compiler.assembly.levels.MemoryType
+
 import manticore.compiler.assembly.levels.UInt16
+
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
     with HasTransformationID {
-
-  private def assignExpectIds(proc: DefProcess): DefProcess = {
-    var ii = 1;
-    val with_id = scala.collection.mutable.Queue.empty[Instruction]
-
-    proc.body.foreach {
-      case e @ Expect(_, _, error_id, _) =>
-        val id = ii
-        ii += 1
-        with_id += e.copy(error_id = error_id.copy(id = UInt16(id)))
-      case i @ _ => with_id += i
-    }
-
-    proc.copy(body = with_id.toSeq)
-
-  }
 
   override def apply(prog: DefProgram, ctx: AssemblyContext): Unit = {
 
@@ -132,7 +119,7 @@ object MachineCodeGenerator
           // write initial register values
           val initial_reg_vals = p.registers
             .takeWhile { r =>
-              r.variable.varType == ConstType || r.variable.varType == InputType
+              r.variable.varType == ConstType || r.variable.varType == InputType || r.variable.varType == MemoryType
             }
             .map { v => v.value.getOrElse(UInt16(0)).toInt }
           val rf_file =
@@ -173,7 +160,7 @@ object MachineCodeGenerator
     // compute the virtual cycle length
 
     val assembled =
-      (assignExpectIds(prog.processes.head) +: prog.processes.tail).map {
+      prog.processes.map {
         assembleProcess(_)(ctx, ids)
       }
     assembled

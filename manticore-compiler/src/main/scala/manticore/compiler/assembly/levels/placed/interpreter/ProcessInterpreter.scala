@@ -5,6 +5,7 @@ import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.ConstType
+import manticore.compiler.assembly.BinaryOperator
 
 trait ProcessInterpreter extends InterpreterBase {
 
@@ -40,7 +41,7 @@ trait ProcessInterpreter extends InterpreterBase {
 
   def roll(): Unit
 
-  protected def interpret(inst: BinaryArithmetic): Unit = {
+  def interpret(inst: BinaryArithmetic): Unit = {
 
     import manticore.compiler.assembly.BinaryOperator._
 
@@ -54,7 +55,7 @@ trait ProcessInterpreter extends InterpreterBase {
         // up computing the shift result anyways because there are no branches
         // in the program, only predicates and MUXes
         ctx.logger.debug(s"invalid shift amount ${v}", inst)
-        v.toInt & 0xF // take the lowest 4 bits
+        v.toInt & 0xf // take the lowest 4 bits
 
       } else {
         v.toInt
@@ -111,12 +112,11 @@ trait ProcessInterpreter extends InterpreterBase {
           }
         }
 
-
     }
     write(rd, rd_val)
   }
 
-  protected def interpret(instruction: Instruction): Unit = instruction match {
+  def interpret(instruction: Instruction): Unit = instruction match {
     case i: BinaryArithmetic => interpret(i)
     case i: CustomInstruction =>
       ctx.logger.error("Custom instruction can not be interpreted yet", i)
