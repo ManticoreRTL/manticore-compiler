@@ -39,14 +39,14 @@ trait ProgramTester {
     ).mkString("\n")
   }
 
-  def declReg(name: String, width: Int, init: Option[BigInt]) = {
+
+  def mkInput(name: String, init: Option[UInt16]): String = {
     Seq(
       s"@REG [id = \"${name}\", type = \"\\REG_CURR\" ]",
-      s".input ${name}_curr ${width} ${init.map(_.toString).getOrElse("")}",
-      s"@REG [id = \"${name}\", type = \"\\REG_NEXT\" ]",
-      s".output ${name}_next ${width} "
+      s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}",
     ).mkString("\n")
   }
+
 
   def compiler =
     ManticorePasses.frontend followedBy

@@ -16,6 +16,14 @@ import manticore.compiler.assembly.annotations.DebugSymbol
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.TransformationID
 
+
+
+/**
+  * Base test trait to verify correctness of the compiler and the
+  * manticore machine in interpreting binary arithmetic instruction
+  *
+  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 trait SingleInstructionTest
     extends UnitFixtureTest
     with ChiselScalatestTester
@@ -185,8 +193,8 @@ trait SingleInstructionTest
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
       use_loc = true,
-      //   log_file = Some(fixture.test_dir.resolve("run.log").toFile())
-      log_file = None
+        log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      // log_file = None
     )
     implicit val TestName = TransformationID(getTestName)
     val expected_results = (op1 zip op2) map { case (a, b) => compute(a, b) }
@@ -268,5 +276,7 @@ trait SingleInstructionTest
     }
 
   }
+
+
 
 }
