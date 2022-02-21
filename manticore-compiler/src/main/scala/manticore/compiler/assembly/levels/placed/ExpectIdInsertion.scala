@@ -26,10 +26,12 @@ object ExpectIdInsertion
               transformed_body += i
                 .copy(error_id = e.copy(id = UInt16(failure_id_base)))
                 .setPos(i.pos)
+              failure_id_base += 1
             case e @ ExceptionIdImpl(_, _, ExpectStop) =>
               transformed_body += i
                 .copy(error_id = e.copy(id = UInt16(stop_id_base)))
                 .setPos(i.pos)
+              stop_id_base += 1
           }
         case i @ _ => transformed_body += i.setPos(i.pos)
       }

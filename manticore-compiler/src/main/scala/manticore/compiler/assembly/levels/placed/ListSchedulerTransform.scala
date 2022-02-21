@@ -71,7 +71,7 @@ object ListSchedulerTransform
       earliest: Map[Send, Int]
   )
 
-  private def createLocalSchedule(
+  def createLocalSchedule(
       proc: DefProcess,
       dim: (Int, Int)
   )(implicit ctx: AssemblyContext): DefProcess = {
@@ -82,13 +82,12 @@ object ListSchedulerTransform
 
     // instructions require to close sequential cycles
     val output_input_pairs = createInputOutputPairs(proc)(ctx).map {
-      case (curr, next) =>  next.variable.name -> curr.variable.name
+      case (curr, next) => next.variable.name -> curr.variable.name
     }.toMap
 
     val move_instructions = output_input_pairs.map { case (next, curr) =>
       curr -> Mov(curr, next)
     }.toMap
-
 
     // create WAR between input(current) register uses and update instructions
     // of the form Mov(curr, next) that we are adding now.
@@ -116,7 +115,6 @@ object ListSchedulerTransform
         }
       }
     }
-
 
     ctx.logger.dumpArtifact(
       s"dependence_graph_${phase_id}_${proc.id.id}_${ctx.logger.countProgress()}.dot"
@@ -279,15 +277,46 @@ object ListSchedulerTransform
     }
     val end = System.nanoTime()
 
+    // We filter out the instructions and only schedule the relevant ones.
+    // Here, [[Nop]]s are removed since they are always ready and also useless
+    // to have them in an unscheduled process. [[Send]] are also removed from
+    // the schedule since we need to create a global schedule for them. Note
+    // that if schedule them now and a later pass move them around, that pass
+    // could end up invalidating the local schedule by "bringing some
+    // instructions too close to each other"
+    //
+    // E.g.,
+    // ADD x,_,_
+    // NOP
+    // SEND y, _, _
+    // NOP
+    // ADD z, x, _
+    // may become
+    // ADD x,_,_
+    // NOP
+    // NOP
+    // ADD z, x, _
+    // SEND y, _, _
+    // Which is invalid because between the definition of x and its use there
+    // are not enough instructions
+    // Albeit, this does not mean the Send instruction do not play any role in
+    // the local schedule. In fact they are used to compute the sink distance
+    // to prioritize instructions that their result are sent out of the process
+    // over those that do not send them out.
+    //
+    // After we done creating the local schedule, the Send instruction are simply
+    // appended at the end of the schedule.
 
 
-    val unsched_list =
-      scala.collection.mutable.Queue.empty[Instruction] ++
-        dependence_graph.nodes.collect {
-          case n if n.toOuter != Nop => n.toOuter
-        } // remove nops, they can not be
-    // scheduled because they never become ready (no operands) and they
-    // don't matter anyways.
+    val sends = proc.body.collect { case x: Send => x }
+    dependence_graph --= sends
+
+    // val unsched_list =
+    //   scala.collection.mutable.Queue.empty[Instruction] ++
+    //     dependence_graph.nodes.collect {
+    //       case n if n.toOuter != Nop && !n.toOuter.isInstanceOf[Send] =>
+    //         n.toOuter
+    //     }
 
     val schedule = scala.collection.mutable.Queue[Instruction]()
 
@@ -333,7 +362,6 @@ object ListSchedulerTransform
       s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
     )
 
-
     class ActiveNode(val node: Node, var time_left: Int)
     var active_list = scala.collection.mutable.ListBuffer[ActiveNode]()
     // val scheduled_preds = scala.collection.mutable.Set.empty[Node]
@@ -344,7 +372,7 @@ object ListSchedulerTransform
         .map { case (k, v) => s"${k.serialized} : ${v} " }
         .mkString("\n")}"
     )
-    while (unsched_list.nonEmpty) {
+    while (dependence_graph.nodes.nonEmpty) {
       val finished_list =
         active_list.filter { _.time_left == 0 } map { f =>
           val node = f.node
@@ -376,20 +404,21 @@ object ListSchedulerTransform
           new ActiveNode(head.n, instructionLatency(head.n.toOuter))
         )
         schedule.append(head.n.toOuter)
-        unsched_list -= head.n.toOuter
         ready_list.dequeue()
       }
       cycle += 1
     }
 
-    if (cycle >= ctx.max_instructions_threshold) {
+
+
+    if (cycle + sends.length >= ctx.max_instructions_threshold) {
       ctx.logger.error(
         "Failed to schedule processes, ran out of instruction memory",
         proc
       )
     }
 
-    val new_body = schedule.toSeq
+    val new_body = schedule.toSeq ++ sends
 
     if (ctx.debug_message) {
       // make sure no instruction is left out
@@ -402,7 +431,7 @@ object ListSchedulerTransform
       }
     }
 
-    proc.copy(body = schedule.toSeq)
+    proc.copy(body = new_body.toSeq)
 
   }
 

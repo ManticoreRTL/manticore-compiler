@@ -38,7 +38,7 @@ object GlobalPacketSchedulerTransform
         source: ProcessId,
         target: ProcessId,
         earliest: Int
-    ) extends Ordered[SendWrapper] {
+    ) {
       val x_dist =
         LatencyAnalysis.xHops(source, target, (dimx, dimy))
       val y_dist =
@@ -49,52 +49,45 @@ object GlobalPacketSchedulerTransform
       val path_x: Seq[(Int, Int)] = // a tuple of x location and occupancy time
         Seq.tabulate(x_dist) { i =>
           val x_v = (source.x + i + 1) % dimx
-          /**
-            * [[LatencyAnalysis.latency]] gives the number of NOPs required
-            * between two depending instruction, that is, it gives the
-            * latency between executing and writing back the instruction
-            * but the [[Send]] latency should also consider the number of
-            * cycles required for fetching and decoding. That is why we
-            * add "2" to the number given by [[LatencyAnalysis.latency]]
+
+          /** [[LatencyAnalysis.latency]] gives the number of NOPs required
+            * between two depending instruction, that is, it gives the latency
+            * between executing and writing back the instruction but the
+            * [[Send]] latency should also consider the number of cycles
+            * required for fetching and decoding. That is why we add "2" to the
+            * number given by [[LatencyAnalysis.latency]]
             */
-          x_v -> (earliest + LatencyAnalysis.latency(inst) + i + 2)
+          x_v -> (LatencyAnalysis.latency(inst) + i + 2)
         }
-      val path_y: Seq[(Int, Int)] =  {
-        // a tuple of y location and occupancy time
+      val path_y: Seq[(Int, Int)] = {
+        // a tuple of y location and cycle offset from the time the
+        // instruction gets scheduled
+        // that is, we record the tim
         val p = Seq.tabulate(y_dist) { i =>
           val y_v = (source.y + i + 1) % dimy
           path_x match {
             case _ :+ last => y_v -> (path_x.last._2 + i + 1)
             case Seq() =>
-              y_v -> (earliest + LatencyAnalysis.latency(inst) + i + 2)
+              y_v -> (LatencyAnalysis.latency(inst) + i + 2)
           }
         }
         // the last hop always occupies a Y link which the is Y output of
         // the target switch (Y output is shared with the local output)
         val last_hop = p match {
           case _ :+ last => Seq(((target.y + 1) % dimy) -> (last._2 + 1))
-          case Seq() if path_x.nonEmpty=>
-              // this happens if the packet only goes in the X direction and the
-              // packet should have at least one X hop, hence path_x can not be
-              // empty (we don't have self messages so at least one the
-              // the two paths are non empty)
-              assert(path_x.nonEmpty)
-              Seq(((target.y + 1) % dimy) -> (path_x.last._2 + 1))
+          case Seq() if path_x.nonEmpty =>
+            // this happens if the packet only goes in the X direction and the
+            // packet should have at least one X hop, hence path_x can not be
+            // empty (we don't have self messages so at least one the
+            // the two paths are non empty)
+            assert(path_x.nonEmpty)
+            Seq(((target.y + 1) % dimy) -> (path_x.last._2 + 1))
           case _ =>
             context.logger.error(s"Can not have self messages!", inst)
             Seq.empty[(Int, Int)]
         }
         p ++ last_hop
       }
-
-      // A send instruction that becomes available earlier, has higher priority
-      // locally, this is somehow enforced, i.e., the List scheduler assumes
-      // that Sends are scheduled in the order in which their data is produced.
-      // Without this assumption it is not possible to compute a valid early time
-      // since scheduling one Send will change the earliest time of unscheduled ones
-      def compare(that: SendWrapper): Int =
-        Ordering[Int]
-          .compare(this.earliest, that.earliest)
     }
 
     import scala.collection.mutable.{Queue => MutableQueue}
@@ -124,22 +117,98 @@ object GlobalPacketSchedulerTransform
 
     // keep a sorted queue of Processes, sorting is done based on the priority
     // of each processes' send instruction. I.e., the process with the most
-    // critical send (largest manhattan distance and earliest possible schedule
-    // time) should be considered first when trying to schedule sends in a cycle
+    // critical send (largest manhattan distance should be considered first when
+    // trying to schedule sends in a cycle
     val to_schedule = PriorityQueue.empty[ProcessWrapper] ++
       program.processes.map { proc =>
-        val sends = proc.body.zipWithIndex.collect { case (inst: Send, cycle) =>
-          SendWrapper(
-            inst = inst,
-            source = proc.id,
-            target = inst.dest_id,
-            earliest = cycle
-          )
+        def isSend(x: Instruction) = x.isInstanceOf[Send]
+        // create a map from register names to the Sends corresponding to them
+        // a single Name may be sent out multiple times (to different targets)
+
+        val sends: Map[Name, Seq[Send]] = proc.body
+          .collect { case x: Send =>
+            x
+          }
+          .groupBy(_.rs)
+          .map { case (rs, sends: Seq[Send]) =>
+            // in case there are multiple Send instructions for the same value
+            // prioritize the ones that have to traverse a longer distance
+            object SendTieBreakerOrder extends Ordering[Send] {
+              override def compare(s1: Send, s2: Send): Int = {
+                val m1 =
+                  LatencyAnalysis.manhattan(proc.id, s1.dest_id, (dimx, dimy))
+                val m2 =
+                  LatencyAnalysis.manhattan(proc.id, s2.dest_id, (dimx, dimy))
+                Ordering[Int].reverse.compare(m1, m2)
+              }
+            }
+            rs -> sends.sorted(SendTieBreakerOrder)
+          }
+
+        // wrap the sends in a helper class that has the manhattan distance
+        // precomputed
+        val sends_wrapped = scala.collection.mutable.Queue.empty[SendWrapper]
+        // IMPORTANT: Go through the instructions IN ORDER find the
+        // instructions that define the values used in Send instruction.
+        // The cycle at which the other instruction is scheduled plus the
+        // pipeline latency indicates the earliest time that Send can be
+        // scheduled alone. However, if we schedule on of these Sends, the
+        // later ones' earliest times will be naturally incremented by one
+        // we can do this by having appending the wrapped instruction
+        // to a list one by one and offsetting the earliest cycle by the
+        // size of the list + 1.
+
+        proc.body.zipWithIndex.foreach { case (other_inst, cycle) =>
+          DependenceAnalysis
+            .regDef(other_inst)(context)
+            .find(sends.contains) match {
+            case Some(reg_to_send: Name) =>
+              // Note that since we are traversing proc.body in order, we are
+              // implicitly prioritizing the Sends that have their operands
+              // ready earlier. Additionally, the sends(reg_to_send) is ordered
+              // by decreasing manhattan distance. So we schedule the ones that
+              // travel further first.
+
+              // With s = sends_wrapped.length, the first Send can be schedule
+              // at cycle + 1 + n + s where n is latency of the instruction that
+              // define the value to be sent the next one would be at cycle + 2
+              // + n + s and so on...
+
+              sends(reg_to_send).foldLeft(
+                cycle + 1 + sends_wrapped.length + LatencyAnalysis.latency(
+                  other_inst
+                )
+              ) { case (earliest, send_inst) =>
+                sends_wrapped +=
+                  SendWrapper(
+                    inst = send_inst,
+                    source = proc.id,
+                    target = send_inst.dest_id,
+                    earliest = earliest
+                  )
+                earliest + 1
+              }
+
+            case None =>
+          }
         }
+        context.logger.debug(
+          s"In process: ${proc.id}:\n${sends_wrapped mkString ("\n")}"
+        )
+
+        if (context.debug_message) {
+          if (proc.body.count(isSend) != sends_wrapped.size) {
+            context.logger.error(
+              s"Not all Send instructions are accounted for in ${proc.id}, " +
+                s"are you sending constants? "
+            )
+          }
+        }
+
         ProcessWrapper(
           proc,
           MutableQueue.empty[(Send, Int)], // scheduled sends
-          MutableQueue() ++ sends
+          sends_wrapped
         )
 
       }
@@ -177,14 +246,14 @@ object GlobalPacketSchedulerTransform
       val checked = to_schedule.dequeueAll.map { h: ProcessWrapper =>
         if (h.unscheduled.nonEmpty) {
           val inst_wrapper = h.unscheduled.head
-          if (inst_wrapper.earliest <= cycle) {
+          val earliest = inst_wrapper.earliest
+          if (earliest <= cycle) {
 
-            val t_offset = cycle - inst_wrapper.earliest
             val can_route_horiz = inst_wrapper.path_x.forall { case (x, t) =>
-              linkX(x)(inst_wrapper.source.y).contains(t + t_offset) == false
+              linkX(x)(inst_wrapper.source.y).contains(cycle + t) == false
             }
             val can_route_vert = inst_wrapper.path_y.forall { case (y, t) =>
-              linkY(inst_wrapper.target.x)(y).contains(t + t_offset) == false
+              linkY(inst_wrapper.target.x)(y).contains(cycle + t) == false
             }
             if (can_route_vert && can_route_horiz) {
               context.logger.debug(
@@ -195,10 +264,10 @@ object GlobalPacketSchedulerTransform
               val send_inst = h.unscheduled.dequeue()
 
               inst_wrapper.path_x.foreach { case (x, t) =>
-                linkX(x)(inst_wrapper.source.y) += (t + t_offset)
+                linkX(x)(inst_wrapper.source.y) += (cycle + t)
               }
               inst_wrapper.path_y.foreach { case (y, t) =>
-                linkY(inst_wrapper.target.x)(y) += (t + t_offset)
+                linkY(inst_wrapper.target.x)(y) += (cycle + t)
               }
 
               h.scheduled += (send_inst.inst -> cycle)
@@ -239,7 +308,10 @@ object GlobalPacketSchedulerTransform
       context.logger.error(
         s"Could not schedule Send instruction in ${context.max_instructions_threshold} cycles!"
       )
-      val left = to_schedule.filter(_.unscheduled.nonEmpty).flatMap { _.unscheduled }.toSeq
+      val left = to_schedule
+        .filter(_.unscheduled.nonEmpty)
+        .flatMap { _.unscheduled }
+        .toSeq
       context.logger.debug(
         s"remaining instructions:\n${left.mkString("\n")}"
       )

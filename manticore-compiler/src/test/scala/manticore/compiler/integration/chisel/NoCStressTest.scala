@@ -1,5 +1,7 @@
 package manticore.compiler.integration.chisel
+import chiseltest._
 
+import chisel3._
 import org.scalatest.flatspec.AnyFlatSpec
 import manticore.compiler.integration.chisel.util.ProgramTester
 import manticore.compiler.assembly.levels.UInt16
@@ -7,11 +9,11 @@ import java.nio.file.Path
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.AssemblyContext
 import manticore.compiler.ManticorePasses
-import manticore.machine.xrt.ManticoreFlatKernel
+
 import manticore.machine.xrt.ManticoreFlatSimKernel
-import chiseltest._
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
-import chisel3._
+import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 
 /** A stress for the NoC implementation.
   */
@@ -258,15 +260,15 @@ class NoCStressTest
     fixture =>
       val context = AssemblyContext(
         output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-        max_dimx = 2,
-        max_dimy = 2,
+        max_dimx = 5,
+        max_dimy = 5,
         dump_all = true,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
         expected_cycles = Some(2 + 1),
         use_loc = true,
         // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
         log_file = None,
-        debug_message = true
+        debug_message = false
       )
       val source = createTest(
         context.output_dir.get.toPath(),
@@ -277,6 +279,11 @@ class NoCStressTest
 
       val program = compile(source, context)
       ManticorePasses.BackendInterpreter(true)(program, context)
+
+      val assembled = MachineCodeGenerator.assembleProgram(program)(context)
+
+      val vcycles_length =
+        assembled.map(_.total).max + LatencyAnalysis.maxLatency()
 
       MachineCodeGenerator(program, context)
 
@@ -291,19 +298,48 @@ class NoCStressTest
         )
       ).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) {
         dut =>
-          dut.clock.step(20)
-          dut.io.kernel_ctrl.start.poke(true.B)
-          dut.clock.step()
-          dut.io.kernel_ctrl.start.poke(false.B)
-          dut.clock.setTimeout(40000)
-          while (!dut.io.kernel_ctrl.idle.peek().litToBoolean) {
-            dut.clock.step()
+          var cycle = 0
+          def tick(n: Int = 1): Unit = {
+            dut.clock.step(n)
+            cycle += n
           }
+
+          implicit val test_id = TransformationID(getTestName)
+          // let the reset propagate through the cores
+          context.logger.info("Starting RTL simulation")
+          tick(20)
+
+          dut.io.kernel_ctrl.start.poke(true.B)
+          tick()
+          dut.io.kernel_ctrl.start.poke(false.B)
+          tick()
+
+          dut.clock.setTimeout(
+            // set the timeout to be the the time required for execution plus
+            // some time required to program the processors
+            vcycles_length * context.expected_cycles.get +
+              vcycles_length * 100 * context.max_dimx * context.max_dimy
+          )
+          while (!dut.io.kernel_ctrl.idle.peek().litToBoolean) {
+            tick()
+          }
+          context.logger.info(
+            s"Got IDLE after ${cycle} cycles with " +
+              s"${dut.io.kernel_registers.device.bootloader_cycles.peek().litValue} " +
+              s"cycles to boot the machine"
+          )
+
           assert(
             dut.io.kernel_registers.device.exception_id_0
               .peek()
-              .litValue() < 0x8000,
+              .litValue < 0x8000,
             "execution resulted in fatal exception!"
+          )
+          assert(
+            dut.io.kernel_registers.device.virtual_cycles
+              .peek()
+              .litValue == context.expected_cycles.get - 1,
+            "invalid number of virtual cycles!"
           )
 
       }

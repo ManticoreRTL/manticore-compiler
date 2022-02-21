@@ -83,7 +83,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
 
   case class ExceptionIdImpl(id: UInt16, msg: String, kind: ExceptionKind) {
-    override def toString(): String = msg
+    override def toString(): String = s"${msg}_${id}"
   }
 
   type Name = String
@@ -102,7 +102,7 @@ object LatencyAnalysis {
     case _: Predicate    => 0
     case _: Expect       => 0
     case Nop             => 0
-    case _               => 3
+    case _               => maxLatency()
   }
 
   def xHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =

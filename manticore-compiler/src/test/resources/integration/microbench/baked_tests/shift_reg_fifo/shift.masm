@@ -1,0 +1,208 @@
+@PROGRAM [name = "\ShiftRegisterFIFOTester"]
+.prog:
+  .proc \ShiftRegisterFIFOTester:
+    .wire w_$emit_masm_py_209_$tmp 1
+    .wire w_$emit_masm_py_209_$tmp_1 1
+    .wire w_$emit_masm_py_209_$tmp_10 32
+    .wire w_$emit_masm_py_209_$tmp_2 1
+    .wire w_$emit_masm_py_209_$tmp_3 16
+    .wire w_$emit_masm_py_209_$tmp_4 1
+    .wire w_$emit_masm_py_209_$tmp_5 16
+    .wire w_$emit_masm_py_209_$tmp_6 32
+    .wire w_$emit_masm_py_209_$tmp_7 16
+    .wire w_$emit_masm_py_209_$tmp_8 16
+    .wire w_$emit_masm_py_209_$tmp_9 16
+    @REG [id = "$flatten\fifo.$procdff$51", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\fifo_$procdff$51_curr 16
+    @REG [id = "$flatten\fifo.$procdff$52", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\fifo_$procdff$52_curr 16
+    @REG [id = "$flatten\fifo.$procdff$53", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\fifo_$procdff$53_curr 16
+    @REG [id = "$flatten\fifo.$procdff$54", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\fifo_$procdff$54_curr 16
+    @REG [id = "$procdff$47", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$procdff$47_curr 1 1
+    @REG [id = "$procdff$48", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$procdff$48_curr 1 1
+    @REG [id = "$procdff$49", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$procdff$49_curr 16
+    @REG [id = "$flatten\fifo.$procdff$51", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\fifo_$procdff$51_next 16
+    @REG [id = "$flatten\fifo.$procdff$52", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\fifo_$procdff$52_next 16
+    @REG [id = "$flatten\fifo.$procdff$53", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\fifo_$procdff$53_next 16
+    @REG [id = "$flatten\fifo.$procdff$54", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\fifo_$procdff$54_next 16
+    @REG [id = "$procdff$47", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$procdff$47_next 1
+    @REG [id = "$procdff$48", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$procdff$48_next 1
+    @REG [id = "$procdff$49", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$procdff$49_next 16
+    .wire w_$emit_masm_py_549_$slice_out_ 16
+    .wire w_$emit_masm_py_661_$const_out_ 1
+    .wire w_$emit_masm_py_661_$const_out__1 1
+    .wire w_$emit_masm_py_661_$const_out__2 1
+    .wire w_$emit_masm_py_661_$const_out__3 16
+    .wire w_$emit_masm_py_661_$const_out__4 1
+    .wire w_$emit_masm_py_661_$const_out__5 32
+    .wire w_$emit_masm_py_661_$const_out__6 16
+    .wire w_$emit_masm_py_661_$const_out__7 16
+    .wire w_$emit_masm_py_661_$const_out__8 16
+    .wire w_$emit_masm_py_661_$const_out__9 32
+    @TRACK [name = "ShiftRegisterFIFOTester/cycle_counter"]
+    @DEBUGSYMBOL [ symbol = "ShiftRegisterFIFOTester.cycle_counter" ]
+    .wire po_$track_names_py_95_$TRACK$\cycle_counter 16 0
+    @TRACK [name = "ShiftRegisterFIFOTester/dout"]
+    @DEBUGSYMBOL [ symbol = "ShiftRegisterFIFOTester.dout" ]
+    .wire po_$track_names_py_95_$TRACK$\dout 16
+    @TRACK [name = "ShiftRegisterFIFOTester/reading"]
+    @DEBUGSYMBOL [ symbol = "ShiftRegisterFIFOTester.reading" ]
+    .wire po_$track_names_py_95_$TRACK$\reading 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    .wire w_\_10_ 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    .wire w_\_11_ 1
+    @SOURCEINFO [file = "shiftreg.sv:62.9-62.31"]
+    .wire w_\_12_ 1
+    @SOURCEINFO [file = "shiftreg.sv:66.20-66.31"]
+    .wire w_\_15_ 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    .wire w_\_18_ 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    .wire w_\_19_ 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    .wire w_\_1_ 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    .wire w_\_20_ 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    .wire w_\_21_ 1
+    @SOURCEINFO [file = "shiftreg.sv:75.22-75.39"]
+    .wire w_\_8_ 32
+    @SOURCEINFO [file = "shiftreg.sv:28.16-28.19"]
+    @DEBUGSYMBOL [ symbol = "\clk"]
+    .input pi_\clk 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_expect.2"]
+    .wire po_\cond_out_$masm_expect_2 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_stop.5"]
+    .wire po_\cond_out_$masm_stop_5 1
+    @SOURCEINFO [file = "shiftreg.sv:50.5-55.4|shiftreg.sv:16.3-23.6"]
+    .wire w_\fifo__1_ 16
+    @SOURCEINFO [file = "shiftreg.sv:50.5-55.4|shiftreg.sv:16.3-23.6"]
+    .wire w_\fifo__2_ 16
+    @SOURCEINFO [file = "shiftreg.sv:50.5-55.4|shiftreg.sv:16.3-23.6"]
+    .wire w_\fifo__3_ 16
+    @SOURCEINFO [file = "shiftreg.sv:50.5-55.4|shiftreg.sv:16.3-23.6"]
+    .wire w_\fifo__4_ 16
+    @SOURCEINFO [file = "shiftreg.sv:50.5-55.4|shiftreg.sv:13.25-13.29"]
+    @DEBUGSYMBOL [ symbol = "fifo.regs[0]"]
+    .wire w_\fifo_regs_0_ 16
+    @SOURCEINFO [file = "shiftreg.sv:50.5-55.4|shiftreg.sv:13.25-13.29"]
+    @DEBUGSYMBOL [ symbol = "fifo.regs[1]"]
+    .wire w_\fifo_regs_1_ 16
+    @SOURCEINFO [file = "shiftreg.sv:50.5-55.4|shiftreg.sv:13.25-13.29"]
+    @DEBUGSYMBOL [ symbol = "fifo.regs[2]"]
+    .wire w_\fifo_regs_2_ 16
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_expect.0"]
+    .wire w_\reg_cond_$masm_expect_0 1 1
+    @SOURCEINFO [file = "shiftreg.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_stop.3"]
+    .wire w_\reg_cond_$masm_stop_3 1 1
+    .const c_0 6 0b000000
+    .const c_1 1 0b1
+    .const c_2 1 0b1
+    .const c_3 1 0b1
+    .const c_4 1 0b1
+    .const c_5 1 0b1
+    .const c_6 16 0b0011010001010110
+    .const c_7 1 0b1
+    .const c_8 32 0b00000000000000000000000000000001
+    .const c_9 16 0b0000000000000100
+    .const c_10 16 0b0000000000000100
+    .const c_11 16 0b0011010001010110
+    .const c_12 32 0b00000000000000000000000000000101
+    .wire w_0 32
+    .const c_13 1 0b1
+    .const c_14 1 0b0
+    .const c_15 1 0b0
+    .wire w_1 1
+    .wire w_2 1
+    .wire w_3 1
+    .wire w_4 1
+    .const c_16 1 0b0
+    .const c_17 1 0b0
+    .const c_18 1 0b0
+    .const c_19 1 0b1
+    .const c_20 1 0b0
+    .const c_21 1 0b0
+    .wire w_5 1
+    .wire w_6 1
+    .wire w_7 1
+    .wire w_8 1
+    MOV w_$emit_masm_py_209_$tmp, w_$emit_masm_py_661_$const_out_;
+    MOV w_$emit_masm_py_209_$tmp_1, w_$emit_masm_py_661_$const_out__1;
+    MOV w_$emit_masm_py_209_$tmp_2, w_$emit_masm_py_661_$const_out__2;
+    MOV w_$emit_masm_py_209_$tmp_3, w_$emit_masm_py_661_$const_out__3;
+    MOV w_$emit_masm_py_209_$tmp_4, w_$emit_masm_py_661_$const_out__4;
+    MOV w_$emit_masm_py_209_$tmp_5, w_$emit_masm_py_549_$slice_out_;
+    MOV w_$emit_masm_py_209_$tmp_6, w_$emit_masm_py_661_$const_out__5;
+    MOV w_$emit_masm_py_209_$tmp_7, w_$emit_masm_py_661_$const_out__6;
+    MOV w_$emit_masm_py_209_$tmp_8, w_$emit_masm_py_661_$const_out__7;
+    MOV w_$emit_masm_py_209_$tmp_9, w_$emit_masm_py_661_$const_out__8;
+    MOV w_$emit_masm_py_209_$tmp_10, w_$emit_masm_py_661_$const_out__9;
+    MOV w_\fifo_regs_0_, pi_$emit_masm_py_316_$flatten\fifo_$procdff$51_curr;
+    MOV po_$emit_masm_py_328_$flatten\fifo_$procdff$51_next, w_\fifo__4_;
+    MOV w_\fifo_regs_1_, pi_$emit_masm_py_316_$flatten\fifo_$procdff$52_curr;
+    MOV po_$emit_masm_py_328_$flatten\fifo_$procdff$52_next, w_\fifo__3_;
+    MOV w_\fifo_regs_2_, pi_$emit_masm_py_316_$flatten\fifo_$procdff$53_curr;
+    MOV po_$emit_masm_py_328_$flatten\fifo_$procdff$53_next, w_\fifo__2_;
+    MOV po_$track_names_py_95_$TRACK$\dout, pi_$emit_masm_py_316_$flatten\fifo_$procdff$54_curr;
+    MOV po_$emit_masm_py_328_$flatten\fifo_$procdff$54_next, w_\fifo__1_;
+    MOV w_\reg_cond_$masm_expect_0, pi_$emit_masm_py_316_$procdff$47_curr;
+    MOV po_$emit_masm_py_328_$procdff$47_next, w_\_1_;
+    MOV w_\reg_cond_$masm_stop_3, pi_$emit_masm_py_316_$procdff$48_curr;
+    MOV po_$emit_masm_py_328_$procdff$48_next, w_\_20_;
+    MOV po_$track_names_py_95_$TRACK$\cycle_counter, pi_$emit_masm_py_316_$procdff$49_curr;
+    MOV po_$emit_masm_py_328_$procdff$49_next, w_$emit_masm_py_209_$tmp_5;
+    SRL w_$emit_masm_py_549_$slice_out_, w_\_8_, c_0;
+    @TRAP [type = "\fail", file="shiftreg.sv:66.7-66.19"]
+    EXPECT w_\reg_cond_$masm_expect_0, c_1, ["wrong result"];
+    @TRAP [type = "\stop", file="shiftreg.sv:72.7-72.17"]
+    EXPECT w_\reg_cond_$masm_stop_3, c_2, [""];
+    MOV w_$emit_masm_py_661_$const_out_, c_3;
+    MOV w_$emit_masm_py_661_$const_out__1, c_4;
+    MOV w_$emit_masm_py_661_$const_out__2, c_5;
+    MOV w_$emit_masm_py_661_$const_out__3, c_6;
+    MOV w_$emit_masm_py_661_$const_out__4, c_7;
+    MOV w_$emit_masm_py_661_$const_out__5, c_8;
+    MOV w_$emit_masm_py_661_$const_out__6, c_9;
+    MOV w_$emit_masm_py_661_$const_out__7, c_10;
+    MOV w_$emit_masm_py_661_$const_out__8, c_11;
+    MOV w_$emit_masm_py_661_$const_out__9, c_12;
+    MUX w_\fifo__1_, w_$emit_masm_py_209_$tmp, po_$track_names_py_95_$TRACK$\dout, w_\fifo_regs_2_;
+    MUX w_\fifo__2_, w_$emit_masm_py_209_$tmp_1, w_\fifo_regs_2_, w_\fifo_regs_1_;
+    MUX w_\fifo__3_, w_$emit_masm_py_209_$tmp_2, w_\fifo_regs_1_, w_\fifo_regs_0_;
+    MUX w_\fifo__4_, w_$emit_masm_py_209_$tmp_4, w_\fifo_regs_0_, w_$emit_masm_py_209_$tmp_3;
+    ADD w_\_8_, po_$track_names_py_95_$TRACK$\cycle_counter, w_$emit_masm_py_209_$tmp_6;
+    SEQ w_\_12_, po_$track_names_py_95_$TRACK$\cycle_counter, w_$emit_masm_py_209_$tmp_7;
+    SEQ w_\_11_, po_$track_names_py_95_$TRACK$\cycle_counter, w_$emit_masm_py_209_$tmp_8;
+    SEQ w_\_15_, w_$emit_masm_py_209_$tmp_9, po_$track_names_py_95_$TRACK$\dout;
+    PADZERO w_0, po_$track_names_py_95_$TRACK$\cycle_counter, 32;
+    SEQ w_\_10_, w_0, w_$emit_masm_py_209_$tmp_10;
+    SEQ w_1, w_\_19_, c_14;
+    XOR w_2, w_1, c_13;
+    SEQ w_3, w_\_10_, c_15;
+    XOR w_4, w_3, c_13;
+    AND w_\_18_, w_2, w_4;
+    SEQ w_\_19_, w_\_12_, c_16;
+    SEQ w_\_20_, w_\_18_, c_17;
+    SEQ w_\_21_, w_\_11_, c_18;
+    SEQ w_5, w_\_21_, c_20;
+    XOR w_6, w_5, c_19;
+    SEQ w_7, w_\_15_, c_21;
+    XOR w_8, w_7, c_19;
+    OR w_\_1_, w_6, w_8;
