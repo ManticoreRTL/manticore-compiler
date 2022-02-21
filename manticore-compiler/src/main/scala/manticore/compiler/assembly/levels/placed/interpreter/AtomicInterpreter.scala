@@ -203,7 +203,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
         } else {
           // something is up
           ctx.logger.warn(
-            s"did not expect message, writing to " +
+            s"@${cycle} did not expect message, writing to " +
               s"${msg.target_id}:${msg.target_register} value of ${msg.value} from process ${msg.source_id}"
           )
           trap(InternalTrap)

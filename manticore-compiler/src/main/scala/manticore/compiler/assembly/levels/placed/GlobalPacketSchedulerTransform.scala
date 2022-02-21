@@ -40,29 +40,52 @@ object GlobalPacketSchedulerTransform
         earliest: Int
     ) extends Ordered[SendWrapper] {
       val x_dist =
-        if (source.x > target.x) dimx - source.x + target.x
-        else target.x - source.x
+        LatencyAnalysis.xHops(source, target, (dimx, dimy))
       val y_dist =
-        if (source.y > target.y) dimy - source.y + target.y
-        else target.y - source.y
+        LatencyAnalysis.yHops(source, target, (dimx, dimy))
       val manhattan =
         x_dist + y_dist
 
       val path_x: Seq[(Int, Int)] = // a tuple of x location and occupancy time
         Seq.tabulate(x_dist) { i =>
-          val x_v = (source.x + i) % dimx
-          x_v -> (earliest + LatencyAnalysis.latency(inst) + i + 1)
+          val x_v = (source.x + i + 1) % dimx
+          /**
+            * [[LatencyAnalysis.latency]] gives the number of NOPs required
+            * between two depending instruction, that is, it gives the
+            * latency between executing and writing back the instruction
+            * but the [[Send]] latency should also consider the number of
+            * cycles required for fetching and decoding. That is why we
+            * add "2" to the number given by [[LatencyAnalysis.latency]]
+            */
+          x_v -> (earliest + LatencyAnalysis.latency(inst) + i + 2)
         }
-      val path_y: Seq[(Int, Int)] = // a tuple of y location and occupancy time
-        Seq.tabulate(y_dist) { i =>
-          val y_v = (source.y + i) % dimy
+      val path_y: Seq[(Int, Int)] =  {
+        // a tuple of y location and occupancy time
+        val p = Seq.tabulate(y_dist) { i =>
+          val y_v = (source.y + i + 1) % dimy
           path_x match {
             case _ :+ last => y_v -> (path_x.last._2 + i + 1)
             case Seq() =>
-              y_v -> (earliest + LatencyAnalysis.latency(inst) + i + 1)
+              y_v -> (earliest + LatencyAnalysis.latency(inst) + i + 2)
           }
-
         }
+        // the last hop always occupies a Y link which the is Y output of
+        // the target switch (Y output is shared with the local output)
+        val last_hop = p match {
+          case _ :+ last => Seq(((target.y + 1) % dimy) -> (last._2 + 1))
+          case Seq() if path_x.nonEmpty=>
+              // this happens if the packet only goes in the X direction and the
+              // packet should have at least one X hop, hence path_x can not be
+              // empty (we don't have self messages so at least one the
+              // the two paths are non empty)
+              assert(path_x.nonEmpty)
+              Seq(((target.y + 1) % dimy) -> (path_x.last._2 + 1))
+          case _ =>
+            context.logger.error(s"Can not have self messages!", inst)
+            Seq.empty[(Int, Int)]
+        }
+        p ++ last_hop
+      }
 
       // A send instruction that becomes available earlier, has higher priority
       // locally, this is somehow enforced, i.e., the List scheduler assumes
@@ -130,7 +153,7 @@ object GlobalPacketSchedulerTransform
       proc.id -> PriorityQueue.empty[(Recv, Int)](RecvOrdering)
     }.toMap
 
-    def createLinks = {
+    def createLinks() = {
       type LinkOccupancy = scala.collection.mutable.Set[Int]
       val link = Array.ofDim[LinkOccupancy](dimx, dimy)
       for (x <- 0 until dimx; y <- 0 until dimy) {
@@ -138,12 +161,16 @@ object GlobalPacketSchedulerTransform
       }
       link
     }
-    val linkX = createLinks
-    val linkY = createLinks
+    val linkX = createLinks()
+    val linkY = createLinks()
 
     var cycle = 0
     var schedule_unfinished = true
-    while (cycle < 4096 && to_schedule.exists(_.unscheduled.nonEmpty)) {
+    while (
+      cycle < context.max_instructions_threshold && to_schedule.exists(
+        _.unscheduled.nonEmpty
+      )
+    ) {
 
       // go through all processes and try to schedule the highest priority
       // send instruction in each
@@ -151,18 +178,28 @@ object GlobalPacketSchedulerTransform
         if (h.unscheduled.nonEmpty) {
           val inst_wrapper = h.unscheduled.head
           if (inst_wrapper.earliest <= cycle) {
+
+            val t_offset = cycle - inst_wrapper.earliest
             val can_route_horiz = inst_wrapper.path_x.forall { case (x, t) =>
-              linkX(x)(inst_wrapper.source.y).contains(t) == false
+              linkX(x)(inst_wrapper.source.y).contains(t + t_offset) == false
             }
             val can_route_vert = inst_wrapper.path_y.forall { case (y, t) =>
-              linkY(inst_wrapper.target.x)(y).contains(t) == false
+              linkY(inst_wrapper.target.x)(y).contains(t + t_offset) == false
             }
             if (can_route_vert && can_route_horiz) {
               context.logger.debug(
-                s"@${cycle}: Scheduling ${inst_wrapper.inst.serialized} in process ${h.proc.id}"
+                s"@${cycle}: Scheduling ${inst_wrapper.inst.serialized} in process ${h.proc.id}" +
+                  s"\nPath_x: ${inst_wrapper.path_x}\nPath_y: ${inst_wrapper.path_y}"
               )
 
               val send_inst = h.unscheduled.dequeue()
+
+              inst_wrapper.path_x.foreach { case (x, t) =>
+                linkX(x)(inst_wrapper.source.y) += (t + t_offset)
+              }
+              inst_wrapper.path_y.foreach { case (y, t) =>
+                linkY(inst_wrapper.target.x)(y) += (t + t_offset)
+              }
 
               h.scheduled += (send_inst.inst -> cycle)
 
@@ -184,9 +221,27 @@ object GlobalPacketSchedulerTransform
       to_schedule ++= checked
     }
 
+    if (context.debug_message) {
+
+      val layout = new StringBuilder
+      Range(0, dimx).foreach { x =>
+        Range(0, dimy).foreach { y =>
+          layout ++= s"\tlinkX(${x})(${y}) = [${linkX(x)(y).mkString(",")}]\n"
+          layout ++= s"\tlinkY(${x})(${y}) = [${linkY(x)(y).mkString(",")}]\n"
+        }
+      }
+
+      context.logger.debug(s"\n${layout}")
+
+    }
+
     if (to_schedule.exists(_.unscheduled.nonEmpty)) {
       context.logger.error(
-        "Could not schedule Send instruction in 4096 cycles!"
+        s"Could not schedule Send instruction in ${context.max_instructions_threshold} cycles!"
+      )
+      val left = to_schedule.filter(_.unscheduled.nonEmpty).flatMap { _.unscheduled }.toSeq
+      context.logger.debug(
+        s"remaining instructions:\n${left.mkString("\n")}"
       )
     }
 
