@@ -338,15 +338,19 @@ object GlobalPacketSchedulerTransform
           }
           cycle += 1
         }
+        println(cycle)
         // append the RECV instructions if any
         val recv_to_sched = recv_queue(p.id)
+
         while (recv_to_sched.nonEmpty) {
           val first_recv = recv_to_sched.head
           val recv_time = first_recv._2
           // insert NOPs if messages are arriving later
-          full_sched enqueueAll Seq.fill(recv_time - cycle) { Nop }
+          if (recv_time > cycle) {
+            full_sched enqueueAll Seq.fill(recv_time - cycle) { Nop }
+            cycle = recv_time
+          }
           full_sched enqueue first_recv._1
-          cycle = recv_time
           recv_to_sched.dequeue()
         }
 

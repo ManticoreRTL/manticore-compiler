@@ -1,0 +1,2173 @@
+@PROGRAM [name = "\ArrayMultiplierTester"]
+.prog:
+  .proc \ArrayMultiplierTester:
+    @MEMINIT [ file = "*p_rom.data*", count = 300, width = 32]
+    @SOURCEINFO [file = "array_mult.sv:53.25-53.30"]
+    @DEBUGSYMBOL [ symbol = "\p_rom"]
+    @MEMBLOCK [ block = "\p_rom", width = 32, capacity = 300 ]
+    .mem \p_rom 9
+    @MEMINIT [ file = "*x_rom.data*", count = 300, width = 16]
+    @SOURCEINFO [file = "array_mult.sv:51.25-51.30"]
+    @DEBUGSYMBOL [ symbol = "\x_rom"]
+    @MEMBLOCK [ block = "\x_rom", width = 16, capacity = 300 ]
+    .mem \x_rom 9
+    @MEMINIT [ file = "*y_rom.data*", count = 300, width = 16]
+    @SOURCEINFO [file = "array_mult.sv:52.25-52.30"]
+    @DEBUGSYMBOL [ symbol = "\y_rom"]
+    @MEMBLOCK [ block = "\y_rom", width = 16, capacity = 300 ]
+    .mem \y_rom 9
+    .wire w_$emit_masm_py_209_$tmp 32
+    .wire w_$emit_masm_py_209_$tmp_1 32
+    .wire w_$emit_masm_py_209_$tmp_10 1
+    .wire w_$emit_masm_py_209_$tmp_100 32
+    .wire w_$emit_masm_py_209_$tmp_101 32
+    .wire w_$emit_masm_py_209_$tmp_102 1
+    .wire w_$emit_masm_py_209_$tmp_103 32
+    .wire w_$emit_masm_py_209_$tmp_104 32
+    .wire w_$emit_masm_py_209_$tmp_105 1
+    .wire w_$emit_masm_py_209_$tmp_106 32
+    .wire w_$emit_masm_py_209_$tmp_107 32
+    .wire w_$emit_masm_py_209_$tmp_108 1
+    .wire w_$emit_masm_py_209_$tmp_109 32
+    .wire w_$emit_masm_py_209_$tmp_11 1
+    .wire w_$emit_masm_py_209_$tmp_110 32
+    .wire w_$emit_masm_py_209_$tmp_111 1
+    .wire w_$emit_masm_py_209_$tmp_112 32
+    .wire w_$emit_masm_py_209_$tmp_113 32
+    .wire w_$emit_masm_py_209_$tmp_12 1
+    .wire w_$emit_masm_py_209_$tmp_13 1
+    .wire w_$emit_masm_py_209_$tmp_14 1
+    .wire w_$emit_masm_py_209_$tmp_15 1
+    .wire w_$emit_masm_py_209_$tmp_16 32
+    .wire w_$emit_masm_py_209_$tmp_17 32
+    .wire w_$emit_masm_py_209_$tmp_18 1
+    .wire w_$emit_masm_py_209_$tmp_19 32
+    .wire w_$emit_masm_py_209_$tmp_2 16
+    .wire w_$emit_masm_py_209_$tmp_20 32
+    .wire w_$emit_masm_py_209_$tmp_21 1
+    .wire w_$emit_masm_py_209_$tmp_22 32
+    .wire w_$emit_masm_py_209_$tmp_23 32
+    .wire w_$emit_masm_py_209_$tmp_24 1
+    .wire w_$emit_masm_py_209_$tmp_25 32
+    .wire w_$emit_masm_py_209_$tmp_26 32
+    .wire w_$emit_masm_py_209_$tmp_27 1
+    .wire w_$emit_masm_py_209_$tmp_28 32
+    .wire w_$emit_masm_py_209_$tmp_29 32
+    .wire w_$emit_masm_py_209_$tmp_3 1
+    .wire w_$emit_masm_py_209_$tmp_30 1
+    .wire w_$emit_masm_py_209_$tmp_31 32
+    .wire w_$emit_masm_py_209_$tmp_32 32
+    .wire w_$emit_masm_py_209_$tmp_33 1
+    .wire w_$emit_masm_py_209_$tmp_34 32
+    .wire w_$emit_masm_py_209_$tmp_35 32
+    .wire w_$emit_masm_py_209_$tmp_36 1
+    .wire w_$emit_masm_py_209_$tmp_37 32
+    .wire w_$emit_masm_py_209_$tmp_38 32
+    .wire w_$emit_masm_py_209_$tmp_39 1
+    .wire w_$emit_masm_py_209_$tmp_4 16
+    .wire w_$emit_masm_py_209_$tmp_40 32
+    .wire w_$emit_masm_py_209_$tmp_41 32
+    .wire w_$emit_masm_py_209_$tmp_42 1
+    .wire w_$emit_masm_py_209_$tmp_43 32
+    .wire w_$emit_masm_py_209_$tmp_44 32
+    .wire w_$emit_masm_py_209_$tmp_45 1
+    .wire w_$emit_masm_py_209_$tmp_46 32
+    .wire w_$emit_masm_py_209_$tmp_47 32
+    .wire w_$emit_masm_py_209_$tmp_48 1
+    .wire w_$emit_masm_py_209_$tmp_49 32
+    .wire w_$emit_masm_py_209_$tmp_5 32
+    .wire w_$emit_masm_py_209_$tmp_50 32
+    .wire w_$emit_masm_py_209_$tmp_51 1
+    .wire w_$emit_masm_py_209_$tmp_52 32
+    .wire w_$emit_masm_py_209_$tmp_53 32
+    .wire w_$emit_masm_py_209_$tmp_54 1
+    .wire w_$emit_masm_py_209_$tmp_55 32
+    .wire w_$emit_masm_py_209_$tmp_56 32
+    .wire w_$emit_masm_py_209_$tmp_57 1
+    .wire w_$emit_masm_py_209_$tmp_58 32
+    .wire w_$emit_masm_py_209_$tmp_59 32
+    .wire w_$emit_masm_py_209_$tmp_6 32
+    .wire w_$emit_masm_py_209_$tmp_60 1
+    .wire w_$emit_masm_py_209_$tmp_61 32
+    .wire w_$emit_masm_py_209_$tmp_62 32
+    .wire w_$emit_masm_py_209_$tmp_63 1
+    .wire w_$emit_masm_py_209_$tmp_64 32
+    .wire w_$emit_masm_py_209_$tmp_65 32
+    .wire w_$emit_masm_py_209_$tmp_66 1
+    .wire w_$emit_masm_py_209_$tmp_67 32
+    .wire w_$emit_masm_py_209_$tmp_68 32
+    .wire w_$emit_masm_py_209_$tmp_69 1
+    .wire w_$emit_masm_py_209_$tmp_7 32
+    .wire w_$emit_masm_py_209_$tmp_70 32
+    .wire w_$emit_masm_py_209_$tmp_71 32
+    .wire w_$emit_masm_py_209_$tmp_72 1
+    .wire w_$emit_masm_py_209_$tmp_73 32
+    .wire w_$emit_masm_py_209_$tmp_74 32
+    .wire w_$emit_masm_py_209_$tmp_75 1
+    .wire w_$emit_masm_py_209_$tmp_76 32
+    .wire w_$emit_masm_py_209_$tmp_77 32
+    .wire w_$emit_masm_py_209_$tmp_78 1
+    .wire w_$emit_masm_py_209_$tmp_79 32
+    .wire w_$emit_masm_py_209_$tmp_8 1
+    .wire w_$emit_masm_py_209_$tmp_80 32
+    .wire w_$emit_masm_py_209_$tmp_81 1
+    .wire w_$emit_masm_py_209_$tmp_82 32
+    .wire w_$emit_masm_py_209_$tmp_83 32
+    .wire w_$emit_masm_py_209_$tmp_84 1
+    .wire w_$emit_masm_py_209_$tmp_85 32
+    .wire w_$emit_masm_py_209_$tmp_86 32
+    .wire w_$emit_masm_py_209_$tmp_87 1
+    .wire w_$emit_masm_py_209_$tmp_88 32
+    .wire w_$emit_masm_py_209_$tmp_89 32
+    .wire w_$emit_masm_py_209_$tmp_9 32
+    .wire w_$emit_masm_py_209_$tmp_90 1
+    .wire w_$emit_masm_py_209_$tmp_91 32
+    .wire w_$emit_masm_py_209_$tmp_92 32
+    .wire w_$emit_masm_py_209_$tmp_93 1
+    .wire w_$emit_masm_py_209_$tmp_94 32
+    .wire w_$emit_masm_py_209_$tmp_95 32
+    .wire w_$emit_masm_py_209_$tmp_96 1
+    .wire w_$emit_masm_py_209_$tmp_97 32
+    .wire w_$emit_masm_py_209_$tmp_98 32
+    .wire w_$emit_masm_py_209_$tmp_99 1
+    @REG [id = "$flatten\dut.$procdff$198", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$198_curr 32
+    @REG [id = "$flatten\dut.$procdff$200", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$200_curr 32
+    @REG [id = "$flatten\dut.$procdff$201", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$201_curr 32
+    @REG [id = "$flatten\dut.$procdff$202", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$202_curr 32
+    @REG [id = "$flatten\dut.$procdff$203", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$203_curr 32
+    @REG [id = "$flatten\dut.$procdff$204", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$204_curr 32
+    @REG [id = "$flatten\dut.$procdff$205", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$205_curr 32
+    @REG [id = "$flatten\dut.$procdff$206", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$206_curr 32
+    @REG [id = "$flatten\dut.$procdff$207", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$207_curr 32
+    @REG [id = "$flatten\dut.$procdff$208", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$208_curr 32
+    @REG [id = "$flatten\dut.$procdff$209", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$209_curr 32
+    @REG [id = "$flatten\dut.$procdff$210", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$210_curr 32
+    @REG [id = "$flatten\dut.$procdff$211", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$211_curr 32
+    @REG [id = "$flatten\dut.$procdff$212", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$212_curr 32
+    @REG [id = "$flatten\dut.$procdff$213", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$213_curr 32
+    @REG [id = "$flatten\dut.$procdff$214", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$214_curr 32
+    @REG [id = "$flatten\dut.$procdff$215", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$215_curr 32
+    @REG [id = "$flatten\dut.$procdff$216", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$216_curr 32
+    @REG [id = "$flatten\dut.$procdff$217", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$217_curr 32
+    @REG [id = "$flatten\dut.$procdff$218", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$218_curr 32
+    @REG [id = "$flatten\dut.$procdff$219", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$219_curr 32
+    @REG [id = "$flatten\dut.$procdff$220", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$220_curr 32
+    @REG [id = "$flatten\dut.$procdff$221", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$221_curr 32
+    @REG [id = "$flatten\dut.$procdff$222", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$222_curr 32
+    @REG [id = "$flatten\dut.$procdff$223", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$223_curr 32
+    @REG [id = "$flatten\dut.$procdff$224", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$224_curr 32
+    @REG [id = "$flatten\dut.$procdff$225", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$225_curr 32
+    @REG [id = "$flatten\dut.$procdff$226", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$226_curr 32
+    @REG [id = "$flatten\dut.$procdff$227", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$227_curr 32
+    @REG [id = "$flatten\dut.$procdff$228", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$228_curr 32
+    @REG [id = "$flatten\dut.$procdff$229", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$229_curr 32
+    @REG [id = "$flatten\dut.$procdff$230", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$230_curr 32
+    @REG [id = "$flatten\dut.$procdff$231", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$231_curr 32
+    @REG [id = "$flatten\dut.$procdff$232", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$232_curr 32
+    @REG [id = "$flatten\dut.$procdff$233", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$233_curr 32
+    @REG [id = "$flatten\dut.$procdff$234", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$234_curr 32
+    @REG [id = "$flatten\dut.$procdff$235", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$235_curr 32
+    @REG [id = "$flatten\dut.$procdff$236", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$236_curr 32
+    @REG [id = "$flatten\dut.$procdff$237", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$237_curr 32
+    @REG [id = "$flatten\dut.$procdff$238", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$238_curr 32
+    @REG [id = "$flatten\dut.$procdff$239", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$239_curr 32
+    @REG [id = "$flatten\dut.$procdff$240", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$240_curr 32
+    @REG [id = "$flatten\dut.$procdff$241", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$241_curr 32
+    @REG [id = "$flatten\dut.$procdff$242", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$242_curr 32
+    @REG [id = "$flatten\dut.$procdff$243", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$243_curr 32
+    @REG [id = "$flatten\dut.$procdff$244", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$244_curr 32
+    @REG [id = "$flatten\dut.$procdff$245", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$245_curr 32
+    @REG [id = "$flatten\dut.$procdff$246", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$246_curr 32
+    @REG [id = "$flatten\dut.$procdff$247", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$247_curr 32
+    @REG [id = "$flatten\dut.$procdff$248", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$248_curr 32
+    @REG [id = "$flatten\dut.$procdff$249", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$249_curr 32
+    @REG [id = "$flatten\dut.$procdff$250", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$250_curr 32
+    @REG [id = "$flatten\dut.$procdff$251", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$251_curr 32
+    @REG [id = "$flatten\dut.$procdff$252", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$252_curr 32
+    @REG [id = "$flatten\dut.$procdff$253", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$253_curr 32
+    @REG [id = "$flatten\dut.$procdff$254", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$254_curr 32
+    @REG [id = "$flatten\dut.$procdff$255", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$255_curr 32
+    @REG [id = "$flatten\dut.$procdff$256", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$256_curr 32
+    @REG [id = "$flatten\dut.$procdff$257", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$257_curr 32
+    @REG [id = "$flatten\dut.$procdff$258", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$258_curr 32
+    @REG [id = "$flatten\dut.$procdff$259", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$259_curr 32
+    @REG [id = "$flatten\dut.$procdff$260", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$260_curr 32
+    @REG [id = "$flatten\dut.$procdff$261", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$261_curr 32
+    @REG [id = "$flatten\dut.$procdff$262", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$262_curr 32
+    @REG [id = "$flatten\dut.$procdff$263", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$263_curr 32
+    @REG [id = "$flatten\dut.$procdff$264", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$264_curr 32
+    @REG [id = "$flatten\dut.$procdff$265", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$265_curr 32
+    @REG [id = "$flatten\dut.$procdff$266", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$266_curr 32
+    @REG [id = "$flatten\dut.$procdff$267", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$267_curr 32
+    @REG [id = "$flatten\dut.$procdff$268", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$268_curr 32
+    @REG [id = "$flatten\dut.$procdff$269", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$269_curr 32
+    @REG [id = "$flatten\dut.$procdff$270", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$270_curr 32
+    @REG [id = "$flatten\dut.$procdff$271", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$271_curr 32
+    @REG [id = "$flatten\dut.$procdff$272", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$272_curr 32
+    @REG [id = "$flatten\dut.$procdff$273", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$273_curr 32
+    @REG [id = "$flatten\dut.$procdff$274", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$274_curr 32
+    @REG [id = "$flatten\dut.$procdff$275", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$275_curr 32
+    @REG [id = "$flatten\dut.$procdff$276", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$276_curr 32
+    @REG [id = "$flatten\dut.$procdff$277", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$277_curr 32
+    @REG [id = "$flatten\dut.$procdff$278", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$278_curr 32
+    @REG [id = "$flatten\dut.$procdff$279", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$279_curr 32
+    @REG [id = "$flatten\dut.$procdff$280", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$280_curr 32
+    @REG [id = "$flatten\dut.$procdff$281", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$281_curr 32
+    @REG [id = "$flatten\dut.$procdff$282", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$282_curr 32
+    @REG [id = "$flatten\dut.$procdff$283", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$283_curr 32
+    @REG [id = "$flatten\dut.$procdff$284", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$284_curr 32
+    @REG [id = "$flatten\dut.$procdff$285", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$285_curr 32
+    @REG [id = "$flatten\dut.$procdff$286", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$286_curr 32
+    @REG [id = "$flatten\dut.$procdff$287", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$287_curr 32
+    @REG [id = "$flatten\dut.$procdff$288", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$288_curr 32
+    @REG [id = "$flatten\dut.$procdff$289", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$289_curr 32
+    @REG [id = "$flatten\dut.$procdff$290", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$290_curr 32
+    @REG [id = "$flatten\dut.$procdff$291", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$291_curr 32
+    @REG [id = "$flatten\dut.$procdff$292", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$292_curr 32
+    @REG [id = "$flatten\dut.$procdff$293", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$293_curr 32
+    @REG [id = "$procdff$194", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$procdff$194_curr 1 1
+    @REG [id = "$procdff$195", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$procdff$195_curr 1 1
+    @REG [id = "$procdff$196", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$procdff$196_curr 16
+    @REG [id = "$procdff$197", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$procdff$197_curr 16
+    @REG [id = "$flatten\dut.$procdff$198", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$198_next 32
+    @REG [id = "$flatten\dut.$procdff$200", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$200_next 32
+    @REG [id = "$flatten\dut.$procdff$201", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$201_next 32
+    @REG [id = "$flatten\dut.$procdff$202", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$202_next 32
+    @REG [id = "$flatten\dut.$procdff$203", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$203_next 32
+    @REG [id = "$flatten\dut.$procdff$204", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$204_next 32
+    @REG [id = "$flatten\dut.$procdff$205", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$205_next 32
+    @REG [id = "$flatten\dut.$procdff$206", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$206_next 32
+    @REG [id = "$flatten\dut.$procdff$207", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$207_next 32
+    @REG [id = "$flatten\dut.$procdff$208", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$208_next 32
+    @REG [id = "$flatten\dut.$procdff$209", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$209_next 32
+    @REG [id = "$flatten\dut.$procdff$210", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$210_next 32
+    @REG [id = "$flatten\dut.$procdff$211", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$211_next 32
+    @REG [id = "$flatten\dut.$procdff$212", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$212_next 32
+    @REG [id = "$flatten\dut.$procdff$213", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$213_next 32
+    @REG [id = "$flatten\dut.$procdff$214", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$214_next 32
+    @REG [id = "$flatten\dut.$procdff$215", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$215_next 32
+    @REG [id = "$flatten\dut.$procdff$216", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$216_next 32
+    @REG [id = "$flatten\dut.$procdff$217", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$217_next 32
+    @REG [id = "$flatten\dut.$procdff$218", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$218_next 32
+    @REG [id = "$flatten\dut.$procdff$219", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$219_next 32
+    @REG [id = "$flatten\dut.$procdff$220", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$220_next 32
+    @REG [id = "$flatten\dut.$procdff$221", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$221_next 32
+    @REG [id = "$flatten\dut.$procdff$222", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$222_next 32
+    @REG [id = "$flatten\dut.$procdff$223", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$223_next 32
+    @REG [id = "$flatten\dut.$procdff$224", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$224_next 32
+    @REG [id = "$flatten\dut.$procdff$225", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$225_next 32
+    @REG [id = "$flatten\dut.$procdff$226", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$226_next 32
+    @REG [id = "$flatten\dut.$procdff$227", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$227_next 32
+    @REG [id = "$flatten\dut.$procdff$228", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$228_next 32
+    @REG [id = "$flatten\dut.$procdff$229", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$229_next 32
+    @REG [id = "$flatten\dut.$procdff$230", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$230_next 32
+    @REG [id = "$flatten\dut.$procdff$231", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$231_next 32
+    @REG [id = "$flatten\dut.$procdff$232", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$232_next 32
+    @REG [id = "$flatten\dut.$procdff$233", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$233_next 32
+    @REG [id = "$flatten\dut.$procdff$234", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$234_next 32
+    @REG [id = "$flatten\dut.$procdff$235", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$235_next 32
+    @REG [id = "$flatten\dut.$procdff$236", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$236_next 32
+    @REG [id = "$flatten\dut.$procdff$237", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$237_next 32
+    @REG [id = "$flatten\dut.$procdff$238", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$238_next 32
+    @REG [id = "$flatten\dut.$procdff$239", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$239_next 32
+    @REG [id = "$flatten\dut.$procdff$240", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$240_next 32
+    @REG [id = "$flatten\dut.$procdff$241", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$241_next 32
+    @REG [id = "$flatten\dut.$procdff$242", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$242_next 32
+    @REG [id = "$flatten\dut.$procdff$243", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$243_next 32
+    @REG [id = "$flatten\dut.$procdff$244", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$244_next 32
+    @REG [id = "$flatten\dut.$procdff$245", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$245_next 32
+    @REG [id = "$flatten\dut.$procdff$246", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$246_next 32
+    @REG [id = "$flatten\dut.$procdff$247", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$247_next 32
+    @REG [id = "$flatten\dut.$procdff$248", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$248_next 32
+    @REG [id = "$flatten\dut.$procdff$249", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$249_next 32
+    @REG [id = "$flatten\dut.$procdff$250", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$250_next 32
+    @REG [id = "$flatten\dut.$procdff$251", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$251_next 32
+    @REG [id = "$flatten\dut.$procdff$252", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$252_next 32
+    @REG [id = "$flatten\dut.$procdff$253", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$253_next 32
+    @REG [id = "$flatten\dut.$procdff$254", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$254_next 32
+    @REG [id = "$flatten\dut.$procdff$255", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$255_next 32
+    @REG [id = "$flatten\dut.$procdff$256", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$256_next 32
+    @REG [id = "$flatten\dut.$procdff$257", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$257_next 32
+    @REG [id = "$flatten\dut.$procdff$258", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$258_next 32
+    @REG [id = "$flatten\dut.$procdff$259", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$259_next 32
+    @REG [id = "$flatten\dut.$procdff$260", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$260_next 32
+    @REG [id = "$flatten\dut.$procdff$261", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$261_next 32
+    @REG [id = "$flatten\dut.$procdff$262", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$262_next 32
+    @REG [id = "$flatten\dut.$procdff$263", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$263_next 32
+    @REG [id = "$flatten\dut.$procdff$264", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$264_next 32
+    @REG [id = "$flatten\dut.$procdff$265", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$265_next 32
+    @REG [id = "$flatten\dut.$procdff$266", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$266_next 32
+    @REG [id = "$flatten\dut.$procdff$267", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$267_next 32
+    @REG [id = "$flatten\dut.$procdff$268", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$268_next 32
+    @REG [id = "$flatten\dut.$procdff$269", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$269_next 32
+    @REG [id = "$flatten\dut.$procdff$270", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$270_next 32
+    @REG [id = "$flatten\dut.$procdff$271", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$271_next 32
+    @REG [id = "$flatten\dut.$procdff$272", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$272_next 32
+    @REG [id = "$flatten\dut.$procdff$273", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$273_next 32
+    @REG [id = "$flatten\dut.$procdff$274", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$274_next 32
+    @REG [id = "$flatten\dut.$procdff$275", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$275_next 32
+    @REG [id = "$flatten\dut.$procdff$276", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$276_next 32
+    @REG [id = "$flatten\dut.$procdff$277", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$277_next 32
+    @REG [id = "$flatten\dut.$procdff$278", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$278_next 32
+    @REG [id = "$flatten\dut.$procdff$279", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$279_next 32
+    @REG [id = "$flatten\dut.$procdff$280", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$280_next 32
+    @REG [id = "$flatten\dut.$procdff$281", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$281_next 32
+    @REG [id = "$flatten\dut.$procdff$282", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$282_next 32
+    @REG [id = "$flatten\dut.$procdff$283", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$283_next 32
+    @REG [id = "$flatten\dut.$procdff$284", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$284_next 32
+    @REG [id = "$flatten\dut.$procdff$285", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$285_next 32
+    @REG [id = "$flatten\dut.$procdff$286", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$286_next 32
+    @REG [id = "$flatten\dut.$procdff$287", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$287_next 32
+    @REG [id = "$flatten\dut.$procdff$288", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$288_next 32
+    @REG [id = "$flatten\dut.$procdff$289", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$289_next 32
+    @REG [id = "$flatten\dut.$procdff$290", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$290_next 32
+    @REG [id = "$flatten\dut.$procdff$291", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$291_next 32
+    @REG [id = "$flatten\dut.$procdff$292", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$292_next 32
+    @REG [id = "$flatten\dut.$procdff$293", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$flatten\dut_$procdff$293_next 32
+    @REG [id = "$procdff$194", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$procdff$194_next 1
+    @REG [id = "$procdff$195", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$procdff$195_next 1
+    @REG [id = "$procdff$196", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$procdff$196_next 16
+    @REG [id = "$procdff$197", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_328_$procdff$197_next 16
+    .wire w_$emit_masm_py_428_$concat_out_ 32
+    .wire w_$emit_masm_py_428_$concat_out__1 32
+    .wire w_$emit_masm_py_428_$concat_out__10 32
+    .wire w_$emit_masm_py_428_$concat_out__11 32
+    .wire w_$emit_masm_py_428_$concat_out__12 32
+    .wire w_$emit_masm_py_428_$concat_out__13 32
+    .wire w_$emit_masm_py_428_$concat_out__14 32
+    .wire w_$emit_masm_py_428_$concat_out__15 32
+    .wire w_$emit_masm_py_428_$concat_out__16 32
+    .wire w_$emit_masm_py_428_$concat_out__17 32
+    .wire w_$emit_masm_py_428_$concat_out__18 32
+    .wire w_$emit_masm_py_428_$concat_out__19 32
+    .wire w_$emit_masm_py_428_$concat_out__2 32
+    .wire w_$emit_masm_py_428_$concat_out__20 32
+    .wire w_$emit_masm_py_428_$concat_out__21 32
+    .wire w_$emit_masm_py_428_$concat_out__22 32
+    .wire w_$emit_masm_py_428_$concat_out__23 32
+    .wire w_$emit_masm_py_428_$concat_out__24 32
+    .wire w_$emit_masm_py_428_$concat_out__25 32
+    .wire w_$emit_masm_py_428_$concat_out__26 32
+    .wire w_$emit_masm_py_428_$concat_out__27 32
+    .wire w_$emit_masm_py_428_$concat_out__28 32
+    .wire w_$emit_masm_py_428_$concat_out__29 32
+    .wire w_$emit_masm_py_428_$concat_out__3 32
+    .wire w_$emit_masm_py_428_$concat_out__30 32
+    .wire w_$emit_masm_py_428_$concat_out__31 32
+    .wire w_$emit_masm_py_428_$concat_out__32 32
+    .wire w_$emit_masm_py_428_$concat_out__33 32
+    .wire w_$emit_masm_py_428_$concat_out__34 32
+    .wire w_$emit_masm_py_428_$concat_out__4 32
+    .wire w_$emit_masm_py_428_$concat_out__5 32
+    .wire w_$emit_masm_py_428_$concat_out__6 32
+    .wire w_$emit_masm_py_428_$concat_out__7 32
+    .wire w_$emit_masm_py_428_$concat_out__8 32
+    .wire w_$emit_masm_py_428_$concat_out__9 32
+    .wire w_$emit_masm_py_549_$slice_out_ 16
+    .wire w_$emit_masm_py_549_$slice_out__1 1
+    .wire w_$emit_masm_py_549_$slice_out__10 1
+    .wire w_$emit_masm_py_549_$slice_out__11 1
+    .wire w_$emit_masm_py_549_$slice_out__12 1
+    .wire w_$emit_masm_py_549_$slice_out__13 1
+    .wire w_$emit_masm_py_549_$slice_out__14 1
+    .wire w_$emit_masm_py_549_$slice_out__15 1
+    .wire w_$emit_masm_py_549_$slice_out__16 1
+    .wire w_$emit_masm_py_549_$slice_out__17 1
+    .wire w_$emit_masm_py_549_$slice_out__18 1
+    .wire w_$emit_masm_py_549_$slice_out__19 1
+    .wire w_$emit_masm_py_549_$slice_out__2 16
+    .wire w_$emit_masm_py_549_$slice_out__20 1
+    .wire w_$emit_masm_py_549_$slice_out__21 1
+    .wire w_$emit_masm_py_549_$slice_out__22 1
+    .wire w_$emit_masm_py_549_$slice_out__23 1
+    .wire w_$emit_masm_py_549_$slice_out__24 1
+    .wire w_$emit_masm_py_549_$slice_out__25 1
+    .wire w_$emit_masm_py_549_$slice_out__26 1
+    .wire w_$emit_masm_py_549_$slice_out__27 1
+    .wire w_$emit_masm_py_549_$slice_out__28 1
+    .wire w_$emit_masm_py_549_$slice_out__29 1
+    .wire w_$emit_masm_py_549_$slice_out__3 1
+    .wire w_$emit_masm_py_549_$slice_out__30 1
+    .wire w_$emit_masm_py_549_$slice_out__31 1
+    .wire w_$emit_masm_py_549_$slice_out__32 1
+    .wire w_$emit_masm_py_549_$slice_out__33 1
+    .wire w_$emit_masm_py_549_$slice_out__34 1
+    .wire w_$emit_masm_py_549_$slice_out__35 1
+    .wire w_$emit_masm_py_549_$slice_out__36 8
+    .wire w_$emit_masm_py_549_$slice_out__37 9
+    .wire w_$emit_masm_py_549_$slice_out__38 10
+    .wire w_$emit_masm_py_549_$slice_out__39 11
+    .wire w_$emit_masm_py_549_$slice_out__4 1
+    .wire w_$emit_masm_py_549_$slice_out__40 12
+    .wire w_$emit_masm_py_549_$slice_out__41 13
+    .wire w_$emit_masm_py_549_$slice_out__42 14
+    .wire w_$emit_masm_py_549_$slice_out__43 15
+    .wire w_$emit_masm_py_549_$slice_out__44 16
+    .wire w_$emit_masm_py_549_$slice_out__45 17
+    .wire w_$emit_masm_py_549_$slice_out__46 31
+    .wire w_$emit_masm_py_549_$slice_out__47 18
+    .wire w_$emit_masm_py_549_$slice_out__48 19
+    .wire w_$emit_masm_py_549_$slice_out__49 20
+    .wire w_$emit_masm_py_549_$slice_out__5 1
+    .wire w_$emit_masm_py_549_$slice_out__50 21
+    .wire w_$emit_masm_py_549_$slice_out__51 22
+    .wire w_$emit_masm_py_549_$slice_out__52 23
+    .wire w_$emit_masm_py_549_$slice_out__53 24
+    .wire w_$emit_masm_py_549_$slice_out__54 25
+    .wire w_$emit_masm_py_549_$slice_out__55 26
+    .wire w_$emit_masm_py_549_$slice_out__56 27
+    .wire w_$emit_masm_py_549_$slice_out__57 28
+    .wire w_$emit_masm_py_549_$slice_out__58 29
+    .wire w_$emit_masm_py_549_$slice_out__59 30
+    .wire w_$emit_masm_py_549_$slice_out__6 1
+    .wire w_$emit_masm_py_549_$slice_out__60 31
+    .wire w_$emit_masm_py_549_$slice_out__61 2
+    .wire w_$emit_masm_py_549_$slice_out__62 3
+    .wire w_$emit_masm_py_549_$slice_out__63 4
+    .wire w_$emit_masm_py_549_$slice_out__64 5
+    .wire w_$emit_masm_py_549_$slice_out__65 6
+    .wire w_$emit_masm_py_549_$slice_out__66 7
+    .wire w_$emit_masm_py_549_$slice_out__67 1
+    .wire w_$emit_masm_py_549_$slice_out__7 1
+    .wire w_$emit_masm_py_549_$slice_out__8 1
+    .wire w_$emit_masm_py_549_$slice_out__9 1
+    .wire w_$emit_masm_py_661_$const_out_ 32
+    .wire w_$emit_masm_py_661_$const_out__1 32
+    .wire w_$emit_masm_py_661_$const_out__10 32
+    .wire w_$emit_masm_py_661_$const_out__11 32
+    .wire w_$emit_masm_py_661_$const_out__12 32
+    .wire w_$emit_masm_py_661_$const_out__13 32
+    .wire w_$emit_masm_py_661_$const_out__14 32
+    .wire w_$emit_masm_py_661_$const_out__15 32
+    .wire w_$emit_masm_py_661_$const_out__16 32
+    .wire w_$emit_masm_py_661_$const_out__17 32
+    .wire w_$emit_masm_py_661_$const_out__18 32
+    .wire w_$emit_masm_py_661_$const_out__19 32
+    .wire w_$emit_masm_py_661_$const_out__2 32
+    .wire w_$emit_masm_py_661_$const_out__20 32
+    .wire w_$emit_masm_py_661_$const_out__21 32
+    .wire w_$emit_masm_py_661_$const_out__22 32
+    .wire w_$emit_masm_py_661_$const_out__23 32
+    .wire w_$emit_masm_py_661_$const_out__24 32
+    .wire w_$emit_masm_py_661_$const_out__25 32
+    .wire w_$emit_masm_py_661_$const_out__26 32
+    .wire w_$emit_masm_py_661_$const_out__27 32
+    .wire w_$emit_masm_py_661_$const_out__28 32
+    .wire w_$emit_masm_py_661_$const_out__29 32
+    .wire w_$emit_masm_py_661_$const_out__3 32
+    .wire w_$emit_masm_py_661_$const_out__30 32
+    .wire w_$emit_masm_py_661_$const_out__31 32
+    .wire w_$emit_masm_py_661_$const_out__32 32
+    .wire w_$emit_masm_py_661_$const_out__33 32
+    .wire w_$emit_masm_py_661_$const_out__34 32
+    .wire w_$emit_masm_py_661_$const_out__35 32
+    .wire w_$emit_masm_py_661_$const_out__36 32
+    .wire w_$emit_masm_py_661_$const_out__37 32
+    .wire w_$emit_masm_py_661_$const_out__38 32
+    .wire w_$emit_masm_py_661_$const_out__39 32
+    .wire w_$emit_masm_py_661_$const_out__4 1
+    .wire w_$emit_masm_py_661_$const_out__40 32
+    .wire w_$emit_masm_py_661_$const_out__41 32
+    .wire w_$emit_masm_py_661_$const_out__42 32
+    .wire w_$emit_masm_py_661_$const_out__43 16
+    .wire w_$emit_masm_py_661_$const_out__44 16
+    .wire w_$emit_masm_py_661_$const_out__45 24
+    .wire w_$emit_masm_py_661_$const_out__46 23
+    .wire w_$emit_masm_py_661_$const_out__47 22
+    .wire w_$emit_masm_py_661_$const_out__48 21
+    .wire w_$emit_masm_py_661_$const_out__49 20
+    .wire w_$emit_masm_py_661_$const_out__5 1
+    .wire w_$emit_masm_py_661_$const_out__50 19
+    .wire w_$emit_masm_py_661_$const_out__51 18
+    .wire w_$emit_masm_py_661_$const_out__52 17
+    .wire w_$emit_masm_py_661_$const_out__53 16
+    .wire w_$emit_masm_py_661_$const_out__54 15
+    .wire w_$emit_masm_py_661_$const_out__55 1
+    .wire w_$emit_masm_py_661_$const_out__56 14
+    .wire w_$emit_masm_py_661_$const_out__57 13
+    .wire w_$emit_masm_py_661_$const_out__58 12
+    .wire w_$emit_masm_py_661_$const_out__59 11
+    .wire w_$emit_masm_py_661_$const_out__6 1
+    .wire w_$emit_masm_py_661_$const_out__60 10
+    .wire w_$emit_masm_py_661_$const_out__61 9
+    .wire w_$emit_masm_py_661_$const_out__62 8
+    .wire w_$emit_masm_py_661_$const_out__63 7
+    .wire w_$emit_masm_py_661_$const_out__64 6
+    .wire w_$emit_masm_py_661_$const_out__65 5
+    .wire w_$emit_masm_py_661_$const_out__66 31
+    .wire w_$emit_masm_py_661_$const_out__67 4
+    .wire w_$emit_masm_py_661_$const_out__68 3
+    .wire w_$emit_masm_py_661_$const_out__69 2
+    .wire w_$emit_masm_py_661_$const_out__7 1
+    .wire w_$emit_masm_py_661_$const_out__70 16
+    .wire w_$emit_masm_py_661_$const_out__71 1
+    .wire w_$emit_masm_py_661_$const_out__72 30
+    .wire w_$emit_masm_py_661_$const_out__73 29
+    .wire w_$emit_masm_py_661_$const_out__74 28
+    .wire w_$emit_masm_py_661_$const_out__75 27
+    .wire w_$emit_masm_py_661_$const_out__76 26
+    .wire w_$emit_masm_py_661_$const_out__77 25
+    .wire w_$emit_masm_py_661_$const_out__8 1
+    .wire w_$emit_masm_py_661_$const_out__9 1
+    .wire w_$emit_masm_py_862_$replicate_out_ 1
+    @SOURCEINFO [file = "array_mult.sv:73.3-97.6"]
+    .wire w_\_0_ 16
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    .wire w_\_10_ 1
+    @SOURCEINFO [file = "array_mult.sv:86.20-86.44"]
+    .wire w_\_12_ 1
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    .wire w_\_15_ 1
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    .wire w_\_16_ 1
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    .wire w_\_18_ 1
+    @SOURCEINFO [file = "array_mult.sv:74.9-74.33"]
+    .wire w_\_19_ 1
+    @SOURCEINFO [file = "array_mult.sv:73.3-97.6"]
+    .wire w_\_1_ 16
+    @SOURCEINFO [file = "array_mult.sv:86.29-86.34"]
+    .wire w_\_20_ 32
+    @SOURCEINFO [file = "array_mult.sv:75.19-75.31"]
+    .wire w_\_8_ 32
+    @SOURCEINFO [file = "array_mult.sv:78.19-78.31"]
+    .wire w_\_9_ 32
+    @SOURCEINFO [file = "array_mult.sv:44.16-44.21"]
+    @DEBUGSYMBOL [ symbol = "\clock"]
+    .input pi_\clock 1
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_expect.2"]
+    .wire po_\cond_out_$masm_expect_2 1
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_stop.5"]
+    .wire po_\cond_out_$masm_stop_5 1
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:10.37-10.38"]
+    @DEBUGSYMBOL [ symbol = "dut.P"]
+    .wire w_\dut_P 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:7.32-7.33"]
+    @DEBUGSYMBOL [ symbol = "dut.X"]
+    .wire w_\dut_X 16
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:8.32-8.33"]
+    @DEBUGSYMBOL [ symbol = "dut.Y"]
+    .wire w_\dut_Y 16
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__0_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__10_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__11_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__12_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__13_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__14_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__15_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__162_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__163_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__164_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__165_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__166_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__167_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__168_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__169_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__16_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__170_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__171_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__172_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__173_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__174_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__175_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__176_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__177_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__178_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__179_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__17_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__180_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__181_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__182_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__183_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__184_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__185_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__186_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__187_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__188_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__189_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__18_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__190_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__191_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__192_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__193_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:22.3-37.6"]
+    .wire w_\dut__195_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__19_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__1_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__20_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__21_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__22_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__23_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__24_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__25_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__26_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__27_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__28_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__29_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__2_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__30_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__3_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__4_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__5_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__6_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__7_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__8_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:35.19-35.54"]
+    .wire w_\dut__9_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:16.29-16.39"]
+    @DEBUGSYMBOL [ symbol = "dut.busy_stage"]
+    .wire w_\dut_busy_stage 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[0]"]
+    .wire w_\dut_preg_0_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[10]"]
+    .wire w_\dut_preg_10_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[11]"]
+    .wire w_\dut_preg_11_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[12]"]
+    .wire w_\dut_preg_12_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[13]"]
+    .wire w_\dut_preg_13_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[14]"]
+    .wire w_\dut_preg_14_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[15]"]
+    .wire w_\dut_preg_15_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[16]"]
+    .wire w_\dut_preg_16_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[17]"]
+    .wire w_\dut_preg_17_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[18]"]
+    .wire w_\dut_preg_18_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[19]"]
+    .wire w_\dut_preg_19_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[1]"]
+    .wire w_\dut_preg_1_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[20]"]
+    .wire w_\dut_preg_20_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[21]"]
+    .wire w_\dut_preg_21_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[22]"]
+    .wire w_\dut_preg_22_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[23]"]
+    .wire w_\dut_preg_23_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[24]"]
+    .wire w_\dut_preg_24_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[25]"]
+    .wire w_\dut_preg_25_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[26]"]
+    .wire w_\dut_preg_26_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[27]"]
+    .wire w_\dut_preg_27_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[28]"]
+    .wire w_\dut_preg_28_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[29]"]
+    .wire w_\dut_preg_29_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[2]"]
+    .wire w_\dut_preg_2_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[30]"]
+    .wire w_\dut_preg_30_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[3]"]
+    .wire w_\dut_preg_3_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[4]"]
+    .wire w_\dut_preg_4_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[5]"]
+    .wire w_\dut_preg_5_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[6]"]
+    .wire w_\dut_preg_6_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[7]"]
+    .wire w_\dut_preg_7_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[8]"]
+    .wire w_\dut_preg_8_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:18.29-18.33"]
+    @DEBUGSYMBOL [ symbol = "dut.preg[9]"]
+    .wire w_\dut_preg_9_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[0]"]
+    .wire w_\dut_xreg_0_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[10]"]
+    .wire w_\dut_xreg_10_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[11]"]
+    .wire w_\dut_xreg_11_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[12]"]
+    .wire w_\dut_xreg_12_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[13]"]
+    .wire w_\dut_xreg_13_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[14]"]
+    .wire w_\dut_xreg_14_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[15]"]
+    .wire w_\dut_xreg_15_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[16]"]
+    .wire w_\dut_xreg_16_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[17]"]
+    .wire w_\dut_xreg_17_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[18]"]
+    .wire w_\dut_xreg_18_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[19]"]
+    .wire w_\dut_xreg_19_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[1]"]
+    .wire w_\dut_xreg_1_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[20]"]
+    .wire w_\dut_xreg_20_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[21]"]
+    .wire w_\dut_xreg_21_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[22]"]
+    .wire w_\dut_xreg_22_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[23]"]
+    .wire w_\dut_xreg_23_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[24]"]
+    .wire w_\dut_xreg_24_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[25]"]
+    .wire w_\dut_xreg_25_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[26]"]
+    .wire w_\dut_xreg_26_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[27]"]
+    .wire w_\dut_xreg_27_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[28]"]
+    .wire w_\dut_xreg_28_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[29]"]
+    .wire w_\dut_xreg_29_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[2]"]
+    .wire w_\dut_xreg_2_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[30]"]
+    .wire w_\dut_xreg_30_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[3]"]
+    .wire w_\dut_xreg_3_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[4]"]
+    .wire w_\dut_xreg_4_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[5]"]
+    .wire w_\dut_xreg_5_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[6]"]
+    .wire w_\dut_xreg_6_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[7]"]
+    .wire w_\dut_xreg_7_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[8]"]
+    .wire w_\dut_xreg_8_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:15.29-15.33"]
+    @DEBUGSYMBOL [ symbol = "dut.xreg[9]"]
+    .wire w_\dut_xreg_9_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[0]"]
+    .wire w_\dut_yreg_0_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[10]"]
+    .wire w_\dut_yreg_10_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[11]"]
+    .wire w_\dut_yreg_11_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[12]"]
+    .wire w_\dut_yreg_12_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[13]"]
+    .wire w_\dut_yreg_13_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[14]"]
+    .wire w_\dut_yreg_14_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[15]"]
+    .wire w_\dut_yreg_15_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[16]"]
+    .wire w_\dut_yreg_16_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[17]"]
+    .wire w_\dut_yreg_17_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[18]"]
+    .wire w_\dut_yreg_18_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[19]"]
+    .wire w_\dut_yreg_19_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[1]"]
+    .wire w_\dut_yreg_1_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[20]"]
+    .wire w_\dut_yreg_20_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[21]"]
+    .wire w_\dut_yreg_21_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[22]"]
+    .wire w_\dut_yreg_22_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[23]"]
+    .wire w_\dut_yreg_23_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[24]"]
+    .wire w_\dut_yreg_24_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[25]"]
+    .wire w_\dut_yreg_25_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[26]"]
+    .wire w_\dut_yreg_26_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[27]"]
+    .wire w_\dut_yreg_27_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[28]"]
+    .wire w_\dut_yreg_28_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[29]"]
+    .wire w_\dut_yreg_29_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[2]"]
+    .wire w_\dut_yreg_2_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[30]"]
+    .wire w_\dut_yreg_30_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[3]"]
+    .wire w_\dut_yreg_3_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[4]"]
+    .wire w_\dut_yreg_4_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[5]"]
+    .wire w_\dut_yreg_5_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[6]"]
+    .wire w_\dut_yreg_6_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[7]"]
+    .wire w_\dut_yreg_7_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[8]"]
+    .wire w_\dut_yreg_8_ 32
+    @SOURCEINFO [file = "array_mult.sv:64.5-71.4|array_mult.sv:17.29-17.33"]
+    @DEBUGSYMBOL [ symbol = "dut.yreg[9]"]
+    .wire w_\dut_yreg_9_ 32
+    @SOURCEINFO [file = "array_mult.sv:60.25-60.33"]
+    @DEBUGSYMBOL [ symbol = "\icounter"]
+    .wire w_\icounter 16 0
+    @SOURCEINFO [file = "array_mult.sv:61.25-61.33"]
+    @DEBUGSYMBOL [ symbol = "\ocounter"]
+    .wire w_\ocounter 16 0
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_expect.0"]
+    .wire w_\reg_cond_$masm_expect_0 1 1
+    @SOURCEINFO [file = "array_mult.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_stop.3"]
+    .wire w_\reg_cond_$masm_stop_3 1 1
+    .wire w_0 32
+    .wire w_1 32
+    .wire w_2 32
+    .const c_0 5 0b10000
+    .wire w_3 32
+    .wire w_4 32
+    .wire w_5 32
+    .const c_1 5 0b10000
+    .wire w_6 32
+    .wire w_7 32
+    .wire w_8 32
+    .const c_2 5 0b11000
+    .wire w_9 32
+    .wire w_10 32
+    .wire w_11 32
+    .const c_3 5 0b10111
+    .wire w_12 32
+    .wire w_13 32
+    .wire w_14 32
+    .const c_4 5 0b10110
+    .wire w_15 32
+    .wire w_16 32
+    .wire w_17 32
+    .const c_5 5 0b10101
+    .wire w_18 32
+    .wire w_19 32
+    .wire w_20 32
+    .const c_6 5 0b10100
+    .wire w_21 32
+    .wire w_22 32
+    .wire w_23 32
+    .const c_7 5 0b10011
+    .wire w_24 32
+    .wire w_25 32
+    .wire w_26 32
+    .const c_8 5 0b10010
+    .wire w_27 32
+    .wire w_28 32
+    .wire w_29 32
+    .const c_9 5 0b10001
+    .wire w_30 32
+    .wire w_31 32
+    .wire w_32 32
+    .const c_10 5 0b10000
+    .wire w_33 32
+    .wire w_34 32
+    .wire w_35 32
+    .const c_11 4 0b1111
+    .wire w_36 32
+    .wire w_37 32
+    .wire w_38 32
+    .const c_12 1 0b1
+    .wire w_39 32
+    .wire w_40 32
+    .wire w_41 32
+    .const c_13 4 0b1110
+    .wire w_42 32
+    .wire w_43 32
+    .wire w_44 32
+    .const c_14 4 0b1101
+    .wire w_45 32
+    .wire w_46 32
+    .wire w_47 32
+    .const c_15 4 0b1100
+    .wire w_48 32
+    .wire w_49 32
+    .wire w_50 32
+    .const c_16 4 0b1011
+    .wire w_51 32
+    .wire w_52 32
+    .wire w_53 32
+    .const c_17 4 0b1010
+    .wire w_54 32
+    .wire w_55 32
+    .wire w_56 32
+    .const c_18 4 0b1001
+    .wire w_57 32
+    .wire w_58 32
+    .wire w_59 32
+    .const c_19 4 0b1000
+    .wire w_60 32
+    .wire w_61 32
+    .wire w_62 32
+    .const c_20 3 0b111
+    .wire w_63 32
+    .wire w_64 32
+    .wire w_65 32
+    .const c_21 3 0b110
+    .wire w_66 32
+    .wire w_67 32
+    .wire w_68 32
+    .const c_22 3 0b101
+    .wire w_69 32
+    .wire w_70 32
+    .wire w_71 32
+    .const c_23 5 0b11111
+    .wire w_72 32
+    .wire w_73 32
+    .wire w_74 32
+    .const c_24 3 0b100
+    .wire w_75 32
+    .wire w_76 32
+    .wire w_77 32
+    .const c_25 2 0b11
+    .wire w_78 32
+    .wire w_79 32
+    .wire w_80 32
+    .const c_26 2 0b10
+    .wire w_81 32
+    .wire w_82 32
+    .wire w_83 32
+    .const c_27 5 0b10000
+    .wire w_84 32
+    .wire w_85 32
+    .wire w_86 32
+    .const c_28 5 0b11111
+    .wire w_87 32
+    .wire w_88 32
+    .wire w_89 32
+    .const c_29 5 0b11110
+    .wire w_90 32
+    .wire w_91 32
+    .wire w_92 32
+    .const c_30 5 0b11101
+    .wire w_93 32
+    .wire w_94 32
+    .wire w_95 32
+    .const c_31 5 0b11100
+    .wire w_96 32
+    .wire w_97 32
+    .wire w_98 32
+    .const c_32 5 0b11011
+    .wire w_99 32
+    .wire w_100 32
+    .wire w_101 32
+    .const c_33 5 0b11010
+    .wire w_102 32
+    .wire w_103 32
+    .wire w_104 32
+    .const c_34 5 0b11001
+    .const c_35 6 0b000000
+    .const c_36 6 0b000000
+    .const c_37 6 0b011010
+    .const c_38 6 0b011001
+    .const c_39 6 0b011000
+    .const c_40 6 0b010111
+    .const c_41 6 0b010110
+    .const c_42 6 0b010101
+    .const c_43 6 0b010100
+    .const c_44 6 0b010011
+    .const c_45 6 0b010010
+    .const c_46 6 0b010001
+    .const c_47 6 0b000000
+    .const c_48 6 0b010000
+    .const c_49 6 0b001111
+    .const c_50 6 0b001110
+    .const c_51 6 0b001101
+    .const c_52 6 0b001100
+    .const c_53 6 0b001011
+    .const c_54 6 0b001010
+    .const c_55 6 0b001001
+    .const c_56 6 0b001000
+    .const c_57 6 0b000111
+    .const c_58 6 0b000000
+    .const c_59 6 0b000110
+    .const c_60 6 0b000101
+    .const c_61 6 0b000100
+    .const c_62 6 0b000011
+    .const c_63 6 0b000010
+    .const c_64 5 0b00000
+    .const c_65 6 0b000000
+    .const c_66 6 0b000000
+    .const c_67 6 0b000000
+    .const c_68 6 0b000000
+    .const c_69 6 0b000001
+    .const c_70 6 0b000000
+    .const c_71 6 0b000000
+    .const c_72 6 0b000000
+    .const c_73 6 0b000000
+    .const c_74 6 0b000000
+    .const c_75 6 0b000000
+    .const c_76 6 0b000000
+    .const c_77 6 0b000000
+    .const c_78 6 0b000000
+    .const c_79 6 0b000000
+    .const c_80 6 0b011111
+    .const c_81 6 0b000000
+    .const c_82 6 0b000000
+    .const c_83 6 0b000000
+    .const c_84 6 0b000000
+    .const c_85 6 0b000000
+    .const c_86 6 0b000000
+    .const c_87 6 0b000000
+    .const c_88 6 0b000000
+    .const c_89 6 0b000000
+    .const c_90 6 0b000000
+    .const c_91 6 0b011110
+    .const c_92 6 0b000001
+    .const c_93 6 0b000000
+    .const c_94 6 0b000000
+    .const c_95 6 0b000000
+    .const c_96 6 0b000000
+    .const c_97 6 0b000000
+    .const c_98 6 0b000000
+    .const c_99 6 0b000000
+    .const c_100 6 0b011101
+    .const c_101 6 0b011100
+    .const c_102 6 0b011011
+    .const c_103 1 0b1
+    .const c_104 1 0b1
+    .const c_105 32 0b00000000000000000000000000000001
+    .const c_106 32 0b00000000000000000000000000000001
+    .const c_107 32 0b00000000000000000000000000000000
+    .const c_108 32 0b00000000000000000000000000000000
+    .const c_109 32 0b00000000000000000000000000000000
+    .const c_110 32 0b00000000000000000000000000000000
+    .const c_111 32 0b00000000000000000000000000000000
+    .const c_112 32 0b00000000000000000000000000000000
+    .const c_113 32 0b00000000000000000000000000000000
+    .const c_114 32 0b00000000000000000000000000000000
+    .const c_115 32 0b00000000000000000000000000000000
+    .const c_116 32 0b00000000000000000000000000000000
+    .const c_117 32 0b00000000000000000000000100101011
+    .const c_118 32 0b00000000000000000000000000000000
+    .const c_119 32 0b00000000000000000000000000000000
+    .const c_120 32 0b00000000000000000000000000000000
+    .const c_121 32 0b00000000000000000000000000000000
+    .const c_122 32 0b00000000000000000000000000000000
+    .const c_123 32 0b00000000000000000000000000000000
+    .const c_124 32 0b00000000000000000000000000000000
+    .const c_125 32 0b00000000000000000000000000000000
+    .const c_126 32 0b00000000000000000000000000000000
+    .const c_127 32 0b00000000000000000000000000000000
+    .const c_128 32 0b00000000000000000000000100101011
+    .const c_129 32 0b00000000000000000000000000000000
+    .const c_130 32 0b00000000000000000000000000000000
+    .const c_131 32 0b00000000000000000000000000000000
+    .const c_132 32 0b00000000000000000000000000000000
+    .const c_133 32 0b00000000000000000000000000000000
+    .const c_134 32 0b00000000000000000000000000000000
+    .const c_135 32 0b00000000000000000000000000000000
+    .const c_136 32 0b00000000000000000000000000000000
+    .const c_137 32 0b00000000000000000000000000000000
+    .const c_138 32 0b00000000000000000000000000000000
+    .const c_139 1 0b0
+    .const c_140 32 0b00000000000000000000000000000000
+    .const c_141 32 0b00000000000000000000000000000000
+    .const c_142 32 0b10000000000000000000000000000000
+    .const c_143 16 0b0000000000000000
+    .const c_144 16 0b0000000000000000
+    .const c_145 24 0b000000000000000000000000
+    .const c_146 23 0b00000000000000000000000
+    .const c_147 22 0b0000000000000000000000
+    .const c_148 21 0b000000000000000000000
+    .const c_149 20 0b00000000000000000000
+    .const c_150 1 0b0
+    .const c_151 19 0b0000000000000000000
+    .const c_152 18 0b000000000000000000
+    .const c_153 17 0b00000000000000000
+    .const c_154 16 0b0000000000000000
+    .const c_155 15 0b000000000000000
+    .const c_156 1 0b0
+    .const c_157 14 0b00000000000000
+    .const c_158 13 0b0000000000000
+    .const c_159 12 0b000000000000
+    .const c_160 11 0b00000000000
+    .const c_161 1 0b0
+    .const c_162 10 0b0000000000
+    .const c_163 9 0b000000000
+    .const c_164 8 0b00000000
+    .const c_165 7 0b0000000
+    .const c_166 6 0b000000
+    .const c_167 5 0b00000
+    .const c_168 31 0b0000000000000000000000000000000
+    .const c_169 4 0b0000
+    .const c_170 3 0b000
+    .const c_171 2 0b00
+    .const c_172 1 0b0
+    .const c_173 16 0b0000000000000000
+    .const c_174 1 0b0
+    .const c_175 30 0b000000000000000000000000000000
+    .const c_176 29 0b00000000000000000000000000000
+    .const c_177 28 0b0000000000000000000000000000
+    .const c_178 27 0b000000000000000000000000000
+    .const c_179 26 0b00000000000000000000000000
+    .const c_180 25 0b0000000000000000000000000
+    .const c_181 1 0b0
+    .const c_182 1 0b0
+    .const c_183 1 0b0
+    .const c_184 1 0b1
+    .wire w_105 32
+    .const c_185 1 0b0
+    .const c_186 1 0b0
+    .const c_187 1 0b1
+    .const c_188 1 0b0
+    .const c_189 1 0b0
+    .wire w_106 1
+    .wire w_107 1
+    .wire w_108 1
+    .wire w_109 1
+    .const c_190 16 0b0000000000000000
+    .wire w_110 33
+    .wire w_111 33
+    .wire w_112 33
+    .wire w_113 16
+    .wire w_114 16
+    .wire w_115 16
+    MOV w_$emit_masm_py_209_$tmp, w_$emit_masm_py_428_$concat_out_;
+    MOV w_$emit_masm_py_209_$tmp_1, w_$emit_masm_py_428_$concat_out__1;
+    MOV w_$emit_masm_py_209_$tmp_2, w_$emit_masm_py_549_$slice_out_;
+    MOV w_$emit_masm_py_209_$tmp_3, w_$emit_masm_py_549_$slice_out__1;
+    MOV w_$emit_masm_py_209_$tmp_4, w_$emit_masm_py_549_$slice_out__2;
+    MOV w_$emit_masm_py_209_$tmp_5, w_$emit_masm_py_661_$const_out_;
+    MOV w_$emit_masm_py_209_$tmp_6, w_$emit_masm_py_661_$const_out__1;
+    MOV w_$emit_masm_py_209_$tmp_7, w_$emit_masm_py_661_$const_out__2;
+    MOV w_$emit_masm_py_209_$tmp_8, w_$emit_masm_py_549_$slice_out__3;
+    MOV w_$emit_masm_py_209_$tmp_9, w_$emit_masm_py_661_$const_out__3;
+    MOV w_$emit_masm_py_209_$tmp_10, w_$emit_masm_py_661_$const_out__4;
+    MOV w_$emit_masm_py_209_$tmp_11, w_$emit_masm_py_661_$const_out__5;
+    MOV w_$emit_masm_py_209_$tmp_12, w_$emit_masm_py_661_$const_out__6;
+    MOV w_$emit_masm_py_209_$tmp_13, w_$emit_masm_py_661_$const_out__7;
+    MOV w_$emit_masm_py_209_$tmp_14, w_$emit_masm_py_661_$const_out__8;
+    MOV w_$emit_masm_py_209_$tmp_15, w_$emit_masm_py_661_$const_out__9;
+    MOV w_$emit_masm_py_209_$tmp_16, w_$emit_masm_py_661_$const_out__10;
+    MOV w_$emit_masm_py_209_$tmp_17, w_$emit_masm_py_428_$concat_out__2;
+    MOV w_$emit_masm_py_209_$tmp_18, w_$emit_masm_py_549_$slice_out__4;
+    MOV w_$emit_masm_py_209_$tmp_19, w_$emit_masm_py_661_$const_out__11;
+    MOV w_$emit_masm_py_209_$tmp_20, w_$emit_masm_py_428_$concat_out__3;
+    MOV w_$emit_masm_py_209_$tmp_21, w_$emit_masm_py_549_$slice_out__5;
+    MOV w_$emit_masm_py_209_$tmp_22, w_$emit_masm_py_661_$const_out__12;
+    MOV w_$emit_masm_py_209_$tmp_23, w_$emit_masm_py_428_$concat_out__4;
+    MOV w_$emit_masm_py_209_$tmp_24, w_$emit_masm_py_549_$slice_out__6;
+    MOV w_$emit_masm_py_209_$tmp_25, w_$emit_masm_py_661_$const_out__13;
+    MOV w_$emit_masm_py_209_$tmp_26, w_$emit_masm_py_428_$concat_out__5;
+    MOV w_$emit_masm_py_209_$tmp_27, w_$emit_masm_py_549_$slice_out__7;
+    MOV w_$emit_masm_py_209_$tmp_28, w_$emit_masm_py_661_$const_out__14;
+    MOV w_$emit_masm_py_209_$tmp_29, w_$emit_masm_py_428_$concat_out__6;
+    MOV w_$emit_masm_py_209_$tmp_30, w_$emit_masm_py_549_$slice_out__8;
+    MOV w_$emit_masm_py_209_$tmp_31, w_$emit_masm_py_661_$const_out__15;
+    MOV w_$emit_masm_py_209_$tmp_32, w_$emit_masm_py_428_$concat_out__7;
+    MOV w_$emit_masm_py_209_$tmp_33, w_$emit_masm_py_549_$slice_out__9;
+    MOV w_$emit_masm_py_209_$tmp_34, w_$emit_masm_py_661_$const_out__16;
+    MOV w_$emit_masm_py_209_$tmp_35, w_$emit_masm_py_428_$concat_out__8;
+    MOV w_$emit_masm_py_209_$tmp_36, w_$emit_masm_py_549_$slice_out__10;
+    MOV w_$emit_masm_py_209_$tmp_37, w_$emit_masm_py_661_$const_out__17;
+    MOV w_$emit_masm_py_209_$tmp_38, w_$emit_masm_py_428_$concat_out__9;
+    MOV w_$emit_masm_py_209_$tmp_39, w_$emit_masm_py_549_$slice_out__11;
+    MOV w_$emit_masm_py_209_$tmp_40, w_$emit_masm_py_661_$const_out__18;
+    MOV w_$emit_masm_py_209_$tmp_41, w_$emit_masm_py_428_$concat_out__10;
+    MOV w_$emit_masm_py_209_$tmp_42, w_$emit_masm_py_549_$slice_out__12;
+    MOV w_$emit_masm_py_209_$tmp_43, w_$emit_masm_py_661_$const_out__19;
+    MOV w_$emit_masm_py_209_$tmp_44, w_$emit_masm_py_428_$concat_out__11;
+    MOV w_$emit_masm_py_209_$tmp_45, w_$emit_masm_py_549_$slice_out__13;
+    MOV w_$emit_masm_py_209_$tmp_46, w_$emit_masm_py_661_$const_out__20;
+    MOV w_$emit_masm_py_209_$tmp_47, w_$emit_masm_py_428_$concat_out__12;
+    MOV w_$emit_masm_py_209_$tmp_48, w_$emit_masm_py_549_$slice_out__14;
+    MOV w_$emit_masm_py_209_$tmp_49, w_$emit_masm_py_661_$const_out__21;
+    MOV w_$emit_masm_py_209_$tmp_50, w_$emit_masm_py_428_$concat_out__13;
+    MOV w_$emit_masm_py_209_$tmp_51, w_$emit_masm_py_549_$slice_out__15;
+    MOV w_$emit_masm_py_209_$tmp_52, w_$emit_masm_py_661_$const_out__22;
+    MOV w_$emit_masm_py_209_$tmp_53, w_$emit_masm_py_428_$concat_out__14;
+    MOV w_$emit_masm_py_209_$tmp_54, w_$emit_masm_py_549_$slice_out__16;
+    MOV w_$emit_masm_py_209_$tmp_55, w_$emit_masm_py_661_$const_out__23;
+    MOV w_$emit_masm_py_209_$tmp_56, w_$emit_masm_py_428_$concat_out__15;
+    MOV w_$emit_masm_py_209_$tmp_57, w_$emit_masm_py_549_$slice_out__17;
+    MOV w_$emit_masm_py_209_$tmp_58, w_$emit_masm_py_661_$const_out__24;
+    MOV w_$emit_masm_py_209_$tmp_59, w_$emit_masm_py_428_$concat_out__16;
+    MOV w_$emit_masm_py_209_$tmp_60, w_$emit_masm_py_549_$slice_out__18;
+    MOV w_$emit_masm_py_209_$tmp_61, w_$emit_masm_py_661_$const_out__25;
+    MOV w_$emit_masm_py_209_$tmp_62, w_$emit_masm_py_428_$concat_out__17;
+    MOV w_$emit_masm_py_209_$tmp_63, w_$emit_masm_py_549_$slice_out__19;
+    MOV w_$emit_masm_py_209_$tmp_64, w_$emit_masm_py_661_$const_out__26;
+    MOV w_$emit_masm_py_209_$tmp_65, w_$emit_masm_py_428_$concat_out__18;
+    MOV w_$emit_masm_py_209_$tmp_66, w_$emit_masm_py_549_$slice_out__20;
+    MOV w_$emit_masm_py_209_$tmp_67, w_$emit_masm_py_661_$const_out__27;
+    MOV w_$emit_masm_py_209_$tmp_68, w_$emit_masm_py_428_$concat_out__19;
+    MOV w_$emit_masm_py_209_$tmp_69, w_$emit_masm_py_549_$slice_out__21;
+    MOV w_$emit_masm_py_209_$tmp_70, w_$emit_masm_py_661_$const_out__28;
+    MOV w_$emit_masm_py_209_$tmp_71, w_$emit_masm_py_428_$concat_out__20;
+    MOV w_$emit_masm_py_209_$tmp_72, w_$emit_masm_py_549_$slice_out__22;
+    MOV w_$emit_masm_py_209_$tmp_73, w_$emit_masm_py_661_$const_out__29;
+    MOV w_$emit_masm_py_209_$tmp_74, w_$emit_masm_py_428_$concat_out__21;
+    MOV w_$emit_masm_py_209_$tmp_75, w_$emit_masm_py_549_$slice_out__23;
+    MOV w_$emit_masm_py_209_$tmp_76, w_$emit_masm_py_661_$const_out__30;
+    MOV w_$emit_masm_py_209_$tmp_77, w_$emit_masm_py_428_$concat_out__22;
+    MOV w_$emit_masm_py_209_$tmp_78, w_$emit_masm_py_549_$slice_out__24;
+    MOV w_$emit_masm_py_209_$tmp_79, w_$emit_masm_py_661_$const_out__31;
+    MOV w_$emit_masm_py_209_$tmp_80, w_$emit_masm_py_428_$concat_out__23;
+    MOV w_$emit_masm_py_209_$tmp_81, w_$emit_masm_py_549_$slice_out__25;
+    MOV w_$emit_masm_py_209_$tmp_82, w_$emit_masm_py_661_$const_out__32;
+    MOV w_$emit_masm_py_209_$tmp_83, w_$emit_masm_py_428_$concat_out__24;
+    MOV w_$emit_masm_py_209_$tmp_84, w_$emit_masm_py_549_$slice_out__26;
+    MOV w_$emit_masm_py_209_$tmp_85, w_$emit_masm_py_661_$const_out__33;
+    MOV w_$emit_masm_py_209_$tmp_86, w_$emit_masm_py_428_$concat_out__25;
+    MOV w_$emit_masm_py_209_$tmp_87, w_$emit_masm_py_549_$slice_out__27;
+    MOV w_$emit_masm_py_209_$tmp_88, w_$emit_masm_py_661_$const_out__34;
+    MOV w_$emit_masm_py_209_$tmp_89, w_$emit_masm_py_428_$concat_out__26;
+    MOV w_$emit_masm_py_209_$tmp_90, w_$emit_masm_py_549_$slice_out__28;
+    MOV w_$emit_masm_py_209_$tmp_91, w_$emit_masm_py_661_$const_out__35;
+    MOV w_$emit_masm_py_209_$tmp_92, w_$emit_masm_py_428_$concat_out__27;
+    MOV w_$emit_masm_py_209_$tmp_93, w_$emit_masm_py_549_$slice_out__29;
+    MOV w_$emit_masm_py_209_$tmp_94, w_$emit_masm_py_661_$const_out__36;
+    MOV w_$emit_masm_py_209_$tmp_95, w_$emit_masm_py_428_$concat_out__28;
+    MOV w_$emit_masm_py_209_$tmp_96, w_$emit_masm_py_549_$slice_out__30;
+    MOV w_$emit_masm_py_209_$tmp_97, w_$emit_masm_py_661_$const_out__37;
+    MOV w_$emit_masm_py_209_$tmp_98, w_$emit_masm_py_428_$concat_out__29;
+    MOV w_$emit_masm_py_209_$tmp_99, w_$emit_masm_py_549_$slice_out__31;
+    MOV w_$emit_masm_py_209_$tmp_100, w_$emit_masm_py_661_$const_out__38;
+    MOV w_$emit_masm_py_209_$tmp_101, w_$emit_masm_py_428_$concat_out__30;
+    MOV w_$emit_masm_py_209_$tmp_102, w_$emit_masm_py_549_$slice_out__32;
+    MOV w_$emit_masm_py_209_$tmp_103, w_$emit_masm_py_661_$const_out__39;
+    MOV w_$emit_masm_py_209_$tmp_104, w_$emit_masm_py_428_$concat_out__31;
+    MOV w_$emit_masm_py_209_$tmp_105, w_$emit_masm_py_549_$slice_out__33;
+    MOV w_$emit_masm_py_209_$tmp_106, w_$emit_masm_py_661_$const_out__40;
+    MOV w_$emit_masm_py_209_$tmp_107, w_$emit_masm_py_428_$concat_out__32;
+    MOV w_$emit_masm_py_209_$tmp_108, w_$emit_masm_py_549_$slice_out__34;
+    MOV w_$emit_masm_py_209_$tmp_109, w_$emit_masm_py_661_$const_out__41;
+    MOV w_$emit_masm_py_209_$tmp_110, w_$emit_masm_py_428_$concat_out__33;
+    MOV w_$emit_masm_py_209_$tmp_111, w_$emit_masm_py_549_$slice_out__35;
+    MOV w_$emit_masm_py_209_$tmp_112, w_$emit_masm_py_661_$const_out__42;
+    MOV w_$emit_masm_py_209_$tmp_113, w_$emit_masm_py_428_$concat_out__34;
+    MOV w_\dut_busy_stage, pi_$emit_masm_py_316_$flatten\dut_$procdff$198_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$198_next, w_\dut__195_;
+    MOV w_\dut_xreg_0_, pi_$emit_masm_py_316_$flatten\dut_$procdff$200_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$200_next, w_$emit_masm_py_209_$tmp;
+    MOV w_\dut_xreg_1_, pi_$emit_masm_py_316_$flatten\dut_$procdff$201_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$201_next, w_\dut_xreg_0_;
+    MOV w_\dut_xreg_2_, pi_$emit_masm_py_316_$flatten\dut_$procdff$202_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$202_next, w_\dut_xreg_1_;
+    MOV w_\dut_xreg_3_, pi_$emit_masm_py_316_$flatten\dut_$procdff$203_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$203_next, w_\dut_xreg_2_;
+    MOV w_\dut_xreg_4_, pi_$emit_masm_py_316_$flatten\dut_$procdff$204_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$204_next, w_\dut_xreg_3_;
+    MOV w_\dut_xreg_5_, pi_$emit_masm_py_316_$flatten\dut_$procdff$205_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$205_next, w_\dut_xreg_4_;
+    MOV w_\dut_xreg_6_, pi_$emit_masm_py_316_$flatten\dut_$procdff$206_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$206_next, w_\dut_xreg_5_;
+    MOV w_\dut_xreg_7_, pi_$emit_masm_py_316_$flatten\dut_$procdff$207_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$207_next, w_\dut_xreg_6_;
+    MOV w_\dut_xreg_8_, pi_$emit_masm_py_316_$flatten\dut_$procdff$208_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$208_next, w_\dut_xreg_7_;
+    MOV w_\dut_xreg_9_, pi_$emit_masm_py_316_$flatten\dut_$procdff$209_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$209_next, w_\dut_xreg_8_;
+    MOV w_\dut_xreg_10_, pi_$emit_masm_py_316_$flatten\dut_$procdff$210_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$210_next, w_\dut_xreg_9_;
+    MOV w_\dut_xreg_11_, pi_$emit_masm_py_316_$flatten\dut_$procdff$211_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$211_next, w_\dut_xreg_10_;
+    MOV w_\dut_xreg_12_, pi_$emit_masm_py_316_$flatten\dut_$procdff$212_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$212_next, w_\dut_xreg_11_;
+    MOV w_\dut_xreg_13_, pi_$emit_masm_py_316_$flatten\dut_$procdff$213_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$213_next, w_\dut_xreg_12_;
+    MOV w_\dut_xreg_14_, pi_$emit_masm_py_316_$flatten\dut_$procdff$214_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$214_next, w_\dut_xreg_13_;
+    MOV w_\dut_yreg_0_, pi_$emit_masm_py_316_$flatten\dut_$procdff$215_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$215_next, w_$emit_masm_py_209_$tmp_1;
+    MOV w_\dut_yreg_1_, pi_$emit_masm_py_316_$flatten\dut_$procdff$216_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$216_next, w_\dut_yreg_0_;
+    MOV w_\dut_yreg_2_, pi_$emit_masm_py_316_$flatten\dut_$procdff$217_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$217_next, w_\dut_yreg_1_;
+    MOV w_\dut_yreg_3_, pi_$emit_masm_py_316_$flatten\dut_$procdff$218_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$218_next, w_\dut_yreg_2_;
+    MOV w_\dut_yreg_4_, pi_$emit_masm_py_316_$flatten\dut_$procdff$219_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$219_next, w_\dut_yreg_3_;
+    MOV w_\dut_yreg_5_, pi_$emit_masm_py_316_$flatten\dut_$procdff$220_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$220_next, w_\dut_yreg_4_;
+    MOV w_\dut_yreg_6_, pi_$emit_masm_py_316_$flatten\dut_$procdff$221_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$221_next, w_\dut_yreg_5_;
+    MOV w_\dut_yreg_7_, pi_$emit_masm_py_316_$flatten\dut_$procdff$222_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$222_next, w_\dut_yreg_6_;
+    MOV w_\dut_yreg_8_, pi_$emit_masm_py_316_$flatten\dut_$procdff$223_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$223_next, w_\dut_yreg_7_;
+    MOV w_\dut_yreg_9_, pi_$emit_masm_py_316_$flatten\dut_$procdff$224_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$224_next, w_\dut_yreg_8_;
+    MOV w_\dut_yreg_10_, pi_$emit_masm_py_316_$flatten\dut_$procdff$225_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$225_next, w_\dut_yreg_9_;
+    MOV w_\dut_yreg_11_, pi_$emit_masm_py_316_$flatten\dut_$procdff$226_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$226_next, w_\dut_yreg_10_;
+    MOV w_\dut_yreg_12_, pi_$emit_masm_py_316_$flatten\dut_$procdff$227_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$227_next, w_\dut_yreg_11_;
+    MOV w_\dut_yreg_13_, pi_$emit_masm_py_316_$flatten\dut_$procdff$228_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$228_next, w_\dut_yreg_12_;
+    MOV w_\dut_yreg_14_, pi_$emit_masm_py_316_$flatten\dut_$procdff$229_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$229_next, w_\dut_yreg_13_;
+    MOV w_\dut_preg_0_, pi_$emit_masm_py_316_$flatten\dut_$procdff$230_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$230_next, w_\dut__193_;
+    MOV w_\dut_preg_1_, pi_$emit_masm_py_316_$flatten\dut_$procdff$231_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$231_next, w_\dut__182_;
+    MOV w_\dut_preg_2_, pi_$emit_masm_py_316_$flatten\dut_$procdff$232_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$232_next, w_\dut__171_;
+    MOV w_\dut_preg_3_, pi_$emit_masm_py_316_$flatten\dut_$procdff$233_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$233_next, w_\dut__168_;
+    MOV w_\dut_preg_4_, pi_$emit_masm_py_316_$flatten\dut_$procdff$234_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$234_next, w_\dut__167_;
+    MOV w_\dut_preg_5_, pi_$emit_masm_py_316_$flatten\dut_$procdff$235_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$235_next, w_\dut__166_;
+    MOV w_\dut_preg_6_, pi_$emit_masm_py_316_$flatten\dut_$procdff$236_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$236_next, w_\dut__165_;
+    MOV w_\dut_preg_7_, pi_$emit_masm_py_316_$flatten\dut_$procdff$237_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$237_next, w_\dut__164_;
+    MOV w_\dut_preg_8_, pi_$emit_masm_py_316_$flatten\dut_$procdff$238_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$238_next, w_\dut__163_;
+    MOV w_\dut_preg_9_, pi_$emit_masm_py_316_$flatten\dut_$procdff$239_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$239_next, w_\dut__162_;
+    MOV w_\dut_preg_10_, pi_$emit_masm_py_316_$flatten\dut_$procdff$240_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$240_next, w_\dut__192_;
+    MOV w_\dut_preg_11_, pi_$emit_masm_py_316_$flatten\dut_$procdff$241_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$241_next, w_\dut__191_;
+    MOV w_\dut_preg_12_, pi_$emit_masm_py_316_$flatten\dut_$procdff$242_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$242_next, w_\dut__190_;
+    MOV w_\dut_preg_13_, pi_$emit_masm_py_316_$flatten\dut_$procdff$243_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$243_next, w_\dut__189_;
+    MOV w_\dut_preg_14_, pi_$emit_masm_py_316_$flatten\dut_$procdff$244_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$244_next, w_\dut__188_;
+    MOV w_\dut_preg_15_, pi_$emit_masm_py_316_$flatten\dut_$procdff$245_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$245_next, w_\dut__187_;
+    MOV w_\dut_xreg_15_, pi_$emit_masm_py_316_$flatten\dut_$procdff$246_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$246_next, w_\dut_xreg_14_;
+    MOV w_\dut_xreg_16_, pi_$emit_masm_py_316_$flatten\dut_$procdff$247_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$247_next, w_\dut_xreg_15_;
+    MOV w_\dut_xreg_17_, pi_$emit_masm_py_316_$flatten\dut_$procdff$248_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$248_next, w_\dut_xreg_16_;
+    MOV w_\dut_xreg_18_, pi_$emit_masm_py_316_$flatten\dut_$procdff$249_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$249_next, w_\dut_xreg_17_;
+    MOV w_\dut_xreg_19_, pi_$emit_masm_py_316_$flatten\dut_$procdff$250_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$250_next, w_\dut_xreg_18_;
+    MOV w_\dut_xreg_20_, pi_$emit_masm_py_316_$flatten\dut_$procdff$251_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$251_next, w_\dut_xreg_19_;
+    MOV w_\dut_xreg_21_, pi_$emit_masm_py_316_$flatten\dut_$procdff$252_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$252_next, w_\dut_xreg_20_;
+    MOV w_\dut_xreg_22_, pi_$emit_masm_py_316_$flatten\dut_$procdff$253_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$253_next, w_\dut_xreg_21_;
+    MOV w_\dut_xreg_23_, pi_$emit_masm_py_316_$flatten\dut_$procdff$254_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$254_next, w_\dut_xreg_22_;
+    MOV w_\dut_xreg_24_, pi_$emit_masm_py_316_$flatten\dut_$procdff$255_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$255_next, w_\dut_xreg_23_;
+    MOV w_\dut_xreg_25_, pi_$emit_masm_py_316_$flatten\dut_$procdff$256_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$256_next, w_\dut_xreg_24_;
+    MOV w_\dut_xreg_26_, pi_$emit_masm_py_316_$flatten\dut_$procdff$257_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$257_next, w_\dut_xreg_25_;
+    MOV w_\dut_xreg_27_, pi_$emit_masm_py_316_$flatten\dut_$procdff$258_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$258_next, w_\dut_xreg_26_;
+    MOV w_\dut_xreg_28_, pi_$emit_masm_py_316_$flatten\dut_$procdff$259_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$259_next, w_\dut_xreg_27_;
+    MOV w_\dut_xreg_29_, pi_$emit_masm_py_316_$flatten\dut_$procdff$260_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$260_next, w_\dut_xreg_28_;
+    MOV w_\dut_xreg_30_, pi_$emit_masm_py_316_$flatten\dut_$procdff$261_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$261_next, w_\dut_xreg_29_;
+    MOV w_\dut_yreg_15_, pi_$emit_masm_py_316_$flatten\dut_$procdff$262_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$262_next, w_\dut_yreg_14_;
+    MOV w_\dut_yreg_16_, pi_$emit_masm_py_316_$flatten\dut_$procdff$263_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$263_next, w_\dut_yreg_15_;
+    MOV w_\dut_yreg_17_, pi_$emit_masm_py_316_$flatten\dut_$procdff$264_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$264_next, w_\dut_yreg_16_;
+    MOV w_\dut_yreg_18_, pi_$emit_masm_py_316_$flatten\dut_$procdff$265_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$265_next, w_\dut_yreg_17_;
+    MOV w_\dut_yreg_19_, pi_$emit_masm_py_316_$flatten\dut_$procdff$266_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$266_next, w_\dut_yreg_18_;
+    MOV w_\dut_yreg_20_, pi_$emit_masm_py_316_$flatten\dut_$procdff$267_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$267_next, w_\dut_yreg_19_;
+    MOV w_\dut_yreg_21_, pi_$emit_masm_py_316_$flatten\dut_$procdff$268_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$268_next, w_\dut_yreg_20_;
+    MOV w_\dut_yreg_22_, pi_$emit_masm_py_316_$flatten\dut_$procdff$269_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$269_next, w_\dut_yreg_21_;
+    MOV w_\dut_yreg_23_, pi_$emit_masm_py_316_$flatten\dut_$procdff$270_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$270_next, w_\dut_yreg_22_;
+    MOV w_\dut_yreg_24_, pi_$emit_masm_py_316_$flatten\dut_$procdff$271_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$271_next, w_\dut_yreg_23_;
+    MOV w_\dut_yreg_25_, pi_$emit_masm_py_316_$flatten\dut_$procdff$272_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$272_next, w_\dut_yreg_24_;
+    MOV w_\dut_yreg_26_, pi_$emit_masm_py_316_$flatten\dut_$procdff$273_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$273_next, w_\dut_yreg_25_;
+    MOV w_\dut_yreg_27_, pi_$emit_masm_py_316_$flatten\dut_$procdff$274_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$274_next, w_\dut_yreg_26_;
+    MOV w_\dut_yreg_28_, pi_$emit_masm_py_316_$flatten\dut_$procdff$275_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$275_next, w_\dut_yreg_27_;
+    MOV w_\dut_yreg_29_, pi_$emit_masm_py_316_$flatten\dut_$procdff$276_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$276_next, w_\dut_yreg_28_;
+    MOV w_\dut_yreg_30_, pi_$emit_masm_py_316_$flatten\dut_$procdff$277_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$277_next, w_\dut_yreg_29_;
+    MOV w_\dut_preg_16_, pi_$emit_masm_py_316_$flatten\dut_$procdff$278_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$278_next, w_\dut__186_;
+    MOV w_\dut_preg_17_, pi_$emit_masm_py_316_$flatten\dut_$procdff$279_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$279_next, w_\dut__185_;
+    MOV w_\dut_preg_18_, pi_$emit_masm_py_316_$flatten\dut_$procdff$280_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$280_next, w_\dut__184_;
+    MOV w_\dut_preg_19_, pi_$emit_masm_py_316_$flatten\dut_$procdff$281_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$281_next, w_\dut__183_;
+    MOV w_\dut_preg_20_, pi_$emit_masm_py_316_$flatten\dut_$procdff$282_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$282_next, w_\dut__181_;
+    MOV w_\dut_preg_21_, pi_$emit_masm_py_316_$flatten\dut_$procdff$283_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$283_next, w_\dut__180_;
+    MOV w_\dut_preg_22_, pi_$emit_masm_py_316_$flatten\dut_$procdff$284_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$284_next, w_\dut__179_;
+    MOV w_\dut_preg_23_, pi_$emit_masm_py_316_$flatten\dut_$procdff$285_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$285_next, w_\dut__178_;
+    MOV w_\dut_preg_24_, pi_$emit_masm_py_316_$flatten\dut_$procdff$286_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$286_next, w_\dut__177_;
+    MOV w_\dut_preg_25_, pi_$emit_masm_py_316_$flatten\dut_$procdff$287_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$287_next, w_\dut__176_;
+    MOV w_\dut_preg_26_, pi_$emit_masm_py_316_$flatten\dut_$procdff$288_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$288_next, w_\dut__175_;
+    MOV w_\dut_preg_27_, pi_$emit_masm_py_316_$flatten\dut_$procdff$289_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$289_next, w_\dut__174_;
+    MOV w_\dut_preg_28_, pi_$emit_masm_py_316_$flatten\dut_$procdff$290_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$290_next, w_\dut__173_;
+    MOV w_\dut_preg_29_, pi_$emit_masm_py_316_$flatten\dut_$procdff$291_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$291_next, w_\dut__172_;
+    MOV w_\dut_preg_30_, pi_$emit_masm_py_316_$flatten\dut_$procdff$292_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$292_next, w_\dut__170_;
+    MOV w_\dut_P, pi_$emit_masm_py_316_$flatten\dut_$procdff$293_curr;
+    MOV po_$emit_masm_py_328_$flatten\dut_$procdff$293_next, w_\dut__169_;
+    MOV w_\reg_cond_$masm_expect_0, pi_$emit_masm_py_316_$procdff$194_curr;
+    MOV po_$emit_masm_py_328_$procdff$194_next, w_\_18_;
+    MOV w_\reg_cond_$masm_stop_3, pi_$emit_masm_py_316_$procdff$195_curr;
+    MOV po_$emit_masm_py_328_$procdff$195_next, w_\_15_;
+    MOV w_\icounter, pi_$emit_masm_py_316_$procdff$196_curr;
+    MOV po_$emit_masm_py_328_$procdff$196_next, w_\_0_;
+    MOV w_\ocounter, pi_$emit_masm_py_316_$procdff$197_curr;
+    MOV po_$emit_masm_py_328_$procdff$197_next, w_\_1_;
+    PADZERO w_0, w_\dut_X, 32;
+    PADZERO w_1, w_$emit_masm_py_661_$const_out__43, 32;
+    SLL w_2, w_1, c_0;
+    OR w_$emit_masm_py_428_$concat_out_, w_2, w_0;
+    PADZERO w_3, w_\dut_Y, 32;
+    PADZERO w_4, w_$emit_masm_py_661_$const_out__44, 32;
+    SLL w_5, w_4, c_1;
+    OR w_$emit_masm_py_428_$concat_out__1, w_5, w_3;
+    PADZERO w_6, w_$emit_masm_py_661_$const_out__45, 32;
+    PADZERO w_7, w_$emit_masm_py_549_$slice_out__36, 32;
+    SLL w_8, w_7, c_2;
+    OR w_$emit_masm_py_428_$concat_out__10, w_8, w_6;
+    PADZERO w_9, w_$emit_masm_py_661_$const_out__46, 32;
+    PADZERO w_10, w_$emit_masm_py_549_$slice_out__37, 32;
+    SLL w_11, w_10, c_3;
+    OR w_$emit_masm_py_428_$concat_out__11, w_11, w_9;
+    PADZERO w_12, w_$emit_masm_py_661_$const_out__47, 32;
+    PADZERO w_13, w_$emit_masm_py_549_$slice_out__38, 32;
+    SLL w_14, w_13, c_4;
+    OR w_$emit_masm_py_428_$concat_out__12, w_14, w_12;
+    PADZERO w_15, w_$emit_masm_py_661_$const_out__48, 32;
+    PADZERO w_16, w_$emit_masm_py_549_$slice_out__39, 32;
+    SLL w_17, w_16, c_5;
+    OR w_$emit_masm_py_428_$concat_out__13, w_17, w_15;
+    PADZERO w_18, w_$emit_masm_py_661_$const_out__49, 32;
+    PADZERO w_19, w_$emit_masm_py_549_$slice_out__40, 32;
+    SLL w_20, w_19, c_6;
+    OR w_$emit_masm_py_428_$concat_out__14, w_20, w_18;
+    PADZERO w_21, w_$emit_masm_py_661_$const_out__50, 32;
+    PADZERO w_22, w_$emit_masm_py_549_$slice_out__41, 32;
+    SLL w_23, w_22, c_7;
+    OR w_$emit_masm_py_428_$concat_out__15, w_23, w_21;
+    PADZERO w_24, w_$emit_masm_py_661_$const_out__51, 32;
+    PADZERO w_25, w_$emit_masm_py_549_$slice_out__42, 32;
+    SLL w_26, w_25, c_8;
+    OR w_$emit_masm_py_428_$concat_out__16, w_26, w_24;
+    PADZERO w_27, w_$emit_masm_py_661_$const_out__52, 32;
+    PADZERO w_28, w_$emit_masm_py_549_$slice_out__43, 32;
+    SLL w_29, w_28, c_9;
+    OR w_$emit_masm_py_428_$concat_out__17, w_29, w_27;
+    PADZERO w_30, w_$emit_masm_py_661_$const_out__53, 32;
+    PADZERO w_31, w_$emit_masm_py_549_$slice_out__44, 32;
+    SLL w_32, w_31, c_10;
+    OR w_$emit_masm_py_428_$concat_out__18, w_32, w_30;
+    PADZERO w_33, w_$emit_masm_py_661_$const_out__54, 32;
+    PADZERO w_34, w_$emit_masm_py_549_$slice_out__45, 32;
+    SLL w_35, w_34, c_11;
+    OR w_$emit_masm_py_428_$concat_out__19, w_35, w_33;
+    PADZERO w_36, w_$emit_masm_py_661_$const_out__55, 32;
+    PADZERO w_37, w_$emit_masm_py_549_$slice_out__46, 32;
+    SLL w_38, w_37, c_12;
+    OR w_$emit_masm_py_428_$concat_out__2, w_38, w_36;
+    PADZERO w_39, w_$emit_masm_py_661_$const_out__56, 32;
+    PADZERO w_40, w_$emit_masm_py_549_$slice_out__47, 32;
+    SLL w_41, w_40, c_13;
+    OR w_$emit_masm_py_428_$concat_out__20, w_41, w_39;
+    PADZERO w_42, w_$emit_masm_py_661_$const_out__57, 32;
+    PADZERO w_43, w_$emit_masm_py_549_$slice_out__48, 32;
+    SLL w_44, w_43, c_14;
+    OR w_$emit_masm_py_428_$concat_out__21, w_44, w_42;
+    PADZERO w_45, w_$emit_masm_py_661_$const_out__58, 32;
+    PADZERO w_46, w_$emit_masm_py_549_$slice_out__49, 32;
+    SLL w_47, w_46, c_15;
+    OR w_$emit_masm_py_428_$concat_out__22, w_47, w_45;
+    PADZERO w_48, w_$emit_masm_py_661_$const_out__59, 32;
+    PADZERO w_49, w_$emit_masm_py_549_$slice_out__50, 32;
+    SLL w_50, w_49, c_16;
+    OR w_$emit_masm_py_428_$concat_out__23, w_50, w_48;
+    PADZERO w_51, w_$emit_masm_py_661_$const_out__60, 32;
+    PADZERO w_52, w_$emit_masm_py_549_$slice_out__51, 32;
+    SLL w_53, w_52, c_17;
+    OR w_$emit_masm_py_428_$concat_out__24, w_53, w_51;
+    PADZERO w_54, w_$emit_masm_py_661_$const_out__61, 32;
+    PADZERO w_55, w_$emit_masm_py_549_$slice_out__52, 32;
+    SLL w_56, w_55, c_18;
+    OR w_$emit_masm_py_428_$concat_out__25, w_56, w_54;
+    PADZERO w_57, w_$emit_masm_py_661_$const_out__62, 32;
+    PADZERO w_58, w_$emit_masm_py_549_$slice_out__53, 32;
+    SLL w_59, w_58, c_19;
+    OR w_$emit_masm_py_428_$concat_out__26, w_59, w_57;
+    PADZERO w_60, w_$emit_masm_py_661_$const_out__63, 32;
+    PADZERO w_61, w_$emit_masm_py_549_$slice_out__54, 32;
+    SLL w_62, w_61, c_20;
+    OR w_$emit_masm_py_428_$concat_out__27, w_62, w_60;
+    PADZERO w_63, w_$emit_masm_py_661_$const_out__64, 32;
+    PADZERO w_64, w_$emit_masm_py_549_$slice_out__55, 32;
+    SLL w_65, w_64, c_21;
+    OR w_$emit_masm_py_428_$concat_out__28, w_65, w_63;
+    PADZERO w_66, w_$emit_masm_py_661_$const_out__65, 32;
+    PADZERO w_67, w_$emit_masm_py_549_$slice_out__56, 32;
+    SLL w_68, w_67, c_22;
+    OR w_$emit_masm_py_428_$concat_out__29, w_68, w_66;
+    PADZERO w_69, w_$emit_masm_py_661_$const_out__66, 32;
+    PADZERO w_70, w_$emit_masm_py_862_$replicate_out_, 32;
+    SLL w_71, w_70, c_23;
+    OR w_$emit_masm_py_428_$concat_out__3, w_71, w_69;
+    PADZERO w_72, w_$emit_masm_py_661_$const_out__67, 32;
+    PADZERO w_73, w_$emit_masm_py_549_$slice_out__57, 32;
+    SLL w_74, w_73, c_24;
+    OR w_$emit_masm_py_428_$concat_out__30, w_74, w_72;
+    PADZERO w_75, w_$emit_masm_py_661_$const_out__68, 32;
+    PADZERO w_76, w_$emit_masm_py_549_$slice_out__58, 32;
+    SLL w_77, w_76, c_25;
+    OR w_$emit_masm_py_428_$concat_out__31, w_77, w_75;
+    PADZERO w_78, w_$emit_masm_py_661_$const_out__69, 32;
+    PADZERO w_79, w_$emit_masm_py_549_$slice_out__59, 32;
+    SLL w_80, w_79, c_26;
+    OR w_$emit_masm_py_428_$concat_out__32, w_80, w_78;
+    PADZERO w_81, w_\dut_Y, 32;
+    PADZERO w_82, w_$emit_masm_py_661_$const_out__70, 32;
+    SLL w_83, w_82, c_27;
+    OR w_$emit_masm_py_428_$concat_out__33, w_83, w_81;
+    PADZERO w_84, w_$emit_masm_py_549_$slice_out__60, 32;
+    PADZERO w_85, w_$emit_masm_py_661_$const_out__71, 32;
+    SLL w_86, w_85, c_28;
+    OR w_$emit_masm_py_428_$concat_out__34, w_86, w_84;
+    PADZERO w_87, w_$emit_masm_py_661_$const_out__72, 32;
+    PADZERO w_88, w_$emit_masm_py_549_$slice_out__61, 32;
+    SLL w_89, w_88, c_29;
+    OR w_$emit_masm_py_428_$concat_out__4, w_89, w_87;
+    PADZERO w_90, w_$emit_masm_py_661_$const_out__73, 32;
+    PADZERO w_91, w_$emit_masm_py_549_$slice_out__62, 32;
+    SLL w_92, w_91, c_30;
+    OR w_$emit_masm_py_428_$concat_out__5, w_92, w_90;
+    PADZERO w_93, w_$emit_masm_py_661_$const_out__74, 32;
+    PADZERO w_94, w_$emit_masm_py_549_$slice_out__63, 32;
+    SLL w_95, w_94, c_31;
+    OR w_$emit_masm_py_428_$concat_out__6, w_95, w_93;
+    PADZERO w_96, w_$emit_masm_py_661_$const_out__75, 32;
+    PADZERO w_97, w_$emit_masm_py_549_$slice_out__64, 32;
+    SLL w_98, w_97, c_32;
+    OR w_$emit_masm_py_428_$concat_out__7, w_98, w_96;
+    PADZERO w_99, w_$emit_masm_py_661_$const_out__76, 32;
+    PADZERO w_100, w_$emit_masm_py_549_$slice_out__65, 32;
+    SLL w_101, w_100, c_33;
+    OR w_$emit_masm_py_428_$concat_out__8, w_101, w_99;
+    PADZERO w_102, w_$emit_masm_py_661_$const_out__77, 32;
+    PADZERO w_103, w_$emit_masm_py_549_$slice_out__66, 32;
+    SLL w_104, w_103, c_34;
+    OR w_$emit_masm_py_428_$concat_out__9, w_104, w_102;
+    SRL w_$emit_masm_py_549_$slice_out_, w_\_9_, c_35;
+    SRL w_$emit_masm_py_549_$slice_out__1, w_\dut_busy_stage, c_36;
+    SRL w_$emit_masm_py_549_$slice_out__10, w_\dut_xreg_25_, c_37;
+    SRL w_$emit_masm_py_549_$slice_out__11, w_\dut_xreg_24_, c_38;
+    SRL w_$emit_masm_py_549_$slice_out__12, w_\dut_xreg_23_, c_39;
+    SRL w_$emit_masm_py_549_$slice_out__13, w_\dut_xreg_22_, c_40;
+    SRL w_$emit_masm_py_549_$slice_out__14, w_\dut_xreg_21_, c_41;
+    SRL w_$emit_masm_py_549_$slice_out__15, w_\dut_xreg_20_, c_42;
+    SRL w_$emit_masm_py_549_$slice_out__16, w_\dut_xreg_19_, c_43;
+    SRL w_$emit_masm_py_549_$slice_out__17, w_\dut_xreg_18_, c_44;
+    SRL w_$emit_masm_py_549_$slice_out__18, w_\dut_xreg_17_, c_45;
+    SRL w_$emit_masm_py_549_$slice_out__19, w_\dut_xreg_16_, c_46;
+    SRL w_$emit_masm_py_549_$slice_out__2, w_\_8_, c_47;
+    SRL w_$emit_masm_py_549_$slice_out__20, w_\dut_xreg_15_, c_48;
+    SRL w_$emit_masm_py_549_$slice_out__21, w_\dut_xreg_14_, c_49;
+    SRL w_$emit_masm_py_549_$slice_out__22, w_\dut_xreg_13_, c_50;
+    SRL w_$emit_masm_py_549_$slice_out__23, w_\dut_xreg_12_, c_51;
+    SRL w_$emit_masm_py_549_$slice_out__24, w_\dut_xreg_11_, c_52;
+    SRL w_$emit_masm_py_549_$slice_out__25, w_\dut_xreg_10_, c_53;
+    SRL w_$emit_masm_py_549_$slice_out__26, w_\dut_xreg_9_, c_54;
+    SRL w_$emit_masm_py_549_$slice_out__27, w_\dut_xreg_8_, c_55;
+    SRL w_$emit_masm_py_549_$slice_out__28, w_\dut_xreg_7_, c_56;
+    SRL w_$emit_masm_py_549_$slice_out__29, w_\dut_xreg_6_, c_57;
+    SRL w_$emit_masm_py_549_$slice_out__3, w_\dut_busy_stage, c_58;
+    SRL w_$emit_masm_py_549_$slice_out__30, w_\dut_xreg_5_, c_59;
+    SRL w_$emit_masm_py_549_$slice_out__31, w_\dut_xreg_4_, c_60;
+    SRL w_$emit_masm_py_549_$slice_out__32, w_\dut_xreg_3_, c_61;
+    SRL w_$emit_masm_py_549_$slice_out__33, w_\dut_xreg_2_, c_62;
+    SRL w_$emit_masm_py_549_$slice_out__34, w_\dut_xreg_1_, c_63;
+    SRL w_$emit_masm_py_549_$slice_out__35, w_\dut_X, c_64;
+    SRL w_$emit_masm_py_549_$slice_out__36, w_\dut_yreg_23_, c_65;
+    SRL w_$emit_masm_py_549_$slice_out__37, w_\dut_yreg_22_, c_66;
+    SRL w_$emit_masm_py_549_$slice_out__38, w_\dut_yreg_21_, c_67;
+    SRL w_$emit_masm_py_549_$slice_out__39, w_\dut_yreg_20_, c_68;
+    SRL w_$emit_masm_py_549_$slice_out__4, w_\dut_xreg_0_, c_69;
+    SRL w_$emit_masm_py_549_$slice_out__40, w_\dut_yreg_19_, c_70;
+    SRL w_$emit_masm_py_549_$slice_out__41, w_\dut_yreg_18_, c_71;
+    SRL w_$emit_masm_py_549_$slice_out__42, w_\dut_yreg_17_, c_72;
+    SRL w_$emit_masm_py_549_$slice_out__43, w_\dut_yreg_16_, c_73;
+    SRL w_$emit_masm_py_549_$slice_out__44, w_\dut_yreg_15_, c_74;
+    SRL w_$emit_masm_py_549_$slice_out__45, w_\dut_yreg_14_, c_75;
+    SRL w_$emit_masm_py_549_$slice_out__46, w_\dut_yreg_0_, c_76;
+    SRL w_$emit_masm_py_549_$slice_out__47, w_\dut_yreg_13_, c_77;
+    SRL w_$emit_masm_py_549_$slice_out__48, w_\dut_yreg_12_, c_78;
+    SRL w_$emit_masm_py_549_$slice_out__49, w_\dut_yreg_11_, c_79;
+    SRL w_$emit_masm_py_549_$slice_out__5, w_\dut_xreg_30_, c_80;
+    SRL w_$emit_masm_py_549_$slice_out__50, w_\dut_yreg_10_, c_81;
+    SRL w_$emit_masm_py_549_$slice_out__51, w_\dut_yreg_9_, c_82;
+    SRL w_$emit_masm_py_549_$slice_out__52, w_\dut_yreg_8_, c_83;
+    SRL w_$emit_masm_py_549_$slice_out__53, w_\dut_yreg_7_, c_84;
+    SRL w_$emit_masm_py_549_$slice_out__54, w_\dut_yreg_6_, c_85;
+    SRL w_$emit_masm_py_549_$slice_out__55, w_\dut_yreg_5_, c_86;
+    SRL w_$emit_masm_py_549_$slice_out__56, w_\dut_yreg_4_, c_87;
+    SRL w_$emit_masm_py_549_$slice_out__57, w_\dut_yreg_3_, c_88;
+    SRL w_$emit_masm_py_549_$slice_out__58, w_\dut_yreg_2_, c_89;
+    SRL w_$emit_masm_py_549_$slice_out__59, w_\dut_yreg_1_, c_90;
+    SRL w_$emit_masm_py_549_$slice_out__6, w_\dut_xreg_29_, c_91;
+    SRL w_$emit_masm_py_549_$slice_out__60, w_\dut_busy_stage, c_92;
+    SRL w_$emit_masm_py_549_$slice_out__61, w_\dut_yreg_29_, c_93;
+    SRL w_$emit_masm_py_549_$slice_out__62, w_\dut_yreg_28_, c_94;
+    SRL w_$emit_masm_py_549_$slice_out__63, w_\dut_yreg_27_, c_95;
+    SRL w_$emit_masm_py_549_$slice_out__64, w_\dut_yreg_26_, c_96;
+    SRL w_$emit_masm_py_549_$slice_out__65, w_\dut_yreg_25_, c_97;
+    SRL w_$emit_masm_py_549_$slice_out__66, w_\dut_yreg_24_, c_98;
+    SRL w_$emit_masm_py_549_$slice_out__67, w_\dut_yreg_30_, c_99;
+    SRL w_$emit_masm_py_549_$slice_out__7, w_\dut_xreg_28_, c_100;
+    SRL w_$emit_masm_py_549_$slice_out__8, w_\dut_xreg_27_, c_101;
+    SRL w_$emit_masm_py_549_$slice_out__9, w_\dut_xreg_26_, c_102;
+    @TRAP [type = "\fail", file="array_mult.sv:86.7-86.19"]
+    EXPECT w_\reg_cond_$masm_expect_0, c_103, ["invalid result"];
+    @TRAP [type = "\stop", file="array_mult.sv:94.7-94.17"]
+    EXPECT w_\reg_cond_$masm_stop_3, c_104, [""];
+    MOV w_$emit_masm_py_661_$const_out_, c_105;
+    MOV w_$emit_masm_py_661_$const_out__1, c_106;
+    MOV w_$emit_masm_py_661_$const_out__10, c_107;
+    MOV w_$emit_masm_py_661_$const_out__11, c_108;
+    MOV w_$emit_masm_py_661_$const_out__12, c_109;
+    MOV w_$emit_masm_py_661_$const_out__13, c_110;
+    MOV w_$emit_masm_py_661_$const_out__14, c_111;
+    MOV w_$emit_masm_py_661_$const_out__15, c_112;
+    MOV w_$emit_masm_py_661_$const_out__16, c_113;
+    MOV w_$emit_masm_py_661_$const_out__17, c_114;
+    MOV w_$emit_masm_py_661_$const_out__18, c_115;
+    MOV w_$emit_masm_py_661_$const_out__19, c_116;
+    MOV w_$emit_masm_py_661_$const_out__2, c_117;
+    MOV w_$emit_masm_py_661_$const_out__20, c_118;
+    MOV w_$emit_masm_py_661_$const_out__21, c_119;
+    MOV w_$emit_masm_py_661_$const_out__22, c_120;
+    MOV w_$emit_masm_py_661_$const_out__23, c_121;
+    MOV w_$emit_masm_py_661_$const_out__24, c_122;
+    MOV w_$emit_masm_py_661_$const_out__25, c_123;
+    MOV w_$emit_masm_py_661_$const_out__26, c_124;
+    MOV w_$emit_masm_py_661_$const_out__27, c_125;
+    MOV w_$emit_masm_py_661_$const_out__28, c_126;
+    MOV w_$emit_masm_py_661_$const_out__29, c_127;
+    MOV w_$emit_masm_py_661_$const_out__3, c_128;
+    MOV w_$emit_masm_py_661_$const_out__30, c_129;
+    MOV w_$emit_masm_py_661_$const_out__31, c_130;
+    MOV w_$emit_masm_py_661_$const_out__32, c_131;
+    MOV w_$emit_masm_py_661_$const_out__33, c_132;
+    MOV w_$emit_masm_py_661_$const_out__34, c_133;
+    MOV w_$emit_masm_py_661_$const_out__35, c_134;
+    MOV w_$emit_masm_py_661_$const_out__36, c_135;
+    MOV w_$emit_masm_py_661_$const_out__37, c_136;
+    MOV w_$emit_masm_py_661_$const_out__38, c_137;
+    MOV w_$emit_masm_py_661_$const_out__39, c_138;
+    MOV w_$emit_masm_py_661_$const_out__4, c_139;
+    MOV w_$emit_masm_py_661_$const_out__40, c_140;
+    MOV w_$emit_masm_py_661_$const_out__41, c_141;
+    MOV w_$emit_masm_py_661_$const_out__42, c_142;
+    MOV w_$emit_masm_py_661_$const_out__43, c_143;
+    MOV w_$emit_masm_py_661_$const_out__44, c_144;
+    MOV w_$emit_masm_py_661_$const_out__45, c_145;
+    MOV w_$emit_masm_py_661_$const_out__46, c_146;
+    MOV w_$emit_masm_py_661_$const_out__47, c_147;
+    MOV w_$emit_masm_py_661_$const_out__48, c_148;
+    MOV w_$emit_masm_py_661_$const_out__49, c_149;
+    MOV w_$emit_masm_py_661_$const_out__5, c_150;
+    MOV w_$emit_masm_py_661_$const_out__50, c_151;
+    MOV w_$emit_masm_py_661_$const_out__51, c_152;
+    MOV w_$emit_masm_py_661_$const_out__52, c_153;
+    MOV w_$emit_masm_py_661_$const_out__53, c_154;
+    MOV w_$emit_masm_py_661_$const_out__54, c_155;
+    MOV w_$emit_masm_py_661_$const_out__55, c_156;
+    MOV w_$emit_masm_py_661_$const_out__56, c_157;
+    MOV w_$emit_masm_py_661_$const_out__57, c_158;
+    MOV w_$emit_masm_py_661_$const_out__58, c_159;
+    MOV w_$emit_masm_py_661_$const_out__59, c_160;
+    MOV w_$emit_masm_py_661_$const_out__6, c_161;
+    MOV w_$emit_masm_py_661_$const_out__60, c_162;
+    MOV w_$emit_masm_py_661_$const_out__61, c_163;
+    MOV w_$emit_masm_py_661_$const_out__62, c_164;
+    MOV w_$emit_masm_py_661_$const_out__63, c_165;
+    MOV w_$emit_masm_py_661_$const_out__64, c_166;
+    MOV w_$emit_masm_py_661_$const_out__65, c_167;
+    MOV w_$emit_masm_py_661_$const_out__66, c_168;
+    MOV w_$emit_masm_py_661_$const_out__67, c_169;
+    MOV w_$emit_masm_py_661_$const_out__68, c_170;
+    MOV w_$emit_masm_py_661_$const_out__69, c_171;
+    MOV w_$emit_masm_py_661_$const_out__7, c_172;
+    MOV w_$emit_masm_py_661_$const_out__70, c_173;
+    MOV w_$emit_masm_py_661_$const_out__71, c_174;
+    MOV w_$emit_masm_py_661_$const_out__72, c_175;
+    MOV w_$emit_masm_py_661_$const_out__73, c_176;
+    MOV w_$emit_masm_py_661_$const_out__74, c_177;
+    MOV w_$emit_masm_py_661_$const_out__75, c_178;
+    MOV w_$emit_masm_py_661_$const_out__76, c_179;
+    MOV w_$emit_masm_py_661_$const_out__77, c_180;
+    MOV w_$emit_masm_py_661_$const_out__8, c_181;
+    MOV w_$emit_masm_py_661_$const_out__9, c_182;
+    MUX w_$emit_masm_py_862_$replicate_out_, w_$emit_masm_py_549_$slice_out__67, c_183, c_184;
+    MUX w_\_1_, w_$emit_masm_py_209_$tmp_3, w_\ocounter, w_$emit_masm_py_209_$tmp_2;
+    MUX w_\_0_, w_\_19_, w_\icounter, w_$emit_masm_py_209_$tmp_4;
+    ADD w_\_8_, w_\icounter, w_$emit_masm_py_209_$tmp_5;
+    ADD w_\_9_, w_\ocounter, w_$emit_masm_py_209_$tmp_6;
+    SEQ w_\_12_, w_\dut_P, w_\_20_;
+    PADZERO w_105, w_\ocounter, 32;
+    SEQ w_\_10_, w_105, w_$emit_masm_py_209_$tmp_7;
+    SEQ w_\_15_, w_\_10_, c_185;
+    SEQ w_\_16_, w_$emit_masm_py_209_$tmp_8, c_186;
+    SEQ w_106, w_\_16_, c_188;
+    XOR w_107, w_106, c_187;
+    SEQ w_108, w_\_12_, c_189;
+    XOR w_109, w_108, c_187;
+    OR w_\_18_, w_107, w_109;
+    PADZERO w_111, w_\icounter, 33;
+    PADZERO w_112, w_$emit_masm_py_209_$tmp_9, 33;
+    SUB w_110, w_111, w_112;
+    SLTS w_\_19_, w_110, c_190;
+    ADD w_113, \p_rom, w_\ocounter;
+    @MEMBLOCK [ block = "\p_rom", width = 32, capacity = 300 ]
+    LD w_\_20_, w_113[0];
+    ADD w_114, \x_rom, w_\icounter;
+    @MEMBLOCK [ block = "\x_rom", width = 16, capacity = 300 ]
+    LD w_\dut_X, w_114[0];
+    ADD w_115, \y_rom, w_\icounter;
+    @MEMBLOCK [ block = "\y_rom", width = 16, capacity = 300 ]
+    LD w_\dut_Y, w_115[0];
+    MUX w_\dut__0_, w_$emit_masm_py_209_$tmp_18, w_$emit_masm_py_209_$tmp_16, w_$emit_masm_py_209_$tmp_17;
+    MUX w_\dut__1_, w_$emit_masm_py_209_$tmp_21, w_$emit_masm_py_209_$tmp_19, w_$emit_masm_py_209_$tmp_20;
+    MUX w_\dut__2_, w_$emit_masm_py_209_$tmp_24, w_$emit_masm_py_209_$tmp_22, w_$emit_masm_py_209_$tmp_23;
+    MUX w_\dut__3_, w_$emit_masm_py_209_$tmp_27, w_$emit_masm_py_209_$tmp_25, w_$emit_masm_py_209_$tmp_26;
+    MUX w_\dut__4_, w_$emit_masm_py_209_$tmp_30, w_$emit_masm_py_209_$tmp_28, w_$emit_masm_py_209_$tmp_29;
+    MUX w_\dut__5_, w_$emit_masm_py_209_$tmp_33, w_$emit_masm_py_209_$tmp_31, w_$emit_masm_py_209_$tmp_32;
+    MUX w_\dut__6_, w_$emit_masm_py_209_$tmp_36, w_$emit_masm_py_209_$tmp_34, w_$emit_masm_py_209_$tmp_35;
+    MUX w_\dut__7_, w_$emit_masm_py_209_$tmp_39, w_$emit_masm_py_209_$tmp_37, w_$emit_masm_py_209_$tmp_38;
+    MUX w_\dut__8_, w_$emit_masm_py_209_$tmp_42, w_$emit_masm_py_209_$tmp_40, w_$emit_masm_py_209_$tmp_41;
+    MUX w_\dut__9_, w_$emit_masm_py_209_$tmp_45, w_$emit_masm_py_209_$tmp_43, w_$emit_masm_py_209_$tmp_44;
+    MUX w_\dut__10_, w_$emit_masm_py_209_$tmp_48, w_$emit_masm_py_209_$tmp_46, w_$emit_masm_py_209_$tmp_47;
+    MUX w_\dut__11_, w_$emit_masm_py_209_$tmp_51, w_$emit_masm_py_209_$tmp_49, w_$emit_masm_py_209_$tmp_50;
+    MUX w_\dut__12_, w_$emit_masm_py_209_$tmp_54, w_$emit_masm_py_209_$tmp_52, w_$emit_masm_py_209_$tmp_53;
+    MUX w_\dut__13_, w_$emit_masm_py_209_$tmp_57, w_$emit_masm_py_209_$tmp_55, w_$emit_masm_py_209_$tmp_56;
+    MUX w_\dut__14_, w_$emit_masm_py_209_$tmp_60, w_$emit_masm_py_209_$tmp_58, w_$emit_masm_py_209_$tmp_59;
+    MUX w_\dut__15_, w_$emit_masm_py_209_$tmp_63, w_$emit_masm_py_209_$tmp_61, w_$emit_masm_py_209_$tmp_62;
+    MUX w_\dut__16_, w_$emit_masm_py_209_$tmp_66, w_$emit_masm_py_209_$tmp_64, w_$emit_masm_py_209_$tmp_65;
+    MUX w_\dut__17_, w_$emit_masm_py_209_$tmp_69, w_$emit_masm_py_209_$tmp_67, w_$emit_masm_py_209_$tmp_68;
+    MUX w_\dut__18_, w_$emit_masm_py_209_$tmp_72, w_$emit_masm_py_209_$tmp_70, w_$emit_masm_py_209_$tmp_71;
+    MUX w_\dut__19_, w_$emit_masm_py_209_$tmp_75, w_$emit_masm_py_209_$tmp_73, w_$emit_masm_py_209_$tmp_74;
+    MUX w_\dut__20_, w_$emit_masm_py_209_$tmp_78, w_$emit_masm_py_209_$tmp_76, w_$emit_masm_py_209_$tmp_77;
+    MUX w_\dut__21_, w_$emit_masm_py_209_$tmp_81, w_$emit_masm_py_209_$tmp_79, w_$emit_masm_py_209_$tmp_80;
+    MUX w_\dut__22_, w_$emit_masm_py_209_$tmp_84, w_$emit_masm_py_209_$tmp_82, w_$emit_masm_py_209_$tmp_83;
+    MUX w_\dut__23_, w_$emit_masm_py_209_$tmp_87, w_$emit_masm_py_209_$tmp_85, w_$emit_masm_py_209_$tmp_86;
+    MUX w_\dut__24_, w_$emit_masm_py_209_$tmp_90, w_$emit_masm_py_209_$tmp_88, w_$emit_masm_py_209_$tmp_89;
+    MUX w_\dut__25_, w_$emit_masm_py_209_$tmp_93, w_$emit_masm_py_209_$tmp_91, w_$emit_masm_py_209_$tmp_92;
+    MUX w_\dut__26_, w_$emit_masm_py_209_$tmp_96, w_$emit_masm_py_209_$tmp_94, w_$emit_masm_py_209_$tmp_95;
+    MUX w_\dut__27_, w_$emit_masm_py_209_$tmp_99, w_$emit_masm_py_209_$tmp_97, w_$emit_masm_py_209_$tmp_98;
+    MUX w_\dut__28_, w_$emit_masm_py_209_$tmp_102, w_$emit_masm_py_209_$tmp_100, w_$emit_masm_py_209_$tmp_101;
+    MUX w_\dut__29_, w_$emit_masm_py_209_$tmp_105, w_$emit_masm_py_209_$tmp_103, w_$emit_masm_py_209_$tmp_104;
+    MUX w_\dut__30_, w_$emit_masm_py_209_$tmp_108, w_$emit_masm_py_209_$tmp_106, w_$emit_masm_py_209_$tmp_107;
+    MUX w_\dut__193_, w_$emit_masm_py_209_$tmp_111, w_$emit_masm_py_209_$tmp_109, w_$emit_masm_py_209_$tmp_110;
+    OR w_\dut__195_, w_$emit_masm_py_209_$tmp_112, w_$emit_masm_py_209_$tmp_113;
+    ADD w_\dut__182_, w_\dut__0_, w_\dut_preg_0_;
+    ADD w_\dut__169_, w_\dut__1_, w_\dut_preg_30_;
+    ADD w_\dut__170_, w_\dut__2_, w_\dut_preg_29_;
+    ADD w_\dut__172_, w_\dut__3_, w_\dut_preg_28_;
+    ADD w_\dut__173_, w_\dut__4_, w_\dut_preg_27_;
+    ADD w_\dut__174_, w_\dut__5_, w_\dut_preg_26_;
+    ADD w_\dut__175_, w_\dut__6_, w_\dut_preg_25_;
+    ADD w_\dut__176_, w_\dut__7_, w_\dut_preg_24_;
+    ADD w_\dut__177_, w_\dut__8_, w_\dut_preg_23_;
+    ADD w_\dut__178_, w_\dut__9_, w_\dut_preg_22_;
+    ADD w_\dut__179_, w_\dut__10_, w_\dut_preg_21_;
+    ADD w_\dut__180_, w_\dut__11_, w_\dut_preg_20_;
+    ADD w_\dut__181_, w_\dut__12_, w_\dut_preg_19_;
+    ADD w_\dut__183_, w_\dut__13_, w_\dut_preg_18_;
+    ADD w_\dut__184_, w_\dut__14_, w_\dut_preg_17_;
+    ADD w_\dut__185_, w_\dut__15_, w_\dut_preg_16_;
+    ADD w_\dut__186_, w_\dut__16_, w_\dut_preg_15_;
+    ADD w_\dut__187_, w_\dut__17_, w_\dut_preg_14_;
+    ADD w_\dut__188_, w_\dut__18_, w_\dut_preg_13_;
+    ADD w_\dut__189_, w_\dut__19_, w_\dut_preg_12_;
+    ADD w_\dut__190_, w_\dut__20_, w_\dut_preg_11_;
+    ADD w_\dut__191_, w_\dut__21_, w_\dut_preg_10_;
+    ADD w_\dut__192_, w_\dut__22_, w_\dut_preg_9_;
+    ADD w_\dut__162_, w_\dut__23_, w_\dut_preg_8_;
+    ADD w_\dut__163_, w_\dut__24_, w_\dut_preg_7_;
+    ADD w_\dut__164_, w_\dut__25_, w_\dut_preg_6_;
+    ADD w_\dut__165_, w_\dut__26_, w_\dut_preg_5_;
+    ADD w_\dut__166_, w_\dut__27_, w_\dut_preg_4_;
+    ADD w_\dut__167_, w_\dut__28_, w_\dut_preg_3_;
+    ADD w_\dut__168_, w_\dut__29_, w_\dut_preg_2_;
+    ADD w_\dut__171_, w_\dut__30_, w_\dut_preg_1_;
