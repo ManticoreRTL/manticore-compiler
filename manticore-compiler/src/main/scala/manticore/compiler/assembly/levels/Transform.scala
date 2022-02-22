@@ -9,6 +9,7 @@ import manticore.compiler.CompilationFailureException
 import java.nio.file.Files
 import java.io.BufferedWriter
 import java.io.PrintWriter
+import manticore.compiler.HasLoggerId
 
 /** Base transformation signatures, see [[AssemblyTransformer]] and
   * [[AssemblyChecker]] below
@@ -17,9 +18,8 @@ import java.io.PrintWriter
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 
-case class TransformationID(id: String) {
-  override def toString(): String = id
-}
+case class TransformationID(id: String) extends HasLoggerId
+
 trait HasTransformationID {
   implicit val phase_id = TransformationID(
     getClass().getSimpleName().takeWhile(_ != '$')

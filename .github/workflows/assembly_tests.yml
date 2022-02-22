@@ -1,37 +1,37 @@
-name: Assembly Tests
+# name: Assembly Tests
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+# on:
+#   push:
+#     branches: [ master ]
+#   pull_request:
+#     branches: [ master ]
 
-jobs:
-  build:
+# jobs:
+#   build:
 
-    runs-on: ubuntu-latest
+#     runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up JDK 11
-      uses: actions/setup-java@v2
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-    - name: Run tests
-      run: |
-        sbt 'testOnly manticore.compiler.assembly.levels.OrderInstructionsTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.DeadCodeEliminationTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.RemoveAliasesTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideSltsTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideSubTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideLocalLoadTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.UnconstrainedAssemblyParserTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideShiftLeftTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideShiftRightArithmeticTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideSeqTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideLocalStoreTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideShiftRightLogicalTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideExpectTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideAddTester'
-        sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideMuxTester'
+#     steps:
+#     - uses: actions/checkout@v2
+#     - name: Set up JDK 11
+#       uses: actions/setup-java@v2
+#       with:
+#         java-version: '11'
+#         distribution: 'temurin'
+#     - name: Run tests
+#       run: |
+#         sbt 'testOnly manticore.compiler.assembly.levels.OrderInstructionsTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.DeadCodeEliminationTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.RemoveAliasesTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideSltsTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideSubTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideLocalLoadTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.UnconstrainedAssemblyParserTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideShiftLeftTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideShiftRightArithmeticTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideSeqTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideLocalStoreTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideShiftRightLogicalTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideExpectTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideAddTester'
+#         sbt 'testOnly manticore.compiler.assembly.levels.unconstrained.UnconstrainedWideMuxTester'

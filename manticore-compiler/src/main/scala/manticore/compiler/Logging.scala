@@ -1,7 +1,6 @@
 package manticore.compiler
 
 import java.nio.file.Files
-import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.HasSerialized
 import scala.util.parsing.input.Positional
 import java.io.File
@@ -15,6 +14,11 @@ import java.io.PrintStream
   */
 class CompilationFailureException(msg: String) extends Exception(msg)
 
+
+trait HasLoggerId {
+  val id: String
+  override def toString(): String = id
+}
 /** Fully self-contained reported class
   */
 
@@ -24,49 +28,49 @@ trait Logger {
   protected def message[N <: HasSerialized with Positional](
       msg: => String,
       node: N
-  )(implicit phase_id: TransformationID): Unit
+  )(implicit phase_id: HasLoggerId): Unit
 
   protected def message(msg: => String)(implicit
-      phase_id: TransformationID
+      phase_id: HasLoggerId
   ): Unit
 
   def error[N <: HasSerialized with Positional](
       msg: => String,
       node: N
-  )(implicit phase_id: TransformationID): Unit
+  )(implicit phase_id: HasLoggerId): Unit
 
-  def error(msg: => String)(implicit phase_id: TransformationID): Unit
+  def error(msg: => String)(implicit phase_id: HasLoggerId): Unit
 
   def countErrors(): Int
   def countWarnings(): Int
   def countProgress(): Int
 
-  def warn(msg: => String)(implicit phase_id: TransformationID): Unit
+  def warn(msg: => String)(implicit phase_id: HasLoggerId): Unit
 
   def warn[N <: HasSerialized with Positional](msg: => String, node: N)(implicit
-      phase_id: TransformationID
+      phase_id: HasLoggerId
   ): Unit
 
   def info[N <: HasSerialized with Positional](msg: => String, node: N)(implicit
-      phase_id: TransformationID
+      phase_id: HasLoggerId
   ): Unit
-  def info(msg: => String)(implicit phase_id: TransformationID): Unit
-  def fail(msg: => String)(implicit phase_id: TransformationID): Nothing
+  def info(msg: => String)(implicit phase_id: HasLoggerId): Unit
+  def fail(msg: => String)(implicit phase_id: HasLoggerId): Nothing
 
-  def debug(msg: => String)(implicit phase_id: TransformationID): Unit
+  def debug(msg: => String)(implicit phase_id: HasLoggerId): Unit
   def debug[N <: HasSerialized with Positional](
       msg: => String,
       node: N
-  )(implicit phase_id: TransformationID): Unit
+  )(implicit phase_id: HasLoggerId): Unit
 
   def dumpArtifact(
       file_name: String
-  )(gen: => String)(implicit phase_id: TransformationID): Unit
+  )(gen: => String)(implicit phase_id: HasLoggerId): Unit
 
-  def openFile(file_name: String)(implicit phase_id: TransformationID): File
+  def openFile(file_name: String)(implicit phase_id: HasLoggerId): File
 
-  def start(msg: => String)(implicit phase_id: TransformationID): Unit
-  def end(msg: => String)(implicit phase_id: TransformationID): Unit
+  def start(msg: => String)(implicit phase_id: HasLoggerId): Unit
+  def end(msg: => String)(implicit phase_id: HasLoggerId): Unit
 
   def flush(): Unit
 }
@@ -119,14 +123,14 @@ object Logger {
     override protected def message[N <: HasSerialized with Positional](
         msg: => String,
         node: N
-    )(implicit phase_id: TransformationID): Unit =
+    )(implicit phase_id: HasLoggerId): Unit =
       printer.println(
         s"${msg} \n at \n${node.serialized}:${node.pos}\n\t\t reported by ${BOLD}${phase_id}${RESET}"
       )
 
     override protected def message(
         msg: => String
-    )(implicit phase_id: TransformationID): Unit =
+    )(implicit phase_id: HasLoggerId): Unit =
       printer.println(
         s"${msg} \n\t\treported by ${BOLD}${phase_id}${RESET}"
       )
@@ -134,11 +138,11 @@ object Logger {
     def error[N <: HasSerialized with Positional](
         msg: => String,
         node: N
-    )(implicit phase_id: TransformationID): Unit = {
+    )(implicit phase_id: HasLoggerId): Unit = {
       message(s"[${RED}error${RESET}]${msg}", node)
       error_count += 1
     }
-    def error(msg: => String)(implicit phase_id: TransformationID): Unit = {
+    def error(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
       message(s"[${RED}error${RESET}] ${msg}")
       error_count += 1
     }
@@ -146,50 +150,50 @@ object Logger {
     def countWarnings(): Int = warn_count
     def countProgress(): Int = transform_index
 
-    def warn(msg: => String)(implicit phase_id: TransformationID): Unit = {
+    def warn(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
       message(s"[${YELLOW}warn${RESET}] ${msg}")
       warn_count += 1
     }
 
     def warn[N <: HasSerialized with Positional](msg: => String, node: N)(
-        implicit phase_id: TransformationID
+        implicit phase_id: HasLoggerId
     ): Unit = {
       message(s"[${YELLOW}warn${RESET}] ${msg}", node)
       warn_count += 1
     }
 
     def info[N <: HasSerialized with Positional](msg: => String, node: N)(
-        implicit phase_id: TransformationID
+        implicit phase_id: HasLoggerId
     ): Unit = if (info_en) {
       message(s"[${BLUE}info${RESET}] ${msg}", node)
     }
 
-    def info(msg: => String)(implicit phase_id: TransformationID): Unit = if (
+    def info(msg: => String)(implicit phase_id: HasLoggerId): Unit = if (
       info_en
     ) {
       message(s"[${BLUE}info${RESET}] ${msg}")
     }
 
-    def fail(msg: => String)(implicit phase_id: TransformationID): Nothing = {
+    def fail(msg: => String)(implicit phase_id: HasLoggerId): Nothing = {
 
       printer.flush()
       throw new CompilationFailureException(msg)
     }
 
-    def debug(msg: => String)(implicit phase_id: TransformationID): Unit =
+    def debug(msg: => String)(implicit phase_id: HasLoggerId): Unit =
       if (db_en)
         message(s"[${CYAN}debug${RESET}] ${msg}")
 
     def debug[N <: HasSerialized with Positional](
         msg: => String,
         node: N
-    )(implicit phase_id: TransformationID): Unit =
+    )(implicit phase_id: HasLoggerId): Unit =
       if (db_en)
         message(s"[${CYAN}debug${RESET}] ${msg}", node)
 
     def dumpArtifact(
         file_name: String
-    )(gen: => String)(implicit phase_id: TransformationID): Unit = {
+    )(gen: => String)(implicit phase_id: HasLoggerId): Unit = {
 
       dump_dir match {
         case Some(dir) if dump_all =>
@@ -207,7 +211,7 @@ object Logger {
 
     def openFile(
         file_name: String
-    )(implicit phase_id: TransformationID): File = {
+    )(implicit phase_id: HasLoggerId): File = {
       dump_dir match {
         case Some(dir) =>
           Files.createDirectories(dir.toPath())
@@ -218,11 +222,11 @@ object Logger {
       }
     }
 
-    def start(msg: => String)(implicit phase_id: TransformationID): Unit = {
+    def start(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
       info(s"${msg} ")
     }
 
-    def end(msg: => String)(implicit phase_id: TransformationID): Unit = {
+    def end(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
       printer.flush()
       if (msg.nonEmpty)
         info(msg)

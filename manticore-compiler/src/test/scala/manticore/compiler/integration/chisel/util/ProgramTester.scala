@@ -39,18 +39,16 @@ trait ProgramTester {
     ).mkString("\n")
   }
 
-
   def mkInput(name: String, init: Option[UInt16]): String = {
     Seq(
       s"@REG [id = \"${name}\", type = \"\\REG_CURR\" ]",
-      s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}",
+      s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}"
     ).mkString("\n")
   }
 
-
   def compiler =
     ManticorePasses.frontend followedBy
-    ManticorePasses.middleend followedBy
+      ManticorePasses.middleend followedBy
       UnconstrainedToPlacedTransform followedBy
       ManticorePasses.BackendLowerEnd
 

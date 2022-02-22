@@ -14,6 +14,7 @@ import manticore.machine.xrt.ManticoreFlatSimKernel
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
+import manticore.compiler.HasLoggerId
 
 /** A stress for the NoC implementation.
   */
@@ -260,8 +261,8 @@ class NoCStressTest
     fixture =>
       val context = AssemblyContext(
         output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-        max_dimx = 5,
-        max_dimy = 5,
+        max_dimx = 8,
+        max_dimy = 8,
         dump_all = true,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
         expected_cycles = Some(2 + 1),
@@ -296,7 +297,7 @@ class NoCStressTest
           prefix_path =
             fixture.test_dir.resolve("out").toAbsolutePath().toString()
         )
-      ).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) {
+      ).withAnnotations(Seq(VerilatorBackendAnnotation)) {
         dut =>
           var cycle = 0
           def tick(n: Int = 1): Unit = {
@@ -304,7 +305,7 @@ class NoCStressTest
             cycle += n
           }
 
-          implicit val test_id = TransformationID(getTestName)
+          implicit val test_id = new HasLoggerId { val id = getTestName }
           // let the reset propagate through the cores
           context.logger.info("Starting RTL simulation")
           tick(20)
