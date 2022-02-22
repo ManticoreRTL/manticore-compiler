@@ -184,90 +184,48 @@ object ListSchedulerTransform
       ctx.logger.fail("Failed to schedule process")
     }
 
-    def traverseAndSetDistanceToSinkNonRecursive(node: Node): Int = {
-
-      def sinkDistance(n: Node): Int = n.toOuter match {
-        // Nodes that do not introduce any RAW dependence should usually
-        // have a distance to sink equal to instruction latency, except for
-        // Send instruction, because they need to traverse NoC hops. In
-        // order to model their distance sink we can use the Manhattan
-        // distance which is essentially the number of cycles it takes a
-        // message to reach its destination. But since each Send becomes a
-        // SetValue at the target we should also include an additional
-        // latency into our calculation
-        case inst @ Send(rd, _, target, _) =>
-          instructionLatency(inst) + // local instruction latency
-            manhattanDistance(
-              proc.id,
-              target,
-              dim
-            ) + // time to traverse the NoC
-            instructionLatency(
-              SetValue(rd, UInt16(0))
-            ) // remote instruction latency
-        case inst @ _ =>
-          instructionLatency(inst)
-      }
-
-      distance_to_sink.get(node) match {
-        case Some(dist) => dist // distance already cached
-        case None => // need to perform a depth first traversal
-          node.innerNodeDownUpTraverser
-            .withFilter { case (_, node) =>
-              distance_to_sink.contains(node) == false
-            }
-            .foreach { case (downwards, inode) =>
-              if (!downwards) {
-                if (inode.outDegree == 0) {
-                  val dist = sinkDistance(inode)
-                  distance_to_sink(inode) = dist
-                } else {
-                  val dist = inode.outgoing.map { edge =>
-                    val Label(v) = edge.label
-                    val succ_dist = distance_to_sink(edge.target) + v
-                    succ_dist
-                  }.max
-                  distance_to_sink(inode) = dist
-                }
-              }
-            }
-          distance_to_sink(node)
-      }
-
-    }
-
     // somehow faster, both have the same complexity though I think (visit each node twice)
-    def traverseAndSetDistanceToSinkRecursive(node: Node): Int = {
-      if (node.outDegree == 0) {
-        val dist = node.toOuter match {
-          case inst @ Send(rd, _, target, _) =>
-            instructionLatency(inst) + // local instruction latency
-              manhattanDistance(
-                proc.id,
-                target,
-                dim
-              ) + // time to traverse the NoC
-              instructionLatency(
-                SetValue(rd, UInt16(0))
-              ) // remote instruction latency
-          case inst @ _ =>
-            instructionLatency(inst)
-        }
-        distance_to_sink(node) = dist
-        dist
-      } else if (distance_to_sink.contains(node)) {
-        // answer already known
-        distance_to_sink(node)
-      } else {
-        node.outgoing.map { edge =>
-          val Label(v) = edge.label
-          val dist: Int =
-            traverseAndSetDistanceToSinkRecursive(edge.to) + v
+    def traverseAndSetDistanceToSinkRecursive(node: Node): Int =
+      node.toOuter match {
+
+        case inst: Expect =>
+          val dist = inst.error_id.kind match {
+            case ExpectFail => Int.MaxValue // highest possible priority
+            case ExpectStop => Int.MaxValue - 1 // second highest priority
+          }
           distance_to_sink(node) = dist
           dist
-        }.max
+        case _ =>
+          if (node.outDegree == 0) {
+            val dist = node.toOuter match {
+              case inst @ Send(rd, _, target, _) =>
+                instructionLatency(inst) + // local instruction latency
+                  manhattanDistance(
+                    proc.id,
+                    target,
+                    dim
+                  ) + // time to traverse the NoC
+                  instructionLatency(
+                    SetValue(rd, UInt16(0))
+                  ) // remote instruction latency
+              case inst @ _ =>
+                instructionLatency(inst)
+            }
+            distance_to_sink(node) = dist
+            dist
+          } else if (distance_to_sink.contains(node)) {
+            // answer already known
+            distance_to_sink(node)
+          } else {
+            node.outgoing.map { edge =>
+              val Label(v) = edge.label
+              val dist: Int =
+                traverseAndSetDistanceToSinkRecursive(edge.to) + v
+              distance_to_sink(node) = dist
+              dist
+            }.max
+          }
       }
-    }
 
     // val some_root_node = dependence_graph.
     // find the distance of each node to sinks
@@ -307,44 +265,23 @@ object ListSchedulerTransform
     // After we done creating the local schedule, the Send instruction are simply
     // appended at the end of the schedule.
 
-
     val sends = proc.body.collect { case x: Send => x }
     dependence_graph --= sends
 
-    // val unsched_list =
-    //   scala.collection.mutable.Queue.empty[Instruction] ++
-    //     dependence_graph.nodes.collect {
-    //       case n if n.toOuter != Nop && !n.toOuter.isInstanceOf[Send] =>
-    //         n.toOuter
-    //     }
+
 
     val schedule = scala.collection.mutable.Queue[Instruction]()
 
-    case class ReadyNode(n: Node, dist: Int) extends Ordered[ReadyNode] {
-      def compare(that: ReadyNode) = {
-        (this.n.toOuter, that.n.toOuter) match {
-          case (
-                Expect(_, _, this_id: ExceptionIdImpl, _),
-                Expect(_, _, that_id: ExceptionIdImpl, _)
-              ) =>
-            (this_id.kind, that_id.kind) match {
-              case (ExpectFail, ExpectStop) => 1
-              // prioritize Fail type so that we don't end up
-              // stopping without checking for the error. Note that we don't
-              // need to add any edges in the dependence graph because EXPECTs
-              // are going to always be "source" nodes and always ready.
-              case (ExpectStop, ExpectFail) => -1
-              case (_, _) => Ordering[Int].reverse.compare(this.dist, that.dist)
-            }
-          case (_, _) =>
-            Ordering[Int].reverse
-              .compare(this.dist, that.dist)
-        }
-      }
+    case class ReadyNode(n: Node, dist: Int)
 
-    }
 
-    val ready_list = scala.collection.mutable.PriorityQueue.empty[ReadyNode]
+
+    // Prioritize ReadyNodes by their distance to sink, i.e., the ones
+    // that have a longer distance have a higher priority
+    val ReadyNodeOrder = Ordering.by[ReadyNode, Int](r => r.dist)
+
+    val ready_list =
+      scala.collection.mutable.PriorityQueue.empty[ReadyNode](ReadyNodeOrder)
     // initialize the ready list with instruction that have no predecessor
 
     ctx.logger.debug(
@@ -357,13 +294,17 @@ object ListSchedulerTransform
     ready_list ++= dependence_graph.nodes.collect {
       case n if n.inDegree == 0 => ReadyNode(n, distance_to_sink(n))
     }
-
-    ctx.logger.debug(
-      s"Initial ready list:\n ${ready_list.map(_.n.toOuter.serialized).mkString("\n")}"
-    )
+    if (ctx.debug_message) {
+      val ready = ready_list.clone()
+      ctx.logger.debug(
+        s"Initial ready list:\n ${ready
+          .map(rn => s"${rn.n.toOuter.serialized}: ${rn.dist}")
+          .mkString("\n")}"
+      )
+    }
 
     class ActiveNode(val node: Node, var time_left: Int)
-    var active_list = scala.collection.mutable.ListBuffer[ActiveNode]()
+    var active_list = scala.collection.mutable.Queue[ActiveNode]()
     // val scheduled_preds = scala.collection.mutable.Set.empty[Node]
     // LIST scheduling simulation loop
     var cycle = 0
@@ -384,7 +325,7 @@ object ListSchedulerTransform
               ctx.logger.debug(
                 s"${cycle}: Readying ${succ.toOuter.serialized} "
               )
-              ready_list += ReadyNode(succ, distance_to_sink(succ))
+              ready_list enqueue ReadyNode(succ, distance_to_sink(succ))
             }
           }
           dependence_graph -= node
@@ -396,7 +337,7 @@ object ListSchedulerTransform
       if (ready_list.isEmpty) {
         schedule.append(Nop)
       } else {
-        val head = ready_list.head
+        val head = ready_list.dequeue()
         // check if a predicate instruction is needed before scheduling the head
         ctx.logger
           .debug(s"${cycle}: Scheduling ${head.n.toOuter.serialized}")
@@ -404,12 +345,10 @@ object ListSchedulerTransform
           new ActiveNode(head.n, instructionLatency(head.n.toOuter))
         )
         schedule.append(head.n.toOuter)
-        ready_list.dequeue()
+
       }
       cycle += 1
     }
-
-
 
     if (cycle + sends.length >= ctx.max_instructions_threshold) {
       ctx.logger.error(

@@ -107,7 +107,7 @@ object GlobalPacketSchedulerTransform
         (this.unscheduled, that.unscheduled) match {
           case (MutableQueue(), MutableQueue()) => 0
           case (x +: _, y +: _) =>
-            Ordering[Int].reverse.compare(x.manhattan, y.manhattan)
+            Ordering[Int].compare(x.manhattan, y.manhattan)
           case (MutableQueue(), y +: _) => -1
           case (x +: _, MutableQueue()) => 1
         }
@@ -213,6 +213,9 @@ object GlobalPacketSchedulerTransform
 
       }
 
+    // keep a sorted queue of RECV in increasing recv order
+    // since the priority queue sorts the collection in decreasing priority
+    // we need to use the reverse ordering type class
     object RecvOrdering extends Ordering[(Recv, Int)] {
       override def compare(x: (Recv, Int), y: (Recv, Int)): Int =
         Ordering[Int].reverse.compare(x._2, y._2)

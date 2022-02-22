@@ -15,6 +15,7 @@ import chisel3._
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.HasLoggerId
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
+import manticore.compiler.assembly.levels.placed.ScheduleChecker
 
 
 class ADDCARRYTester
@@ -149,7 +150,8 @@ class ADDCARRYTester
     ManticorePasses.frontend followedBy
       ManticorePasses.middleend followedBy
       UnconstrainedToPlacedTransform followedBy
-      ManticorePasses.BackendLowerEnd
+      ManticorePasses.BackendLowerEnd followedBy
+      ScheduleChecker
 
   def compile(source: String, context: AssemblyContext): PlacedIR.DefProgram = {
     val parsed = AssemblyParser(source, context)
@@ -169,7 +171,8 @@ class ADDCARRYTester
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
-      use_loc = true
+      use_loc = true,
+      debug_message = true
       // log_file = None
     )
 
@@ -198,8 +201,6 @@ class ADDCARRYTester
         }
         // ensure no EXPECTs failed
         assert(dut.io.periphery.exception.id.peek().litValue.toInt < 0x8000)
-
-
 
 
 

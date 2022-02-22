@@ -34,8 +34,20 @@ object ScheduleChecker
       }
 
     // Inputs, constants, and base pointer are already defined at cycle 0
-    val logger_id = new HasLoggerId { val id = phase_id.id + s": ${proc.id}"}
+    val logger_id = new HasLoggerId { val id = phase_id.id + s": ${proc.id}" }
+
+    var expect_stop_reached = false
     proc.body.zipWithIndex.foreach { case (inst, cycle) =>
+      // ensure EXPECTS are ordered correctly
+      inst match {
+        case Expect(_, _, ExceptionIdImpl(_, _, ExpectFail), _) =>
+          if (expect_stop_reached) {
+            ctx.logger.error("invalid EXPECT ordering!")
+          }
+        case Expect(_, _, ExceptionIdImpl(_, _, ExpectStop), _) =>
+          expect_stop_reached = true
+        case _ => // nothing to do
+      }
       DependenceAnalysis.regUses(inst).foreach { u =>
         defined_names.get(u) match {
           case Some(def_cycle) =>
