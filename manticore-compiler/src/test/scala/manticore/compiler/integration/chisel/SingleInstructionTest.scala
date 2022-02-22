@@ -193,8 +193,8 @@ trait SingleInstructionTest
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
-      use_loc = true,
-        log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      use_loc = true
+        // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
       // log_file = None
     )
     implicit val TestName = new HasLoggerId { val id = getTestName }
@@ -213,7 +213,7 @@ trait SingleInstructionTest
     val sleep_cycles = 5
     val countdown_time = 2
     val timeout =
-      (assembled_program.head.total + sleep_cycles) * (expected_vcycles + 1) + 500
+      (assembled_program.head.total + sleep_cycles) * (expected_vcycles) + 500
     context.logger.info(s"time out is ${timeout} cycles")
     // generate initialization files
     MachineCodeGenerator.generateCode(assembled_program)(context)
@@ -273,6 +273,7 @@ trait SingleInstructionTest
         }
         // ensure no EXPECTs failed
         assert(dut.io.periphery.exception.id.peek().litValue.toInt < 0x8000)
+
 
     }
 

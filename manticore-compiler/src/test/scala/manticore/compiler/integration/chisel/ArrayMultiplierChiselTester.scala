@@ -3,15 +3,20 @@ package manticore.compiler.integration.chisel
 import manticore.compiler.integration.chisel.util.KernelTester
 import manticore.compiler.AssemblyContext
 import manticore.compiler.ManticorePasses
+import manticore.compiler.integration.chisel.util.ProcessorTester
+import manticore.compiler.assembly.levels.placed.ScheduleChecker
 
-class ArrayMultiplierChiselTester extends KernelTester {
+class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
 
   behavior of "Array Multiplier in Chisel"
 
   override def compiler =
     ManticorePasses.frontend followedBy
       ManticorePasses.middleend followedBy
-      ManticorePasses.backend
+      ManticorePasses.backend followedBy
+      ScheduleChecker
+
+
 
   it should "correctly compute results" in { implicit fixture =>
     def getResource(name: String) = scala.io.Source.fromResource(
@@ -35,8 +40,8 @@ class ArrayMultiplierChiselTester extends KernelTester {
 
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      max_dimx = 2,
-      max_dimy = 2,
+      max_dimx = 1,
+      max_dimy = 1,
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(333)

@@ -35,7 +35,7 @@ class ShiftRegFifofTest extends KernelTester {
         max_dimy = 1,
         dump_all = true,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-        expected_cycles = Some(7)
+        expected_cycles = Some(6)
       )
 
       compileAndRun(source, context)(fixture)
@@ -56,7 +56,7 @@ class ShiftRegFifofTest extends KernelTester {
         max_dimy = 2,
         dump_all = true,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-        expected_cycles = Some(7)
+        expected_cycles = Some(6)
       )
 
       compileAndRun(source, context)(fixture)

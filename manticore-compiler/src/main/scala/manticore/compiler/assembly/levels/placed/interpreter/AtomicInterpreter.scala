@@ -285,18 +285,18 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
 
       val cycles_match = expected_cycles match {
         case None    => true
-        case Some(v) => v == vcycle
+        case Some(v) => v == vcycle - 1
       }
 
       if (!cycles_match) {
         ctx.logger.error(
-          s"Interpretation finished after ${vcycle} virtual cycles, " +
+          s"Interpretation finished after ${vcycle - 1} virtual cycles, " +
             s"but expected it to finish in ${expected_cycles.get} virtual cycles!"
         )
         false
       } else if (vcycle >= ctx.max_cycles) {
         ctx.logger.error(
-          s"Interpretation timed out after ${vcycle} virtual cycles!"
+          s"Interpretation timed out after ${vcycle - 1} virtual cycles!"
         )
         false
       } else { // if (traps.nonEmpty) {
@@ -305,7 +305,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
           case StopTrap                   => true
         }
         ctx.logger.info(
-          s"Interpretation finished after ${vcycle} virtual cycles " +
+          s"Interpretation finished after ${vcycle - 1} virtual cycles " +
             s"${if (!no_error) "with error(s)" else "without errors"}"
         )
         no_error

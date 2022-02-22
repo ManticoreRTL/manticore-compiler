@@ -85,7 +85,7 @@ trait KernelTester
         assert(
           dut.io.kernel_registers.device.virtual_cycles
             .peek()
-            .litValue == context.expected_cycles.get - 1,
+            .litValue == context.expected_cycles.get,
           "invalid number of virtual cycles!"
         )
     }

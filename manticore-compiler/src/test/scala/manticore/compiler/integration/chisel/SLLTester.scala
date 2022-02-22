@@ -19,7 +19,7 @@ class SLLTester extends SingleInstructionTest {
   it should "correctly handle simple SLL cases" in {f =>
     val op1 = Seq.fill(16) { UInt16(1) }
     val op2 = Seq.tabulate(16) { i => UInt16(i) }
-    createTest(op1 = op1, op2 = op2, expected_vcycles = 17, fixture = f)
+    createTest(op1 = op1, op2 = op2, expected_vcycles = 16, fixture = f)
   }
   it should "correctly handle random SLL cases" in {f =>
 
@@ -27,7 +27,7 @@ class SLLTester extends SingleInstructionTest {
 
     val op1 = Seq.fill(400) { UInt16(randgen.nextInt(0xffff + 1)) }
     val op2 = Seq.fill(400) { UInt16(randgen.nextInt(0xffff + 1)) }
-    createTest(op1 = op1, op2 = op2, expected_vcycles = 401, fixture = f)
+    createTest(op1 = op1, op2 = op2, expected_vcycles = 400, fixture = f)
   }
 
 

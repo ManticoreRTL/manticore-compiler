@@ -264,7 +264,7 @@ class NoCStressTest extends KernelTester {
       max_dimy = dimy,
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-      expected_cycles = Some(2 + 1),
+      expected_cycles = Some(5), // has to be at least 2
       use_loc = true,
       // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
       log_file = None,
@@ -274,7 +274,10 @@ class NoCStressTest extends KernelTester {
       context.output_dir.get.toPath(),
       context.max_dimx,
       context.max_dimy,
-      context.expected_cycles.get - 2
+      context.expected_cycles.get - 1 // test size is one less than the expected cycles, because the first checksum
+      // is zero, so if we want to have 2 tests, we need to simulate 3 virtual cycles
+      // With a test_size = 1 we basically cover anything that can happen NoC-wise,
+      // doing more makes little sense... but I do for good measure :D
     )
 
     compileAndRun(source, context)
@@ -283,7 +286,10 @@ class NoCStressTest extends KernelTester {
   Seq(
     (2, 2),
     (3, 3),
-    (4, 4)
+    (4, 4),
+    (5, 5),
+    (6, 6),
+    (7, 7) // simulation can take a long time, so don't go crazy with the dimensions
   ).foreach { case (dimx, dimy) =>
     it should s"correctly compute checksums in a ${dimx}x${dimy} topology" in {
       implicit f =>

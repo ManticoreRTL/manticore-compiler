@@ -173,7 +173,7 @@ class MipsAlu extends ThyrioUnitTest {
         dump_dir = Some(work_dir.resolve("AluTester").toFile()),
         max_cycles = test_size + 2,
         debug_message =  false,
-        expected_cycles = Some(test_size + 1)
+        expected_cycles = Some(test_size)
       )
     val parsed =
       AssemblyParser(work_dir.resolve(s"AluTester.masm").toFile(), ctx)

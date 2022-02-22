@@ -78,76 +78,76 @@ class RV32 extends ThyrioUnitTest {
 
   // def run(test_name: String): Unit = {}
 
-  // it should "handle RV32_IntegerRR initial unconstrained phases" in { f =>
-  //   run("RV32_IntegerRR", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.FrontendInterpreter(true)
-  //   }
-  // }
+  it should "handle RV32_IntegerRR initial unconstrained phases" in { f =>
+    run("RV32_IntegerRR", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.FrontendInterpreter(true)
+    }
+  }
 
-  // it should "handle RV32_IntegerRR final unconstrained phases" in { f =>
-  //   run("RV32_IntegerRR", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.middleend followedBy
-  //       ManticorePasses.FrontendInterpreter(true)
-  //   }
-  // }
+  it should "handle RV32_IntegerRR final unconstrained phases" in { f =>
+    run("RV32_IntegerRR", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.middleend followedBy
+        ManticorePasses.FrontendInterpreter(true)
+    }
+  }
 
-  // it should "handle RV32_IntegerRR final placed phases" in { f =>
-  //   run("RV32_IntegerRR", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.middleend followedBy
-  //       ManticorePasses.backend followedBy
-  //       ManticorePasses.backend_atomic_interpreter
-  //   }
-  // }
+  it should "handle RV32_IntegerRR final placed phases" in { f =>
+    run("RV32_IntegerRR", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.middleend followedBy
+        ManticorePasses.backend followedBy
+        ManticorePasses.BackendInterpreter(true)
+    }
+  }
 
-  // it should "handle RV32_Load initial unconstrained phases" in { f =>
-  //   run("RV32_Load", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.FrontendInterpreter(true)
-  //   }
-  // }
+  it should "handle RV32_Load initial unconstrained phases" in { f =>
+    run("RV32_Load", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.FrontendInterpreter(true)
+    }
+  }
 
-  // it should "handle RV32_Load final unconstrained phases" in { f =>
-  //   run("RV32_Load", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.middleend followedBy
-  //       ManticorePasses.FrontendInterpreter(true)
-  //   }
-  // }
+  it should "handle RV32_Load final unconstrained phases" in { f =>
+    run("RV32_Load", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.middleend followedBy
+        ManticorePasses.FrontendInterpreter(true)
+    }
+  }
 
-  // it should "handle RV32_Load final placed phases" in { f =>
-  //   run("RV32_Load", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.middleend followedBy
-  //       ManticorePasses.backend followedBy
-  //       ManticorePasses.backend_atomic_interpreter
-  //   }
-  // }
+  it should "handle RV32_Load final placed phases" in { f =>
+    run("RV32_Load", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.middleend followedBy
+        ManticorePasses.backend followedBy
+        ManticorePasses.BackendInterpreter(true)
+    }
+  }
 
-  // it should "handle RV32_Store initial unconstrained phases" in { f =>
-  //   run("RV32_Store", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.FrontendInterpreter(true)
-  //   }
-  // }
+  it should "handle RV32_Store initial unconstrained phases" in { f =>
+    run("RV32_Store", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.FrontendInterpreter(true)
+    }
+  }
 
-  // it should "handle RV32_Store final unconstrained phases" in { f =>
-  //   run("RV32_Store", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.middleend followedBy
-  //       ManticorePasses.FrontendInterpreter(true)
-  //   }
-  // }
-  // it should "handle RV32_Store final placed phases" in { f =>
-  //   run("RV32_Store", f) {
-  //     ManticorePasses.frontend followedBy
-  //       ManticorePasses.middleend followedBy
-  //       ManticorePasses.backend followedBy
-  //       ManticorePasses.BackendInterpreter(true)
-  //   }
-  // }
+  it should "handle RV32_Store final unconstrained phases" in { f =>
+    run("RV32_Store", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.middleend followedBy
+        ManticorePasses.FrontendInterpreter(true)
+    }
+  }
+  it should "handle RV32_Store final placed phases" in { f =>
+    run("RV32_Store", f) {
+      ManticorePasses.frontend followedBy
+        ManticorePasses.middleend followedBy
+        ManticorePasses.backend followedBy
+        ManticorePasses.BackendInterpreter(true)
+    }
+  }
 
   it should "handle RV32_Store on a single processor" in { f =>
 

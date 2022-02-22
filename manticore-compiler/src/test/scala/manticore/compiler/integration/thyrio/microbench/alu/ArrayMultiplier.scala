@@ -85,7 +85,7 @@ class ArrayMultiplier extends ThyrioUnitTest {
         dump_all = true,
         dump_dir = Some(work_dir.resolve("ArrayMultiplier").toFile()),
         max_cycles = test_size + 200,
-        expected_cycles = Some(test_size + width * 2 + 1)
+        expected_cycles = Some(test_size + width * 2)
       )
     val parsed =
       AssemblyParser(
