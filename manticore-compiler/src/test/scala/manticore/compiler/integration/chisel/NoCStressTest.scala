@@ -15,14 +15,12 @@ import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.HasLoggerId
+import manticore.compiler.integration.chisel.util.KernelTester
 
 /** A stress for the NoC implementation.
   */
 
-class NoCStressTest
-    extends UnitFixtureTest
-    with ChiselScalatestTester
-    with ProgramTester {
+class NoCStressTest extends KernelTester {
 
   def createTest(
       test_dir: Path,
@@ -257,96 +255,42 @@ class NoCStressTest
 
   behavior of "Stressed NoC"
 
-  it should "not drop any packets and compute checksums correctly" in {
-    fixture =>
-      val context = AssemblyContext(
-        output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-        max_dimx = 8,
-        max_dimy = 8,
-        dump_all = true,
-        dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-        expected_cycles = Some(2 + 1),
-        use_loc = true,
-        // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
-        log_file = None,
-        debug_message = false
-      )
-      val source = createTest(
-        context.output_dir.get.toPath(),
-        context.max_dimx,
-        context.max_dimy,
-        context.expected_cycles.get - 2
-      )
+  def createTestAndCompileAndRun(dimx: Int, dimy: Int)(implicit
+      fixture: FixtureParam
+  ): Unit = {
+    val context = AssemblyContext(
+      output_dir = Some(fixture.test_dir.resolve("out").toFile()),
+      max_dimx = dimx,
+      max_dimy = dimy,
+      dump_all = true,
+      dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
+      expected_cycles = Some(2 + 1),
+      use_loc = true,
+      // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      log_file = None,
+      debug_message = false
+    )
+    val source = createTest(
+      context.output_dir.get.toPath(),
+      context.max_dimx,
+      context.max_dimy,
+      context.expected_cycles.get - 2
+    )
 
-      val program = compile(source, context)
-      ManticorePasses.BackendInterpreter(true)(program, context)
-
-      val assembled = MachineCodeGenerator.assembleProgram(program)(context)
-
-      val vcycles_length =
-        assembled.map(_.total).max + LatencyAnalysis.maxLatency()
-
-      MachineCodeGenerator(program, context)
-
-      test(
-        new ManticoreFlatSimKernel(
-          DimX = context.max_dimx,
-          DimY = context.max_dimy,
-          debug_enable = true,
-          reset_latency = 12,
-          prefix_path =
-            fixture.test_dir.resolve("out").toAbsolutePath().toString()
-        )
-      ).withAnnotations(Seq(VerilatorBackendAnnotation)) {
-        dut =>
-          var cycle = 0
-          def tick(n: Int = 1): Unit = {
-            dut.clock.step(n)
-            cycle += n
-          }
-
-          implicit val test_id = new HasLoggerId { val id = getTestName }
-          // let the reset propagate through the cores
-          context.logger.info("Starting RTL simulation")
-          tick(20)
-
-          dut.io.kernel_ctrl.start.poke(true.B)
-          tick()
-          dut.io.kernel_ctrl.start.poke(false.B)
-          tick()
-
-          dut.clock.setTimeout(
-            // set the timeout to be the the time required for execution plus
-            // some time required to program the processors
-            vcycles_length * context.expected_cycles.get +
-              vcycles_length * 100 * context.max_dimx * context.max_dimy
-          )
-          while (!dut.io.kernel_ctrl.idle.peek().litToBoolean) {
-            tick()
-          }
-          context.logger.info(
-            s"Got IDLE after ${cycle} cycles with " +
-              s"${dut.io.kernel_registers.device.bootloader_cycles.peek().litValue} " +
-              s"cycles to boot the machine"
-          )
-
-          assert(
-            dut.io.kernel_registers.device.exception_id_0
-              .peek()
-              .litValue < 0x8000,
-            "execution resulted in fatal exception!"
-          )
-          assert(
-            dut.io.kernel_registers.device.virtual_cycles
-              .peek()
-              .litValue == context.expected_cycles.get - 1,
-            "invalid number of virtual cycles!"
-          )
-
-      }
+    compileAndRun(source, context)
   }
 
-  // println(
-  //   generateProcess(root_dir, 0, 0, Seq(UInt16(1), UInt16(2)), Seq(UInt16(0), UInt16(1)))
-  // )
+  Seq(
+    (2, 2),
+    (3, 3),
+    (4, 4)
+  ).foreach { case (dimx, dimy) =>
+    it should s"correctly compute checksums in a ${dimx}x${dimy} topology" in {
+      implicit f =>
+        createTestAndCompileAndRun(dimx, dimy)
+
+    }
+
+  }
+
 }

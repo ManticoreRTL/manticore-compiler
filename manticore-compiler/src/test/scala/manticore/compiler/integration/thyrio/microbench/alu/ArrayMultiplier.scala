@@ -1,4 +1,4 @@
-package integration.thyrio.microbench.alu
+package manticore.compiler.integration.thyrio.microbench.alu
 
 import manticore.compiler.integration.ThyrioUnitTest
 import manticore.compiler.integration.thyrio.ExternalTool

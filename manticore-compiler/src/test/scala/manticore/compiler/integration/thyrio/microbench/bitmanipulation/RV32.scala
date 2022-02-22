@@ -1,4 +1,4 @@
-package manticore.compiler.ntegration.thyrio.microbench.bitmanipulation
+package manticore.compiler.integration.thyrio.microbench.bitmanipulation
 
 import manticore.compiler.integration.ThyrioUnitTest
 import manticore.compiler.integration.thyrio.ExternalTool

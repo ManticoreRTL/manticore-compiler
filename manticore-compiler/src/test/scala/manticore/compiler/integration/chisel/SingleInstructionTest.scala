@@ -15,6 +15,7 @@ import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.DebugSymbol
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.HasLoggerId
 
 
 
@@ -196,7 +197,7 @@ trait SingleInstructionTest
         log_file = Some(fixture.test_dir.resolve("run.log").toFile())
       // log_file = None
     )
-    implicit val TestName = TransformationID(getTestName)
+    implicit val TestName = new HasLoggerId { val id = getTestName }
     val expected_results = (op1 zip op2) map { case (a, b) => compute(a, b) }
     val program =
       compile(mkProgram(context, op1, op2, expected_results), context)
