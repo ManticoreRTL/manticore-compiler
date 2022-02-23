@@ -8,14 +8,17 @@ import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.assembly.levels.placed.interpreter.PlacedValueChangeWriter
+import manticore.compiler.assembly.levels.CarryType
+import manticore.compiler.assembly.levels.InputType
+import manticore.compiler.assembly.levels.MemoryType
 
-/**
- * Basic interpreter for placed programs. The program needs to have Send and
- * Recv instructions but does not check for NoC contention and does not require
- * allocated registers.
- *
- * @author Mahyar Emami <mahyar.emami@epfl.ch>
- */
+/** Basic interpreter for placed programs. The program needs to have Send and
+  * Recv instructions but does not check for NoC contention and does not require
+  * allocated registers.
+  *
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 object AtomicInterpreter extends AssemblyChecker[DefProgram] {
 
   case class AtomicMessage(
@@ -24,6 +27,97 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       target_register: Name,
       value: UInt16
   ) extends MessageBase
+
+  trait RegisterFile {
+    def write(name: Name, value: UInt16): Unit
+    def read(name: Name): UInt16
+  }
+
+  /// A virtually unbounded register file
+  final class NamedRegisterFile(
+      proc: DefProcess,
+      val vcd: Option[PlacedValueChangeWriter]
+  )(implicit val ctx: AssemblyContext)
+      extends RegisterFile {
+
+    private val register_file =
+      scala.collection.mutable.Map.empty[Name, UInt16] ++ proc.registers.map {
+        r =>
+          if (r.variable.varType == ConstType && r.value.isEmpty) {
+            ctx.logger.error(s"constant value is not defined", r)
+          }
+          r.variable.name -> r.value.getOrElse(UInt16(0))
+      }
+    override def write(rd: Name, value: UInt16): Unit = {
+      register_file(rd) = value
+      vcd.foreach(_.update(rd, value))
+    }
+    override def read(rs: Name): UInt16 = register_file(rs)
+
+  }
+
+  // a bounded size register file
+  final class PhysicalRegisterFile(
+      proc: DefProcess,
+      val vcd: Option[PlacedValueChangeWriter]
+  )(implicit val ctx: AssemblyContext)
+      extends RegisterFile {
+
+    private val register_file = Array.fill(ctx.max_registers) { UInt16(0) }
+    private val carry_register_file = Array.fill(ctx.max_carries) { UInt16(0) }
+
+    private val name_to_ids = proc.registers.map { r: DefReg =>
+      val reg_id = r.variable.id
+      val max_id =
+        if (r.variable.varType == CarryType) ctx.max_carries
+        else ctx.max_registers
+
+      if (reg_id < 0 || reg_id >= max_id) {
+        ctx.logger.error(s"register not properly allocated!", r)
+        r.variable.name -> (0, register_file)
+      } else {
+        if (r.variable.varType == ConstType && r.value.isEmpty) {
+          ctx.logger.warn(s"constant is not defined!", r)
+        }
+        // set the initial value if there is one
+        if (
+          r.variable.varType == InputType ||
+          r.variable.varType == ConstType ||
+          r.variable.varType == MemoryType
+        ) {
+          r.value match {
+            case Some(x) => register_file(reg_id) = x
+            case None    => // nothing to do
+          }
+        } else if (r.value.nonEmpty) {
+          ctx.logger.warn("Did not expect initial value", r)
+        }
+
+        if (r.variable.varType == CarryType) {
+          r.variable.name -> (reg_id, carry_register_file)
+        } else {
+          r.variable.name -> (reg_id, register_file)
+        }
+      }
+    }.toMap
+
+    override def write(rd: Name, value: UInt16): Unit = {
+      //look up the index
+      val (index, container) = name_to_ids(rd)
+      container(index) = value
+      vcd match {
+        case Some(handle) => handle.update(rd, value)
+        case None         => // do nothing
+      }
+
+    }
+
+    override def read(rs: Name): UInt16 = {
+      val (index, container) = name_to_ids(rs)
+      container(index)
+    }
+
+  }
 
   final class AtomicProcessInterpreter(
       val proc: DefProcess,
@@ -38,17 +132,19 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
 
     type Message = AtomicMessage
 
-    private val register_file =
-      scala.collection.mutable.Map.empty[Name, UInt16] ++ proc.registers.map {
-        r =>
-          if (r.variable.varType == ConstType && r.value.isEmpty) {
-            ctx.logger.error(s"constant value is not defined", r)
-          }
-          r.variable.name -> r.value.getOrElse(UInt16(0))
+    private val register_file = {
+      // check whether the registers are allocated
+      if (proc.registers.exists(r => r.variable.id == -1)) {
+        ctx.logger.info("using an unbounded register file")
+        new NamedRegisterFile(proc, vcd)
+      } else {
+        ctx.logger.info("using a bounded register file")
+        new PhysicalRegisterFile(proc, vcd)
       }
+
+    }
     override def write(rd: Name, value: UInt16): Unit = {
-      register_file(rd) = value
-      vcd.foreach(_.update(rd, value))
+      register_file.write(rd, value)
     }
 
     private val local_memory = {
@@ -90,16 +186,20 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       val underlying = Array.fill(mem_size) { UInt16(0) }
       memories.foreach {
         case m @ DefReg(
-              mvar @ MemoryVariable(_, _, MemoryBlock(_, _, _, initial_content)),
+              mvar @ MemoryVariable(
+                _,
+                _,
+                MemoryBlock(_, _, _, initial_content)
+              ),
               offset_opt,
               _
             ) => ///
           val offset = offset_opt match {
             case Some(v) =>
               // make sure the offset value is set in the register file
-              register_file(mvar.name) = v
+              register_file.write(mvar.name, v)
               v
-            case None    =>
+            case None =>
               // should not happen
               ctx.logger.error(s"memory not allocated", m)
               UInt16(0)
@@ -128,7 +228,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     private val instructions =
       proc.body.toArray // convert to array for faster indexing...
     private val vcycle_length = instructions.length
-    override def read(rs: Name): UInt16 = register_file(rs)
+    override def read(rs: Name): UInt16 = register_file.read(rs)
 
     override def lload(address: UInt16): UInt16 = local_memory(address.toInt)
 

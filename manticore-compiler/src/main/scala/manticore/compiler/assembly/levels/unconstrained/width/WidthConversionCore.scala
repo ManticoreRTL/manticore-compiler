@@ -356,21 +356,22 @@ object WidthConversionCore
             rd_uint16_array.length == rs2_uint16_array_aligned.length
         )
         if (rs1_uint16_array_aligned.length != 1) {
-          val carry: Name = builder.mkCarry()
-          // set the carry-in to be zero for the first partial sum
-          inst_q += ClearCarry(carry)
 
-          rs1_uint16_array_aligned zip
+          // set the carry-in to be zero for the first partial sum
+          (rs1_uint16_array_aligned zip
             rs2_uint16_array_aligned zip
-            rd_uint16_array_mutable foreach { case ((rs1_16, rs2_16), rd_16) =>
+            rd_uint16_array_mutable).foldLeft(builder.mkCarry0()) {
+            case (cin, ((rs1_16, rs2_16), rd_16)) =>
+              val cout = builder.mkCarry()
               inst_q += AddC(
                 rd = rd_16,
-                co = carry,
+                co = cout,
                 rs1 = rs1_16,
                 rs2 = rs2_16,
-                ci = carry
+                ci = cin
               )
-            }
+              cout
+          }
 
         } else {
           inst_q += instruction
@@ -385,7 +386,9 @@ object WidthConversionCore
         // if the ADD has one MemoryType operand, it should not be masked
         // otherwise, when the memory is allocated (i.e., initial value is
         // set) we may end up truncating addresses.
-        if (builder.originalDef(instruction.rs1).variable.varType != MemoryType) {
+        if (
+          builder.originalDef(instruction.rs1).variable.varType != MemoryType
+        ) {
 
           inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
         } else {
@@ -395,8 +398,13 @@ object WidthConversionCore
             ctx.logger.error(s"Global memory not implemented yet!", instruction)
           }
         }
-        if (builder.originalDef(instruction.rs2).variable.varType == MemoryType) {
-          ctx.logger.error(s"Can not have memory variable as the second operand!", instruction)
+        if (
+          builder.originalDef(instruction.rs2).variable.varType == MemoryType
+        ) {
+          ctx.logger.error(
+            s"Can not have memory variable as the second operand!",
+            instruction
+          )
         }
 
         // val moves =
@@ -405,7 +413,6 @@ object WidthConversionCore
           rd_uint16_array_mutable,
           instruction
         )
-
 
       case BinaryOperator.SUB =>
         val ConvertedWire(rd_uint16_array, rd_mask) =
@@ -454,22 +461,26 @@ object WidthConversionCore
           // set the initial carry to 1
           inst_q += SetCarry(carry)
 
-          rs1_uint16_array_aligned zip rs2_uint16_array_aligned zip rd_uint16_array_mutable foreach {
-            case ((rs1_16, rs2_16), rd_16) =>
-              inst_q += BinaryArithmetic(
-                BinaryOperator.XOR,
-                rs2_16_neg,
-                rs2_16,
-                const_0xFFFF
-              )
-              inst_q += AddC(
-                co = carry,
-                rd = rd_16,
-                rs1 = rs1_16,
-                rs2 = rs2_16_neg,
-                ci = carry
-              )
-          }
+          (rs1_uint16_array_aligned zip rs2_uint16_array_aligned zip rd_uint16_array_mutable)
+            .foldLeft(builder.mkCarry1()) {
+              case (cin, ((rs1_16, rs2_16), rd_16)) =>
+                inst_q += BinaryArithmetic(
+                  BinaryOperator.XOR,
+                  rs2_16_neg,
+                  rs2_16,
+                  const_0xFFFF
+                )
+                val cout = builder.mkCarry()
+                inst_q += AddC(
+                  co = cout,
+                  rd = rd_16,
+                  rs1 = rs1_16,
+                  rs2 = rs2_16_neg,
+                  ci = cin
+                )
+                cout
+
+            }
 
         } else {
           // trivial case, use the dedicated SUB instruction
@@ -551,7 +562,8 @@ object WidthConversionCore
           }
           // init sum of results to zero
           inst_q += Mov(
-            seq_add_res, builder.mkConstant(0)
+            seq_add_res,
+            builder.mkConstant(0)
           )
 
           // compute partial equalities by computing the equality of
@@ -1313,7 +1325,7 @@ object WidthConversionCore
           )
         }
 
-      case BinaryOperator.SRL if builder.isConstant(instruction.rs2)  =>
+      case BinaryOperator.SRL if builder.isConstant(instruction.rs2) =>
         val shift_amount = builder.originalDef(instruction.rs2).value.get
 
         if (shift_amount > 0xffff) {
@@ -1827,7 +1839,6 @@ object WidthConversionCore
           }
         }
       // no need to mask
-
 
     }
     // set the position

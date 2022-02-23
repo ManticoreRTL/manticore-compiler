@@ -25,6 +25,7 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.ExpectIdInsertion
+
 object ManticorePasses {
 
   def FrontendInterpreter(cond: Boolean = true) =

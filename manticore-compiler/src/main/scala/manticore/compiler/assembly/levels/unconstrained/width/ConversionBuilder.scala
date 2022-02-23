@@ -38,6 +38,9 @@ trait ConversionBuilder extends Flavored {
     // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
     private val m_wires = scala.collection.mutable.Map.empty[Name, DefReg]
     private val m_carries = scala.collection.mutable.Queue.empty[DefReg]
+    private var m_carry_zero = Option.empty[DefReg]
+    private var m_carry_one = Option.empty[DefReg]
+
     private val m_constants =
       scala.collection.mutable.Map.empty[Int, DefReg]
     private val m_subst =
@@ -53,14 +56,21 @@ trait ConversionBuilder extends Flavored {
       * @param instructions
       * @return
       */
-    def buildFrom(instructions: Seq[Instruction]): DefProcess =
+    def buildFrom(instructions: Seq[Instruction]): DefProcess = {
+
+      val preamble =
+        m_carry_zero.map { r => ClearCarry(r.variable.name) }.toSeq ++
+          m_carry_one.map { r => SetCarry(r.variable.name) }.toSeq
+      val const_carries =
+        m_carry_zero.toSeq ++ m_carry_one.toSeq
       proc
         .copy(
           registers =
-            (m_wires.values ++ m_constants.values ++ m_carries).toSeq.distinct,
-          body = instructions
+            (m_wires.values ++ m_constants.values ++ const_carries ++ m_carries).toSeq.distinct,
+          body = preamble ++ instructions
         )
         .setPos(proc.pos)
+    }
 
     /** Create a unique name
       *
@@ -96,6 +106,26 @@ trait ConversionBuilder extends Flavored {
         .name
     }
 
+    def mkCarry0(): Name = {
+      if (m_carry_zero.isEmpty) {
+        val carry = DefReg(
+          LogicVariable(freshName(s"carry0"), 1, CarryType)
+        )
+        m_carry_zero = Some(carry)
+      }
+      m_carry_zero.get.variable.name
+    }
+
+    def mkCarry1(): Name = {
+      if (m_carry_one.isEmpty) {
+        val carry = DefReg(
+          LogicVariable(freshName(s"carry0"), 1, CarryType)
+        )
+        m_carry_one = Some(carry)
+      }
+      m_carry_one.get.variable.name
+    }
+
     def mkCarry(): Name = {
       val new_carry =
         DefReg(
@@ -103,7 +133,6 @@ trait ConversionBuilder extends Flavored {
         )
       m_carries += new_carry
       new_carry.variable.name
-
     }
 
     /** Helper function to create temp wires, do not use this function if you

@@ -81,7 +81,7 @@ object AssemblyContext {
       dump_dir: Option[File] = None,
       debug_message: Boolean = false,
       max_registers: Int = 512,
-      max_carries: Int = 4,
+      max_carries: Int = 32,
       max_local_memory: Int = 4096,
       max_instructions: Int = 4096,
       max_instructions_threshold: Int = 4096 - 512,

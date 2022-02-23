@@ -58,6 +58,7 @@ case class CliConfig(
     interpret: Boolean = false,
     jump_to_placed: Boolean =
       false // jump to placed IR, for Mahyar only.. temp option
+
 )
 
 object Main {

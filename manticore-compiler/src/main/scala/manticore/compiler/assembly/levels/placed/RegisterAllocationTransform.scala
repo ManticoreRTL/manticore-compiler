@@ -34,7 +34,7 @@ object RegisterAllocationTransform
 
   object LivenessEndOrdering extends Ordering[LiveRegister] {
     override def compare(x: LiveRegister, y: LiveRegister): Int =
-      Ordering[Int].compare(x.lifetime._2, y.lifetime._2)
+      Ordering[Int].reverse.compare(x.lifetime._2, y.lifetime._2)
   }
 
   /** Compute liveness intervals and return them in increasing order of start
@@ -123,7 +123,7 @@ object RegisterAllocationTransform
   private def withId(r: DefReg, new_id: Int): DefReg =
     r.copy(variable = r.variable.withId(new_id)).setPos(r.pos)
 
-  private def isImmortal(r: DefReg): Boolean = {
+  def isImmortal(r: DefReg): Boolean = {
     val tpe = r.variable.varType
     tpe == ConstType || tpe == InputType || tpe == MemoryType
   }
@@ -152,6 +152,7 @@ object RegisterAllocationTransform
     // collect the eternal registers, i.e., constants, inputs and memory base pointers
     // the constants are placed at the head of the queue with increasing order of
     // their values
+
     val eternals = scala.collection.mutable.PriorityQueue
       .empty[DefReg](DefRegOrdering) ++ process.registers.collect {
       case r: DefReg if isImmortal(r) => r
@@ -229,23 +230,67 @@ object RegisterAllocationTransform
       override def compare(x: DefReg, y: DefReg): Int =
         Ordering[Int].reverse.compare(x.variable.id, y.variable.id)
     }
+
     val allocated_list = scala.collection.mutable.PriorityQueue
       .empty[DefReg](DefRegOrdering) ++ immortals
     val allocated_carry_list =
       scala.collection.mutable.PriorityQueue.empty[DefReg](DefRegOrdering)
     var failed = false
+
+    // if (ctx.debug_message) {
+    //   val to_alloc_copy: Seq[LiveRegister] = to_allocate.clone().dequeueAll
+
+    //   ctx.logger.debug(to_alloc_copy.map { r =>
+    //     s"${r.reg.variable.name}: ${r.lifetime}"
+    //   } mkString ("\n"))
+
+    // }
+
+    def releaseDead(
+        now_time: Int,
+        q: scala.collection.mutable.PriorityQueue[LiveRegister]
+    ): Unit = {
+
+      var may_release = q.nonEmpty
+
+      // if (q.nonEmpty && ctx.debug_message) {
+
+      //   val copy = q.clone().dequeueAll
+      //   val ls = copy.map { r =>
+      //     s"${r.reg.variable.name}: ${r.lifetime}"
+      //   } mkString ("\n")
+      //   ctx.logger.debug(s"active_list:\n${ls}")
+      // }
+      while (may_release) {
+        // try to release
+        val head = q.dequeue()
+        if (head.lifetime._2 < now_time) {
+          ctx.logger.debug(
+            s"@${now_time} Releasing ${head.reg.variable.name} : ${head.lifetime}"
+          )
+          val dead_reg = head.reg
+          if (dead_reg.variable.varType == CarryType) {
+            free_carries += dead_reg.variable.id
+          } else {
+            free_registers += dead_reg.variable.id
+          }
+          may_release = q.nonEmpty
+        } else {
+          may_release = false
+          q += head
+        }
+      }
+    }
     while (to_allocate.nonEmpty && !failed) {
 
       val LiveRegister(reg, interval @ (start_time, _)) = to_allocate.dequeue()
 
-      val to_release = active_list.dropWhile(x => x.lifetime._2 < start_time)
-      to_release.foreach { case LiveRegister(dead_reg, _) =>
-        if (dead_reg.variable.varType == CarryType) {
-          free_carries += dead_reg.variable.id
-        } else {
-          free_registers += dead_reg.variable.id
-        }
-      }
+      ctx.logger.debug(s"time: ${start_time}")
+
+      // check if we can release any registers
+
+      releaseDead(start_time, active_list)
+
       if (reg.variable.varType == CarryType) {
         // try allocating
         if (free_carries.nonEmpty) {
