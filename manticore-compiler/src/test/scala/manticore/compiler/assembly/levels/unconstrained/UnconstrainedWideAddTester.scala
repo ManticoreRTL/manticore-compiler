@@ -86,7 +86,7 @@ class UnconstrainedWideAddTester extends UnconstrainedWideTest {
 
   it should "correctly handle the addition carry" taggedAs Tags.WidthConversion in {
     f =>
-      Range(0, 10) foreach { i =>
+      Range(0, 100) foreach { i =>
         val prog_text = mkProgram(f)
 
         val parsed = AssemblyParser(prog_text, f.ctx)

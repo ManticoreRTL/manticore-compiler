@@ -5,6 +5,8 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.ManticorePasses
 import manticore.compiler.integration.chisel.util.ProcessorTester
 import manticore.compiler.assembly.levels.placed.ScheduleChecker
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 
 class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
 
@@ -40,13 +42,19 @@ class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
 
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      max_dimx = 1,
-      max_dimy = 1,
+      max_dimx = 4,
+      max_dimy = 4,
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-      expected_cycles = Some(333)
+      expected_cycles = Some(2 + 16),
+      max_carries = 16,
+      debug_message = true,
+      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      // debug_message = true
     )
-
+    // val program = compile(source, context)
+    // MachineCodeGenerator.apply(program, context)
+    // AtomicInterpreter(program, context)
     compileAndRun(source, context)
 
   }

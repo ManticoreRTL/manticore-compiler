@@ -28,15 +28,15 @@ class ArrayMultiplier extends ThyrioUnitTest {
   val resource_dir =
     getClass().getResource("/integration/microbench/alu/multiplier").toURI()
 
-  val test_size = 300
-  val width = 16
+  val test_size = 2
+  val width = 4
   val randGen = new scala.util.Random(0)
   def generateTest(work_dir: Path): Unit = {
 
     println("Generating random test")
     assert(width <= 32)
-    val mask: Long = 0xffffL
-    val res_mask: Long = 0xffffffffL
+    val mask: Long = 0xfL
+    val res_mask: Long = 0xffL
     val op1 = Seq.fill(test_size) { randGen.nextLong() & mask }
     val op2 = Seq.fill(test_size) { randGen.nextLong() & mask }
     val res = op1 zip op2 map { case (r1, r2) => (r1 * r2) & res_mask }
@@ -107,26 +107,26 @@ class ArrayMultiplier extends ThyrioUnitTest {
     runTest(work_dir)(phases)
   }
 
-  it should "successfully interpret the results before width conversion" in {
-    f =>
-      Range(0, 1) foreach { i =>
-        testIteration(i)(
-          ManticorePasses.frontend followedBy
-            ManticorePasses.FrontendInterpreter(true)
-        )
-      }
-  }
+  // it should "successfully interpret the results before width conversion" in {
+  //   f =>
+  //     Range(0, 1) foreach { i =>
+  //       testIteration(i)(
+  //         ManticorePasses.frontend followedBy
+  //           ManticorePasses.FrontendInterpreter(true)
+  //       )
+  //     }
+  // }
 
-  it should "successfully interpret the results after width conversion" in {
-    f =>
-      Range(0, 1) foreach { i =>
-        testIteration(i)(
-          ManticorePasses.frontend followedBy
-            ManticorePasses.middleend followedBy
-            ManticorePasses.FrontendInterpreter(true)
-        )
-      }
-  }
+  // it should "successfully interpret the results after width conversion" in {
+  //   f =>
+  //     Range(0, 1) foreach { i =>
+  //       testIteration(i)(
+  //         ManticorePasses.frontend followedBy
+  //           ManticorePasses.middleend followedBy
+  //           ManticorePasses.FrontendInterpreter(true)
+  //       )
+  //     }
+  // }
 
   it should "successfully atomically interpret the results" in {
     f =>

@@ -276,7 +276,7 @@ object GlobalPacketSchedulerTransform
               h.scheduled += (send_inst.inst -> cycle)
 
               // create a receive instruction
-              val recv_inst_time = cycle + send_inst.manhattan
+              val recv_inst_time = inst_wrapper.path_y.last._2 + cycle
               val recv = Recv(
                 rd = send_inst.inst.rd,
                 rs = send_inst.inst.rs,
@@ -341,12 +341,17 @@ object GlobalPacketSchedulerTransform
           }
           cycle += 1
         }
-        println(cycle)
+
         // append the RECV instructions if any
         val recv_to_sched = recv_queue(p.id)
 
+        context.logger.debug {
+          val cp = recv_to_sched.clone().dequeueAll
+          s"RECVs in ${p.id}:\n${cp.map { i => s"${i._1}: ${i._2}" } mkString "\n"}"
+        }
+
         while (recv_to_sched.nonEmpty) {
-          val first_recv = recv_to_sched.head
+          val first_recv = recv_to_sched.dequeue()
           val recv_time = first_recv._2
           // insert NOPs if messages are arriving later
           if (recv_time > cycle) {
@@ -354,7 +359,7 @@ object GlobalPacketSchedulerTransform
             cycle = recv_time
           }
           full_sched enqueue first_recv._1
-          recv_to_sched.dequeue()
+
         }
 
         if (full_sched.last.isInstanceOf[Recv]) {

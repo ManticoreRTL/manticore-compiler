@@ -41,7 +41,7 @@ class ADDCARRYTester
     require(context.expected_cycles.nonEmpty)
     require(context.expected_cycles.get > 2)
 
-    val test_size = context.expected_cycles.get - 1
+    val test_size = context.expected_cycles.get
 
     def mkMemInit(name: String, values: Seq[BigInt]): String = {
       val path = fixture.dump(name, values.mkString("\n"))
@@ -109,7 +109,7 @@ class ADDCARRYTester
     |       ${mkReg("counter", 16, Some(BigInt(0)))}
     |       .const one 16 1
     |       .const zero 16 0
-    |       .const test_size 16 ${test_size}
+    |       .const test_size 16 ${test_size - 1}
     |       ${mkReg("done", 16, Some(BigInt(0)))}
     |
     |       ${mkReg("correct", 16, Some(BigInt(1)))}
@@ -162,17 +162,17 @@ class ADDCARRYTester
   behavior of "ADDCARRY instruction test"
 
   it should "correctly compute wide addition" in { fixture =>
-    val expected_vcycles = 3
+    val expected_vcycles = 50
 
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      max_dimx = 2,
-      max_dimy = 2,
+      max_dimx = 1,
+      max_dimy = 1,
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
       use_loc = true,
-      debug_message = true
+      debug_message = false
       // log_file = None
     )
 
