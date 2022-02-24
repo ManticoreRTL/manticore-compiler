@@ -282,6 +282,7 @@ object GlobalPacketSchedulerTransform
                 rs = send_inst.inst.rs,
                 source_id = send_inst.source
               )
+              context.logger.debug(s"recv time ${recv_inst_time}", recv)
               recv_queue(send_inst.target) += (recv -> recv_inst_time)
             }
           }
@@ -356,7 +357,9 @@ object GlobalPacketSchedulerTransform
           // insert NOPs if messages are arriving later
           if (recv_time > cycle) {
             full_sched enqueueAll Seq.fill(recv_time - cycle) { Nop }
-            cycle = recv_time
+            cycle = recv_time + 1
+          } else {
+            cycle = cycle + 1
           }
           full_sched enqueue first_recv._1
 

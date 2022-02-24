@@ -7,6 +7,7 @@ import manticore.compiler.integration.chisel.util.ProcessorTester
 import manticore.compiler.assembly.levels.placed.ScheduleChecker
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
+import manticore.compiler.assembly.levels.placed.LinkUtilizationChecker
 
 class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
 
@@ -16,14 +17,16 @@ class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
     ManticorePasses.frontend followedBy
       ManticorePasses.middleend followedBy
       ManticorePasses.backend followedBy
-      ScheduleChecker
+      ScheduleChecker followedBy LinkUtilizationChecker
 
   Seq(
     (1, 1),
     (2, 2),
     (3, 3),
     (4, 4),
-    (5, 5)
+    (5, 5),
+    (6, 6),
+    (7, 7)
   ).foreach { case (dimx, dimy) =>
     it should s"not fail in a ${dimx}x${dimy} topology" in { implicit fixture =>
       def getResource(name: String) = scala.io.Source.fromResource(

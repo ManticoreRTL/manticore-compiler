@@ -313,7 +313,9 @@ object ListSchedulerTransform
         .map { case (k, v) => s"${k.serialized} : ${v} " }
         .mkString("\n")}"
     )
-    while (dependence_graph.nodes.nonEmpty) {
+    val instructions_to_schedule = dependence_graph.nodes.size
+    var scheduled_count = 0
+    while (scheduled_count != instructions_to_schedule) {
       val finished_list =
         active_list.filter { _.time_left == 0 } map { f =>
           val node = f.node
@@ -345,6 +347,7 @@ object ListSchedulerTransform
           new ActiveNode(head.n, instructionLatency(head.n.toOuter))
         )
         schedule.append(head.n.toOuter)
+        scheduled_count += 1
 
       }
       cycle += 1

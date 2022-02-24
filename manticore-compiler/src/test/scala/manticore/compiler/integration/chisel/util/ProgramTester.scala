@@ -13,6 +13,8 @@ import manticore.compiler.assembly.parser.AssemblyParser
 import java.nio.file.Files
 import manticore.machine.core.Processor
 import manticore.machine.ManticoreBaseISA
+import manticore.compiler.assembly.levels.placed.ScheduleChecker
+import manticore.compiler.assembly.levels.placed.LinkUtilizationChecker
 
 trait ProgramTester {
 
@@ -50,7 +52,9 @@ trait ProgramTester {
     ManticorePasses.frontend followedBy
       ManticorePasses.middleend followedBy
       UnconstrainedToPlacedTransform followedBy
-      ManticorePasses.BackendLowerEnd
+      ManticorePasses.BackendLowerEnd followedBy
+      ScheduleChecker followedBy
+      LinkUtilizationChecker
 
   def compile(source: String, context: AssemblyContext): PlacedIR.DefProgram = {
     val parsed = AssemblyParser(source, context)

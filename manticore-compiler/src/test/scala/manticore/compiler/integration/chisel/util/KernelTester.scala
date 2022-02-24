@@ -12,6 +12,8 @@ import chisel3._
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import java.io.PrintWriter
 
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+
 trait KernelTester
     extends UnitFixtureTest
     with ChiselScalatestTester
@@ -26,7 +28,7 @@ trait KernelTester
     val program = compile(source, context)
 
     // interpret to ensure our expectations are met before RTL simulation is run
-    ManticorePasses.BackendInterpreter(true)(program, context)
+    AtomicInterpreter(program, context)
 
     val assembled_program =
       MachineCodeGenerator.assembleProgram(program)(context)

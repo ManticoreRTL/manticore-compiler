@@ -112,6 +112,9 @@ object LatencyAnalysis {
     if (source.y > target.y) dim._2 - source.y + target.y
     else target.y - source.y
 
+  def xyHops(source: ProcessId, target: ProcessId, dim:(Int, Int)) = {
+    (xHops(source, target, dim), yHops(source, target, dim))
+  }
   def maxLatency(): Int = 3
   def manhattan(
       source: ProcessId,

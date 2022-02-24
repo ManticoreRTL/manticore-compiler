@@ -42,14 +42,14 @@ class Mips32ChiselTester extends KernelTester with ProcessorTester {
 
       val context = AssemblyContext(
         output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-        max_dimx = 2,
-        max_dimy = 2,
+        max_dimx = dimy,
+        max_dimy = dimx,
         dump_all = true,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
         expected_cycles = Some(54),
         max_carries = 16,
-        debug_message = false,
-        log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+        debug_message = false
+        // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
         // log_file = None
         // debug_message = true
       )
