@@ -266,8 +266,7 @@ class NoCStressTest extends KernelTester {
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(5), // has to be at least 2
       use_loc = true,
-      // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
-      log_file = None,
+      log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
       debug_message = false
     )
     val source = createTest(

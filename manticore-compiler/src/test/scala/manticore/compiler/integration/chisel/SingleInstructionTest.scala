@@ -193,8 +193,8 @@ trait SingleInstructionTest
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
-      use_loc = true
-        // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      use_loc = true,
+      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
       // log_file = None
     )
     implicit val TestName = new HasLoggerId { val id = getTestName }
