@@ -1,4 +1,4 @@
-name: Assembly Tests
+name: Chisel Tests
 
 on:
   push:
@@ -36,9 +36,12 @@ jobs:
         source "$HOME/.sdkman/bin/sdkman-init.sh"
         sbt "publishLocal"
         cd ..
-    - name: Run basic tests
+    - name: "Install verilator"
+      run: |
+        sudo apt install verilator
+    - name: Run chisel based tests
       run: |
         source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sbt 'testOnly -- -m manticore.compiler.assembly.levels'
-        sbt 'testOnly -- -m manticore.compiler.assembly.levels.unconstrained'
+        sbt 'testOnly -- -m manticore.compiler.integration.chisel'
+
 
