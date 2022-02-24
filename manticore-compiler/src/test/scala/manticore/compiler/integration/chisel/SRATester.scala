@@ -19,7 +19,7 @@ class SRATester extends SingleInstructionTest {
   it should "correctly handle simple SRA for positive numbers cases" in {f =>
     val op1 = Seq.fill(15) { UInt16(0x7fff) }
     val op2 = Seq.tabulate(15) { i => UInt16(i) }
-    createTest(op1 = op1, op2 = op2, expected_vcycles = 16, fixture = f)
+    createTest(op1 = op1, op2 = op2, expected_vcycles = 15, fixture = f)
   }
 
   it should "correctly handle random SRA cases" in {f =>
