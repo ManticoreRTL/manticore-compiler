@@ -42,6 +42,6 @@ jobs:
     - name: Run chisel based tests
       run: |
         source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sbt 'testOnly -- -m manticore.compiler.integration.chisel'
+        sbt -J-Xmx8192 'testOnly -- -m manticore.compiler.integration.chisel'
 
 
