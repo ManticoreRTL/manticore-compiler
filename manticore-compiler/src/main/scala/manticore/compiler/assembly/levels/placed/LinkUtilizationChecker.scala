@@ -8,7 +8,9 @@ object LinkUtilizationChecker extends AssemblyChecker[PlacedIR.DefProgram] {
   import PlacedIR._
 
   override def check(program: DefProgram, context: AssemblyContext): Unit = {
-    if (!(context.max_dimx == 1 && context.max_dimy == 1)) {
+    if (
+      !(context.max_dimx == 1 && context.max_dimy == 1) || program.processes.length == 1
+    ) {
       checkAndReport(program, context)
     } else {
       context.logger.info(
@@ -81,7 +83,10 @@ object LinkUtilizationChecker extends AssemblyChecker[PlacedIR.DefProgram] {
           }
           recv_time
         }
-      recv_cycles.max
+      recv_cycles match {
+        case Seq() => 0
+        case _ => recv_cycles.max
+      }
     }.max
 
     if (last_recv_cycle > max_body_length) {

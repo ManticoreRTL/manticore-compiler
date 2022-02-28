@@ -21,6 +21,7 @@ on your machine:
 > git@github.com:epfl-vlsc/manticore.git
 > cd manticore
 > sbt "publishLocal"
+> sudo apt install verilator
 ```
 
 

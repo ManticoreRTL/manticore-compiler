@@ -34,7 +34,7 @@ lazy val compiler = (project in file("manticore-compiler")).settings(
     "ch.epfl.vlsc" %% "manticore-machine" % "0.1.0-SNAPSHOT" % Test,
     "net.java.dev.jna" % "jna" % "5.10.0" % Test
   ),
-  Test / javaOptions ++= jvmHeapMemOptions,
+  javaOptions ++= jvmHeapMemOptions,
 
   // clean generated files by tests
   cleanFiles += baseDirectory.value / "test_run_dir",
