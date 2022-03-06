@@ -38,6 +38,7 @@ import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.parser.AssemblyLexical
+import manticore.compiler.assembly.levels.codegen.InitializerProgram
 
 case class CliConfig(
     input_file: Option[File] = None,
@@ -46,6 +47,7 @@ case class CliConfig(
     dump_dir: Option[File] = None,
     output_dir: Option[File] = None,
     debug_en: Boolean = false,
+
 
     /** Machine configurations **/
     dimx: Int = 1,
@@ -56,8 +58,8 @@ case class CliConfig(
     /** Dev configurations **/
     simulate: Boolean = false,
     interpret: Boolean = false,
-    jump_to_placed: Boolean =
-      false // jump to placed IR, for Mahyar only.. temp option
+    dump_ra: Boolean = true,
+    dump_rf: Boolean = true,
 
 )
 
@@ -93,10 +95,7 @@ object Main {
         opt[Unit]('d', "debug")
           .action { case (_, c) => c.copy(debug_en = true) }
           .text("print debug information"),
-        opt[Unit]("placed")
-          .action { case (_, c) => c.copy(jump_to_placed = true) }
-          .text("jump to placed IR")
-          .hidden(),
+
         opt[Int]('X', "dimx")
           .action { case (x, c) => c.copy(dimx = x) }
           .text("number of cores in X"),
@@ -131,7 +130,9 @@ object Main {
         dump_all = cfg.dump_all,
         dump_dir = cfg.dump_dir,
         max_dimx = cfg.dimx,
-        max_dimy = cfg.dimy
+        max_dimy = cfg.dimy,
+        dump_ra =  cfg.dump_ra,
+        dump_rf = cfg.dump_rf
       )
 
     def runPhases(prg: UnconstrainedIR.DefProgram) = {
@@ -143,9 +144,12 @@ object Main {
           middleend followedBy
           FrontendInterpreter(cfg.interpret) followedBy
           backend followedBy
-          BackendInterpreter(cfg.interpret) andFinally
-          MachineCodeGenerator
-      phases(prg, ctx)
+          BackendInterpreter(cfg.interpret)
+
+      val (result, _) = phases(prg, ctx)
+      MachineCodeGenerator(result, ctx)
+      InitializerProgram(result, ctx)
+
     }
 
     val parsed = AssemblyParser(cfg.input_file.get, ctx)

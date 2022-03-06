@@ -43,29 +43,30 @@ class ShiftRegFifofTest extends KernelTester {
       )
 
       compile(source, context)
-      // compileAndRun(source, context)(fixture)
+      compileAndRun(source, context)(fixture)
 
   }
 
-  // it should "shift values in a shift register using 4 cores" in {
-  //   fixture =>
-  //     val source: String = scala.io.Source
-  //       .fromResource(
-  //         "integration/microbench/baked_tests/shift_reg_fifo/shift.masm"
-  //       )
-  //       .mkString("")
+  it should "shift values in a shift register using 4 cores" in {
+    fixture =>
+      val source: String = scala.io.Source
+        .fromResource(
+          "integration/microbench/baked_tests/shift_reg_fifo/shift.masm"
+        )
+        .mkString("")
 
-  //     val context = AssemblyContext(
-  //       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-  //       max_dimx = 2,
-  //       max_dimy = 2,
-  //       dump_all = true,
-  //       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-  //       expected_cycles = Some(6)
-  //     )
+      val context = AssemblyContext(
+        output_dir = Some(fixture.test_dir.resolve("out").toFile()),
+        max_dimx = 2,
+        max_dimy = 2,
+        dump_all = true,
+        dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
+        expected_cycles = Some(6),
+        log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      )
 
-  //     compileAndRun(source, context)(fixture)
+      compileAndRun(source, context)(fixture)
 
-  // }
+  }
 
 }

@@ -18,7 +18,7 @@ import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 
 import manticore.compiler.assembly.levels.UInt16
-
+import java.nio.file.Path
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
@@ -32,8 +32,24 @@ object MachineCodeGenerator
 
   def generateCode(
       assembled: Seq[AssembledProcess]
-  )(implicit ctx: AssemblyContext): Unit = {
-    // +++++++++++++++++++++++ BINARY STREAM FORMAT+++++++++++++++++++++++++++++
+  )(implicit ctx: AssemblyContext): Unit =
+    ctx.output_dir match {
+      case Some(dir_name) =>
+        generateCode(
+          assembled,
+          dir_name.toPath()
+        )
+      case _ =>
+        ctx.logger.error(
+          "Output directory not specified! Skipping code generation!"
+        )
+    }
+
+  def makeBinaryStream(
+      assembled: Seq[AssembledProcess]
+  )(implicit ctx: AssemblyContext): Seq[Int] = {
+
+    // +++++++++++++++++++++ MANTICORE BINARY STREAM FORMAT+++++++++++++++++++++++++++
     // the binary format of a manticore program consists of uint16s: each process
     // get its own contiguous block starting with a header and a ending with a
     // footer illustrate below:
@@ -94,6 +110,52 @@ object MachineCodeGenerator
           (vcycle_length - total_length).toInt
         )
     }
+    binary_stream
+  }
+
+  def generateCode(
+      assembled: Seq[AssembledProcess],
+      dir_name: Path
+  )(implicit ctx: AssemblyContext): Unit = {
+
+    val binary_stream: Seq[Int] = makeBinaryStream(assembled)
+
+    assembled.foreach { case AssembledProcess(proc, aproc, _, _, _) =>
+      // print the instructions in ASCII format for debugging
+
+      Files.createDirectories(dir_name)
+
+      val f = dir_name.resolve(s"${proc.id}.masm")
+      val printer = new PrintWriter(f.toFile())
+      printer.println(s".proc ${proc.id}:")
+      printer.println(
+        "//--------------- REGISTERS ----------------------//"
+      )
+      proc.registers
+        .groupBy { r => r.variable.id }
+        .toSeq
+        .sortBy(_._1)
+        .foreach { case (id, regs) =>
+          printer.println(s"\tr${id}:")
+          regs.foreach { rr =>
+            printer.println(
+              s"\t\t${rr.variable.varType.typeName} ${rr.variable.name} ${if (rr.value.nonEmpty)
+                rr.value.get.toInt.toString
+              else ""}"
+            )
+          }
+        }
+      printer.println("// ---------------- BODY ---------------------- //")
+      proc.body.zipWithIndex.zip(aproc).foreach { case ((inst, ix), bincode) =>
+        val bin_str = f"${bincode.toBinaryString}%64s".replace(' ', '0')
+        printer.println(
+          f"${ix}%4d |${inst.toString().strip()}%-50s \t | ${bin_str}"
+        )
+      }
+      printer.flush()
+      printer.close()
+
+    }
 
     def writeToFile(file_name: File, data: Iterable[Int]): Unit = {
       val file_writer = new PrintWriter(file_name)
@@ -106,48 +168,44 @@ object MachineCodeGenerator
       file_writer.close()
       ctx.logger.info(s"Finished writing ${file_name.toPath.toAbsolutePath}")
     }
-    ctx.output_dir match {
-      case Some(dir_name: File) =>
-        Files.createDirectories(dir_name.toPath())
-        val exe_file = dir_name.toPath().resolve("exec.dat").toFile()
-        writeToFile(exe_file, binary_stream)
-        // write initial register values
-        // note that at this point registers are allocated and the ones with
-        // initial values (constants and inputs) are placed first
 
-        assembled.foreach { case AssembledProcess(p, _, _, _, _) =>
-          // write initial register values
-          val initial_reg_vals = p.registers
-            .takeWhile { r =>
-              r.variable.varType == ConstType || r.variable.varType == InputType || r.variable.varType == MemoryType
-            }
-            .map { v => v.value.getOrElse(UInt16(0)).toInt }
-          val rf_file =
-            dir_name.toPath().resolve(s"rf_${p.id.x}_${p.id.y}.dat").toFile()
-          writeToFile(rf_file, initial_reg_vals)
+    Files.createDirectories(dir_name)
+    val exe_file = dir_name.resolve("exec.dat").toFile()
+    writeToFile(exe_file, binary_stream)
+    // write initial register values
+    // note that at this point registers are allocated and the ones with
+    // initial values (constants and inputs) are placed first
 
-          // write initial memory values
-
-          val initial_mem_values = Array.fill(ctx.max_local_memory) {
-            0
+    assembled.foreach { case AssembledProcess(p, _, _, _, _) =>
+      // write initial register values
+      if (ctx.dump_rf) {
+        val initial_reg_vals = p.registers
+          .takeWhile { r =>
+            r.variable.varType == ConstType || r.variable.varType == InputType || r.variable.varType == MemoryType
           }
-          p.registers.foreach {
-            case _ @DefReg(v: MemoryVariable, Some(UInt16(offset)), _) =>
-              v.block.initial_content.zipWithIndex.foreach { case (value, ix) =>
-                initial_mem_values(offset + ix) = value.toShort
-              }
-            case _ => // do nothing
-          }
-          val ra_file =
-            dir_name.toPath().resolve(s"ra_${p.id.x}_${p.id.y}.dat").toFile()
-          writeToFile(ra_file, initial_mem_values)
+          .map { v => v.value.getOrElse(UInt16(0)).toInt }
+        val rf_file =
+          dir_name.resolve(s"rf_${p.id.x}_${p.id.y}.dat").toFile()
+        writeToFile(rf_file, initial_reg_vals)
+      }
+      if (ctx.dump_ra) {
 
+        // write initial memory values
+
+        val initial_mem_values = Array.fill(ctx.max_local_memory) {
+          0
         }
-
-      case None => // oops,
-        ctx.logger.warn(
-          "Output file path not specified! Machine code will not be written."
-        )
+        p.registers.foreach {
+          case _ @DefReg(v: MemoryVariable, Some(UInt16(offset)), _) =>
+            v.block.initial_content.zipWithIndex.foreach { case (value, ix) =>
+              initial_mem_values(offset + ix) = value.toShort
+            }
+          case _ => // do nothing
+        }
+        val ra_file =
+          dir_name.resolve(s"ra_${p.id.x}_${p.id.y}.dat").toFile()
+        writeToFile(ra_file, initial_mem_values)
+      }
     }
     ctx.logger.flush()
   }
@@ -189,44 +247,6 @@ object MachineCodeGenerator
     implicit val remote: (ProcessId, Name) => Int = (i, n) => ids(i)(n)
 
     val assembled = proc.body.map(assemble(proc, _))
-
-    // print the instructions in ASCII format for debugging
-    ctx.output_dir match {
-      case Some(dir: File) =>
-        if (!dir.isDirectory()) {
-          Files.createDirectories(dir.toPath())
-        }
-        val f = dir.toPath().resolve(s"${proc.id}.masm")
-        val printer = new PrintWriter(f.toFile())
-        printer.println(s".proc ${proc.id}:")
-        printer.println("//--------------- REGISTERS ----------------------//")
-        proc.registers
-          .groupBy { r => r.variable.id }
-          .toSeq
-          .sortBy(_._1)
-          .foreach { case (id, regs) =>
-            printer.println(s"\tr${id}:")
-            regs.foreach { rr =>
-              printer.println(
-                s"\t\t${rr.variable.varType.typeName} ${rr.variable.name} ${if (rr.value.nonEmpty) rr.value.get.toInt.toString
-                else ""}"
-              )
-            }
-          }
-        printer.println("// ---------------- BODY ---------------------- //")
-        proc.body.zipWithIndex.zip(assembled).foreach {
-          case ((inst, ix), bincode) =>
-            val bin_str = f"${bincode.toBinaryString}%64s".replace(' ', '0')
-            printer.println(
-              f"${ix}%4d |${inst.toString().strip()}%-50s \t | ${bin_str}"
-            )
-        }
-        printer.flush()
-        printer.close()
-
-      case None =>
-        ctx.logger.warn(s"output directory not specified!")
-    }
     AssembledProcess(
       proc,
       assembled,
@@ -422,7 +442,8 @@ object MachineCodeGenerator
           .Rd(local(carry))
           .Funct(BinaryOperator.ADD)
           .Zero(
-            Rs1Field.bitLength + Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 16
+            Rs1Field.bitLength + Rs2Field.bitLength +
+              Rs3Field.bitLength + Rs4Field.bitLength - 16
           )
           .Immediate(1)
           .toLong
@@ -444,6 +465,17 @@ object MachineCodeGenerator
           .Rs2(local(rs2))
           .Rs3(local(ci))
           .Rs4(local(co))
+          .toLong
+      case SetValue(rd, value, _) =>
+        asm
+          .Opcode(Opcodes.SET)
+          .Rd(local(rd))
+          .Funct(BinaryOperator.ADD)
+          .Zero(
+            Rs1Field.bitLength + Rs2Field.bitLength +
+              Rs3Field.bitLength + Rs4Field.bitLength - 16
+          )
+          .Immediate(value.toInt)
           .toLong
       case _ =>
         ctx.logger.error("can not handle instruction", inst)

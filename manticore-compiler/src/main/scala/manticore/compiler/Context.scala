@@ -32,8 +32,12 @@ trait AssemblyContext {
   val quiet: Boolean // do not print info messages
   val max_dimx: Int // maximum dimension in X
   val max_dimy: Int // maximum dimension in Y
-  val expected_cycles: Option[Int] // number of expected cycles before STOP is reached (used internally for tests)
+  val expected_cycles: Option[
+    Int
+  ] // number of expected cycles before STOP is reached (used internally for tests)
   val use_loc: Boolean // use @LOC annotation for placement
+  val dump_rf: Boolean // dump register file initial values
+  val dump_ra: Boolean // dump register array initial values
   val logger: Logger // logger object
 
   def uniqueNumber(): Int
@@ -58,18 +62,17 @@ object AssemblyContext {
       val max_dimx: Int,
       val max_dimy: Int,
       val use_loc: Boolean,
+      val dump_rf: Boolean,
+      val dump_ra: Boolean,
       val expected_cycles: Option[Int],
       val logger: Logger
   ) extends AssemblyContext {
-
 
     var unique_int: AtomicInteger = new AtomicInteger(0)
 
     def uniqueNumber(): Int = {
       unique_int.getAndAdd(1)
     }
-
-
 
   }
 
@@ -90,6 +93,8 @@ object AssemblyContext {
       max_dimx: Int = 2,
       max_dimy: Int = 2,
       use_loc: Boolean = false,
+      dump_ra: Boolean = true,
+      dump_rf: Boolean = true,
       expected_cycles: Option[Int] = None,
       logger: Option[Logger] = None,
       log_file: Option[File] = None
@@ -111,6 +116,8 @@ object AssemblyContext {
       max_dimx = max_dimx,
       max_dimy = max_dimy,
       use_loc = use_loc,
+      dump_ra = dump_ra,
+      dump_rf = dump_rf,
       expected_cycles = expected_cycles,
       logger = logger.getOrElse(
         Logger(debug_message, !quiet, dump_dir, dump_all, log_file)
