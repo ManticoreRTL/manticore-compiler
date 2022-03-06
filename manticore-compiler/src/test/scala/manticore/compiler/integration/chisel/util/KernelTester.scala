@@ -57,7 +57,7 @@ trait KernelTester
         prefix_path =
           fixture.test_dir.resolve("out").toAbsolutePath().toString()
       )
-    ).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) {
+    ).withAnnotations(Seq(VerilatorBackendAnnotation)) {
       dut =>
         var cycle = 0
         def tick(n: Int = 1): Unit = {
