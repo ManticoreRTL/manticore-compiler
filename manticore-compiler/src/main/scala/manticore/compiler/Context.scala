@@ -38,6 +38,7 @@ trait AssemblyContext {
   val use_loc: Boolean // use @LOC annotation for placement
   val dump_rf: Boolean // dump register file initial values
   val dump_ra: Boolean // dump register array initial values
+  val dump_ascii: Boolean // dump the
   val logger: Logger // logger object
 
   def uniqueNumber(): Int
@@ -64,6 +65,7 @@ object AssemblyContext {
       val use_loc: Boolean,
       val dump_rf: Boolean,
       val dump_ra: Boolean,
+      val dump_ascii: Boolean,
       val expected_cycles: Option[Int],
       val logger: Logger
   ) extends AssemblyContext {
@@ -95,6 +97,7 @@ object AssemblyContext {
       use_loc: Boolean = false,
       dump_ra: Boolean = true,
       dump_rf: Boolean = true,
+      dump_ascii: Boolean = true,
       expected_cycles: Option[Int] = None,
       logger: Option[Logger] = None,
       log_file: Option[File] = None
@@ -118,6 +121,7 @@ object AssemblyContext {
       use_loc = use_loc,
       dump_ra = dump_ra,
       dump_rf = dump_rf,
+      dump_ascii = dump_ascii,
       expected_cycles = expected_cycles,
       logger = logger.getOrElse(
         Logger(debug_message, !quiet, dump_dir, dump_all, log_file)

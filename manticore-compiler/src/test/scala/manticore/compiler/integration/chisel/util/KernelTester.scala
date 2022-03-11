@@ -44,7 +44,7 @@ trait KernelTester
       val bstream = MachineCodeGenerator.makeBinaryStream(asm)(context)
       bstream
     }
-    // MachineCodeGenerator.generateCode(assembled_program)(context)
+    MachineCodeGenerator.generateCode(assembled_program)(context)
     val vcycles_length =
       assembled_program.map(_.total).max + LatencyAnalysis.maxLatency()
     context.logger.info(s"Virtual cycles length is ${vcycles_length}")
@@ -53,9 +53,9 @@ trait KernelTester
       new ManticoreFlatSimKernel(
         DimX = context.max_dimx,
         DimY = context.max_dimy,
-        debug_enable = true,
-        prefix_path =
-          fixture.test_dir.resolve("out").toAbsolutePath().toString()
+        debug_enable = true
+        // prefix_path =
+        //   fixture.test_dir.resolve("out").toAbsolutePath().toString()
       )
     ).withAnnotations(Seq(VerilatorBackendAnnotation)) {
       dut =>

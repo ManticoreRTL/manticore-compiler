@@ -19,6 +19,7 @@ import manticore.compiler.assembly.levels.MemoryType
 
 import manticore.compiler.assembly.levels.UInt16
 import java.nio.file.Path
+import java.io.FileOutputStream
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
@@ -89,7 +90,7 @@ object MachineCodeGenerator
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     val vcycle_length =
-      assembled.map(_.total).max + LatencyAnalysis.maxLatency() + 100
+      assembled.map(_.total).max + LatencyAnalysis.maxLatency()
     // for each process p , we need to compute the SLEEP_LENGTH as
     // vcycle_length - p.total (total is the total execution time including epilogue)
 
@@ -120,41 +121,43 @@ object MachineCodeGenerator
 
     val binary_stream: Seq[Int] = makeBinaryStream(assembled)
 
-    assembled.foreach { case AssembledProcess(proc, aproc, _, _, _) =>
-      // print the instructions in ASCII format for debugging
-
+    // print the instructions in ASCII format for debugging
+    if (ctx.dump_ascii) {
       Files.createDirectories(dir_name)
-
-      val f = dir_name.resolve(s"${proc.id}.masm")
-      val printer = new PrintWriter(f.toFile())
-      printer.println(s".proc ${proc.id}:")
-      printer.println(
-        "//--------------- REGISTERS ----------------------//"
-      )
-      proc.registers
-        .groupBy { r => r.variable.id }
-        .toSeq
-        .sortBy(_._1)
-        .foreach { case (id, regs) =>
-          printer.println(s"\tr${id}:")
-          regs.foreach { rr =>
-            printer.println(
-              s"\t\t${rr.variable.varType.typeName} ${rr.variable.name} ${if (rr.value.nonEmpty)
-                rr.value.get.toInt.toString
-              else ""}"
-            )
+      assembled.foreach { case AssembledProcess(proc, aproc, _, _, _) =>
+        if (aproc.length > 0) {
+          val f = dir_name.resolve(s"${proc.id}.masm")
+          val printer = new PrintWriter(f.toFile())
+          printer.println(s".proc ${proc.id}:")
+          printer.println(
+            "//--------------- REGISTERS ----------------------//"
+          )
+          proc.registers
+            .groupBy { r => r.variable.id }
+            .toSeq
+            .sortBy(_._1)
+            .foreach { case (id, regs) =>
+              printer.println(s"\tr${id}:")
+              regs.foreach { rr =>
+                printer.println(
+                  s"\t\t${rr.variable.varType.typeName} ${rr.variable.name} ${if (rr.value.nonEmpty)
+                    rr.value.get.toInt.toString
+                  else ""}"
+                )
+              }
+            }
+          printer.println("// ---------------- BODY ---------------------- //")
+          proc.body.zipWithIndex.zip(aproc).foreach {
+            case ((inst, ix), bincode) =>
+              val bin_str = f"${bincode.toBinaryString}%64s".replace(' ', '0')
+              printer.println(
+                f"${ix}%4d |${inst.toString().strip()}%-50s \t | ${bin_str}"
+              )
           }
+          printer.flush()
+          printer.close()
         }
-      printer.println("// ---------------- BODY ---------------------- //")
-      proc.body.zipWithIndex.zip(aproc).foreach { case ((inst, ix), bincode) =>
-        val bin_str = f"${bincode.toBinaryString}%64s".replace(' ', '0')
-        printer.println(
-          f"${ix}%4d |${inst.toString().strip()}%-50s \t | ${bin_str}"
-        )
       }
-      printer.flush()
-      printer.close()
-
     }
 
     def writeToFile(file_name: File, data: Iterable[Int]): Unit = {
@@ -169,9 +172,26 @@ object MachineCodeGenerator
       ctx.logger.info(s"Finished writing ${file_name.toPath.toAbsolutePath}")
     }
 
+    def writeToBinaryFile(file_name: File, data: Iterable[Int]): Unit = {
+
+      val file_writer = new FileOutputStream(file_name)
+      data.foreach { x =>
+        // little endian
+        file_writer.write(x.toByte)
+        file_writer.write((x >> 8).toByte)
+
+      }
+      file_writer.close()
+      ctx.logger.info(s"Finished writing to ${file_name.toPath.toAbsolutePath}")
+
+    }
     Files.createDirectories(dir_name)
     val exe_file = dir_name.resolve("exec.dat").toFile()
-    writeToFile(exe_file, binary_stream)
+    if (ctx.dump_ascii) {
+      writeToFile(exe_file, binary_stream)
+    }
+    writeToBinaryFile(dir_name.resolve("exec.bin").toFile(), binary_stream)
+
     // write initial register values
     // note that at this point registers are allocated and the ones with
     // initial values (constants and inputs) are placed first
@@ -215,13 +235,39 @@ object MachineCodeGenerator
     val ids: Map[ProcessId, Map[Name, Int]] = prog.processes.map { p =>
       p.id -> p.registers.map { r => r.variable.name -> r.variable.id }.toMap
     }.toMap
-    // compute the virtual cycle length
-
-    val assembled =
-      prog.processes.map {
-        assembleProcess(_)(ctx, ids)
+    // create a grid for processes initially empty
+    // and then replace them if a processes actually exists. We do this because
+    // the current version of the boot loader programs all processors, even
+    // if a processor does not really have a process to run so we have to
+    // place them in the binary
+    val grid = Seq
+      .tabulate(ctx.max_dimx) { x =>
+        Seq
+          .tabulate(ctx.max_dimy) { y =>
+            AssembledProcess(
+              orig = DefProcess(
+                ProcessIdImpl(s"empty_${x}_${y}", x, y),
+                Seq(),
+                Seq(),
+                Seq()
+              ),
+              body = Seq.empty[Long],
+              place = (x, y),
+              epilogue = 0,
+              total = 0
+            )
+          }
+          .toArray[AssembledProcess]
       }
-    assembled
+      .toArray[Array[AssembledProcess]]
+
+    prog.processes.foreach { p =>
+      // if the process exists, put it on the grid
+      grid(p.id.x)(p.id.y) = assembleProcess(p)(ctx, ids)
+
+    }
+
+    grid.flatten.toSeq
   }
   case class AssembledProcess(
       orig: DefProcess,

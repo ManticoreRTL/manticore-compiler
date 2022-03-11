@@ -47,20 +47,15 @@ case class CliConfig(
     dump_dir: Option[File] = None,
     output_dir: Option[File] = None,
     debug_en: Boolean = false,
-
-
-    /** Machine configurations **/
+    /** Machine configurations * */
     dimx: Int = 1,
     dimy: Int = 1,
-
-
-
-    /** Dev configurations **/
+    /** Dev configurations * */
     simulate: Boolean = false,
     interpret: Boolean = false,
-    dump_ra: Boolean = true,
-    dump_rf: Boolean = true,
-
+    dump_ra: Boolean = false,
+    dump_rf: Boolean = false,
+    dump_ascii: Boolean = false
 )
 
 object Main {
@@ -95,7 +90,6 @@ object Main {
         opt[Unit]('d', "debug")
           .action { case (_, c) => c.copy(debug_en = true) }
           .text("print debug information"),
-
         opt[Int]('X', "dimx")
           .action { case (x, c) => c.copy(dimx = x) }
           .text("number of cores in X"),
@@ -110,6 +104,15 @@ object Main {
           .action { case (_, c) => c.copy(interpret = true) }
           .hidden()
           .text("interpret the program in software"),
+        opt[Unit]("dump-rf")
+          .action { case (_, c) => c.copy(dump_rf = true) }
+          .text("dump register file initial values in ascii binary format"),
+        opt[Unit]("dump-ra")
+          .action { case (_, c) => c.copy(dump_ra = true) }
+          .text("dump register array initial values in ascii binary format"),
+        opt[Unit]("dump-ascii")
+          .action { case (_, c) => c.copy(dump_ascii = true) }
+          .text("dump program in in human readable and binary ascii format"),
         help('h', "help").text("print usage text and exit")
       )
     }
@@ -131,8 +134,9 @@ object Main {
         dump_dir = cfg.dump_dir,
         max_dimx = cfg.dimx,
         max_dimy = cfg.dimy,
-        dump_ra =  cfg.dump_ra,
-        dump_rf = cfg.dump_rf
+        dump_ra = cfg.dump_ra,
+        dump_rf = cfg.dump_rf,
+        dump_ascii =  cfg.dump_ascii
       )
 
     def runPhases(prg: UnconstrainedIR.DefProgram) = {

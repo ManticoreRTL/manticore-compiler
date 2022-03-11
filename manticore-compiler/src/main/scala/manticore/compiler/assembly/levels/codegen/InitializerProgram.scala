@@ -138,7 +138,7 @@ object InitializerProgram
 
 
     process.registers.foreach {
-      case r @ DefReg(vr: PlacedVariable, Some(vl), _)
+      case r @ DefReg(vr, Some(vl), _)
           if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
         initializer_regs += r
         initializer_body += SetValue(r.variable.name, vl)
