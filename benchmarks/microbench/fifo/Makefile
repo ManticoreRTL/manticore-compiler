@@ -75,4 +75,4 @@ clean mostlyclean distclean maintainer-clean::
 
 thyrio: $(wildcard *.sv)
 	@echo "Generating MASM"
-	thyrio_frontend -vlog_in shiftreg.sv -masm_out shiftreg.masm -top ShiftRegisterFIFOTester -no_techmap -dump
+	thyrio_frontend -vlog_in shiftreg.sv -masm_out shiftreg.masm -top ShiftRegisterFIFOTester -no_techmap -track shiftreg.yml -dump

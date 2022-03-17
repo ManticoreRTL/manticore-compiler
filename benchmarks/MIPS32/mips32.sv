@@ -465,7 +465,8 @@ module Mips32 (
       end else begin
 `ifdef VERILATOR
         assert (reg_read1 == 45);
-        $finish;
+        // $finish;
+        // $display("Finished execution");
 `else
         $masm_expect(reg_read1 == 45, "expected 45");
         $masm_stop;
@@ -503,7 +504,7 @@ endmodule
 
 
 
-module TestVerilator (
+module Main (
     input wire clock
 );
 
@@ -520,13 +521,18 @@ module TestVerilator (
       .clock(clock),
       .reset(reset)
   );
-  Mips32 dut (
-      .instr (inst),
-      .raddr (addr),
-      .clock (clock),
-      .reset (reset),
-      .halted(halted)
-  );
+  // genvar i;
+  // for (i = 0; i < 10; i = i + 1) begin
+
+    Mips32 dut (
+        .instr (inst),
+        .raddr (addr),
+        .clock (clock),
+        .reset (reset),
+        .halted(halted)
+    );
+  // end
+
 
 
   initial begin
