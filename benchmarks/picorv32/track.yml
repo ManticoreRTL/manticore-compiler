@@ -1,0 +1,26 @@
+wires:
+  - Main/dut/cpuregs_write
+  - Main/dut/cpuregs_rs1
+  - Main/dut/cpuregs_rs2
+  - Main/dut/cpuregs_wrdata
+  - Main/dut/latched_branch
+  - Main/dut/latched_store
+  - Main/dut/irq_state
+  - Main/dut/cpu_state
+  - Main/dut/resetn
+  - Main/dut/mem_valid
+  - Main/dut/mem_instr
+  - Main/dut/mem_ready
+  - Main/dut/mem_addr
+  - Main/dut/mem_wdata
+  - Main/dut/mem_wstrb
+  - Main/dut/mem_rdata
+  - Main/dut/trap
+  - Main/dut/instr_lui
+  - Main/dut/instr_add
+  - Main/dut/instr_sw
+  - Main/dut/instr_lw
+  - Main/dut/decoded_rs1
+  - Main/dut/decoded_rs2
+  - Main/mem_word_addr
+  # - Main/dut/decoded_rs2

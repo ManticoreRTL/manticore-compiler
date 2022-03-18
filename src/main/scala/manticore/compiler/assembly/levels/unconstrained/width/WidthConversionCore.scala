@@ -353,7 +353,7 @@ object WidthConversionCore
 
         assert(
           rd_uint16_array.length == rs2_uint16_array_aligned.length &&
-            rd_uint16_array.length == rs2_uint16_array_aligned.length
+            rd_uint16_array.length == rs2_uint16_array_aligned.length,
         )
         if (rs1_uint16_array_aligned.length != 1) {
 
@@ -509,7 +509,7 @@ object WidthConversionCore
         val rs2_uint16_array = builder.getConversion(instruction.rs2).parts
         assert(
           rs1_uint16_array.size == rs2_uint16_array.size && rs1_uint16_array.size == rd_uint16_array.size,
-          "size miss match"
+          s"size miss match in ${instruction.serialized}"
         )
         rd_uint16_array_mutable zip (rs1_uint16_array zip rs2_uint16_array) foreach {
           case (rd_16, (rs1_16, rs2_16)) =>
@@ -535,7 +535,7 @@ object WidthConversionCore
           builder.originalWidth(instruction.rs1) == builder.originalWidth(
             (instruction.rs2)
           ),
-          "width mismatch in SEQ operands"
+          s"width mismatch in SEQ operands ${instruction.serialized}"
         )
         assert(
           rs1_uint16_array.size == rs2_uint16_array.size,

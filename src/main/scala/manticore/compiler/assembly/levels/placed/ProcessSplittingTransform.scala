@@ -19,11 +19,13 @@ import scala.util.Failure
 import manticore.compiler.assembly.annotations.Memblock
 import scala.annotation.tailrec
 import scalax.collection.GraphTraversal
+import scala.collection.immutable
 
-/**
-  * A pass to parallelize processes while respecting resource dependence constraints
+/** A pass to parallelize processes while respecting resource dependence
+  * constraints
   *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object ProcessSplittingTransform
     extends DependenceGraphBuilder
@@ -147,7 +149,6 @@ object ProcessSplittingTransform
     //
     //
 
-
     // Helper classes for building the constraint graph
 
     sealed abstract class SubProcess
@@ -219,6 +220,7 @@ object ProcessSplittingTransform
             // do nothing for now
           }
         }
+
       local_root
     }
 
@@ -234,7 +236,6 @@ object ProcessSplittingTransform
       ctx.logger.flush()
       res
     }
-
 
     // do the backward traversal from sink nodes to build the constraint graph
 
@@ -290,7 +291,8 @@ object ProcessSplittingTransform
       // }
 
       val leaves = constraint_graph.nodes.collect {
-        case n if n.toOuter.isInstanceOf[InstLeaf] => n.toOuter.asInstanceOf[InstLeaf].inst
+        case n if n.toOuter.isInstanceOf[InstLeaf] =>
+          n.toOuter.asInstanceOf[InstLeaf].inst
       }
       if (leaves.size != proc.body.size) {
         val left_out = proc.body.toSet[Instruction].diff(leaves).toSeq
@@ -306,7 +308,9 @@ object ProcessSplittingTransform
       res
     }
 
-
+    // proct_roots.foreach { p =>
+    //   ctx.logger.info(s"${p.sink} -> ${constraint_graph.get(p).outDegree}")
+    // }
     // find weakly connected subgraphs  (masking last level edges and nodes)
 
     val compatible_processes = timed("Finding compatible processes") {
@@ -361,25 +365,31 @@ object ProcessSplittingTransform
     // create new processes
     val result = timed("constructing merged processes") {
       process_bodies.zipWithIndex.map { case (b, ix: Int) =>
-        proc.copy(
-          body = b.toSeq,
-          id = ProcessIdImpl(s"${proc.id}_${ix}", proc.id.x, proc.id.y + ix)
-        ).setPos(proc.pos)
+        proc
+          .copy(
+            body = b.toSeq,
+            id = ProcessIdImpl(s"${proc.id}_${ix}", proc.id.x, proc.id.y + ix)
+          )
+          .setPos(proc.pos)
       }
 
     }
+    val longest_process = result.maxBy {_.body.length}
+    ctx.logger.info(s"Longest process has is ${longest_process.id} with ${longest_process.body.length} instructions")
     // done
     result
   }
   override def transform(
       source: DefProgram,
       context: AssemblyContext
-  ): DefProgram = source
-    .copy(processes = source.processes.flatMap { p =>
+  ): DefProgram = {
+    val splitted = source.processes.flatMap { p =>
       extractIndependentInstructionSequences(p)(context)
-    })
-    .setPos(source.pos)
+    }
 
+
+    source
+      .copy(processes = splitted)
+      .setPos(source.pos)
+  }
 }
-
-

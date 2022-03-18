@@ -12,7 +12,7 @@ module Main(input wire clock);
 
 	// assign ored = $signed(y) | $signed(x);
 
-	localparam NUM_CYCLES = 50000;
+	localparam NUM_CYCLES = 500;
 	localparam RESET_CYCLES = 10;
 	wire resetn;
 	reg [31:0] cycle_counter = 0;
@@ -32,7 +32,7 @@ module Main(input wire clock);
 	reg  [31:0] mem_rdata;
 
 	picorv32 #(
-	) uut (
+	) dut (
 		.clk         (clock        ),
 		.resetn      (resetn     ),
 		.trap        (trap       ),
@@ -60,13 +60,16 @@ module Main(input wire clock);
 	always @(posedge clock) begin
 		cycle_counter <= cycle_counter + 1;
 		if (cycle_counter == NUM_CYCLES) begin
-// `ifdef VERILATOR
-// 			$finish;
-// `else
-// 			$masm_stop;
-// `endif
+`ifdef VERILATOR
+			$finish;
+`else
+			$masm_stop;
+`endif
 		end
 	end
+	reg [31 : 0] wword;
+	wire [31 : 0] mem_word_addr;
+	assign mem_word_addr = mem_addr >> 2;
 
 	always @(posedge clock) begin
 		mem_ready <= 0;
@@ -81,11 +84,21 @@ module Main(input wire clock);
 					expected <= expected + 1;
 				end
 				mem_ready <= 1;
-				mem_rdata <= memory[mem_addr >> 2];
-				if (mem_wstrb[0]) memory[mem_addr >> 2][ 7: 0] <= mem_wdata[ 7: 0];
-				if (mem_wstrb[1]) memory[mem_addr >> 2][15: 8] <= mem_wdata[15: 8];
-				if (mem_wstrb[2]) memory[mem_addr >> 2][23:16] <= mem_wdata[23:16];
-				if (mem_wstrb[3]) memory[mem_addr >> 2][31:24] <= mem_wdata[31:24];
+				mem_rdata <= memory[mem_word_addr];
+
+				wword = memory[mem_word_addr];
+
+
+				// NOTE: we can not directly assign to subwords in memory
+				// because then Yosys will make partial bit enables for
+				// memwr cells which will make us generate invalid code!
+				if (mem_wstrb[0]) wword[ 7: 0] = mem_wdata[ 7: 0];
+				if (mem_wstrb[1]) wword[15: 8] = mem_wdata[15: 8];
+				if (mem_wstrb[2]) wword[23:16] = mem_wdata[23:16];
+				if (mem_wstrb[3]) wword[31:24] = mem_wdata[31:24];
+				// if (|mem_wstrb)
+				memory[mem_word_addr] <= wword;
+
 			end
 			/* add memory-mapped IO here */
 		end

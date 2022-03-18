@@ -465,7 +465,7 @@ module Mips32 (
       end else begin
 `ifdef VERILATOR
         assert (reg_read1 == 45);
-        // $finish;
+        $finish;
         // $display("Finished execution");
 `else
         $masm_expect(reg_read1 == 45, "expected 45");

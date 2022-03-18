@@ -1,0 +1,8 @@
+wires:
+  - Main/dut/regs/wdata
+  - Main/dut/regs/waddr
+  - Main/dut/regs/rdata1
+  - Main/dut/regs/rdata2
+  - Main/dut/regs/raddr1
+  - Main/dut/regs/raddr2
+  - Main/dut/regs/wen

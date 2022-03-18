@@ -1303,7 +1303,8 @@ module picorv32 #(
 
 	always @* begin
 		cpuregs_write = 0;
-		cpuregs_wrdata = 'bx;
+		// cpuregs_wrdata = 'bx;
+		cpuregs_wrdata = '0;
 
 		if (cpu_state == cpu_state_fetch) begin
 			(* parallel_case *)
