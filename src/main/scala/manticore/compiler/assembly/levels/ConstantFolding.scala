@@ -4,9 +4,9 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.Track
 
-/**
-  * Base trait to implement a constant folding pass in
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+/** Base trait to implement a constant folding pass in
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 trait ConstantFolding extends Flavored {
 
@@ -21,9 +21,8 @@ trait ConstantFolding extends Flavored {
     )
   }
 
-  /**
-    * Constant zero and one, override them with their corresponding values
-    * in the given flavor
+  /** Constant zero and one, override them with their corresponding values in
+    * the given flavor
     *
     * @return
     */
@@ -64,8 +63,7 @@ trait ConstantFolding extends Flavored {
       ci: Constant
   )(implicit ctx: AssemblyContext): (Constant, Constant)
 
-  /**
-    * returns a fresh constant (unique name), the value [[v]] given to the
+  /** returns a fresh constant (unique name), the value [[v]] given to the
     * function is unique too but can not be used to create the unique name
     *
     * @param v
@@ -74,8 +72,7 @@ trait ConstantFolding extends Flavored {
     */
   def freshConst(v: Constant)(implicit ctx: AssemblyContext): DefReg
 
-  /**
-    * Helper stateful class to create a reduced process
+  /** Helper stateful class to create a reduced process
     *
     * @param proc
     * @param ctx
@@ -265,8 +262,8 @@ trait ConstantFolding extends Flavored {
         case None    => m_constants += v -> freshConst(v)
       }
     }
-    /**
-      * Build the process
+
+    /** Build the process
       *
       * @return
       */
@@ -349,12 +346,12 @@ trait ConstantFolding extends Flavored {
                 case Right(ConstOne) =>
                   rtrue_value match {
                     case Right(ctrue) => builder.bindConst(rd, ctrue)
-                    case Left(atrue) => builder.bindName(rd, atrue)
+                    case Left(atrue)  => builder.bindName(rd, atrue)
                   }
                 case Right(ConstZero) =>
                   rfalse_value match {
                     case Right(cfalse) => builder.bindConst(rd, cfalse)
-                    case Left(afalse) => builder.bindName(rd, afalse)
+                    case Left(afalse)  => builder.bindName(rd, afalse)
                   }
                 case Right(invalid_const) =>
                   ctx.logger.error(
@@ -362,8 +359,32 @@ trait ConstantFolding extends Flavored {
                     i
                   )
                   builder.keep(i)
-                case _ =>
-                  builder.keep(i)
+                case Left(s) =>
+                  (rfalse_value, rtrue_value) match {
+                    case (Right(ConstZero), Right(ConstOne)) =>
+                       /*
+                       a weird pattern that I've seen in the code is
+
+                       MUX y, s, Const0, Const1 (y and s are not constant)
+                       Other instructions using y
+                       We can safely remove the mux and substitute y with s
+                       since s is by definition single-bit, and y, which is
+                       either zero or 1 is also somehow single-bit. In the PlacedIR
+                       this is completely safe but in the UnconstrainedIR this may
+                       be a problem */
+                      assert(
+                        sel_value.isLeft,
+                        "something went wrong, expected name not constant"
+                      )
+                      builder.bindName(rd, s)
+                    case (Right(ct1), Right(ct2)) if (ct1 == ct2)=>
+                      // another weird pattern is having the same constant
+                      // in both branches
+                      builder.bindConst(rd, ct1)
+                    case _ =>
+                      // unopt
+                      builder.keep(i)
+                  }
               }
             }
           case i @ BinaryArithmetic(operator, rd, rs1, rs2, _) =>
@@ -371,6 +392,7 @@ trait ConstantFolding extends Flavored {
               // keep this instruction
               builder.keep(i)
             } else {
+
               // try to compute it
               val rs1_val = builder.computedValue(rs1)
               val rs2_val = builder.computedValue(rs2)

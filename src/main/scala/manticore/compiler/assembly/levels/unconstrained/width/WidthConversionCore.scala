@@ -521,7 +521,9 @@ object WidthConversionCore
               )
               .setPos(instruction.pos)
         }
-        inst_q ++= maskRd(rd_uint16_array_mutable.last, mask, instruction)
+        // no need to mask since we can not increase the bit width in any way
+        // with bit-wise operations
+        // inst_q ++= maskRd(rd_uint16_array_mutable.last, mask, instruction)
         inst_q ++= moveRegs(
           rd_uint16_array,
           rd_uint16_array_mutable,

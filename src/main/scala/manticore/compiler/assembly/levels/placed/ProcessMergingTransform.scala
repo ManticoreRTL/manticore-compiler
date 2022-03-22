@@ -26,7 +26,7 @@ object ProcessMergingTransform
       context: AssemblyContext
   ): DefProgram = {
 
-    val MaxMemory = 1024 * 4 // 4 KiB is the maximum array memory for every core
+
 
     class ProcessWrapper(
         val body: MSet[Instruction] = MSet.empty[Instruction],
