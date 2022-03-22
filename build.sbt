@@ -1,6 +1,6 @@
 ThisBuild / organization := "ch.epfl.vlsc"
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "2.13.7"
+ThisBuild / scalaVersion := "2.13.8"
 
 val jvmHeapMemOptions = Seq(
   "-Xms512M", // initial JVM heap pool size
