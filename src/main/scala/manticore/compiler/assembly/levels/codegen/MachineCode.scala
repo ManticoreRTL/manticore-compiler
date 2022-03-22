@@ -91,6 +91,7 @@ object MachineCodeGenerator
 
     val vcycle_length =
       assembled.map(_.total).max + LatencyAnalysis.maxLatency()
+    ctx.logger.info(s"Virtual cycle length: ${vcycle_length}")
     // for each process p , we need to compute the SLEEP_LENGTH as
     // vcycle_length - p.total (total is the total execution time including epilogue)
 

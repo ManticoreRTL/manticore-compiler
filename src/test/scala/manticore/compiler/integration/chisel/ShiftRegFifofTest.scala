@@ -35,8 +35,8 @@ class ShiftRegFifofTest extends KernelTester {
         max_dimy = 1,
         max_registers = 32,
         max_carries = 2,
-        dump_all = true,
-        debug_message = true,
+        dump_all = false,
+        debug_message = false,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
         expected_cycles = Some(6),
         log_file = Some(fixture.test_dir.resolve("run.log").toFile())
