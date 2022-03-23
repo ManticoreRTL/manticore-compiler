@@ -294,3 +294,239 @@ object ExistsConstantZeroTransform extends AssemblyChecker[UnconstrainedIR.DefPr
     }
 }
 ```
+
+
+
+# Optimizing control flow
+
+Manticore does not have any branch instruction to simplify its pipeline
+implementation and provide statically predictable performance. Control flow
+in handled through `Mux` instructions that perform conditional assignment.
+This means the following piece of code in Verilog gets translate to a single
+basic block:
+
+```verilog
+
+always_comb begin
+
+    case (condition)
+        v1:
+            x = E1
+        v2:
+            x = E2
+        v3:
+            x = E3
+        ..
+        vn:
+            x = En
+        default:
+            x = E0
+    endcase
+
+end
+
+```
+
+Suppose that each `Ei` can be computed in at most $m$ steps. Then the MASM code
+would have:
+```
+    m * (n + 1): instructions to compute possible values of x
+    n: instructions to create a MUX tree
+    n: instructions to compute the conditions (i.e., condition == vi)
+
+    which gives us a total of
+    (m + 2) * n + m instructions
+```
+
+If we had branch instructions, then we could generate the following code:
+
+```
+
+L1:   bneq condition, v1, L2
+      x = compute E1
+      jump OUT
+L2:   bneq condition, v2, L3
+      x = compute E2
+      jump OUT
+...
+Ln:   bneq condition, vn, L0
+      x = compute E2
+      jump OUT
+L0:
+      x = compute E0
+OUT:
+    rest of the code
+
+```
+
+In this model:
+
+```
+Best case, condition == v1:
+    m instruction assign E1 to x, 1 bneq, 1 jump = m + 2
+
+Worse case, default case:
+    n bneq instruction, m instructions to compute E0 = m + n
+
+
+```
+
+For a typical ALU, a switch statement has 16 branches and m = 2.
+So in our current implementation we end up executing about 66 instructions
+to compute the final result of an ALU.
+
+
+In the other model, we execute somewhere between 4 to 18 instructions, clearly
+there is a significant improvement here but we can also consider penalty of the
+jumps on the pipeline occupancy. Since the pipeline depth is 4 we end up losing
+three instructions on every branch at runtime (or compile time if insert NOPS)
+```
+Best case:
+   first branch is not taken and the first jump is taken:
+   1 + m + 1 + 2 (2 is the penalty of taking the jump)
+Worst case:
+    all branches are taken:
+    n * (1 + 2) + m
+```
+
+So the worst case with m = 2 and n = 16  is 50. This is still an improvement
+in general but gain might be less visible depending on the workload. We can still
+make a conservative assumption about the virtual cycle latency by taking this
+worst case performance into account and pad NOPs at the end of each branch
+so that all branches end up with the same execution latency. But I think there
+is a better yet unconventional way of doing this.
+
+
+# Optimizing MUX trees with hardware decoding!
+
+The running switch statement example basically describes an address decoder in
+hardware. We can take advantage of existing hardware decoders to accelerate
+branch condition resolution in special cases where the condition is an integer
+and the values `v1` to `vn` are constants.
+
+To do this, create a small memory consisting with values of each cell being
+L0, L1, ..., or Ln.
+If the condition is an integer of bit width w, then the should have 2**w cells
+with the following mapping
+```
+if address in {v1, .., vn} then data(vi) = Li
+else data(address) = L0
+
+```
+
+In other words, the for any of the values `vi` in the case statements, we
+save the label `Li` in the memory at address `vi`, all other elements of the memory
+have the value of `L0` which is the default case label.
+This way the condition evaluation reduces to a load instruction! And there
+would be no need to jump around, to finally settle at a branch. This way we
+directly jump into the right branch:
+
+```
+    LLD label, ConditionMem[condition];
+    jr label;
+
+L1:
+    x = compute E1
+    jump OUT
+L2:
+    x = compute E2
+    jump OUT
+...
+
+Ln:
+    x = compute En
+    jump OUT
+L0:
+    x = compute E0
+    NOP NOP NOP
+OUT:
+
+```
+This way the best case latency is when we jump to L0 and the worst case is
+when we jump to any other label:
+
+```
+best case:
+    1 + (1 + 2) + m
+worst case:
+    1 + (1 + 2) + m + (1 + 2)
+```
+
+This means if m = 2 we get a latency of 6 or 9!
+
+
+# Patterns to optimize
+
+## Boolean patterns
+
+
+### P0
+```
+.const c0 16 0
+.const c1 16 1
+.const c127 16 127
+AND	x1, x0, c127;  only keep the first 7 bits
+SEQ	x2, x1, c0; x2 = x1 == 0
+SEQ	x3, x2, c0; x3 = x2 == false
+XOR	x4, x3, c1; x4 = !x2 or x4 = x1 != 0
+```
+
+can be reduced to
+
+```
+.const c0 16 0
+.const c1 16 1
+.const c127 16 127
+AND	x1, x0, c127;  only keep the first 7 bits
+SEQ	x2, x1, c0; x2 = x1 == 0
+SEQ	x4, x2, c1; x3 = x2 == true
+```
+and further to
+
+
+```
+.const c0 16 0
+.const c1 16 1
+.const c127 16 127
+AND	x1, x0, c127;  only keep the first 7 bits
+SEQ	x4, x0, c0; x2 = x1 == 0
+```
+
+### P1
+
+```
+.wire w0 1 // single-bit
+.const c0 1 0
+.const c1 1 1
+.wire w1 1 // single-bit
+SEQ	w0, x0, c0; // is x0 zero?
+XOR	w1, w0, c1;  // is w0 true? i.e., is x0 zero?
+```
+
+can be reduced to
+
+```
+.wire w0 1 // single-bit
+.const c0 1 0
+.const c1 1 1
+.wire w1 1 // single-bit
+SEQ	w1, x0, c0; // is x0 zero?
+```
+
+
+### P2
+
+```
+.const c0 1 0
+.const c1 1 1
+SEQ	x1, x0, c0; is x0 == zero?
+SEQ	x2, x1, c0; is ! x0 == zero ?
+XOR	x3, x2, c1; is x0 == zero?
+```
+reduces to
+```
+SEQ x3, x0, c0;
+```
+
+
+

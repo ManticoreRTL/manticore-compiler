@@ -3,12 +3,13 @@ package manticore.compiler.assembly.levels
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.Track
+import manticore.compiler.assembly.levels.CanRename
 
 /** Base trait to implement a constant folding pass in
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-trait ConstantFolding extends Flavored {
+trait ConstantFolding extends Flavored with StatisticReporter with CanRename {
 
   import flavor._
 
@@ -16,9 +17,13 @@ trait ConstantFolding extends Flavored {
       prog: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
 
-    prog.copy(
+    reportStats(prog)
+
+    val re = prog.copy(
       processes = prog.processes.map(do_transform)
     )
+    reportStats(re)
+    re
   }
 
   /** Constant zero and one, override them with their corresponding values in
@@ -139,7 +144,6 @@ trait ConstantFolding extends Flavored {
       */
     def keep(inst: Instruction): Unit = {
       def substitution(n: Name): Name = {
-
         val r = computedValue(n) match {
           case Right(const) => m_constants(const)
           case Left(name)   => m_regs(name)
@@ -148,98 +152,7 @@ trait ConstantFolding extends Flavored {
 
         r.variable.name
       }
-      val cinst = inst match {
-        case i @ SetCarry(carry, _) => i.copy(carry = substitution(carry))
-        case i @ Mux(rd, sel, rfalse, rtrue, _) =>
-          i.copy(
-            rd = substitution(rd),
-            sel = substitution(sel),
-            rfalse = substitution(rfalse),
-            rtrue = substitution(rtrue)
-          )
-        case i @ AddC(rd, co, rs1, rs2, ci, _) =>
-          i.copy(
-            rd = substitution(rd),
-            rs1 = substitution(rs1),
-            rs2 = substitution(rs2),
-            ci = substitution(ci),
-            co = substitution(co)
-          )
-        case i @ SetValue(rd, value, _) =>
-          ctx.logger.error("Should not keep this instruction!", i)
-          i
-        case i @ BinaryArithmetic(operator, rd, rs1, rs2, _) =>
-          i.copy(
-            rd = substitution(rd),
-            rs1 = substitution(rs1),
-            rs2 = substitution(rs2)
-          )
-        case i @ GlobalStore(rs, base, predicate, _) =>
-          i.copy(
-            rs = substitution(rs),
-            base = (
-              substitution(base._1),
-              substitution(base._2),
-              substitution(base._3)
-            ),
-            predicate = predicate.map(substitution)
-          )
-        case i @ LocalStore(rs, base, offset, predicate, _) =>
-          i.copy(
-            rs = substitution(rs),
-            base = substitution(base),
-            predicate = predicate.map(substitution)
-          )
-        case i @ Send(rd, rs, dest_id, _) =>
-          ctx.logger.error("Can not handle instruction", i)
-          i
-        case i @ CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
-          ctx.logger.error("Can not handle instruction", i)
-          i
-        case i @ LocalLoad(rd, base, offset, _) =>
-          i.copy(
-            rd = substitution(rd),
-            base = substitution(base)
-          )
-        case i @ ClearCarry(carry, _) =>
-          i.copy(
-            carry = substitution(carry)
-          )
-        case i @ Nop =>
-          i
-        case i @ Expect(ref, got, error_id, _) =>
-          i.copy(
-            ref = substitution(ref),
-            got = substitution(got)
-          )
-        case i @ Predicate(rs, _) =>
-          i.copy(
-            rs = substitution(rs)
-          )
-        case i @ GlobalLoad(rd, base, _) =>
-          i.copy(
-            rd = substitution(rd),
-            base = (
-              substitution(base._1),
-              substitution(base._2),
-              substitution(base._3)
-            )
-          )
-        case i @ Mov(rd, rs, _) =>
-          i.copy(
-            rd = substitution(rd),
-            rs = substitution(rs)
-          )
-        case i @ Recv(rd, rs, source_id, _) =>
-          ctx.logger.error("Can not handle instruction", i)
-          i
-        case i @ PadZero(rd, rs, width, _) =>
-          i.copy(
-            rd = substitution(rd),
-            rs = substitution(rs)
-          )
-      }
-
+      val cinst = asRenamed(inst)(substitution)
       m_insts += cinst
     }
 
@@ -270,7 +183,7 @@ trait ConstantFolding extends Flavored {
     def build(): DefProcess = {
       proc.copy(
         registers = m_kept_regs.toSeq,
-        body = m_insts.toSeq
+        body = m_insts.dequeueAll(_ => true).toSeq
       )
     }
 
