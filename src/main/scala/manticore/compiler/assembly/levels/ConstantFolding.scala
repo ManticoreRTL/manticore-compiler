@@ -9,7 +9,7 @@ import manticore.compiler.assembly.levels.CanRename
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-trait ConstantFolding extends Flavored with StatisticReporter with CanRename {
+trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
 
   import flavor._
 
@@ -17,13 +17,12 @@ trait ConstantFolding extends Flavored with StatisticReporter with CanRename {
       prog: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
 
-    reportStats(prog)
 
-    val re = prog.copy(
+    val res = prog.copy(
       processes = prog.processes.map(do_transform)
     )
-    reportStats(re)
-    re
+    ctx.stats.record(mkProgramStats(res))
+    res
   }
 
   /** Constant zero and one, override them with their corresponding values in

@@ -9,6 +9,7 @@ import scala.util.parsing.input.Positional
 import manticore.compiler.assembly.levels.TransformationID
 import java.awt.Color
 import java.util.concurrent.atomic.AtomicInteger
+import manticore.compiler.assembly.levels.StatisticCollector
 
 /** Classes for diagnostics and reporting
   *
@@ -40,8 +41,11 @@ trait AssemblyContext {
   val dump_ra: Boolean // dump register array initial values
   val dump_ascii: Boolean // dump the
   val logger: Logger // logger object
+  val stats: StatisticCollector
 
   def uniqueNumber(): Int
+
+
 }
 
 object AssemblyContext {
@@ -67,7 +71,9 @@ object AssemblyContext {
       val dump_ra: Boolean,
       val dump_ascii: Boolean,
       val expected_cycles: Option[Int],
-      val logger: Logger
+      val logger: Logger,
+      val stats: StatisticCollector
+
   ) extends AssemblyContext {
 
     var unique_int: AtomicInteger = new AtomicInteger(0)
@@ -125,7 +131,8 @@ object AssemblyContext {
       expected_cycles = expected_cycles,
       logger = logger.getOrElse(
         Logger(debug_message, !quiet, dump_dir, dump_all, log_file)
-      )
+      ),
+      stats = StatisticCollector()
     )
   }
 

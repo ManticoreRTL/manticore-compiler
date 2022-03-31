@@ -227,11 +227,11 @@ object ProcessSplittingTransform
     // run a function and time it
     def timed[T](header: String)(fn_body: => T): T = {
       ctx.logger.info(header)
-      val start_time = System.nanoTime()
-      val res = fn_body
-      val end_time = System.nanoTime()
+
+      val (res, elapsed) = ctx.stats.timed(fn_body)
+      ctx.stats.recordRunTime(header, elapsed)
       ctx.logger.info(
-        f"took ${(end_time - start_time) * 1e-9}%.3f seconds"
+        f"took ${elapsed * 1e-3}%.3f seconds"
       )
       ctx.logger.flush()
       res

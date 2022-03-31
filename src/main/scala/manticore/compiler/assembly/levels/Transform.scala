@@ -76,23 +76,22 @@ trait AssemblyTransformer[
     ctx.logger.start(
       s"[${ctx.logger.countProgress()}] Starting transformation ${phase_id}"
     )
-    val start_time = System.nanoTime()
 
-    val res = (transform(source, ctx), ctx)
+    val (res, duration_time) = ctx.stats.scope {
+      transform(source, ctx)
+    }
 
-    val duration_time = System.nanoTime() - start_time
-
-    ctx.logger.info(f"Finished after ${duration_time * 1e-7}%.3f ms")
+    ctx.logger.info(f"Finished after ${duration_time}%.3f ms")
     ctx.logger.dumpArtifact(
       s"dump_post_${ctx.logger.countProgress()}_${phase_id}.masm"
     ) {
-      res._1.serialized
+      res.serialized
     }
     if (ctx.logger.countErrors() > 0) {
       ctx.logger.fail("Compilation failed due to earlier errors")
     }
     ctx.logger.end("")
-    res
+    (res, ctx)
   }
 
 }

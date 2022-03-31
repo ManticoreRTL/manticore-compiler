@@ -153,6 +153,7 @@ object Main {
       val (result, _) = phases(prg, ctx)
       MachineCodeGenerator(result, ctx)
       InitializerProgram(result, ctx)
+      ctx.logger.info(ctx.stats.asYaml)(new HasLoggerId { val id: String = "Compiler Stats"})
 
     }
 

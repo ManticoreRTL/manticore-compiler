@@ -5,7 +5,10 @@ import manticore.compiler.assembly.BinaryOperator
 
 import manticore.compiler.assembly.levels.CanRename
 
-trait CommonSubexpressionElimination extends Flavored with CanRename with StatisticReporter {
+trait CommonSubexpressionElimination
+    extends Flavored
+    with CanRename
+    with ProgramStatCounter {
 
   import flavor._
 
@@ -33,8 +36,8 @@ trait CommonSubexpressionElimination extends Flavored with CanRename with Statis
 
     def keep(instruction: Instruction): Unit = {
       def renaming(n: Name): Name = {
-          m_regs += m_defs(n)
-          m_subst.getOrElse(n, n)
+        m_regs += m_defs(n)
+        m_subst.getOrElse(n, n)
       }
       val renamed_inst = asRenamed(instruction)(renaming)
       m_insts += renamed_inst
@@ -53,10 +56,10 @@ trait CommonSubexpressionElimination extends Flavored with CanRename with Statis
     }
 
     def build(): DefProcess = {
-        proc.copy(
-            body = m_insts.dequeueAll(_ => true).toSeq,
-            registers = m_regs.toSeq
-        )
+      proc.copy(
+        body = m_insts.dequeueAll(_ => true).toSeq,
+        registers = m_regs.toSeq
+      )
     }
 
   }
@@ -66,61 +69,65 @@ trait CommonSubexpressionElimination extends Flavored with CanRename with Statis
   ): DefProgram = {
 
     val results = prog.copy(
-        processes = prog.processes.map(do_transform)
+      processes = prog.processes.map(do_transform)
     )
-    reportStats(results)
+    ctx.stats.record {
+      mkProgramStats(results)
+    }
     results
   }
   private def do_transform(
       proc: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
 
-    proc.body.foldLeft(new Eliminator(proc)) { case (cse, inst) =>
-      inst match {
-        case Mux(rd, sel, rfalse, rtrue, _) =>
-          val sel_name = cse getName sel
-          val false_name = cse getName rfalse
-          val true_name = cse getName rtrue
+    proc.body
+      .foldLeft(new Eliminator(proc)) { case (cse, inst) =>
+        inst match {
+          case Mux(rd, sel, rfalse, rtrue, _) =>
+            val sel_name = cse getName sel
+            val false_name = cse getName rfalse
+            val true_name = cse getName rtrue
 
-          val expr = MuxExpr(sel_name, false_name, true_name)
-          cse.available(expr) match {
-            case Some(bound_name) => cse bind (rd -> bound_name)
-            case None => // keep the instruction, it's a fresh expression
-              cse keep inst
-              cse record (expr -> rd)
-          }
-        case BinaryArithmetic(op, rd, rs1, rs2, _) =>
-          val rs1_name = cse getName rs1
-          val rs2_name = cse getName rs2
-          val expr1 = BinOpExpr(op, rs1_name, rs2_name)
+            val expr = MuxExpr(sel_name, false_name, true_name)
+            cse.available(expr) match {
+              case Some(bound_name) => cse bind (rd -> bound_name)
+              case None => // keep the instruction, it's a fresh expression
+                cse keep inst
+                cse record (expr -> rd)
+            }
+          case BinaryArithmetic(op, rd, rs1, rs2, _) =>
+            val rs1_name = cse getName rs1
+            val rs2_name = cse getName rs2
+            val expr1 = BinOpExpr(op, rs1_name, rs2_name)
 
-          cse available expr1 match {
-            case Some(bound_name) => cse bind (rd -> bound_name)
-            case None =>
-              op match {
-                case ADD | AND | XOR | OR | MUL | SEQ =>
-                  // commutative operators
-                  val expr2 = BinOpExpr(op, rs2_name, rs1_name)
-                  cse available expr2 match {
-                    case Some(bound_name) => cse bind (rd -> bound_name)
-                    case None             =>
-                      // keep the instruction and record a new expr to name binding
-                      cse keep inst
-                      cse record (expr1 -> rd) // does not matter which expr we keep
+            cse available expr1 match {
+              case Some(bound_name) => cse bind (rd -> bound_name)
+              case None =>
+                op match {
+                  case ADD | AND | XOR | OR | MUL | SEQ =>
+                    // commutative operators
+                    val expr2 = BinOpExpr(op, rs2_name, rs1_name)
+                    cse available expr2 match {
+                      case Some(bound_name) => cse bind (rd -> bound_name)
+                      case None             =>
+                        // keep the instruction and record a new expr to name binding
+                        cse keep inst
+                        cse record (expr1 -> rd) // does not matter which expr we keep
 
-                  }
-                case _ =>
-                  // non-commutative operators
-                  cse keep inst
-                  cse record (expr1 -> rd)
-              }
-          }
-        case _ =>
+                    }
+                  case _ =>
+                    // non-commutative operators
+                    cse keep inst
+                    cse record (expr1 -> rd)
+                }
+            }
+          case _ =>
             cse keep inst
 
+        }
+        cse
       }
-      cse
-    }.build()
+      .build()
 
   }
 

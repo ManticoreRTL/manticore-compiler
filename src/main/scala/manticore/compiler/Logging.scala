@@ -116,6 +116,7 @@ object Logger {
     val color_pallette = if (no_colors) NoColor else Colored
     import color_pallette._
 
+
     private var transform_index: Int = 0
     private var error_count: Int = 0
     private var warn_count: Int = 0
