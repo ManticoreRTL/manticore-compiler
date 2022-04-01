@@ -1,16 +1,12 @@
 package manticore.compiler.assembly.levels
 
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.BinaryOperator
 import scala.collection.immutable.ListMap
-import scala.util.Try
-import scala.util.Failure
-import scala.util.Success
 import manticore.compiler.assembly
-import scala.collection.View
-import javax.swing.SwingWorker.StateValue
+
+
 
 
 case class ProcessStatistic(
@@ -245,7 +241,7 @@ object StatisticCollector {
         if (runtime.nonEmpty) {
           str ++= s"${tabs}\truntime:\n"
           runtime.foreach { case (k, v) =>
-            str ++= s"${tabs}\t\t- ${k}: ${v}\n"
+            str ++= f"${tabs}\t\t- ${k}: ${v}%.3f\n"
           }
         }
         if (pairs.nonEmpty) {

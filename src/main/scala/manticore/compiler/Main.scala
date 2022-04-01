@@ -39,6 +39,7 @@ import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.parser.AssemblyLexical
 import manticore.compiler.assembly.levels.codegen.InitializerProgram
+import java.io.PrintWriter
 
 case class CliConfig(
     input_file: Option[File] = None,
@@ -47,6 +48,7 @@ case class CliConfig(
     dump_dir: Option[File] = None,
     output_dir: Option[File] = None,
     debug_en: Boolean = false,
+    report: Option[File] = None,
     /** Machine configurations * */
     dimx: Int = 1,
     dimy: Int = 1,
@@ -76,6 +78,9 @@ object Main {
         opt[File]('o', "output")
           .action { case (x, c) => c.copy(output_dir = Some(x)) }
           .text("output directory"),
+        opt[File]('r', "report")
+          .action { case (x, c) => c.copy(report = Some(x)) }
+          .text("emit a compilation report"),
         opt[Unit]('t', "print-tree")
           .action { case (_, c) => c.copy(print_tree = true) }
           .text("print the asm program at each step of the assembler"),
@@ -153,8 +158,15 @@ object Main {
       val (result, _) = phases(prg, ctx)
       MachineCodeGenerator(result, ctx)
       InitializerProgram(result, ctx)
-      ctx.logger.info(ctx.stats.asYaml)(new HasLoggerId { val id: String = "Compiler Stats"})
-
+      cfg.report match {
+        case Some(report_file) =>
+          val printer = new PrintWriter(report_file)
+          printer.print(ctx.stats.asYaml)
+          printer.flush()
+          printer.close()
+        case None =>
+          // do nothing
+      }
     }
 
     val parsed = AssemblyParser(cfg.input_file.get, ctx)
