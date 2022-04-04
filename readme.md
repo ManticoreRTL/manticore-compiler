@@ -49,41 +49,41 @@ single register, see the comments in the code for further explanations.
     // value is 0. Values could be Int, Boolean or Strings. A key can only
     // accept a specific type, for instance we can not give the string "0"
     // to x, or the boolean false.
-	@LOC [x = 0,y = 0]
-	.proc proc_0_0:
+    @LOC [x = 0,y = 0]
+    .proc proc_0_0:
         // Memories are defined as ".mem" and they should be preceded by
         // these two annotations
-		@MEMINIT [file = "expected_results.dat",width = 16,count = 600]
-		@MEMBLOCK [block = "expected_results",width = 16,capacity = 600]
-		.mem res_ptr 16
+        @MEMINIT [file = "expected_results.dat",width = 16,count = 600]
+        @MEMBLOCK [block = "expected_results",width = 16,capacity = 600]
+        .mem res_ptr 16
 
         // wires are temporary values both are 16-bit wide, you can supply
         // an arbitrary different width if your application demands it
         .wire res_addr 16
-		.wire expected_res 16
+        .wire expected_res 16
 
 
-		@MEMINIT [file = "op1.dat",width = 16,count = 600]
-		@MEMBLOCK [block = "op1_values",width = 16,capacity = 600]
-		.mem op1_ptr 16
+        @MEMINIT [file = "op1.dat",width = 16,count = 600]
+        @MEMBLOCK [block = "op1_values",width = 16,capacity = 600]
+        .mem op1_ptr 16
 
-		.wire op1_addr 16
-		.wire op1_val 16
+        .wire op1_addr 16
+        .wire op1_val 16
 
-		@MEMINIT [file = "op2.dat",width = 16,count = 600]
-		@MEMBLOCK [block = "op2_values",width = 16,capacity = 600]
+        @MEMINIT [file = "op2.dat",width = 16,count = 600]
+        @MEMBLOCK [block = "op2_values",width = 16,capacity = 600]
 
-		.mem op2_ptr 16
-		.wire op2_addr 16
+        .mem op2_ptr 16
+        .wire op2_addr 16
 
-		.wire op2_val 16
+        .wire op2_val 16
 
         // .const define registers that are immutable and retain their
         // values across loops. The first number indicates the bit-width
         // and the latter is the default value
-		.const one 16 1
-		.const zero 16 0
-		.const test_length 16 600
+        .const one 16 1
+        .const zero 16 0
+        .const test_length 16 600
 
         // .input defines an "immutable" within the loop body but its value
         // will be changed at the end of the loop. Every .input is annotated by
@@ -94,25 +94,25 @@ single register, see the comments in the code for further explanations.
         // .output register and that value is automatically used as the new
         // value of the corresponding .input definition in the next loop.
 
-		@REG [id = "counter",type = "\REG_CURR"]
-		.input counter_curr 16 0
-		@REG [id = "counter",type = "\REG_NEXT"]
-		.output counter_next 16
-		@REG [id = "done",type = "\REG_CURR"]
+        @REG [id = "counter",type = "\REG_CURR"]
+        .input counter_curr 16 0
+        @REG [id = "counter",type = "\REG_NEXT"]
+        .output counter_next 16
+        @REG [id = "done",type = "\REG_CURR"]
 
-		.input done_curr 16 0
-		@REG [id = "done",type = "\REG_NEXT"]
-		.output done_next 16
-		@REG [id = "result",type = "\REG_CURR"]
+        .input done_curr 16 0
+        @REG [id = "done",type = "\REG_NEXT"]
+        .output done_next 16
+        @REG [id = "result",type = "\REG_CURR"]
 
-		.input result_curr 16
-		@REG [id = "result",type = "\REG_NEXT"]
-		.output result_next 16
+        .input result_curr 16
+        @REG [id = "result",type = "\REG_NEXT"]
+        .output result_next 16
 
-		@REG [id = "correct",type = "\REG_CURR"]
-		.input correct_curr 16 1
-		@REG [id = "correct",type = "\REG_NEXT"]
-		.output correct_next 16
+        @REG [id = "correct",type = "\REG_CURR"]
+        .input correct_curr 16 1
+        @REG [id = "correct",type = "\REG_NEXT"]
+        .output correct_next 16
 
 
         // The instructions follow the definitions. Each .wire or .output name
@@ -120,43 +120,43 @@ single register, see the comments in the code for further explanations.
         // to follow any particular order since the order can be reconstructed
 
 
-        ADD	op1_addr, op1_ptr, counter_curr;
-		ADD	op2_addr, op2_ptr, counter_curr;
-		ADD	res_addr, res_ptr, counter_curr;
+        ADD op1_addr, op1_ptr, counter_curr;
+        ADD op2_addr, op2_ptr, counter_curr;
+        ADD res_addr, res_ptr, counter_curr;
 
         // LD is the "load" instruction and the offset  (constant value) is
         // given in the brackets (always give zero unless if you know what
         // you are doing)
-		@MEMBLOCK [block = "op1_values",width = 16,capacity = 600]
-		LD op1_val, op1_addr[0];
-		@MEMBLOCK [block = "op2_values",width = 16,capacity = 600]
-		LD op2_val, op2_addr[0];
+        @MEMBLOCK [block = "op1_values",width = 16,capacity = 600]
+        LD op1_val, op1_addr[0];
+        @MEMBLOCK [block = "op2_values",width = 16,capacity = 600]
+        LD op2_val, op2_addr[0];
 
-		ADD	result_next, op1_val, op2_val;
-		@MEMBLOCK [block = "expected_results",width = 16,capacity = 600]
-		LD expected_res, res_addr[0];
+        ADD result_next, op1_val, op2_val;
+        @MEMBLOCK [block = "expected_results",width = 16,capacity = 600]
+        LD expected_res, res_addr[0];
 
-        ADD	counter_next, counter_curr, one;
+        ADD counter_next, counter_curr, one;
 
         // SEQ is seq equal
-		SEQ	correct_next, result_next, expected_res;
-		SEQ	done_next, counter_next, test_length;
+        SEQ correct_next, result_next, expected_res;
+        SEQ done_next, counter_next, test_length;
 
         // EXPECT is like assert(correct_curr == one)
         @TRAP [type = "\fail"]
-		EXPECT correct_curr, one, ["failed"];
-		@TRAP [type = "\stop"]
-		EXPECT done_curr, zero, ["stopped"];
+        EXPECT correct_curr, one, ["failed"];
+        @TRAP [type = "\stop"]
+        EXPECT done_curr, zero, ["stopped"];
 
-	@LOC [x = 1,y = 0]
-	.proc p_1_0:
-		@REG [id = "dummy",type = "\REG_CURR"]
+    @LOC [x = 1,y = 0]
+    .proc p_1_0:
+        @REG [id = "dummy",type = "\REG_CURR"]
 
-		.input dummy_curr 16
-		@REG [id = "dummy",type = "\REG_NEXT"]
+        .input dummy_curr 16
+        @REG [id = "dummy",type = "\REG_NEXT"]
 
-		.output dummy_next 16
-		@REG [id = "result",type = "\REG_CURR"]
+        .output dummy_next 16
+        @REG [id = "result",type = "\REG_CURR"]
 
         // notice how the this definition is shared by the
         // two processes. This makes the compiler generate additional
@@ -165,18 +165,14 @@ single register, see the comments in the code for further explanations.
         // result_curr in sync in both of the process. Only one process
         // can assign result_next though.
 
-		.input result_curr 16
+        .input result_curr 16
 
         // this .output is never assigned
-		@REG [id = "result",type = "\REG_NEXT"]
-		.output result_next 16
+        @REG [id = "result",type = "\REG_NEXT"]
+        .output result_next 16
 
-		MOV dummy_next, result_curr; //@81.8
-
-
+        MOV dummy_next, result_curr; //@81.8
 ```
-
-
 
 Although the code snippet above shows two parallel processes, the standard input
 to the compiler should only define a single process, and no `@LOC` annotation
@@ -465,10 +461,10 @@ This means if m = 2 we get a latency of 6 or 9!
 .const c0 16 0
 .const c1 16 1
 .const c127 16 127
-AND	x1, x0, c127;  only keep the first 7 bits
-SEQ	x2, x1, c0; x2 = x1 == 0
-SEQ	x3, x2, c0; x3 = x2 == false
-XOR	x4, x3, c1; x4 = !x2 or x4 = x1 != 0
+AND x1, x0, c127;  only keep the first 7 bits
+SEQ x2, x1, c0; x2 = x1 == 0
+SEQ x3, x2, c0; x3 = x2 == false
+XOR x4, x3, c1; x4 = !x2 or x4 = x1 != 0
 ```
 
 can be reduced to
@@ -477,9 +473,9 @@ can be reduced to
 .const c0 16 0
 .const c1 16 1
 .const c127 16 127
-AND	x1, x0, c127;  only keep the first 7 bits
-SEQ	x2, x1, c0; x2 = x1 == 0
-SEQ	x4, x2, c1; x3 = x2 == true
+AND x1, x0, c127;  only keep the first 7 bits
+SEQ x2, x1, c0; x2 = x1 == 0
+SEQ x4, x2, c1; x3 = x2 == true
 ```
 and further to
 
@@ -488,8 +484,8 @@ and further to
 .const c0 16 0
 .const c1 16 1
 .const c127 16 127
-AND	x1, x0, c127;  only keep the first 7 bits
-SEQ	x4, x0, c0; x2 = x1 == 0
+AND x1, x0, c127;  only keep the first 7 bits
+SEQ x4, x0, c0; x2 = x1 == 0
 ```
 
 ### P1
@@ -499,8 +495,8 @@ SEQ	x4, x0, c0; x2 = x1 == 0
 .const c0 1 0
 .const c1 1 1
 .wire w1 1 // single-bit
-SEQ	w0, x0, c0; // is x0 zero?
-XOR	w1, w0, c1;  // is w0 true? i.e., is x0 zero?
+SEQ w0, x0, c0; // is x0 zero?
+XOR w1, w0, c1;  // is w0 true? i.e., is x0 zero?
 ```
 
 can be reduced to
@@ -510,7 +506,7 @@ can be reduced to
 .const c0 1 0
 .const c1 1 1
 .wire w1 1 // single-bit
-SEQ	w1, x0, c0; // is x0 zero?
+SEQ w1, x0, c0; // is x0 zero?
 ```
 
 
@@ -519,14 +515,11 @@ SEQ	w1, x0, c0; // is x0 zero?
 ```
 .const c0 1 0
 .const c1 1 1
-SEQ	x1, x0, c0; is x0 == zero?
-SEQ	x2, x1, c0; is ! x0 == zero ?
-XOR	x3, x2, c1; is x0 == zero?
+SEQ x1, x0, c0; is x0 == zero?
+SEQ x2, x1, c0; is ! x0 == zero ?
+XOR x3, x2, c1; is x0 == zero?
 ```
 reduces to
 ```
 SEQ x3, x0, c0;
 ```
-
-
-
