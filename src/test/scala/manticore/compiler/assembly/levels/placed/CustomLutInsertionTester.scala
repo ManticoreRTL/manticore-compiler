@@ -18,7 +18,13 @@ class CustomLutInsertionTester extends UnitFixtureTest {
   behavior of "custom lut insertion transform"
 
   it should "correctly identify LUTs" in { f =>
-    val ctx = AssemblyContext(dump_all = true, dump_dir = Some(f.test_dir.toFile()))
+    val ctx = AssemblyContext(
+      dump_all = true,
+      dump_dir = Some(f.test_dir.toFile()),
+      debug_message = true,
+      log_file = Some(f.test_dir.resolve("output.log").toFile())
+    )
+
     val lowerCompiler = ManticorePasses.frontend followedBy
       ManticorePasses.middleend followedBy
       UnconstrainedToPlacedTransform followedBy

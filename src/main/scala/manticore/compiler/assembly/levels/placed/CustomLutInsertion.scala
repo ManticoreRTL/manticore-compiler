@@ -16,8 +16,7 @@ import scala.collection.immutable.{BitSet => Cut}
 import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, HashSet => MHashSet}
 import scala.jdk.CollectionConverters._
 import com.google.ortools.Loader
-import com.google.ortools.linearsolver.MPSolver
-
+import com.google.ortools.linearsolver.{MPSolver, MPVariable}
 
 object CustomLutInsertion
     extends DependenceGraphBuilder
@@ -109,11 +108,18 @@ object CustomLutInsertion
     logicClusters
   }
 
+  /**
+    * Groups the instructions that make up the input cluster into a set of
+    * non-overlapping cones that can be transformed into a custom instruction.
+    * The non-overlapping cones are the optimal ones.
+    */
   def onCluster(
     instructionGraph: Graph[Instruction, DefaultEdge],
     cluster: Set[Instruction],
     maxCutSize: Int
-  ): Set[Instruction] = {
+  )(
+    implicit ctx: AssemblyContext
+  ): Set[Set[Instruction]] = {
     // Graph where vertices are represented as Ints to simplify debugging.
     // The graph's vertices are all logic instructions of the cluster *and* their primary inputs (which are not logic
     // instructions by definition). The primary inputs are needed as otherwise we would not know the in-degree of the
@@ -166,11 +172,6 @@ object CustomLutInsertion
     type Cuts = ArrayBuffer[Cut]
     case class Cone(root: Int, vertices: Set[Int])
     val vCuts = MHashMap.empty[Int, Cuts]
-
-    // Initialize cut set of every vertex to the empty set.
-    idGraph.vertexSet().asScala.foreach { v =>
-      vCuts(v) = ArrayBuffer.empty
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Helpers /////////////////////////////////////////////////////////////////
@@ -296,9 +297,12 @@ object CustomLutInsertion
     // The primary inputs of the cluster are the vertices with an in-degree of 0.
     // These are technically vertices that are *not* logic instructions as they
     // originate from outside the cluster.
-    val primaryInputs = idGraph.vertexSet().asScala.filter { v =>
-      idGraph.inDegreeOf(v) == 0
-    }.toSet
+    val (primaryInputs, logicVertices) = idGraph.vertexSet().asScala.partition(v => idGraph.inDegreeOf(v) == 0)
+
+    // Initialize cut set of every vertex to the empty set.
+    idGraph.vertexSet().asScala.foreach { v =>
+      vCuts(v) = ArrayBuffer.empty
+    }
 
     // For i = 1, ..., n do
     //   set CUTS(i) <- {{i}}
@@ -329,18 +333,17 @@ object CustomLutInsertion
       vCuts(v) += Cut(v)
 
       // Debug
-      println(s"root = ${v}, num_cuts = ${vCuts(v).size}, k = ${maxCutSize}")
-      vCuts(v).foreach { cut =>
-        println(cut.mkString("-"))
+      ctx.logger.debug {
+        val vCutsStr = vCuts(v).map { cut =>
+          cut.mkString("-")
+        }.mkString("\n")
+        s"${maxCutSize}-cuts of root ${v}, num_cuts = ${vCuts(v).size}\n${vCutsStr}"
       }
-      println()
     }
 
     // Now that we have all cuts, we find the cones that they span.
-    val allCones = vCuts.filter { case (v, cuts) =>
-      // The primary inputs are not roots for cone extraction (they are not part of the cluster).
-      !primaryInputs.contains(v)
-    }.flatMap { case (root, cuts) =>
+    val allCones = logicVertices.flatMap { root =>
+      val cuts = vCuts(root)
       cuts.map(cut => Cone(root, getConeVertices(root, cut)))
     }
 
@@ -359,88 +362,124 @@ object CustomLutInsertion
       !hasEdgeToExternalVertex
     }
 
-    // We want to choose the minimum number of NON-overlapping valid cones such that the full cluster is covered.
-    // Minimum because we have limited custom instructions in our architecture and we want to use them for
-    // cones that replace a large number of instructions.
+    // We want to maximize the number of instructions we can remove from the cluster.
     // The cones must be non-overlapping as otherwise a vertex *outside* the cone uses an intermediate
     // result from within the cone and we therefore can't remove the vertices that make up the cone.
+    // In other words, the cones must be fanout-free.
     //
     // This is a proxy for the set cover problem with non-overlapping sets. We can solve this optimally
-    // using an ILP formulation. Here we use the formulation from the following book:
+    // using an ILP formulation.
+
+    // We assign every cone an ID so we can easily manipulate them in a map.
+    val idToConeMap = validCones.zipWithIndex.map(kv => kv.swap).toMap
+
+    // objective function
+    // ------------------
+    // The objective function maximizes the number of instructions that we can save by
+    // replacing a cone by a custom instruction. We save |C_i| - 1 vertices by replacing
+    // the instructions of a cone with a single custom instruction.
     //
-    //    "Accelerator Data-Path Synthesis for High-Throughput Signal Processing Applications"
-    //     Chapter 6, Non overlapping covering
+    //    max sum_{i = 0}{i = num_cones} x_i * (|C_i|-1)
     //
-    // We first construct a conflict graph in which every vertex is a cone (a "set" in the set cover problem)
-    // an every edge connects two conflicting cones (i.e., they overlap). Note that the conflict graph is
-    // *undirected* as conflicts are 2-way.
+    // constraints
+    // -----------
+    //
+    //    x_i \in {0, 1} \forall i \in [0 .. num_cones]          (1) Each cone is either selected, or not selected.
+    //
+    //    sum_{C_i : v \in C_i} x_i = 1                          (2) Each vertex is covered by exactly one cone.
 
-    def getConflictGraph(
-      validCones: Iterable[Cone]
-    ): (
-      Graph[Int, DefaultEdge],
-      Map[Int, Cone]
-    ) = {
-      // We assign every cone an ID so we can easily represent the vertices of the graph. Note
-      // that we cannot use the root of the cones as their ID as multiple cones of differing sizes
-      // have the same root.
-      val idToConeMap = validCones.zipWithIndex.map(kv => kv.swap).toMap
-
-      val cg: Graph[Int, DefaultEdge] = new SimpleGraph(classOf[DefaultEdge])
-      idToConeMap.foreach { case (coneId, cone) =>
-        cg.addVertex(coneId)
-      }
-
-      // A cone conflicts with another if they have overlapping vertices.
-      // Self-conflicts are ignored.
-      idToConeMap.foreach { case (cone1Id, cone1) =>
-        idToConeMap.foreach { case (cone2Id, cone2) =>
-          if (cone1Id != cone2Id) {
-            val coneIntersection = cone1.vertices.intersect(cone2.vertices)
-            if (coneIntersection.nonEmpty) {
-              // The cones overlap, so we create an edge between them in the conflict graph.
-              cg.addEdge(cone1Id, cone2Id)
-            }
-          }
-        }
-      }
-
-      // Debug
-      idToConeMap.foreach { case (coneId, cone) =>
-        println(s"coneId = ${coneId}, cone = ${cone.vertices.mkString("-")}")
-      }
-
-      (cg, idToConeMap)
+    Loader.loadNativeLibraries()
+    val solver = MPSolver.createSolver("SCIP")
+    if (solver == null) {
+      ctx.logger.fail("Could not create solver SCIP.")
     }
 
-    val (coneConflictGraph, idToConeMap) = getConflictGraph(validCones)
+    // (1) Each cone is either selected, or not selected (binary variable).
+    //
+    //    x_i \in {0, 1} \forall i \in [0 .. num_cones]
+    //
+    val coneVars = MHashMap.empty[Int, MPVariable]
+    idToConeMap.foreach { case (coneId, cone) =>
+      coneVars += coneId -> solver.makeIntVar(0, 1, s"x_${coneId}")
+    }
 
-//    Loader.loadNativeLibraries()
-    // [START solver]
-//    val solver = MPSolver.createSolver("SCIP")
-//    val conflictGraph = new Undi
+    // (2) Each vertex is covered by exactly one cone.
+    //
+    //    sum_{C_i : v \in C_i} x_i = 1
+    //
+    logicVertices.foreach { v =>
+      // The equality constraint with 1 is defined by setting the lower and upper bound
+      // of the constraint to 1.
+      val constraint = solver.makeConstraint(1, 1, s"coveredOnce_v${v}")
 
-    cluster
+      idToConeMap.foreach { case (coneId, cone) =>
+        val coefficient = if (cone.vertices.contains(v)) 1 else 0
+        constraint.setCoefficient(coneVars(coneId), coefficient)
+      }
+    }
+
+    // objective function
+    //
+    //    max sum_{i = 0}{i = num_cones} x_i * (|C_i|-1)
+    //
+    val objective = solver.objective()
+    idToConeMap.foreach { case (coneId, cone) =>
+      val coneSize = cone.vertices.size
+      val coefficient = coneSize - 1
+      objective.setCoefficient(coneVars(coneId), coefficient)
+    }
+    objective.setMaximization()
+
+    // solve optimization problem
+    val resultStatus = solver.solve()
+    if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
+      val conesUsed = coneVars.filter { case (coneId, coneVar) =>
+        coneVar.solutionValue > 0
+      }.map { case (coneId, _) =>
+        coneId -> idToConeMap(coneId)
+      }
+
+      val conesUsedStr = conesUsed.map { case (coneId, cone) =>
+        s"coneId ${coneId} = {${cone.vertices.mkString("-")}}"
+      }.mkString("\n")
+      ctx.logger.info(s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value()} using following cones:\n${conesUsedStr}")
+
+      // Collect vertex identifiers that make up the cones, then map these identifiers to their instructions.
+      // This is the final result and the caller can then decide which custom instructions to implement.
+      conesUsed.map { case (coneId, cone) =>
+        cone.vertices.map(v => idToInstrMap(v))
+      }.toSet
+
+    } else {
+      ctx.logger.fail("Could not optimally solve cone cover problem.")
+      // We return the empty set to signal that no logic instructions could be fused together.
+      Set.empty
+    }
   }
 
   def onProcess(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
     val dependenceGraph = createDependenceGraph(proc)
 
-    // Identify logic clusters in the graph. We sort the cluster in descending order of their
-    // size so we always handle the largest cluster first in the rest of the algorithm.
+    // Identify logic clusters in the graph.
     val logicClusters = findLogicClusters(dependenceGraph)
       .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
-      .sortBy(cluster => cluster.size)(Ordering.Int.reverse)
 
     // Debug
-    logicClusters.foreach { cluster =>
-      println(s"size = ${cluster.size}, ${cluster}")
-      println()
+    ctx.logger.debug {
+      logicClusters.map { cluster =>
+        val clusterInstrs = cluster.mkString("\n")
+        s"logicCluster of size ${cluster.size} = ${clusterInstrs}"
+      } .mkString("\n")
     }
 
     // Attempt to reduce cluster sizes by using custom LUT vectors.
-    val largestCluster = logicClusters.head
-    onCluster(dependenceGraph, largestCluster, maxCutSize=4)
+    val potentialCustomInstrs = logicClusters.flatMap { cluster =>
+      onCluster(dependenceGraph, cluster, maxCutSize = 4)(ctx)
+    }
+
+    // Select as many clusters as we have custom instructions available in the process.
+    // We select the clusters in decreasing order of their size so we get the maximum
+    // reduction in instructions.
 
     proc
   }
