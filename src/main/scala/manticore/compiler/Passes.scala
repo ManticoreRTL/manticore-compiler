@@ -27,6 +27,7 @@ import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.ExpectIdInsertion
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
 import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubexpressionElimination
+// import manticore.compiler.assembly.levels.placed.PlacedIrJumpTableConstructionTransform
 
 object ManticorePasses {
 
@@ -39,7 +40,9 @@ object ManticorePasses {
     UnconstrainedMakeDebugSymbols followedBy
     UnconstrainedOrderInstructions followedBy
     UnconstrainedRemoveAliases followedBy
-    UnconstrainedDeadCodeElimination
+    UnconstrainedDeadCodeElimination followedBy
+    UnconstrainedRenameVariables followedBy
+    UnconstrainedJumpTableConstruction
 
   val middleend =
     WidthConversion.transformation followedBy
@@ -70,6 +73,7 @@ object ManticorePasses {
     UnconstrainedToPlacedTransform followedBy
     PlacedIRConstantFolding followedBy
     PlacedIRCommonSubexpressionElimination followedBy
+    // PlacedIrJumpTableConstructionTransform followedBy
     ExtractParallelism followedBy
     BackendLowerEnd
 
