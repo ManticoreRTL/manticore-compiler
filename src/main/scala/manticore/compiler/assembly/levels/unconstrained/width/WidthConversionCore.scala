@@ -353,7 +353,7 @@ object WidthConversionCore
 
         assert(
           rd_uint16_array.length == rs2_uint16_array_aligned.length &&
-            rd_uint16_array.length == rs2_uint16_array_aligned.length,
+            rd_uint16_array.length == rs2_uint16_array_aligned.length
         )
         if (rs1_uint16_array_aligned.length != 1) {
 
@@ -2036,7 +2036,7 @@ object WidthConversionCore
           annons
         ).setPos(i.pos)
       }
-    case i @ Mov(rd, rs, annons) =>
+    case i @ Mov(rd, rs, _) =>
       val rd_uint16_array = builder.getConversion(rd).parts
       val rs_uint16_array = builder.getConversion(rs).parts
       if (builder.originalWidth(rd) != builder.originalWidth(rs)) {
@@ -2047,6 +2047,35 @@ object WidthConversionCore
         i.copy(rd = rd16, rs = rs16).setPos(i.pos)
       }
 
+    case i @ ParMux(rd, choices, default, _) =>
+      val rd_uint16_array = builder.getConversion(rd).parts
+      val case_conds: Seq[Name] = choices.map { case ParMuxCase(cond, _) =>
+        val carray = builder.getConversion(cond).parts
+        if (carray.length != 1) {
+          ctx.logger.error("Expected boolean conditions!", i)
+        }
+        carray.head
+      }
+      val case_rs: Seq[Seq[Name]] = choices.map { case ParMuxCase(_, rs) =>
+        val uint16_array = builder.getConversion(rs).parts
+        if (uint16_array.length != rd_uint16_array.length) {
+          ctx.logger.error("Expected aligned width in ParMux operands!")
+        }
+        uint16_array
+      }
+      val default_uint16_array = builder.getConversion(default).parts
+      if (default_uint16_array.length != rd_uint16_array.length) {
+        ctx.logger.error("Expected mis-aligned default", i)
+      }
+      rd_uint16_array.zip(case_rs).zip(default_uint16_array).map {
+        case ((rd16, rs16_array), def16) =>
+          i.copy(
+            rd = rd16,
+            choices =
+              case_conds zip rs16_array map { case (a, b) => ParMuxCase(a, b) },
+            default = def16
+          )
+      }
     case _ =>
       ctx.logger.error(
         "Can not handle this type of instruction yet",

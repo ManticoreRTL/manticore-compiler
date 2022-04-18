@@ -50,7 +50,8 @@ trait ManticoreAssemblyIR {
   type CustomFunction <: HasSerialized // type defining custom function, e.g., Seq[UInt16]
   type ProcessId // type defining a process identifier, e.g., String
   type ExceptionId // type defining an exception identifier, e.g., String
-  // type SwizzleCode
+
+  type Label
 
   trait Named[T] {
     val name: Name
@@ -111,6 +112,22 @@ trait ManticoreAssemblyIR {
 
   }
 
+  case class DefLabelGroup(
+      memory: Name,
+      indexer: Seq[(Constant, Label)],
+      default: Option[Label],
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Declaration
+      with HasSerialized {
+    override def serialized: String =
+      s"${serializedAnnons("\t\t")}\t\t.labelgroup\n" +
+        indexer.map { case (index, label) =>
+          s"\t\t\t${index} -> ${label}"
+        } mkString ("\n") + (if (default.nonEmpty)
+                               s"\t\t\t _ -> ${default.get}"
+                             else "")
+
+  }
   // program definition, single one
   case class DefProgram(
       processes: Seq[DefProcess],
@@ -130,6 +147,7 @@ trait ManticoreAssemblyIR {
       registers: Seq[DefReg],
       functions: Seq[DefFunc],
       body: Seq[Instruction],
+      labels: Seq[DefLabelGroup] = Seq(),
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Declaration
       with HasSerialized {
@@ -152,6 +170,127 @@ trait ManticoreAssemblyIR {
       s"${serializedAnnons("\t\t")}\t\t${toString}; //@${pos}"
   }
 
+  // case class BitRange(high: Int, low: Int) {
+  //   require(low <= high, "Invalid bit range")
+  // }
+
+  // /**
+  //   * Extracts a bit slice, equivalent to the following Verilog statement
+  //   * wire [HIGH - LOW: 0] rd;
+  //   * wire [RSLEN - 1 : 0] rs; // RSLEN >= HIGH - LOW + 1
+  //   * assign rd = rs[HIGH - 1 : LOW];
+  //   * @param rd
+  //   * @param rs
+  //   * @param range
+  //   * @param annons
+  //   */
+  // case class Slice(
+  //     rd: Name,
+  //     rs: Name,
+  //     range: BitRange, // (high, low)
+  //     annons: Seq[AssemblyAnnotation] = Seq()
+  // ) extends Instruction {
+  //   override def toString: String =
+  //     s"SLICE ${rd}, ${rs}[${range.high}, ${range.low}]"
+  // }
+
+  // /**
+  //   * Concatenates rs1 and rs2 by replacing the upper bits of rs2 with lower bits
+  //   * of rs1, equivalent to the following Verilog statement
+  //   * wire [RDL - 1 : 0] rd;
+  //   * wire [BITPOS - 1 : 0] rs1;
+  //   * wire [RDL - BITPOS - 1 : 0] rs2;
+  //   * assign rd = {rs2, rs1};
+  //   * @param rd
+  //   * @param rs1
+  //   * @param rs2
+  //   * @param bitpos
+  //   * @param annons
+  //   */
+  // case class Concat(
+  //     rd: Name,
+  //     rs1: Name,
+  //     rs2: Name,
+  //     bitpos: Int,
+  //     annons: Seq[AssemblyAnnotation] = Seq()
+  // ) extends Instruction {
+  //   override def toString: String =
+  //     s"CONCAT ${rd}, ${rs1}, ${rs2}[${bitpos}]"
+  // }
+
+  /** A parallel multiplexer
+    *
+    * @param rd
+    * @param choices
+    * @param default
+    * @param conditions
+    * @param annons
+    */
+  case class ParMuxCase(condition: Name, choice: Name)
+  case class ParMux(
+      rd: Name,
+      choices: Seq[ParMuxCase],
+      default: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+
+    override def toString: String =
+      s"PARMUX ${rd}, ${choices map { case ParMuxCase(cond, ch) =>
+        s"${cond} ? ${ch}"
+      } mkString (",")}, ${default}"
+  }
+
+  /** A Jump instruction that changes the PC to the value given by the target
+    *
+    * @param target
+    * @param annons
+    */
+
+  case class Jump(
+      target: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+    override def toString: String = s"JUMP $target"
+  }
+
+  case class JumpCase(label: Label, block: Seq[Instruction])
+
+  /** A Hyper instruction that can compute many results and is identified by a
+    * unique label
+    *
+    * @param target
+    *   the computed label
+    * @param results
+    * @param blocks
+    * @param annons
+    */
+  case class JumpTable(
+      target: Name,
+      results: Seq[Name],
+      blocks: Seq[JumpCase],
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+
+    override def toString: String = {
+      s"switch ${target}:\n" +
+        blocks.map { case JumpCase(label, body) =>
+          s"\t\t\tcase ${label}:\n" +
+            body.map { inst => s"\t\t\t\t${inst}; // ${inst.pos}" }.mkString("\n")
+        }.mkString("\n")
+
+    }
+  }
+
+  // A pseudo LocalLoad instruction solely used by the address lookup computation
+  // it can be replaced with a LocalLoad is the base given is a constant value
+  // which would be the case since the base would be memory pointer which is
+  // a constant after memory allocation
+  case class Lookup(
+    rd: Name, index: Name, base: Name, annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends Instruction {
+    override def toString: String =
+      s"LOOKUP ${rd}, ${base}[${index}]"
+  }
   // arithmetic operations see BinaryOperators
   case class BinaryArithmetic(
       operator: BinaryOperator.BinaryOperator,
@@ -160,6 +299,7 @@ trait ManticoreAssemblyIR {
       rs2: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Instruction {
+
 
     override def toString: String = s"${operator
       .toString()

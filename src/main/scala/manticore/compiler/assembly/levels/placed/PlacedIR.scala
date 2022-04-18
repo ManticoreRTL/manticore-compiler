@@ -86,6 +86,8 @@ object PlacedIR extends ManticoreAssemblyIR {
     override def toString(): String = s"${msg}_${id}"
   }
 
+
+
   type Name = String
   type Variable = PlacedVariable
   type CustomFunction = CustomFunctionImpl
@@ -93,6 +95,7 @@ object PlacedIR extends ManticoreAssemblyIR {
   type Constant = UInt16
   type ExceptionId = ExceptionIdImpl
 
+  type Label = Symbol
 }
 
 object LatencyAnalysis {

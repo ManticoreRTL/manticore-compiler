@@ -108,6 +108,12 @@ trait CanRename extends Flavored {
           rd = renaming(rd),
           rs = renaming(rs)
         )
+      case i @ ParMux(rd, cases, default, _) =>
+        i.copy(
+          rd = renaming(rd),
+          choices = cases.map { case ParMuxCase(cond, choice) => ParMuxCase(renaming(cond), renaming(choice)) },
+          default = renaming(default)
+        )
     }
     renamed_inst.setPos(inst.pos)
   }

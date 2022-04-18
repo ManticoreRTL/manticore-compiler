@@ -291,6 +291,13 @@ trait RemoveAliases extends Flavored {
             ci = replaceName(ci)
           )
         case i @ (_: SetCarry | _: ClearCarry) => i
+        case i @ ParMux(rd, choices, default, _) =>
+          i.copy(
+            choices = choices.map { case ParMuxCase(a, b) =>
+              ParMuxCase(replaceName(a), replaceName(b))
+            },
+            default = replaceName(default)
+          )
         case _: Recv => ctx.logger.fail("can not handle RECV")
 
       }).setPos(instr.pos)

@@ -82,7 +82,15 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case Recv(rd, rs, source_id, annons) =>
           // purely synthetic instruction, should be regarded as NOP
           Seq.empty
-
+        case ParMux(rd, choices, default, annons) =>
+          choices.flatMap { case ParMuxCase(cond, ch) =>
+            Seq(cond, ch)
+          } :+ default
+        case Jump(rs, _) => Seq(rs)
+        case JumpTable(target, _, blocks, _) =>
+          ctx.logger.error("Can not handle JumpTable yet!", inst)
+          target +:
+            blocks.flatMap { case JumpCase(_, body) => body.flatMap(regUses) }
       }
     }
 
@@ -115,7 +123,12 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case ClearCarry(rd, _)                  => Seq(rd)
         case SetCarry(rd, _)                    => Seq(rd)
         case _: Recv                            => Nil
+        case ParMux(rd, _, _, _)                => Seq(rd)
+        case Jump(_, _)                         => Nil
 
+        case JumpTable(_, results, _, _)        =>
+          ctx.logger.error("Can not handle JumpTable yet!", inst)
+          results
       }
     }
 

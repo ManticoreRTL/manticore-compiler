@@ -7,7 +7,8 @@ import manticore.compiler.assembly.annotations.DebugSymbol
   * `flavor` and the `mkName` function to specialize this transformation
   * ATTENTION: This transform assumes that the instructions are ordered
   *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 trait RenameTransformation extends Flavored {
 
@@ -130,6 +131,12 @@ trait RenameTransformation extends Flavored {
             i.copy(carry = createNewRdDef(rd))
           case i @ SetCarry(rd, _) =>
             i.copy(carry = createNewRdDef(rd))
+          case i @ ParMux(rd, choices, default, _) =>
+            i.copy(
+              default = subst(default),
+              choices =
+                choices map { case ParMuxCase(a, b) => ParMuxCase(subst(a), subst(b)) }
+            ).copy(rd = createNewRdDef(rd))
           case _: Recv =>
             ctx.logger.error("can not rename RECV", inst)
             ctx.logger.fail("Failed renaming")

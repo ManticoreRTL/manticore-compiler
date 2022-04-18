@@ -17,7 +17,6 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
       prog: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
 
-
     val res = prog.copy(
       processes = prog.processes.map(do_transform)
     )
@@ -274,7 +273,7 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
                 case Left(s) =>
                   (rfalse_value, rtrue_value) match {
                     case (Right(ConstZero), Right(ConstOne)) =>
-                       /*
+                      /*
                        a weird pattern that I've seen in the code is
 
                        MUX y, s, Const0, Const1 (y and s are not constant)
@@ -289,7 +288,7 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
                         "something went wrong, expected name not constant"
                       )
                       builder.bindName(rd, s)
-                    case (Right(ct1), Right(ct2)) if (ct1 == ct2)=>
+                    case (Right(ct1), Right(ct2)) if (ct1 == ct2) =>
                       // another weird pattern is having the same constant
                       // in both branches
                       builder.bindConst(rd, ct1)
@@ -319,6 +318,41 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
               } else {
                 // can not simplify
                 builder.keep(i)
+              }
+            }
+          case i @ ParMux(rd, cases, default, _) =>
+            if (builder.isUnopt(rd)) {
+              builder.keep(i)
+            } else {
+              val computed_cases = cases
+                .map { case ParMuxCase(cond, choice) =>
+                  (builder.computedValue(cond), builder.computedValue(choice))
+                }
+              val found_true_case = computed_cases
+                .collectFirst { case (Right(ConstOne), rs_val) =>
+                  rs_val
+                }
+
+              found_true_case match {
+                case None => // maybe all conditions are zero!
+                  if (
+                    computed_cases.forall {
+                      case (Right(ConstZero), _) => true
+                      case _                     => false
+                    }
+                  ) {
+                    // use the default case
+                    val default_case_value = builder.computedValue(default)
+                    default_case_value match {
+                      case Right(const_val) => builder.bindConst(rd, const_val)
+                      case Left(dyn_val)    => builder.bindName(rd, dyn_val)
+                    }
+                  } else {
+                    // can not optimize
+                    builder.keep(i)
+                  }
+                case Some(Right(const_val)) => builder.bindConst(rd, const_val)
+                case Some(Left(dyn_val))    => builder.bindName(rd, dyn_val)
               }
             }
         }

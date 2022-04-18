@@ -18,7 +18,6 @@ import manticore.compiler.AssemblyContext
   */
 trait AssemblyNameChecker extends Flavored {
 
-
   import flavor._
 
   def do_check(prog: DefProgram, context: AssemblyContext): Unit = {
@@ -59,7 +58,6 @@ trait AssemblyNameChecker extends Flavored {
           }
         }
 
-
       def checkInst(inst: Instruction): Unit = {
         implicit val implicit_inst = inst
         inst match {
@@ -86,15 +84,20 @@ trait AssemblyNameChecker extends Flavored {
           case Predicate(rs, _)       => checkRegs(Seq(rs))
           case Mux(rd, sel, rs1, rs2, _) =>
             checkRegs(Seq(rd, sel, rs1, rs2))
-          case Nop => // do nothing
+          case Nop                            => // do nothing
           case PadZero(rd, rs, width, annons) => checkRegs(Seq(rd, rs))
-          case AddC(rd, co, rs1, rs2, ci, annons) => checkRegs(Seq(rd, co, rs1, rs2, ci))
-          case Mov(rd, rs, _) => checkRegs(Seq(rd, rs))
+          case AddC(rd, co, rs1, rs2, ci, annons) =>
+            checkRegs(Seq(rd, co, rs1, rs2, ci))
+          case Mov(rd, rs, _)    => checkRegs(Seq(rd, rs))
           case ClearCarry(rd, _) => checkRegs(Seq(rd))
-          case SetCarry(rd, _) => checkRegs(Seq(rd))
+          case SetCarry(rd, _)   => checkRegs(Seq(rd))
           case _: Recv =>
             context.logger.error("can not check instruction", inst)
             context.logger.fail("Failed checkInst")
+          case ParMux(rd, choices, default, annons) =>
+            checkRegs(rd +: choices.flatMap { case ParMuxCase(a, b) =>
+              Seq(a, b)
+            })
 
         }
       }
@@ -148,7 +151,6 @@ trait AssemblyNameChecker extends Flavored {
           }
       }
     }
-
 
   }
 }
