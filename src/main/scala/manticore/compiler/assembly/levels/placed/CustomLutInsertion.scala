@@ -17,6 +17,9 @@ import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, HashSet => MH
 import scala.jdk.CollectionConverters._
 import com.google.ortools.Loader
 import com.google.ortools.linearsolver.{MPSolver, MPVariable}
+import org.jgrapht.nio.Attribute
+import scala.collection.mutable.LinkedHashMap
+import org.jgrapht.nio.DefaultAttribute
 
 object CustomLutInsertion
     extends DependenceGraphBuilder
@@ -27,15 +30,33 @@ object CustomLutInsertion
 
   def dumpGraph[V](
     g: Graph[V, DefaultEdge],
-    vNameMap: Option[Map[V, _]] = None
+    highlightClusters: Iterable[Iterable[V]] = Seq.empty
   ): String = {
+    // These colors were generated using the following website:
+    //
+    //    https://medialab.github.io/iwanthue/
+    //
+    val colors = Vector(
+      "#d45079", "#4fc656", "#b969e9", "#86be36", "#835dd8", "#c4ba32", "#436ae3", "#92ab38",
+      "#9e40b5", "#3c8f29", "#d336a7", "#3ac37d", "#f82387", "#298443", "#e672d5", "#77b55d",
+      "#3351bd", "#e28f30", "#7e84ed", "#d2a43f", "#6649ae", "#628124", "#c37fde", "#968721",
+      "#5e64c1", "#e2672a", "#428ae4", "#ce452b", "#4cc3e3", "#e53578", "#56cbb0", "#d14791",
+      "#80c687", "#ac4197", "#4b9e74", "#d5404f", "#39a8a4", "#884b9f", "#89a660", "#5b4d99",
+      "#c2bb6f", "#826cb5", "#596416", "#b297e1", "#52783a", "#de8bc2", "#367042", "#983f69",
+      "#277257", "#e8846d", "#4695c7", "#b4682b", "#4365a3", "#886624", "#809bdb", "#9c4c2c",
+      "#754f8c", "#968c4b", "#a66495", "#60642d", "#e08698", "#d19968", "#914a57", "#ad4b51"
+    )
+
+    val vColorMap = highlightClusters.zipWithIndex.flatMap { case (vertices, colorIdx) =>
+      // We have a limited number of colors and we must reuse them when the number of
+      // clusters is too large (hence the modulo operation).
+      val color = colors(colorIdx % colors.size)
+      vertices.map(v => v -> color)
+    }.toMap
+
     val vertexIdProvider = new Function[V, String] {
       def apply(v: V): String = {
-        val vStr = if (vNameMap.isDefined) {
-          vNameMap.get(v)
-        } else {
-          v.toString
-        }
+        val vStr = v.toString
 
         // Note the use of quotes around the serialized name so it is a legal graphviz identifier (as
         // characters such as "." are not allowed in identifiers).
@@ -43,7 +64,25 @@ object CustomLutInsertion
       }
     }
 
-    val dotExporter = new org.jgrapht.nio.dot.DOTExporter[V, DefaultEdge](vertexIdProvider)
+    val vertexAttrProvider = new Function[V, java.util.Map[String, Attribute]] {
+      def apply(v: V): java.util.Map[String, Attribute] = {
+        val attrMap = LinkedHashMap.empty[String, Attribute]
+
+        // We color the vertices that will be fused into a custom instruction.
+        if (vColorMap.contains(v)) {
+          val color = vColorMap(v)
+          attrMap += "fillcolor" -> DefaultAttribute.createAttribute(color)
+          attrMap += "style" -> DefaultAttribute.createAttribute("filled")
+        }
+
+        attrMap.asJava
+      }
+    }
+
+    val dotExporter = new org.jgrapht.nio.dot.DOTExporter[V, DefaultEdge]()
+    dotExporter.setVertexIdProvider(vertexIdProvider)
+    dotExporter.setVertexAttributeProvider(vertexAttrProvider)
+
     val writer = new StringWriter()
     dotExporter.exportGraph(g, writer)
     writer.toString()
@@ -160,8 +199,12 @@ object CustomLutInsertion
       (idGraph, idToInstrMap)
     }
 
+    ctx.logger.debug {
+      val clusterInstrs = cluster.mkString("\n")
+      s"logicCluster of size ${cluster.size}:\n${clusterInstrs}"
+    }
+
     val (idGraph, idToInstrMap) = getIdGraph(cluster)
-    Files.writeString(Paths.get("tmp.dot"), dumpGraph(idGraph))
 
     // Cut enumeration. We use a BitSet to represent a cut. If a bit is set, then the
     // corresponding vertex is part of the cut.
@@ -332,13 +375,12 @@ object CustomLutInsertion
 
       vCuts(v) += Cut(v)
 
-      // Debug
-      ctx.logger.debug {
-        val vCutsStr = vCuts(v).map { cut =>
-          cut.mkString("-")
-        }.mkString("\n")
-        s"${maxCutSize}-cuts of root ${v}, num_cuts = ${vCuts(v).size}\n${vCutsStr}"
-      }
+      // ctx.logger.debug {
+      //   val vCutsStr = vCuts(v).map { cut =>
+      //     cut.mkString("-")
+      //   }.mkString("\n")
+      //   s"${maxCutSize}-cuts of root ${v}, num_cuts = ${vCuts(v).size}\n${vCutsStr}"
+      // }
     }
 
     // Now that we have all cuts, we find the cones that they span.
@@ -440,9 +482,9 @@ object CustomLutInsertion
       }
 
       val conesUsedStr = conesUsed.map { case (coneId, cone) =>
-        s"coneId ${coneId} = {${cone.vertices.mkString("-")}}"
+        s"coneId ${coneId} = {${cone.vertices.map(v => idToInstrMap(v)).mkString(" --- ")}}"
       }.mkString("\n")
-      ctx.logger.info(s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value()} using following cones:\n${conesUsedStr}")
+      ctx.logger.info(s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using following cones:\n${conesUsedStr}")
 
       // Collect vertex identifiers that make up the cones, then map these identifiers to their instructions.
       // This is the final result and the caller can then decide which custom instructions to implement.
@@ -459,27 +501,39 @@ object CustomLutInsertion
 
   def onProcess(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
     val dependenceGraph = createDependenceGraph(proc)
+    ctx.logger.dumpArtifact(
+      s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_orig.dot"
+    ) {
+      dumpGraph(dependenceGraph)
+    }
 
     // Identify logic clusters in the graph.
     val logicClusters = findLogicClusters(dependenceGraph)
       .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
 
-    // Debug
-    ctx.logger.debug {
-      logicClusters.map { cluster =>
-        val clusterInstrs = cluster.mkString("\n")
-        s"logicCluster of size ${cluster.size} = ${clusterInstrs}"
-      } .mkString("\n")
-    }
-
     // Attempt to reduce cluster sizes by using custom LUT vectors.
     val potentialCustomInstrs = logicClusters.flatMap { cluster =>
-      onCluster(dependenceGraph, cluster, maxCutSize = 4)(ctx)
+      onCluster(dependenceGraph, cluster, maxCutSize = ctx.max_custom_instruction_inputs)(ctx)
     }
 
     // Select as many clusters as we have custom instructions available in the process.
     // We select the clusters in decreasing order of their size so we get the maximum
     // reduction in instructions.
+    val selectedCustomInstrs = potentialCustomInstrs
+      .sortBy { cluster =>
+        cluster.size
+      }(Ordering.Int.reverse)
+      .take(ctx.max_custom_instructions)
+
+    // To visually inspect the mapping for correctness, we dump a highlighted dot file
+    // showing each cluster with a different color.
+    ctx.logger.dumpArtifact(
+      s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedLogicCones.dot"
+    ) {
+      dumpGraph(dependenceGraph, selectedCustomInstrs)
+    }
+
+    // We can now replace each cluster with a single custom instruction.
 
     proc
   }
@@ -491,5 +545,4 @@ object CustomLutInsertion
     val newProcesses = program.processes.map(proc => onProcess(proc)(context))
     program.copy(processes = newProcesses)
   }
-
 }
