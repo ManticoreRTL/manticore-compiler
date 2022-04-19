@@ -213,7 +213,14 @@ object CustomLutInsertion
     // array later. A Cut will only be added to a vertex's cut "SET" if it contains a vertex
     // that doesn't exist in the other cuts.
     type Cuts = ArrayBuffer[Cut]
-    case class Cone(root: Int, vertices: Set[Int])
+    case class Cone(root: Int, vertices: Set[Int]) {
+      override def toString(): String = {
+        val nonRootVertices = (vertices - root).toSeq.sorted
+        val idStr = s"(${root}) --- ${nonRootVertices.mkString(" --- ")}"
+        val instrStr = s"(${idToInstrMap(root)}) --- ${nonRootVertices.map(v => idToInstrMap(v)).mkString(" --- ")}"
+        s"${idStr} : ${instrStr}"
+      }
+    }
     val vCuts = MHashMap.empty[Int, Cuts]
 
     ////////////////////////////////////////////////////////////////////////////
@@ -315,10 +322,10 @@ object CustomLutInsertion
       }
     }
 
-    def getConeVertices(
+    def cutToCone(
       root: Int,
       cut: Cut
-    ): Set[Int] = {
+    ): Cone = {
       val coneVertices = MHashSet.empty[Int]
 
       // Backtrack from the given vertex until a vertex in the cut is seen.
@@ -330,17 +337,32 @@ object CustomLutInsertion
       }
 
       backtrack(root)
-      coneVertices.toSet
+      Cone(root, coneVertices.toSet)
     }
 
     ////////////////////////////////////////////////////////////////////////////
     // Main algorithm //////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    // The primary inputs of the cluster are the vertices with an in-degree of 0.
-    // These are technically vertices that are *not* logic instructions as they
-    // originate from outside the cluster.
-    val (primaryInputs, logicVertices) = idGraph.vertexSet().asScala.partition(v => idGraph.inDegreeOf(v) == 0)
+    // The primary inputs of the cluster are the vertices that are not part of
+    // the cluster. These are technically vertices that are *not* logic instructions
+    // as otherwise they would have been included in the cluster.
+    val (logicVertices, primaryInputs) = idGraph.vertexSet().asScala.partition { v =>
+      val instr = idToInstrMap(v)
+      cluster.contains(instr)
+    }
+
+    // ctx.logger.dumpArtifact(
+    //   s"dependence_graph_id_graph${ctx.logger.countProgress()}.dot"
+    // ) {
+
+    //   dumpGraph(idGraph, Set(logicVertices, primaryInputs))
+    // }
+
+    // ctx.logger.debug {
+    //   val instrsStr = primaryInputs.map(idToInstrMap).mkString("\n")
+    //   s"primaryInputs:\n${instrsStr}"
+    // }
 
     // Initialize cut set of every vertex to the empty set.
     idGraph.vertexSet().asScala.foreach { v =>
@@ -386,7 +408,27 @@ object CustomLutInsertion
     // Now that we have all cuts, we find the cones that they span.
     val allCones = logicVertices.flatMap { root =>
       val cuts = vCuts(root)
-      cuts.map(cut => Cone(root, getConeVertices(root, cut)))
+      // These do NOT include the "singleton" cones that consist of a single
+      // vertex as the backtracking algorithm to generate a cone from a (root, cut)
+      // pair stops before the cut vertices are seen.
+      cuts.map(cut => cutToCone(root, cut))
+    } ++ logicVertices.map { root =>
+      // Add the "singleton" cones. These are needed to guarantee a feasible
+      // solution exists in the non-overlapping set cover problem.
+      Cone(root, Set(root))
+    }
+
+    val invalidCones = allCones.filter { cone =>
+      cone.vertices.exists { v =>
+        val instr = idToInstrMap(v)
+        val isLogic = isLogicInstr(instr)
+        !isLogic
+      }
+    }
+
+    ctx.logger.debug {
+      val invalidConesStr = invalidCones.map(cone => cone.toString()).mkString("\n")
+      s"Found invalid cones:\n${invalidConesStr}"
     }
 
     // Keep only the cones that are "valid". A cone is considered valid if it is fanout-free.
@@ -474,6 +516,7 @@ object CustomLutInsertion
 
     // solve optimization problem
     val resultStatus = solver.solve()
+    ctx.logger.debug(s"Solved non-overlapping cone covering problem (resultStatus = ${resultStatus})")
     if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
       val conesUsed = coneVars.filter { case (coneId, coneVar) =>
         coneVar.solutionValue > 0
@@ -484,7 +527,12 @@ object CustomLutInsertion
       val conesUsedStr = conesUsed.map { case (coneId, cone) =>
         s"coneId ${coneId} = {${cone.vertices.map(v => idToInstrMap(v)).mkString(" --- ")}}"
       }.mkString("\n")
-      ctx.logger.info(s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using following cones:\n${conesUsedStr}")
+      ctx.logger.info {
+        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${conesUsed.size} cones."
+      }
+      ctx.logger.debug {
+        conesUsedStr
+      }
 
       // Collect vertex identifiers that make up the cones, then map these identifiers to their instructions.
       // This is the final result and the caller can then decide which custom instructions to implement.
@@ -499,7 +547,14 @@ object CustomLutInsertion
     }
   }
 
-  def onProcess(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
+  def onProcess(
+    proc: DefProcess
+  )(
+    implicit ctx: AssemblyContext
+  ): (
+    DefProcess, // Unmodified process
+    Int // Number of instructions saved if custom instructions are implemented
+  ) = {
     val dependenceGraph = createDependenceGraph(proc)
     ctx.logger.dumpArtifact(
       s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_orig.dot"
@@ -515,6 +570,12 @@ object CustomLutInsertion
     val potentialCustomInstrs = logicClusters.flatMap { cluster =>
       onCluster(dependenceGraph, cluster, maxCutSize = ctx.max_custom_instruction_inputs)(ctx)
     }
+    .filter { cluster =>
+      // Singleton clusters give us 0 reduction in number of instructions, so
+      // we just filter them out to avoid polluting the custom instruction space
+      // with something that can be computed with a standard instruction.
+      cluster.size > 1
+    }
 
     // Select as many clusters as we have custom instructions available in the process.
     // We select the clusters in decreasing order of their size so we get the maximum
@@ -525,6 +586,9 @@ object CustomLutInsertion
       }(Ordering.Int.reverse)
       .take(ctx.max_custom_instructions)
 
+    val numSavedInstructions = selectedCustomInstrs.map(cone => cone.size - 1).sum
+    ctx.logger.info(s"Will save ${numSavedInstructions} instructions.")
+
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
     // showing each cluster with a different color.
     ctx.logger.dumpArtifact(
@@ -534,15 +598,32 @@ object CustomLutInsertion
     }
 
     // We can now replace each cluster with a single custom instruction.
+    // TODO (skashani)
 
-    proc
+    (proc, numSavedInstructions)
   }
 
   override def transform(
       program: DefProgram,
       context: AssemblyContext
   ): DefProgram = {
+    val origVirtualCycleLen = program.processes.map { proc =>
+      proc.body.length
+    }.max
+
     val newProcesses = program.processes.map(proc => onProcess(proc)(context))
-    program.copy(processes = newProcesses)
+
+    val progNumSavedInstructions = newProcesses.map { case (proc, procNumSavedInstructions) =>
+      procNumSavedInstructions
+    }.sum
+
+    val newvirtualCycleLen = newProcesses.map { case (proc, procNumSavedInstructions) =>
+      proc.body.length - procNumSavedInstructions
+    }.max
+
+    context.logger.info(s"Virtual cycle length = ${origVirtualCycleLen} (before), ${newvirtualCycleLen} (after)")
+    context.logger.info(s"Will save ${progNumSavedInstructions} in the whole program")
+
+    program
   }
 }
