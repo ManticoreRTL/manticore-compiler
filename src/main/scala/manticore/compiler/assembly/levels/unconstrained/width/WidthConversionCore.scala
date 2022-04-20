@@ -13,6 +13,7 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.MemoryType
+import javax.xml.crypto.Data
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -209,7 +210,7 @@ object WidthConversionCore
 
   import flavor._
 
-  val MaxLocalAddressBits = 11
+  // val MaxLocalAddressBits = 11
   private def assert16Bit(
       uint16_array: Seq[Name],
       inst: Instruction
@@ -233,9 +234,9 @@ object WidthConversionCore
   )(implicit
       ctx: AssemblyContext,
       builder: Builder
-  ): Seq[Instruction] = {
+  ): Seq[DataInstruction] = {
 
-    val inst_q = scala.collection.mutable.Queue.empty[Instruction]
+    val inst_q = scala.collection.mutable.Queue.empty[DataInstruction]
 
     def convertBitwise(bitwise_inst: BinaryArithmetic): Unit = {
 
@@ -260,7 +261,7 @@ object WidthConversionCore
         rd_mutable: Name,
         rd_mask: Option[Name],
         orig: BinaryArithmetic
-    ): Seq[Instruction] = {
+    ): Seq[DataInstruction] = {
 
       rd_mask match {
         case Some(const_mask) =>
@@ -282,7 +283,7 @@ object WidthConversionCore
         dest: Seq[Name],
         source: Seq[Name],
         orig: BinaryArithmetic
-    ): Seq[Instruction] = {
+    ): Seq[DataInstruction] = {
 
       require(
         dest.length == source.length,
@@ -1876,6 +1877,7 @@ object WidthConversionCore
 
     other_annons :+ indexed_mblock
   }
+
   def convert(instruction: Instruction)(implicit
       ctx: AssemblyContext,
       builder: Builder
@@ -1907,7 +1909,7 @@ object WidthConversionCore
           0
       }
 
-      if (num_shorts > (1 << MaxLocalAddressBits)) {
+      if (num_shorts > ctx.max_local_memory) {
         ctx.logger.error(
           s"Can not handle large memories yet with ${num_shorts} short words!"
         )
@@ -1961,7 +1963,7 @@ object WidthConversionCore
           0
       }
 
-      if (num_shorts > (1 << MaxLocalAddressBits)) {
+      if (num_shorts > ctx.max_local_memory) {
         ctx.logger.error(
           s"Can not handle large memories yet with ${num_shorts} short words!"
         )
@@ -2062,10 +2064,11 @@ object WidthConversionCore
           ctx.logger.error("Expected aligned width in ParMux operands!")
         }
         uint16_array
-      }
+      }.transpose
+
       val default_uint16_array = builder.getConversion(default).parts
       if (default_uint16_array.length != rd_uint16_array.length) {
-        ctx.logger.error("Expected mis-aligned default", i)
+        ctx.logger.error("Expected aligned default case", i)
       }
       rd_uint16_array.zip(case_rs).zip(default_uint16_array).map {
         case ((rd16, rs16_array), def16) =>
@@ -2074,8 +2077,74 @@ object WidthConversionCore
             choices =
               case_conds zip rs16_array map { case (a, b) => ParMuxCase(a, b) },
             default = def16
-          )
+          ).setPos(i.pos)
       }
+    case i @ Lookup(rd, index, base, _) =>
+      val rd16_array = builder.getConversion(rd).parts
+      assert(
+        rd16_array.length == 1,
+        s"Expected looked up label to fit in 16 bits in ${i}"
+      )
+      val index16_array = builder.getConversion(index).parts
+      assert(
+        index16_array.length == 1,
+        s"Expected looked up index to fit in 16 bits in ${i}"
+      )
+      val base16_array = builder.getConversion(base).parts
+      assert(
+        base16_array.length == 1,
+        s"Expected looked up memory base pointer to fit in 16 bits in ${i}"
+      )
+
+      Seq(
+        i.copy(
+          rd = rd16_array.head,
+          index = index16_array.head,
+          base = base16_array.head
+        ).setPos(i.pos)
+      )
+
+    case i @ JumpTable(rs, results, blocks, dslots, _) =>
+      val rs16_array = builder.getConversion(rs).parts
+      assert(
+        rs16_array.length == 1,
+        s"Expected jump target ${rs} to fit in a 16-bit register in ${i}!"
+      )
+      val results_uint16_array = results.flatMap { case Phi(rd, values) =>
+        val rds = builder.getConversion(rd).parts
+        val rss = values.map { case (lbl, n) =>
+          builder.getConversion(n).parts.map((lbl, _))
+        }.transpose
+        rds.zip(rss).map { case (rd, rsv) =>  Phi(rd, rsv) }
+
+      }
+
+      def checkedConversion(any_inst: Instruction): Seq[DataInstruction] = {
+        val converted: Seq[Instruction] = convert(any_inst)
+        converted.find { i => !i.isInstanceOf[DataInstruction] } match {
+          case Some(ndi) =>
+            ctx.logger.error(
+              s"Conversion resulted in unexpected non DataInstruction ${ndi} in JumpTable conversion",
+              i
+            )
+          case None => // do nothing
+        }
+        convert(any_inst).collect { case i: DataInstruction =>
+          i
+        }
+      }
+
+      Seq(
+        i.copy(
+          target = rs16_array.head,
+          results = results_uint16_array,
+          dslot = dslots.flatMap(checkedConversion(_)),
+          blocks = blocks.map { case JumpCase(lbl, body) =>
+            JumpCase(lbl, body.flatMap(checkedConversion(_)))
+          }
+        ).setPos(i.pos)
+      )
+
     case _ =>
       ctx.logger.error(
         "Can not handle this type of instruction yet",

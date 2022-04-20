@@ -86,11 +86,15 @@ trait DependenceGraphBuilder extends InputOutputPairs {
           choices.flatMap { case ParMuxCase(cond, ch) =>
             Seq(cond, ch)
           } :+ default
-        case Jump(rs, _) => Seq(rs)
-        case JumpTable(target, _, blocks, _) =>
-          ctx.logger.error("Can not handle JumpTable yet!", inst)
+        case Lookup(rd, index, base, annons) =>
+          Seq(base, index)
+        case JumpTable(target, phis, blocks, _, _) =>
+          // ctx.logger.error("Can not handle JumpTable yet!", inst)
           target +:
-            blocks.flatMap { case JumpCase(_, body) => body.flatMap(regUses) }
+            (blocks.flatMap { case JumpCase(_, body) =>
+              body.flatMap(regUses)
+            } ++
+              phis.flatMap { case Phi(_, rss) => rss.map(_._2) })
       }
     }
 
@@ -104,6 +108,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
     def regDef(
         inst: Instruction
     )(implicit ctx: AssemblyContext): Seq[Name] = {
+
       inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Seq(rd)
         case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) => Seq(rd)
@@ -124,11 +129,8 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case SetCarry(rd, _)                    => Seq(rd)
         case _: Recv                            => Nil
         case ParMux(rd, _, _, _)                => Seq(rd)
-        case Jump(_, _)                         => Nil
-
-        case JumpTable(_, results, _, _)        =>
-          ctx.logger.error("Can not handle JumpTable yet!", inst)
-          results
+        case JumpTable(_, results, _, _, _)     => results.map(_.rd)
+        case Lookup(rd, _, _, _)                => Seq(rd)
       }
     }
 

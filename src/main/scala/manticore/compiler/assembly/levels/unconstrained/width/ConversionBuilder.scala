@@ -67,7 +67,10 @@ trait ConversionBuilder extends Flavored {
         .copy(
           registers =
             (m_wires.values ++ m_constants.values ++ const_carries ++ m_carries).toSeq.distinct,
-          body = preamble ++ instructions
+          body = preamble ++ instructions,
+          labels = proc.labels.map { lgrp =>
+            lgrp.copy(memory = getConversion(lgrp.memory).parts.head)
+          }
         )
         .setPos(proc.pos)
     }

@@ -42,7 +42,8 @@ trait ProgramStatCounter extends Flavored {
       "SETCARRY" -> 0,
       "PADZERO" -> 0,
       "MOV" -> 0,
-      "PREDICATE" -> 0
+      "PREDICATE" -> 0,
+      "PARMUX" -> 0
     ) ++ Seq
       .tabulate(BinaryOperator.maxId) { i => BinaryOperator(i) }
       .filter { k =>
@@ -88,7 +89,9 @@ trait ProgramStatCounter extends Flavored {
       case _: Send        => incr("SEND")
       case _: Recv        => incr("RECV")
       case _: SetValue    => incr("SET")
+      case _: ParMux      => incr("PARMUX")
       case Nop            => incr("NOP")
+
     }
     inst_count.toSeq
   }

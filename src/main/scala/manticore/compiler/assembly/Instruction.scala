@@ -8,6 +8,7 @@ import manticore.compiler.assembly.levels.HasVariableType
 import manticore.compiler.assembly.annotations.AssemblyAnnotation
 import manticore.compiler.assembly.annotations.AnnotationValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.FieldName
+import javax.xml.crypto.Data
 
 /** Base classes for the various IR flavors.
   * @author
@@ -60,7 +61,7 @@ trait ManticoreAssemblyIR {
 
   trait HasAnnotations {
     val annons: Seq[AssemblyAnnotation]
-    def serializedAnnons(tabs: String = ""): String =
+    protected def serializedAnnons(tabs: String = ""): String =
       if (annons.nonEmpty)
         s"${annons.map(x => tabs + x.serialized).mkString("\n")}\n"
       else
@@ -120,10 +121,10 @@ trait ManticoreAssemblyIR {
   ) extends Declaration
       with HasSerialized {
     override def serialized: String =
-      s"${serializedAnnons("\t\t")}\t\t.labelgroup\n" +
+      s"${serializedAnnons("\t\t")}\t\t.labelgroup ${memory}\n" +
         indexer.map { case (index, label) =>
           s"\t\t\t${index} -> ${label}"
-        } mkString ("\n") + (if (default.nonEmpty)
+         }.mkString ("\n") + (if (default.nonEmpty)
                                s"\t\t\t _ -> ${default.get}"
                              else "")
 
@@ -154,14 +155,14 @@ trait ManticoreAssemblyIR {
     override def serialized: String = {
 
       s"${serializedAnnons("\t")}\t.proc ${id}:\n${(registers
-        .map(_.serialized) ++ functions.map(_.serialized) ++ body
-        .map(_.serialized)).mkString("\n")}"
+        .map(_.serialized) ++ functions.map(_.serialized) ++
+        labels.map(_.serialized) ++ body.map(_.serialized)).mkString("\n")}"
 
     }
   }
 
   // base instruction class
-  sealed abstract class Instruction
+  sealed trait Instruction
       extends IRNode
       with HasSerialized
       with Positional
@@ -169,6 +170,11 @@ trait ManticoreAssemblyIR {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\t${toString}; //@${pos}"
   }
+
+  sealed trait DataInstruction extends Instruction
+  sealed trait ControlInstruction extends Instruction
+  sealed trait PrivilegedInstruction extends Instruction
+  sealed trait SynchronizationInstruction extends Instruction
 
   // case class BitRange(high: Int, low: Int) {
   //   require(low <= high, "Invalid bit range")
@@ -232,53 +238,61 @@ trait ManticoreAssemblyIR {
       choices: Seq[ParMuxCase],
       default: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends ControlInstruction {
 
     override def toString: String =
       s"PARMUX ${rd}, ${choices map { case ParMuxCase(cond, ch) =>
         s"${cond} ? ${ch}"
-      } mkString (",")}, ${default}"
+      } mkString (", ")}, ${default}"
+
   }
 
-  /** A Jump instruction that changes the PC to the value given by the target
-    *
-    * @param target
-    * @param annons
-    */
-
-  case class Jump(
-      target: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
-    override def toString: String = s"JUMP $target"
+  case class JumpCase(label: Label, block: Seq[DataInstruction])
+  // a Phi node for selecting results and convergence points, does not really
+  // belong to the instruction type hierarchy since right now Phi nodes are
+  // strictly used within JumpTable nodes so there is no reason to treat them
+  // as real instructions
+  case class Phi(rd: Name, rss: Seq[(Label, Name)]) {
+    override def toString: String =
+      s"PHI $rd, ${rss.map { case (l, n) => s"$l: $n" }.mkString(", ")}"
   }
-
-  case class JumpCase(label: Label, block: Seq[Instruction])
 
   /** A Hyper instruction that can compute many results and is identified by a
     * unique label
     *
     * @param target
-    *   the computed label
+    *   the jump target, should be a label corresponding to one of the blocks
     * @param results
+    *   A sequence of "phi" functions that assign a register to multiple labeled
+    *   results
     * @param blocks
+    *   blocks of each case branch
+    * @param dslot
+    *   delay slot instruction
     * @param annons
     */
   case class JumpTable(
       target: Name,
-      results: Seq[Name],
+      results: Seq[Phi],
       blocks: Seq[JumpCase],
+      dslot: Seq[DataInstruction] = Seq(),
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends ControlInstruction {
 
     override def toString: String = {
-      s"switch ${target}:\n" +
-        blocks.map { case JumpCase(label, body) =>
-          s"\t\t\tcase ${label}:\n" +
-            body.map { inst => s"\t\t\t\t${inst}; // ${inst.pos}" }.mkString("\n")
-        }.mkString("\n")
+      s"SWITCH ${target}:\n" +
+        blocks
+          .map { case JumpCase(label, body) =>
+            s"\t\t\tCASE ${label}:\n" +
+              body
+                .map { inst => s"\t\t\t\t${inst}; // ${inst.pos}" }
+                .mkString("\n")
+          }
+          .mkString("\n") + "\n" +
+        results.map { case phi => s"\t\t\t$phi;" }.mkString("\n")
 
     }
+
   }
 
   // A pseudo LocalLoad instruction solely used by the address lookup computation
@@ -286,8 +300,11 @@ trait ManticoreAssemblyIR {
   // which would be the case since the base would be memory pointer which is
   // a constant after memory allocation
   case class Lookup(
-    rd: Name, index: Name, base: Name, annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+      rd: Name,
+      index: Name,
+      base: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends ControlInstruction {
     override def toString: String =
       s"LOOKUP ${rd}, ${base}[${index}]"
   }
@@ -298,8 +315,7 @@ trait ManticoreAssemblyIR {
       rs1: Name,
       rs2: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
-
+  ) extends DataInstruction {
 
     override def toString: String = s"${operator
       .toString()
@@ -316,7 +332,7 @@ trait ManticoreAssemblyIR {
       rs3: Name,
       rs4: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString: String =
       s"CUST ${rd}, [${func}], ${rs1}, ${rs2}, ${rs3}, ${rs4}"
 
@@ -328,7 +344,7 @@ trait ManticoreAssemblyIR {
       base: Name,
       offset: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString: String = s"LLD ${rd}, ${base}[${offset}]"
 
   }
@@ -340,11 +356,10 @@ trait ManticoreAssemblyIR {
       offset: Constant,
       predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString: String = s"LST ${rs}, ${base}[${offset}] ${predicate
       .map(", " + _.toString())
       .getOrElse("")}"
-
   }
 
   // Load from global memory (DRAM)
@@ -352,7 +367,8 @@ trait ManticoreAssemblyIR {
       rd: Name,
       base: Tuple3[Name, Name, Name],
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction
+      with PrivilegedInstruction {
     override def toString: String =
       s"GLD ${rd}, [${base._1}, ${base._2}, ${base._3}]"
 
@@ -364,7 +380,8 @@ trait ManticoreAssemblyIR {
       base: Tuple3[Name, Name, Name],
       predicate: Option[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction
+      with PrivilegedInstruction {
     override def toString: String =
       s"GST ${rs}, [${base._1}, ${base._2}, ${base._3}]${predicate
         .map { x => ", " + x.toString() }
@@ -377,10 +394,9 @@ trait ManticoreAssemblyIR {
       rd: Name,
       value: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString: String =
       s"SET ${rd}, ${value}"
-
   }
 
   // send a register to a process
@@ -389,7 +405,7 @@ trait ManticoreAssemblyIR {
       rs: Name, // register name in the source process
       dest_id: ProcessId, // destination process id
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends SynchronizationInstruction {
     override def toString: String = s"SEND ${rd}, [${dest_id}], ${rs}"
 
   }
@@ -402,7 +418,7 @@ trait ManticoreAssemblyIR {
       rs: Name,
       source_id: ProcessId,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends SynchronizationInstruction {
     override def toString: String = s"RECV ${rd}, [${source_id}], ${rs}"
   }
 
@@ -412,7 +428,8 @@ trait ManticoreAssemblyIR {
       got: Name,
       error_id: ExceptionId,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends ControlInstruction
+      with PrivilegedInstruction {
     override def toString: String = s"EXPECT ${ref}, ${got}, [${error_id}]"
 
   }
@@ -420,7 +437,7 @@ trait ManticoreAssemblyIR {
   case class Predicate(
       rs: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString: String = s"PREDICATE ${rs}"
 
   }
@@ -431,7 +448,7 @@ trait ManticoreAssemblyIR {
       rfalse: Name,
       rtrue: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
 
     override def toString: String = s"MUX ${rd}, ${sel}, ${rfalse}, ${rtrue}"
 
@@ -449,16 +466,17 @@ trait ManticoreAssemblyIR {
       rs2: Name,
       ci: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
 
     override def toString: String =
       s"ADDCARRY ${rd}, ${co}, ${rs1}, ${rs2}, ${ci}"
+
   }
 
   case class ClearCarry(
       carry: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString(): String =
       s"CLEARCARRY ${carry}"
   }
@@ -466,9 +484,10 @@ trait ManticoreAssemblyIR {
   case class SetCarry(
       carry: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString(): String =
       s"SETCARRY ${carry}"
+
   }
 
   case class PadZero(
@@ -476,18 +495,20 @@ trait ManticoreAssemblyIR {
       rs: Name,
       width: Constant,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString: String =
       s"PADZERO ${rd}, ${rs}, ${width}"
+
   }
 
   case class Mov(
       rd: Name,
       rs: Name,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends Instruction {
+  ) extends DataInstruction {
     override def toString: String =
       s"MOV ${rd}, ${rs}"
+
   }
 
 }

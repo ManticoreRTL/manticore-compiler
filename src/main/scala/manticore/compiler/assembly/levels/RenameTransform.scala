@@ -2,11 +2,18 @@ package manticore.compiler.assembly.levels
 
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.annotations.DebugSymbol
+import javax.xml.crypto.Data
 
 /** Template transformation for renaming all variable. You need to override the
   * `flavor` and the `mkName` function to specialize this transformation
-  * ATTENTION: This transform assumes that the instructions are ordered
-  *
+  * ATTENTION: This transform assumes that the instructions are ordered And it
+  * also assumes that instructions are "almost" in SSA form. Almost means that a
+  * register might be assigned multiple times in the same basic block but never
+  * across them. The reason for even having such non SSA basic blocks is the
+  * current implementation of the [[WidthConversionCore]] transform that breaks
+  * SSAness inside basic block but never breaks them across basic blocks. So
+  * this pass can be used to path the AST from the [[WidthConversionCore]] pass
+  * or in general to completely rename every register.
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
@@ -53,38 +60,51 @@ trait RenameTransformation extends Flavored {
       val dirty_regs = scala.collection.mutable.Set.empty[Name]
       val body_builder = scala.collection.mutable.Queue.empty[Instruction]
 
-      def createNewRdDef(rd: Name): Name = {
-        if (dirty_regs contains rd) {
-          val rd_def = original_defreg(rd)
-          val rd_new_name = nextName(rd_def)
-          subst += (rd_def.variable.name -> rd_new_name)
-          val new_rd_def = rd_def
-            .copy(rd_def.variable.withName(rd_new_name))
-            .setPos(rd_def.pos)
-          new_regs += new_rd_def
-          rd_new_name
-        } else {
-          dirty_regs += rd
-          subst(rd)
+      trait RdRenamer {
+        def apply(rd: Name): Name
+      }
+
+      // The following function will try to patch non SSA code in a single
+      // basic block by creating fresh names to dirty registers,
+      class CreateNewRdDefIfDirty extends RdRenamer {
+        val dirty_regs = scala.collection.mutable.Set.empty[Name]
+        def apply(rd: Name): Name = {
+          if (dirty_regs contains rd) {
+            val rd_def = original_defreg(rd)
+            val rd_new_name = nextName(rd_def)
+            subst += (rd_def.variable.name -> rd_new_name)
+            val new_rd_def = rd_def
+              .copy(rd_def.variable.withName(rd_new_name))
+              .setPos(rd_def.pos)
+            new_regs += new_rd_def
+            rd_new_name
+          } else {
+            dirty_regs += rd
+            subst(rd)
+          }
         }
       }
-      proc.body.foreach { inst =>
-        val new_inst: Instruction = inst match {
+      val outerRenamer = new CreateNewRdDefIfDirty
+
+      def renameDataInstruction(
+          inst: DataInstruction
+      ) = {
+        val renamed = inst match {
           case i @ BinaryArithmetic(_, rd, rs1, rs2, _) =>
             /** we need to perform copy twice in order to enforce the order in
               * which we call append an entry to [[subst]]
               */
             i.copy(rs1 = subst(rs1), rs2 = subst(rs2))
-              .copy(rd = createNewRdDef(rd))
+              .copy(rd = outerRenamer(rd))
           case i @ CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
             i.copy(
               rs1 = subst(rs1),
               rs2 = subst(rs2),
               rs3 = subst(rs3),
               rs4 = subst(rs4)
-            ).copy(rd = createNewRdDef(rd))
+            ).copy(rd = outerRenamer(rd))
           case i @ LocalLoad(rd, base, _, _) =>
-            i.copy(base = subst(base)).copy(rd = createNewRdDef(rd))
+            i.copy(base = subst(base)).copy(rd = outerRenamer(rd))
           case i @ LocalStore(rs, base, _, p, _) =>
             i.copy(
               rs = subst(rs),
@@ -93,7 +113,7 @@ trait RenameTransformation extends Flavored {
             )
           case i @ GlobalLoad(rd, (hh, h, l), _) =>
             i.copy(base = (subst(hh), subst(h), subst(l)))
-              .copy(rd = createNewRdDef(rd))
+              .copy(rd = outerRenamer(rd))
           case i @ GlobalStore(rs, (hh, h, l), p, _) =>
             i.copy(
               rs = subst(rs),
@@ -101,52 +121,122 @@ trait RenameTransformation extends Flavored {
               predicate = p map { subst }
             )
           case i @ SetValue(rd, _, _) =>
-            i.copy(rd = createNewRdDef(rd))
-          case i @ Expect(ref, got, _, _) =>
-            i.copy(ref = subst(ref), got = subst(got))
-          case i @ Send(rd, rs, _, _) =>
-            ctx.logger.error("Can not rename Send instruction!", i)
-            i.copy(rd = subst(rd), rs = subst(rs))
+            i.copy(rd = outerRenamer(rd))
           case i @ Predicate(rs, _) => i.copy(rs = subst(rs))
           case i @ Mux(rd, sel, rs1, rs2, _) =>
             i.copy(
               sel = subst(sel),
               rfalse = subst(rs1),
               rtrue = subst(rs2)
-            ).copy(rd = createNewRdDef(rd))
-          case i @ Nop => i
+            ).copy(rd = outerRenamer(rd))
           case i @ PadZero(rd, rs, _, _) =>
-            i.copy(rs = subst(rs)).copy(rd = createNewRdDef(rd))
+            i.copy(rs = subst(rs)).copy(rd = outerRenamer(rd))
           case i @ AddC(rd, co, rs1, rs2, ci, _) =>
             i.copy(
               rs1 = subst(rs1),
               rs2 = subst(rs2),
               ci = subst(ci)
-            ).copy(rd = createNewRdDef(rd), co = createNewRdDef(co))
+            ).copy(rd = outerRenamer(rd), co = outerRenamer(co))
           case i @ Mov(rd, rs, _) =>
             i.copy(
               rs = subst(rs)
-            ).copy(rd = createNewRdDef(rd))
+            ).copy(rd = outerRenamer(rd))
           case i @ ClearCarry(rd, _) =>
-            i.copy(carry = createNewRdDef(rd))
+            i.copy(carry = outerRenamer(rd))
           case i @ SetCarry(rd, _) =>
-            i.copy(carry = createNewRdDef(rd))
-          case i @ ParMux(rd, choices, default, _) =>
-            i.copy(
-              default = subst(default),
-              choices =
-                choices map { case ParMuxCase(a, b) => ParMuxCase(subst(a), subst(b)) }
-            ).copy(rd = createNewRdDef(rd))
-          case _: Recv =>
-            ctx.logger.error("can not rename RECV", inst)
-            ctx.logger.fail("Failed renaming")
+            i.copy(carry = outerRenamer(rd))
         }
+        renamed.setPos(inst.pos)
+      }
+      def renameInstruction(inst: Instruction): Instruction = inst match {
+        case i: DataInstruction =>
+          renameDataInstruction(i)
+        case i @ Expect(ref, got, _, _) =>
+          i.copy(ref = subst(ref), got = subst(got)).setPos(i.pos)
+        case i @ Nop => i
+        case i: SynchronizationInstruction =>
+          ctx.logger.error("Can not rename instruction", i)
+          i
+        case i @ ParMux(rd, choices, default, _) =>
+          i.copy(
+            default = subst(default),
+            choices = choices map { case ParMuxCase(a, b) =>
+              ParMuxCase(subst(a), subst(b))
+            }
+          ).copy(rd = outerRenamer(rd))
+            .setPos(i.pos)
+        case i @ Lookup(rd, index, base, _) =>
+          i.copy(index = subst(index), base = subst(base))
+            .copy(rd = outerRenamer(rd))
+            .setPos(i.pos)
+        case i @ JumpTable(rs, results, blocks, dslot, _) =>
+          assert(
+            results.forall { case Phi(rd, rss) =>
+              rss.forall { case (_, rs) => rs != rd }
+            },
+            "Phis are not in SSA form!"
+          )
+
+          i.copy(
+            target = subst(rs),
+            blocks = blocks.map { case JumpCase(lbl, body) =>
+              JumpCase(lbl, body.map(renameDataInstruction))
+            },
+            dslot = dslot.map(renameDataInstruction)
+          ).copy(
+            results = results.map { case Phi(rd, rss) =>
+              Phi(
+                subst(rd), // no need to call outerRenamer because we assume the
+                // phi is already in SSA form, i.e., non of the operands have the
+                // same name as rd
+                rss.map { case (lbl, rs) => (lbl, subst(rs)) }
+              )
+            }
+          ).setPos(i.pos)
+
+        // case _: ControlInstruction =>
+      }
+      // def renameJumpTable(inst: JumpTable): JumpTable = {
+
+      //   // create new names for the results
+      //   val results_renames = inst.results.map { n =>
+      //     nextName(original_defreg(n))
+      //   }
+
+      //   def renameInner(dinst: DataInstruction): DataInstruction = dinst match {
+      //     case LocalStore(rs, base, offset, predicate, annons)         =>
+      //     case GlobalLoad(rd, base, annons)                            =>
+      //     case Mov(rd, rs, annons)                                     =>
+      //     case SetCarry(carry, annons)                                 =>
+      //     case BinaryArithmetic(operator, rd, rs1, rs2, annons)        =>
+      //     case Predicate(rs, annons)                                   =>
+      //     case PadZero(rd, rs, width, annons)                          =>
+      //     case LocalLoad(rd, base, offset, annons)                     =>
+      //     case ClearCarry(carry, annons)                               =>
+      //     case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
+      //     case SetValue(rd, value, annons)                             =>
+      //     case AddC(rd, co, rs1, rs2, ci, annons)                      =>
+      //     case Mux(rd, sel, rfalse, rtrue, annons)                     =>
+      //     case GlobalStore(rs, base, predicate, annons)                =>
+      //   }
+
+      //   ???
+      // }
+
+      // def renameJumpTable(inst: JumpTable): JumpTable = {}
+      proc.body.foreach { inst =>
+        val new_inst: Instruction = renameInstruction(inst)
 
         body_builder += new_inst.setPos(inst.pos)
       }
 
       proc
-        .copy(registers = regs ++ new_regs.toSeq, body = body_builder.toSeq)
+        .copy(
+          registers = regs ++ new_regs.toSeq,
+          body = body_builder.toSeq,
+          labels =
+            proc.labels.map(lgrp => lgrp.copy(memory = subst(lgrp.memory)))
+        )
         .setPos(proc.pos)
 
     }

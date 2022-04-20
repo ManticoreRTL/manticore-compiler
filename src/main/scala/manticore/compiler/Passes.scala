@@ -41,8 +41,7 @@ object ManticorePasses {
     UnconstrainedOrderInstructions followedBy
     UnconstrainedRemoveAliases followedBy
     UnconstrainedDeadCodeElimination followedBy
-    UnconstrainedRenameVariables followedBy
-    UnconstrainedJumpTableConstruction
+    UnconstrainedRenameVariables
 
   val middleend =
     WidthConversion.transformation followedBy

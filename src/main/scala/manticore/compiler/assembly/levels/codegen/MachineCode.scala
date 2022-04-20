@@ -29,6 +29,9 @@ object MachineCodeGenerator
 
     val assembled = assembleProgram(prog)(ctx)
     generateCode(assembled)(ctx)
+    if (ctx.logger.countErrors() > 0) {
+      ctx.logger.fail("Aborted due to earlier errors!")
+    }
   }
 
   def generateCode(

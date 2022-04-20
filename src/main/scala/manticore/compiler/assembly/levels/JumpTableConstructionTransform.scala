@@ -74,86 +74,58 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
       */
     def doBfs(
         rs: Name
-    ): ArrayBuffer[Instruction] = {
+    ): ArrayBuffer[DataInstruction] = {
 
       definingInstructions.get(rs) match {
         case Some(inst) =>
           // should be in the graph, no need to check for its existence
           val instNode = dataDependenceGraph.get(inst)
-          val subgraph = ArrayBuffer.empty[Instruction]
+          val subgraph = ArrayBuffer.empty[DataInstruction]
           def isParMux(i: Instruction): Boolean =
             i.isInstanceOf[ParMux] || i.isInstanceOf[JumpTable]
-
-          if (instNode.outDegree == 1 && !isParMux(inst)) {
-
-            subgraph += inst
-            val toVisit = Queue.empty[dataDependenceGraph.NodeT]
-            toVisit ++= instNode.diPredecessors
-            while (toVisit.nonEmpty) {
-
-              val node = toVisit.dequeue()
-              val hasExternalSucc = node.diSuccessors.exists { succ =>
-                !subgraph.contains(succ.toOuter)
+          inst match {
+            case dinst: DataInstruction if instNode.outDegree == 1 =>
+              // To move an instruction inside the case body, we make sure
+              // its result is not used by any instruction that is outside
+              // of the current case body. Since we are doing a bfs, we can check
+              // this by ensuring all the successors are in the subgraph obtained
+              // by the reverse bfs
+              subgraph += dinst
+              val toVisit = Queue.empty[dataDependenceGraph.NodeT]
+              toVisit ++= instNode.diPredecessors
+              while (toVisit.nonEmpty) {
+                val node = toVisit.dequeue()
+                val hasExternalSucc = node.diSuccessors.exists { succ =>
+                  !subgraph.contains(succ.toOuter)
+                }
+                node.toOuter match {
+                  case ndinst: DataInstruction if !hasExternalSucc =>
+                    subgraph += ndinst
+                    toVisit ++= node.diPredecessors
+                  case _ => // nothing to do
+                }
               }
-              val isParMux = node.toOuter.isInstanceOf[ParMux] || node.toOuter
-                .isInstanceOf[JumpTable]
-              if (!hasExternalSucc && !isParMux) {
-                subgraph += node.toOuter
-                toVisit ++= node.diPredecessors
-              }
-
-            }
-            // keep a set of all collected instructions so that we remove them
-            // from the original program.
-            instructionsToRemove ++= subgraph
-          } else {
-            subgraph += Mov(pmux.rd, rs)
+            case _ =>
+              // we can optionally create a Mov instruction that assigns
+              // rs to a fresh register and then modify the Phi accordingly,
+              // but this isn't useful work, so we keep the branch essentially
+              // empty!
+              // Note that doing the following would break SSAness and should
+              // be avoided!
+              // subgraph += Mov(pmux.rd, rs)
           }
           subgraph
         case None => // rs is a constant
-          ArrayBuffer[Instruction](Mov(pmux.rd, rs))
+          ArrayBuffer[DataInstruction](Mov(pmux.rd, rs))
       }
     }
 
-    def createCaseBody(rs: Name): Seq[Instruction] = {
+    def createCaseBody(rs: Name): Seq[DataInstruction] = {
       val usedInstructions = doBfs(rs)
       // the usedInstructions is in the reverse order, i.e., the last
       // instruction that computes the final result is the first in the
       // sequence, furthermore, this instruction does not write to pmux.rd,
       // but rather tho the given rs
-
-      val lastInst = usedInstructions.head
-      val asDirectWriteToParMuxRd = // directly write to the parmux output
-        lastInst match {
-          case i @ (_: ParMux | _: JumpTable | _: Lookup) =>
-            ctx.logger.fail("Can not have nested JumpTables!")
-          case i: SetCarry   => i.copy(carry = pmux.rd)
-          case i: LocalLoad  => i.copy(rd = pmux.rd)
-          case i: GlobalLoad => i.copy(rd = pmux.rd)
-          case i: Mux        => i.copy(rd = pmux.rd)
-          case i @ (_: ClearCarry | _: GlobalStore | _: LocalStore | _: Expect |
-              _: Predicate) =>
-            i
-          case i: SetValue          => i.copy(rd = pmux.rd)
-          case i: BinaryArithmetic  => i.copy(rd = pmux.rd)
-          case i: Mov               => i.copy(rd = pmux.rd)
-          case i: CustomInstruction => i.copy(rd = pmux.rd)
-          case i: AddC =>
-            ctx.logger.fail(
-              s"Do not know how to handle AddCarry in ParMux ${i}!"
-            )
-          case Nop => ctx.logger.fail("Can not handle Nops in ")
-          case i @ (_: Send | _: AddC | _: Jump | _: Recv) =>
-            ctx.logger.fail(
-              s"Do not know how to handle ${i} in a ParMux ${i}"
-            )
-          case i: PadZero => i.copy(rd = pmux.rd)
-
-        }
-      usedInstructions.update(
-        0,
-        asDirectWriteToParMuxRd.setPos(lastInst.pos)
-      )
       usedInstructions.reverse.toSeq
     }
     // collect the instructions required to compute the default case
@@ -257,8 +229,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
             index.variable.name,
             lookupValue.variable.name,
             memDef.variable.name
-          ).setPos(pmux.pos),
-          Jump(index.variable.name).setPos(pmux.pos)
+          ).setPos(pmux.pos)
         )
 
         val labelGroup = DefLabelGroup(
@@ -328,8 +299,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
                 index.variable.name,
                 compareValue.variable.name,
                 memory.variable.name
-              ).setPos(pmux.pos),
-              Jump(index.variable.name).setPos(pmux.pos)
+              ).setPos(pmux.pos)
             )
             // add the SEQ instruction to the set instructions to be removed
             instructionsToRemove ++= pmux.choices.map {
@@ -357,7 +327,13 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
         JumpTableConstructable(
           body :+ JumpTable(
             target = index,
-            results = Seq(pmux.rd),
+            results = Seq(
+              Phi(
+                pmux.rd,
+                (labelGroup.default.get +: labelGroup.indexer.map(_._2))
+                  .zip(pmux.default +: pmux.choices.map(_.choice))
+              )
+            ),
             blocks = (labelGroup.default.get +: labelGroup.indexer.map(_._2))
               .zip(
                 defaultCaseBody +: conditionalCaseBodies
@@ -372,7 +348,14 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
         JumpTableConstructable(
           body :+ JumpTable(
             target = index,
-            results = Seq(pmux.rd),
+            results = Seq(
+              Phi(
+                pmux.rd,
+                labelGroup.indexer
+                  .map(_._2)
+                  .zip(pmux.default +: pmux.choices.map(_.choice))
+              )
+            ),
             blocks = labelGroup.indexer
               .map(_._2)
               .zip(defaultCaseBody +: conditionalCaseBodies)
