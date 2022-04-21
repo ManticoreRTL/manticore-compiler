@@ -274,6 +274,39 @@ trait DependenceGraphBuilder extends InputOutputPairs {
       Map.empty[Name, Set[DefReg]]
 
     }
+
+    /** Collect all the referenced name in the given block of instructions (use
+      * or def)
+      *
+      * @param block
+      * @param ctx
+      * @return
+      */
+    def referencedNames(
+        block: Iterable[Instruction]
+    )(implicit ctx: AssemblyContext): scala.collection.Set[Name] = {
+
+      val namesToKeep = scala.collection.mutable.Set.empty[Name]
+
+      block.foreach { inst =>
+        namesToKeep ++= regDef(inst)
+        namesToKeep ++= regUses(inst)
+        inst match {
+          // handle jump tables differently, note that redDef on JumpTable
+          // only returns the value defined by Phi and no the ones inside since
+          // any value defined inside, unless used in the Phi operands should not
+          // reach outside
+          case JumpTable(target, results, blocks, dslot, annons) =>
+            blocks.foreach { case JumpCase(_, blk) =>
+              blk.foreach { i => namesToKeep ++= regDef(i) }
+            }
+            dslot.foreach { i => namesToKeep ++= regDef(i) }
+          case _ =>
+        }
+      }
+
+      namesToKeep
+    }
   }
 
 }

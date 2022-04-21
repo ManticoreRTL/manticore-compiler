@@ -23,6 +23,8 @@ import scala.annotation.tailrec
 
 /**
  *  A functional interface for performing DCE on processes.
+ *  Do not use DCE on split processes that do not have their Send instructions
+ *  because otherwise useful code gets removed.
  */
 trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
 
@@ -410,24 +412,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
     // now we need to go through the optimized block and create a set of names
     // we are ought to keep, basically removing unused DefRegs
 
-    val namesToKeep = scala.collection.mutable.Set.empty[Name]
+    val namesToKeep = DependenceAnalysis.referencedNames(optBlock)
 
-    optBlock.foreach { inst =>
-      namesToKeep ++= DependenceAnalysis.regDef(inst)
-      namesToKeep ++= DependenceAnalysis.regUses(inst)
-      inst match {
-        // handle jump tables differently, note that redDef on JumpTable
-        // only returns the value defined by Phi and no the ones inside since
-        // any value defined inside, unless used in the Phi operands should not
-        // reach outside
-        case JumpTable(target, results, blocks, dslot, annons) =>
-          blocks.foreach { case JumpCase(_, blk) =>
-            blk.foreach { i => namesToKeep ++= DependenceAnalysis.regDef(i) }
-          }
-          dslot.foreach { i => namesToKeep ++= DependenceAnalysis.regDef(i) }
-        case _ =>
-      }
-    }
     ctx.logger.dumpArtifact(
       s"dce_${ctx.logger.countProgress()}_kept_names.txt"
     ) {

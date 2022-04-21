@@ -51,17 +51,16 @@ object ManticorePasses {
   def BackendInterpreter(cond: Boolean = true) =
     AtomicInterpreter.guard(cond)
 
-  val ExtractParallelism =
+  val ExtractParallelism = // do not call DCE in the middle
     ProcessSplittingTransform followedBy
       PlacedIROrderInstructions followedBy
-      PlacedIRDeadCodeElimination followedBy
       ProcessMergingTransform followedBy
       PlacedIROrderInstructions followedBy
-      PlacedIRDeadCodeElimination followedBy
       RoundRobinPlacerTransform
   val BackendLowerEnd =
       LocalMemoryAllocation followedBy
       SendInsertionTransform followedBy
+      PlacedIRDeadCodeElimination followedBy
       ListSchedulerTransform followedBy
       PredicateInsertionTransform followedBy
       GlobalPacketSchedulerTransform followedBy
@@ -72,7 +71,6 @@ object ManticorePasses {
     UnconstrainedToPlacedTransform followedBy
     PlacedIRConstantFolding followedBy
     PlacedIRCommonSubexpressionElimination followedBy
-    // PlacedIrJumpTableConstructionTransform followedBy
     ExtractParallelism followedBy
     BackendLowerEnd
 

@@ -24,6 +24,11 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
     res
   }
 
+  // a concrete constant should have bit-width information embedded in it
+  // that may be required in constant evaluation
+  type ConcreteConstant
+  def asConcrete(const: Constant)(width: => Int): ConcreteConstant
+
   /** Constant zero and one, override them with their corresponding values in
     * the given flavor
     *
@@ -46,8 +51,8 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
   val binOpEvaluator: PartialFunction[
     (
         BinaryOperator.BinaryOperator, // operator
-        Either[Name, Constant], // rs1
-        Either[Name, Constant] // rs2
+        Either[Name, ConcreteConstant], // rs1
+        Either[Name, ConcreteConstant] // rs2
     ),
     Either[Name, Constant] // rd
   ]
@@ -75,7 +80,6 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
     */
   def freshConst(v: Constant)(implicit ctx: AssemblyContext): DefReg
 
-  def truncate(width: Int, value: Constant): Constant
   /** Helper stateful class to create a reduced process
     *
     * @param proc
@@ -133,6 +137,14 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
 
     }
 
+    def concreteComputedValue(name: Name): Either[Name, ConcreteConstant] = {
+      computedValue(name).map(c =>
+        asConcrete(c) {
+          width(name)
+        }
+      )
+    }
+
     val m_regs = proc.registers.map { r => r.variable.name -> r }.toMap
 
     val m_kept_regs = scala.collection.mutable.Set.empty[DefReg]
@@ -169,11 +181,11 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
       */
     def bindConst(n: Name, v: Constant): Unit = {
       val width = m_regs(n).variable.width
-      val truncated = truncate(width, v)
-      m_evaluations += (n -> truncated)
+      // val truncated = truncate(width, v)
+      m_evaluations += (n -> v)
       m_constants.get(v) match {
         case Some(m) => // do nothing
-        case None    => m_constants += truncated -> freshConst(truncated)
+        case None    => m_constants += v -> freshConst(v)
       }
     }
 
@@ -188,6 +200,8 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
       )
     }
 
+    def width(name: Name): Int = m_regs(name).variable.width
+
   }
 
   private def do_transform(
@@ -199,7 +213,7 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
         inst match {
           case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore |
               _: GlobalStore | _: PadZero | _: SetCarry | _: ClearCarry |
-              _: Predicate | _: PadZero) =>
+              _: Predicate | _: PadZero | _: Lookup) =>
             builder.keep(i)
           case Nop =>
           // don't keep
@@ -308,8 +322,8 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
             } else {
 
               // try to compute it
-              val rs1_val = builder.computedValue(rs1)
-              val rs2_val = builder.computedValue(rs2)
+              val rs1_val = builder.concreteComputedValue(rs1)
+              val rs2_val = builder.concreteComputedValue(rs2)
               if (binOpEvaluator.isDefinedAt(operator, rs1_val, rs2_val)) {
                 val rd_val =
                   binOpEvaluator(operator, rs1_val, rs2_val) match {

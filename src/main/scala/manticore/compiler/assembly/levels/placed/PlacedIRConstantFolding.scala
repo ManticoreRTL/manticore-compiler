@@ -19,6 +19,10 @@ object PlacedIRConstantFolding
     extends ConstantFolding
     with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
+
+
+
+
   val flavor = PlacedIR
   import BinaryOperator._
   import flavor._
@@ -27,10 +31,12 @@ object PlacedIRConstantFolding
 
   override val ConstZero: UInt16 = UInt16(0)
 
-  override def truncate(width: Int, v: UInt16): UInt16 = {
-    require(width == 16)
-    v
-  }
+  type ConcreteConstant = UInt16
+
+  // PlacedIR uses UInt16 with its width being trivially 16, so Constant = ConcreteConstant
+  override def asConcrete(v: UInt16)(w: => Int) = v
+
+
   private def shftAmount(v: UInt16): Int = {
     v.toInt & 0xf
   }
