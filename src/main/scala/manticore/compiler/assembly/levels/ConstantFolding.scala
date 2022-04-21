@@ -75,6 +75,7 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
     */
   def freshConst(v: Constant)(implicit ctx: AssemblyContext): DefReg
 
+  def truncate(width: Int, value: Constant): Constant
   /** Helper stateful class to create a reduced process
     *
     * @param proc
@@ -167,10 +168,12 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
       * @param v
       */
     def bindConst(n: Name, v: Constant): Unit = {
-      m_evaluations += (n -> v)
+      val width = m_regs(n).variable.width
+      val truncated = truncate(width, v)
+      m_evaluations += (n -> truncated)
       m_constants.get(v) match {
         case Some(m) => // do nothing
-        case None    => m_constants += v -> freshConst(v)
+        case None    => m_constants += truncated -> freshConst(truncated)
       }
     }
 

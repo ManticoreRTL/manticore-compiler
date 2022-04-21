@@ -17,7 +17,9 @@ object PlacedIRDeadCodeElimination
   override def transform(
       source: DefProgram,
       context: AssemblyContext
-  ): DefProgram = do_transform(source, context)
+  ): DefProgram = source
+    .copy(processes = source.processes.map { doDce(_)(context) })
+    .setPos(source.pos)
 }
 
 object PlacedIROrderInstructions

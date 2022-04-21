@@ -82,6 +82,7 @@ object PlacedIR extends ManticoreAssemblyIR {
   case object ExpectStop extends ExceptionKind
 
 
+
   case class ExceptionIdImpl(id: UInt16, msg: String, kind: ExceptionKind) {
     override def toString(): String = s"${msg}_${id}"
   }
@@ -131,5 +132,3 @@ object LatencyAnalysis {
   }
 }
 
-
-object PlacedIRPrinter extends AssemblyPrinter[PlacedIR.DefProgram] {}

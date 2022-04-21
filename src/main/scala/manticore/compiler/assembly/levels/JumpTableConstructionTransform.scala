@@ -7,6 +7,7 @@ import manticore.compiler.assembly.BinaryOperator
 import scalax.collection.Graph
 import scalax.collection.GraphEdge
 import scalax.collection.edge.LDiEdge
+import javax.xml.crypto.Data
 
 trait JumpTableConstructionTransform extends DependenceGraphBuilder {
 
@@ -116,7 +117,8 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
           }
           subgraph
         case None => // rs is a constant
-          ArrayBuffer[DataInstruction](Mov(pmux.rd, rs))
+          ArrayBuffer.empty[DataInstruction]
+          // ArrayBuffer[DataInstruction](Mov(pmux.rd, rs))
       }
     }
 

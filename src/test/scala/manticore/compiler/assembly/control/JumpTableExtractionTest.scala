@@ -63,23 +63,23 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       debug_message = true
     )
   }
-  // "ALU" should "work correctly with a JumpTable before width conversion " in {
-  //   fixture =>
-  //     val ctx = AluTestCommons.context(fixture)
-  //     val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
-  //     // run the program
-  //     def compiler = InitialPasses followedBy
-  //       UnconstrainedJumpTableConstruction followedBy
-  //       UnconstrainedCloseSequentialCycles followedBy
-  //       UnconstrainedInterpreter
-  //     val (transformed, _) = compiler(program, ctx)
-  //     // then make sure there was at least one jump table
-  //     val hasJumpTable = transformed.processes.head.body.exists {
-  //       _.isInstanceOf[UnconstrainedIR.JumpTable]
-  //     }
-  //     hasJumpTable shouldEqual true
+  "ALU" should "work correctly with a JumpTable before width conversion " in {
+    fixture =>
+      val ctx = AluTestCommons.context(fixture)
+      val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
+      // run the program
+      def compiler = InitialPasses followedBy
+        UnconstrainedJumpTableConstruction followedBy
+        UnconstrainedCloseSequentialCycles followedBy
+        UnconstrainedInterpreter
+      val (transformed, _) = compiler(program, ctx)
+      // then make sure there was at least one jump table
+      val hasJumpTable = transformed.processes.head.body.exists {
+        _.isInstanceOf[UnconstrainedIR.JumpTable]
+      }
+      hasJumpTable shouldEqual true
 
-  // }
+  }
 
   "ALU" should "work correctly with a JumpTable after width conversion" in {
     fixture =>
@@ -90,7 +90,7 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
           UnconstrainedJumpTableConstruction followedBy
           WidthConversion.transformation followedBy
           UnconstrainedRemoveAliases followedBy
-          // UnconstrainedDeadCodeElimination followedBy
+          UnconstrainedDeadCodeElimination followedBy
           UnconstrainedCloseSequentialCycles followedBy
           UnconstrainedInterpreter
       val (transformed, _) = compiler(program, ctx)

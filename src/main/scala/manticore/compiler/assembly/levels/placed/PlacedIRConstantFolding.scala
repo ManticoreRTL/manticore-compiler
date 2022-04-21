@@ -27,7 +27,11 @@ object PlacedIRConstantFolding
 
   override val ConstZero: UInt16 = UInt16(0)
 
-  private def truncate(v: UInt16): Int = {
+  override def truncate(width: Int, v: UInt16): UInt16 = {
+    require(width == 16)
+    v
+  }
+  private def shftAmount(v: UInt16): Int = {
     v.toInt & 0xf
   }
   override val binOpEvaluator: PartialFunction[
@@ -46,9 +50,9 @@ object PlacedIRConstantFolding
     case (XOR, Right(c1), Right(c2)) => Right(c1 ^ c2)
     case (SEQ, Right(c1), Right(c2)) =>
       Right(if (c1 == c2) UInt16(1) else UInt16(0))
-    case (SLL, Right(c1), Right(c2)) => Right(c1 << truncate(c2))
-    case (SRL, Right(c1), Right(c2)) => Right(c1 >> truncate(c2))
-    case (SRA, Right(c1), Right(c2)) => Right(c1 >>> truncate(c2))
+    case (SLL, Right(c1), Right(c2)) => Right(c1 << shftAmount(c2))
+    case (SRL, Right(c1), Right(c2)) => Right(c1 >> shftAmount(c2))
+    case (SRA, Right(c1), Right(c2)) => Right(c1 >>> shftAmount(c2))
     case (SLTS, Right(c1), Right(c2)) =>
       val rs1_sign = (c1 >> 15) == UInt16(1)
       val rs2_sign = (c2 >> 15) == UInt16(1)

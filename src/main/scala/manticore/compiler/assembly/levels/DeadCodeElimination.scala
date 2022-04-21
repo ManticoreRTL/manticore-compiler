@@ -3,7 +3,8 @@ package manticore.compiler.assembly.levels
 /** DeadCodeElimination.scala
   *
   * @author
-  *   Sahand Kashani <sahand.kashani@epfl.ch>
+  *   Sahand Kashani          <sahand.kashani@epfl.ch>
+  *   Mahyar Emami            <mahyar.emami@epfl.ch>
   */
 
 import manticore.compiler.assembly.DependenceGraphBuilder
@@ -14,240 +15,450 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
 
 import scalax.collection.Graph
 import scalax.collection.edge.LDiEdge
+import manticore.compiler.assembly.annotations.Track
+import scalax.collection.GraphEdge
+import scalax.collection.GraphTraversal
+import javax.xml.crypto.Data
+import scala.annotation.tailrec
 
-/** This transform identifies dead code and removes it from the design. Dead
-  * code is code that does not contribute to the output registers of a program.
-  */
-trait DeadCodeElimination extends DependenceGraphBuilder {
-
-  // val irFlavor: ManticoreAssemblyIR
-
-  // private object Impl {
+/**
+ *  A functional interface for performing DCE on processes.
+ */
+trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
 
   import flavor._
 
-  // The value of the label doesn't matter for topological sorting.
-  // Must use Instruction instead of irFlavor.Instruction as GraphBuilder requires knowledge
-  // of the type itself and cannot use the instance variable irFlavor to infer the type.
-  private def labelingFunc(pred: Instruction, succ: Instruction) = None
-  // object GraphBuilder extends DependenceGraphBuilder
-
-  /** Finds all live instructions in a process. An instruction is considered
-    * live if there exists a path from the instruction to an output register of
-    * the process or if the instruction is an `EXPECT`
+  /** Collect instructions that are considered "output" or "sink", i.e.,
+    * instructions that should not be eliminated. These instructions serve as
+    * anchor points for performing DCE, i.e., we perform a backward reachability
+    * analysis in a data dependence graph to collect all the instructions that
+    * contribute to executing the sink ones, those instructions are considered
+    * alive an anything else is dead.
     *
-    * @param proc
-    *   Target process.
-    * @param ctx
-    *   Target context.
+    * @param body
+    * @param tracked
+    *   a function determining whether a value is tracked or not tracked values
+    *   should either have the [[Track]] annotations or are output values in a
+    *   block of instruction (i.e., values feeding Phi instructions in a
+    *   JumpTable)
     * @return
-    *   Set of live instructions in the process.
     */
-  def findLiveInstrs(
-      proc: DefProcess
-  )(
-    implicit ctx: AssemblyContext
-  ): Set[Instruction] = {
-    // Output ports of the process.
-    val outputNames = proc.registers
-      .filter(reg => reg.variable.varType == OutputType)
-      .map(reg => reg.variable.name)
-      .toSet
+  def collectSinkInstructions(
+      body: Seq[Instruction]
+  )(tracked: Name => Boolean)(implicit ctx: AssemblyContext): Set[Instruction] =
+    body.collect {
+      case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send) => i
+      case inst if DependenceAnalysis.regDef(inst).exists(tracked)    => inst
+    }.toSet
 
-    // Instructions that write to the output ports or an EXPECT instruction or store a value to the memory
-    val outputInstrs = proc.body.filter {
-      case _: Expect                      => true
-      case _: LocalStore | _: GlobalStore => true
-      case instr @ _                      =>
-        DependenceAnalysis.regDef(instr) match {
-          case s @ h +: t => s.exists(outputNames.contains)
-          case Nil        => false
-        }
-    }
-
-    // Create dependency graph.
-    val dependenceGraph = DependenceAnalysis.build(proc, labelingFunc)(ctx)
-
-    // Cache of backtracking results to avoid exponential lookup if we end up
-    // going up the same tree multiple times.
-    val visitedInstrs = collection.mutable.Set.empty[Instruction]
-
-    def findLiveNodesIter(
-        dstInstr: Instruction
-    ): Unit = {
-      // No need to backtrack if we've already encountered this vertex.
-      if (!visitedInstrs.contains(dstInstr)) {
-        visitedInstrs.add(dstInstr)
-
-        val dstNode = dependenceGraph.get(dstInstr)
-        val predNodes = dstNode.diPredecessors
-        predNodes.foreach { predNode =>
-
-          val predInstr = predNode.toOuter
-          findLiveNodesIter(predInstr)
-        }
-      }
-    }
-
-    // Backtrack from the output instructions to find all live nodes in the graph.
-    outputInstrs.foreach { outputInstr =>
-      findLiveNodesIter(outputInstr)
-    }
-
-    visitedInstrs.toSet
-  }
-
-  /** Counts the number of times registers are present in an instruction. The
-    * `fcnt` function tells which registers are to be counted in an instruction.
+  /** Create a map from [[Name]]s to [[Instructions]]s that define them
     *
-    * @param instrs
-    *   Input instructions.
-    * @param cnts
-    *   Map associating registers with the number of times they appear in the
-    *   instruction stream.
-    * @param fcnt
-    *   Function returning the registers in an instruction that must be counted.
+    * @param body
+    *   sequence of instruction to consider
     * @return
-    *   Number of times the register was counted in the instruction stream.
     */
-  def countWithFunction(
-      instrs: Seq[Instruction],
-      fcnt: Instruction => Seq[Name],
-      cnts: Map[Name, Int] = Map.empty.withDefaultValue(0)
-  ): Map[Name, Int] = {
-    instrs match {
-      case Nil =>
-        cnts
-
-      case head +: tail =>
-        val regs = fcnt(head)
-
-        val newCnts = regs.foldLeft(cnts) { case (oldCnts, reg) =>
-          val newCnt = oldCnts.get(reg) match {
-            case Some(oldCnt) => oldCnt + 1
-            case None         => 1
+  def createDefMap(
+      block: Seq[Instruction]
+  )(implicit ctx: AssemblyContext): Map[Name, Instruction] =
+    block.flatMap {
+      case jtb @ JumpTable(_, phis, blocks, delaySlot, _) =>
+        phis.map { case Phi(rd, _) => rd -> jtb } ++
+          delaySlot.flatMap {
+            inst: DataInstruction => // note the explicit type annotation, if we decide
+              // to have nested JumpTables this will fail (intentionally)
+              DependenceAnalysis.regDef(inst).map { _ -> inst }
+          } ++
+          blocks.flatMap { case JumpCase(_, blocks) =>
+            blocks.flatMap { inst: DataInstruction =>
+              DependenceAnalysis.regDef(inst).map { _ -> inst }
+            }
           }
-          oldCnts + (reg -> newCnt)
-        }
+      case inst =>
+        DependenceAnalysis.regDef(inst).map { _ -> inst }
+    }.toMap
 
-        countWithFunction(tail, fcnt, newCnts)
+  /** Create a data dependence graph between the instructions in the given block
+    * of instructions
+    *
+    * @param block
+    *   a block of instruction, e.g., process body or the body of each case in a
+    *   JumpTable
+    * @return
+    */
+  def createDependenceGraph(
+      block: Seq[Instruction],
+      defInst: Map[Name, Instruction],
+      inputOutputPairs: Map[Name, Name] // a map from input regs to output regs
+  )(implicit ctx: AssemblyContext): Graph[Instruction, GraphEdge.DiEdge] = {
+    val graph =
+      scalax.collection.mutable.Graph.empty[Instruction, GraphEdge.DiEdge]
+    val defInst = createDefMap(block)
+
+    block.foreach { inst =>
+      graph += inst
+      DependenceAnalysis.regUses(inst).foreach { use =>
+        defInst.get(use) match {
+          case Some(producer) =>
+            graph += GraphEdge.DiEdge(producer, inst)
+          case None => // do nothing, no instruction defines the used Name
+          // so the Name is either a constant, or is produced by an instruction
+          // not included the given block of instruction
+        }
+      }
     }
+
+    graph
   }
 
-  /** Performs dead-code elimination.
+  /**
+    * Create dependence graph dot serialization (for debug dumps)
     *
-    * @param proc
-    *   Target process.
+    * @param graph
     * @param ctx
-    *   Target context.
     * @return
-    *   Process after dead-code elimination.
     */
-  def dce(
-      proc: DefProcess
-  )(
-    implicit  ctx: AssemblyContext
-  ): DefProcess = {
-
-    // Remove dead instructions.
-    val liveInstrs = findLiveInstrs(proc)(ctx)
-    val newBody = proc.body.filter(instr => liveInstrs.contains(instr))
-
-    // Remove dead registers AFTER filtering dead instructions.
-    // Eliminating unused registers cannot be done to the fullest extent if it is
-    // performed before dead instructions are filtered out as these dead instructions
-    // could reference registers which don't lead to the process' output registers.
-    val refCounts = countWithFunction(
-      newBody,
-      // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
-      (instr: Instruction) => DependenceAnalysis.regUses(instr)
+  def createDotDependenceGraph(
+      graph: Graph[Instruction, GraphEdge.DiEdge]
+  )(implicit ctx: AssemblyContext): String = {
+    import scalax.collection.io.dot._
+    import scalax.collection.io.dot.implicits._
+    val dotRoot = DotRootGraph(
+      directed = true,
+      id = Some("List scheduling dependence graph")
     )
-    val defCounts = countWithFunction(
-      newBody,
-      // The cast is needed to extract the -like type returned from GraphBuilder into irFlavor.
-      (instr: Instruction) => DependenceAnalysis.regDef(instr)
-    )
-    val newRegs = proc.registers.filter { reg =>
-      val isReferenced = refCounts(reg.variable.name) != 0
-      val isDefined = defCounts(reg.variable.name) != 0
-      isReferenced || isDefined
-    }
-
-    val newProc = proc.copy(
-      body = newBody,
-      registers = newRegs
-    )
-
-    // Debug dump graph.
-    ctx.logger.dumpArtifact(
-      s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${newProc.id}.dot"
-    ) {
-      val dp = DependenceAnalysis.build(newProc, labelingFunc)(ctx)
-
-      import scalax.collection.io.dot._
-      import scalax.collection.io.dot.implicits._
-
-      val dot_root = DotRootGraph(
-        directed = true,
-        id = Some("List scheduling dependence graph")
-      )
-      def edgeTransform(
-          iedge: Graph[Instruction, LDiEdge]#EdgeT
-      ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
-        case LDiEdge(source, target, l) =>
-          Some(
-            (
-              dot_root,
-              DotEdgeStmt(
-                source.toOuter.hashCode().toString,
-                target.toOuter.hashCode().toString,
-                List(DotAttr("label", 0))
-              )
-            )
-          )
-        case t @ _ =>
-          ctx.logger.error(
-            s"An edge in the dependence could not be serialized! ${t}"
-          )
-          None
-      }
-      def nodeTransformer(
-          inode: Graph[Instruction, LDiEdge]#NodeT
-      ): Option[(DotGraph, DotNodeStmt)] =
+    val nodeIndex = graph.nodes.map(_.toOuter).zipWithIndex.toMap
+    def edgeTransform(
+        iedge: Graph[Instruction, GraphEdge.DiEdge]#EdgeT
+    ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
+      case GraphEdge.DiEdge(source, target) =>
         Some(
           (
-            dot_root,
-            DotNodeStmt(
-              NodeId(inode.toOuter.hashCode().toString()),
-              List(DotAttr("label", inode.toOuter.toString.trim))
+            dotRoot,
+            DotEdgeStmt(
+              nodeIndex(source.toOuter).toString,
+              nodeIndex(target.toOuter).toString
             )
           )
         )
-
-      val dot_export: String = dp.toDot(
-        dotRoot = dot_root,
-        edgeTransformer = edgeTransform,
-        cNodeTransformer = Some(nodeTransformer), // connected nodes
-        iNodeTransformer = Some(nodeTransformer) // isolated nodes
-      )
-      dot_export
+      case t @ _ =>
+        ctx.logger.error(
+          s"An edge in the dependence could not be serialized! ${t}"
+        )
+        None
     }
+    def nodeTransformer(
+        inode: Graph[Instruction, GraphEdge.DiEdge]#NodeT
+    ): Option[(DotGraph, DotNodeStmt)] =
+      Some(
+        (
+          dotRoot,
+          DotNodeStmt(
+            NodeId(nodeIndex(inode.toOuter)),
+            List(DotAttr("label", inode.toOuter.toString.trim.take(64)))
+          )
+        )
+      )
 
-    newProc
+    val dotExport: String = graph.toDot(
+      dotRoot = dotRoot,
+      edgeTransformer = edgeTransform,
+      cNodeTransformer = Some(nodeTransformer), // connected nodes
+      iNodeTransformer = Some(nodeTransformer) // isolated nodes
+    )
+    dotExport
   }
 
-  def do_transform(
-      asm: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
-    implicit val ctx = context
+  /**
+    * Collect the live instructions given some other live "sink" instructions
+    * This function performs a backward BFS (could be any graph search) to
+    * determine a set of instructions that are backward reachable from the set
+    * of known live instructions.
+    *
+    * @param sinks set of already known live instructions
+    * @param graph data dependence graph (maybe cyclic)
+    * @param ctx assembly context
+    * @return
+    */
+  def collectAlive(
+      sinks: Set[Instruction],
+      graph: Graph[Instruction, GraphEdge.DiEdge]
+  )(implicit ctx: AssemblyContext): scala.collection.Set[Instruction] = {
 
-    val out = DefProgram(
-      processes = asm.processes.map(process => dce(process)),
-      annons = asm.annons
+    val alive = scala.collection.mutable.Set.empty[Instruction] ++ sinks
+    val toVisit =
+      scala.collection.mutable.Queue.empty[graph.NodeT] ++ sinks.map {
+        graph.get(_)
+      }
+    // perform a backward bfs
+    while (toVisit.nonEmpty) {
+      val current = toVisit.dequeue()
+      alive += current
+      val newAlive = current.diPredecessors
+      toVisit ++= newAlive.filter(
+        !alive.contains(_)
+      ) // any alive node has been pushed to toVisit, so if some predecessors
+      // have already been visited, skip them (in a cyclic graph not skipping
+      // them leads to a forever loop!)
+    }
+    alive
+  }
+
+  /** Count the instructions in a way that can be used to determine whether DCE
+    * did anything. I.e., if in one iteration of the DCE to the next, the number
+    * of instructions computed by this function is reduced, then DCE did
+    * something useful
+    *
+    * @param block
+    * @param ctx
+    * @return
+    */
+  def countInstructions(
+      block: Seq[Instruction]
+  )(implicit ctx: AssemblyContext): Int = {
+    block.foldLeft(0) { case (cnt, inst) =>
+      inst match {
+        case JumpTable(_, phis, cblocks, dslot, _) =>
+          // although Phis are not real instructions, we count them in DCE because
+          // if they get removed, other DCE opportunities may be revealed
+          cnt + dslot.length + cblocks.map { case JumpCase(_, blk) =>
+            blk.length
+          }.sum + phis.length + 1
+        case ParMux(_, choices, default, _) =>
+          cnt + choices.length // we can simply do cnt + 1 too, that won't change anything for the DCE
+        case _ => cnt + 1
+      }
+    }
+  }
+  def doDce(process: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
+
+    // we create a set of instructions that are produce something useful.
+    // Any assertion, store to memory, send to other processes, or an instruction
+    // that computes a tracked value is deemed useful.
+    def hasTrackAnnotation(r: DefReg): Boolean = r.annons.exists {
+      case _: Track => true
+      case _        => false
+    }
+
+    /** a set of registers with [[Track]] annotation */
+    val globallyTrackedSet = process.registers.collect {
+      case r if hasTrackAnnotation(r) => r.variable.name
+    }.toSet
+
+    case class IterationIndex(index: Int) {
+      def next() = IterationIndex(index + 1)
+    }
+
+    val inputOutputPairs = createInputOutputPairs(process).map {
+      case (curr, next) => curr.variable.name -> next.variable.name
+    }.toMap
+
+    /** It may be counterintuitive, but DCE needs a closed loop, i.e., a program
+      * where instructions like MOV curr, next are present. Without them, the
+      * rest of the DCE algorithm breaks. The reason is that to consider some
+      * code to be "alive" it has to lead to either a syscall like EXPECT or
+      * lead to a SEND, or memory stores. If non of that is true then it should
+      * at least lead to the definition of a value that is marked as [[Track]]
+      * (see [[collectSinkInstructions]] for a more accurate description).
+      *
+      * When we use an [[EXPECT]] instruction to decide whether some other
+      * instruction is live, we need to see whether that instruction leads to
+      * the computation of [[EXPECT]] operands. This can only be seen if the
+      * sequential cycles are closed. However, since this would make our
+      * dependence graph cyclic, we should pay attention in tracing back live
+      * instructions and avoid looping/recurring forever.
+      */
+    val closedBlock = process.body ++ inputOutputPairs.map {
+      case (curr, next) => Mov(curr, next)
+    }
+    val defInst = createDefMap(closedBlock)
+    // With the inclusion of JumpTables, a single pass on the data dependence
+    // graph would not rid us of all the dead code. If we first remove the dead
+    // from the program body, without peeking inside JumpTables, then we may
+    // keep some instruction that provide values for dead instructions inside
+    // the JumpTables. If we do it the opposite way, i.e., perform DCE inside
+    // the JumpTables and then do DCE outside. We may not removing some instructions
+    // inside the JumpTable compute the values for a Phi instruction that is
+    // removed after we perform DCE outside. This means we basically have to
+    // perform DCE until we reach a fixed point.
+    case class DceResult(block: Seq[Instruction], score: Int)
+    def dceOnce(current: Seq[Instruction], index: IterationIndex): DceResult = {
+
+      /** perform DCE on a block of instructions while treating some names as
+        * non-optimizable given by the [[tracked]] argument
+        *
+        * @param block
+        * @param tracked
+        * @return
+        */
+      def dceBlock(
+          block: Seq[Instruction]
+      )(tracked: Name => Boolean): Seq[Instruction] = {
+        // find the sink instructions
+        val sinks = collectSinkInstructions(block)(tracked)
+        val depGraph = createDependenceGraph(block, defInst, inputOutputPairs)
+        // we need to handle EXPECTs rather carefully, normally, and EXPECT is
+        // singular node in the dependence graph because it takes
+        ctx.logger.dumpArtifact(
+          s"dce_${ctx.logger.countProgress()}_iter_${index.index}_pre.dot"
+        ) {
+          createDotDependenceGraph(depGraph)
+        }
+        val alive = collectAlive(sinks, depGraph)
+        // we now have the block with dead codes eliminated, but since we handle
+        // a JumpTable as a single instruction, the Phis nodes are consolidated into
+        // one from the perspective of the dependence graph, therefore, although
+        // a JumpTable may be alive, some of its Phi nodes may not be. We can
+        // modify these JumpTables by looking at their Phi nodes, and checking
+        // where there exists at least one instruction in the [[alive]] set that
+        // uses the value produced by that phi and remove it otherwise
+        val aliveBlock = block.filter { alive.contains(_) }
+        ctx.logger.dumpArtifact(
+          s"dce_${ctx.logger.countProgress()}_iter_${index.index}_post.dot"
+        ) {
+          createDotDependenceGraph(
+            createDependenceGraph(aliveBlock, defInst, inputOutputPairs)
+          )
+        }
+        aliveBlock.map {
+          case jtb @ JumpTable(_, results, _, _, _) =>
+            val filteredPhis = results.filter { case Phi(rd, _) =>
+              depGraph.get(jtb).diSuccessors.exists { succ =>
+                DependenceAnalysis.regUses(succ).contains(rd)
+              }
+            }
+            // note that by construction we should have at least one Phi that
+            // its result is used, otherwise, jtb should not have been in the
+            // alive block
+            assert(filteredPhis.length > 0)
+            jtb.copy(results = filteredPhis).setPos(jtb.pos)
+          case inst: Instruction => inst // other instruction do not need
+          // extra care
+        }
+      }
+      val outerDceResult = dceBlock(current) { name =>
+        globallyTrackedSet.contains(name) // only keep Names with Track annons
+      }
+      val finalDceResult = outerDceResult.map {
+        // perform DCE for the body of the jump
+        case jtb @ JumpTable(target, results, caseBlocks, dslot, annons) =>
+          // we need to ensure DCE won't remove instruction that lead to Phi
+          // nodes, so we augment the tracking set with the operands of Phi nodes
+
+          def scopedTrack(name: Name): Boolean = {
+            // probably no need to convert to Set since the Seq should be
+            // small enough such that _.contains does not explode on us
+            val trackSet = results.flatMap { case Phi(_, rss) =>
+              rss.map(_._2)
+            }
+            trackSet.contains(name) || globallyTrackedSet.contains(name)
+          }
+          // the cast is a bit of cheat, since the current Instruction AST
+          // requires DataInstruction in the body of jump cases (no nested
+          // jump tables), we know for sure the casting will succeed because
+          // dceBlock will not transform any instruction to another kind
+          // so since blk is all DataInstruction, then the result would
+          // dynamically be the same
+          def dceDataBlock(blk: Seq[DataInstruction]): Seq[DataInstruction] =
+            dceBlock(blk) { scopedTrack }.map {
+              _.asInstanceOf[DataInstruction]
+            }
+          val reducedBlocks = caseBlocks.map { case JumpCase(lbl, blk) =>
+            JumpCase(
+              lbl,
+              dceDataBlock(blk)
+            )
+          }
+          val reducedDelaySlot = dceDataBlock(dslot)
+          jtb
+            .copy(
+              blocks = reducedBlocks,
+              dslot = reducedDelaySlot
+            )
+            .setPos(jtb.pos)
+        case inst => inst
+      }
+
+      DceResult(finalDceResult, countInstructions(finalDceResult))
+    }
+
+    val maxIter = 20
+
+    @tailrec
+    def fixedPointDoWhile(
+        iter: IterationIndex,
+        last: DceResult
+    ): Seq[Instruction] = {
+      if (iter.index >= maxIter) {
+        last.block
+      } else {
+        val newRes = dceOnce(last.block, iter)
+        if (newRes.score < last.score) {
+          fixedPointDoWhile(iter.next(), newRes)
+        } else {
+          newRes.block
+        }
+      }
+    }
+
+    // we first close sequential cycles
+
+    val optBlock = fixedPointDoWhile(
+      IterationIndex(1),
+      dceOnce(closedBlock, IterationIndex(0))
     )
 
-    out
+    // now we need to go through the optimized block and create a set of names
+    // we are ought to keep, basically removing unused DefRegs
+
+    val namesToKeep = scala.collection.mutable.Set.empty[Name]
+
+    optBlock.foreach { inst =>
+      namesToKeep ++= DependenceAnalysis.regDef(inst)
+      namesToKeep ++= DependenceAnalysis.regUses(inst)
+      inst match {
+        // handle jump tables differently, note that redDef on JumpTable
+        // only returns the value defined by Phi and no the ones inside since
+        // any value defined inside, unless used in the Phi operands should not
+        // reach outside
+        case JumpTable(target, results, blocks, dslot, annons) =>
+          blocks.foreach { case JumpCase(_, blk) =>
+            blk.foreach { i => namesToKeep ++= DependenceAnalysis.regDef(i) }
+          }
+          dslot.foreach { i => namesToKeep ++= DependenceAnalysis.regDef(i) }
+        case _ =>
+      }
+    }
+    ctx.logger.dumpArtifact(
+      s"dce_${ctx.logger.countProgress()}_kept_names.txt"
+    ) {
+      namesToKeep.mkString("\n")
+    }
+    val optRegs = process.registers.filter { r =>
+      namesToKeep.contains(r.variable.name)
+    }
+
+    val optLabels = process.labels.filter { lgrp =>
+      namesToKeep.contains(lgrp.memory)
+    }
+
+    def isOutputMov(mov: Mov) = {
+      inputOutputPairs.get(mov.rd) match {
+        case Some(rs) => rs == mov.rs
+        case None     => false
+      }
+    }
+    val withOutIOMovs = optBlock.filter {
+      case mov: Mov => !isOutputMov(mov)
+      case _        => true
+    }
+    process
+      .copy(
+        body = withOutIOMovs,
+        registers = optRegs,
+        labels = optLabels
+      )
+      .setPos(process.pos)
+
   }
 
 }
