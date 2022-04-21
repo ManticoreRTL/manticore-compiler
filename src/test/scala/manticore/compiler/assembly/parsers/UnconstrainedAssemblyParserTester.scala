@@ -59,16 +59,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     )
   )
 
-  val funcs = (
-    """
-    .func f0 [0x012];
-    .func f1 [0x01, 0x15];
-  """,
-    Seq(
-      DefFunc("f0", Seq(BigInt(0x012))),
-      DefFunc("f1", Seq(BigInt(0x01), BigInt(0x15)))
-    )
-  )
+  val funcs = ("", Seq.empty)
 
   val insts = (
     """
