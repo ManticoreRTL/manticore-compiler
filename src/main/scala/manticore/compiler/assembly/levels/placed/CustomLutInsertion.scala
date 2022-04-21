@@ -25,6 +25,23 @@ object CustomLutInsertion
     extends DependenceGraphBuilder
     with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
+  case class Cone[V](root: V, vertices: Set[V]) {
+    override def toString(): String = {
+      val nonRootVertices = vertices - root
+      s"(${root}) --- ${nonRootVertices.mkString(" --- ")}"
+    }
+
+    def size: Int = vertices.size
+
+    // Useful for returning the cone with different names (or different types, like
+    // for replacing a Cone[Int] with a Cone[Instruction]).
+    def renameVertices[T](f: V => T): Cone[T] = {
+      val rootRenamed = f(root)
+      val verticesRenamed = vertices.map(v => f(v))
+      Cone(rootRenamed, verticesRenamed)
+    }
+  }
+
   val flavor = PlacedIR
   import PlacedIR._
 
@@ -158,7 +175,7 @@ object CustomLutInsertion
     maxCutSize: Int
   )(
     implicit ctx: AssemblyContext
-  ): Set[Set[Instruction]] = {
+  ): Set[Cone[Instruction]] = {
     // Graph where vertices are represented as Ints to simplify debugging.
     // The graph's vertices are all logic instructions of the cluster *and* their primary inputs (which are not logic
     // instructions by definition). The primary inputs are needed as otherwise we would not know the in-degree of the
@@ -213,14 +230,6 @@ object CustomLutInsertion
     // array later. A Cut will only be added to a vertex's cut "SET" if it contains a vertex
     // that doesn't exist in the other cuts.
     type Cuts = ArrayBuffer[Cut]
-    case class Cone(root: Int, vertices: Set[Int]) {
-      override def toString(): String = {
-        val nonRootVertices = (vertices - root).toSeq.sorted
-        val idStr = s"(${root}) --- ${nonRootVertices.mkString(" --- ")}"
-        val instrStr = s"(${idToInstrMap(root)}) --- ${nonRootVertices.map(v => idToInstrMap(v)).mkString(" --- ")}"
-        s"${idStr} : ${instrStr}"
-      }
-    }
     val vCuts = MHashMap.empty[Int, Cuts]
 
     ////////////////////////////////////////////////////////////////////////////
@@ -325,7 +334,7 @@ object CustomLutInsertion
     def cutToCone(
       root: Int,
       cut: Cut
-    ): Cone = {
+    ): Cone[Int] = {
       val coneVertices = MHashSet.empty[Int]
 
       // Backtrack from the given vertex until a vertex in the cut is seen.
@@ -518,27 +527,30 @@ object CustomLutInsertion
     val resultStatus = solver.solve()
     ctx.logger.debug(s"Solved non-overlapping cone covering problem (resultStatus = ${resultStatus})")
     if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
-      val conesUsed = coneVars.filter { case (coneId, coneVar) =>
+      val idConesUsed = coneVars.filter { case (coneId, coneVar) =>
         coneVar.solutionValue > 0
       }.map { case (coneId, _) =>
         coneId -> idToConeMap(coneId)
       }
 
-      val conesUsedStr = conesUsed.map { case (coneId, cone) =>
-        s"coneId ${coneId} = {${cone.vertices.map(v => idToInstrMap(v)).mkString(" --- ")}}"
-      }.mkString("\n")
+      // Collect vertex identifiers that make up the cones, then map these identifiers to their
+      // instructions. This is the final result and the caller can then decide which custom instructions
+      // to implement.
+      val instrConesUsed = idConesUsed.map { case (coneId, cone) =>
+        cone.renameVertices(idToInstrMap)
+      }.toSet
+
       ctx.logger.info {
-        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${conesUsed.size} cones."
+        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${idConesUsed.size} cones."
       }
       ctx.logger.debug {
+        val conesUsedStr = idConesUsed.map { case (coneId, cone) =>
+          s"coneId ${coneId} = {${instrConesUsed}}}"
+        }.mkString("\n")
         conesUsedStr
       }
 
-      // Collect vertex identifiers that make up the cones, then map these identifiers to their instructions.
-      // This is the final result and the caller can then decide which custom instructions to implement.
-      conesUsed.map { case (coneId, cone) =>
-        cone.vertices.map(v => idToInstrMap(v))
-      }.toSet
+      instrConesUsed
 
     } else {
       ctx.logger.fail("Could not optimally solve cone cover problem.")
@@ -567,7 +579,7 @@ object CustomLutInsertion
       .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
 
     // Attempt to reduce cluster sizes by using custom LUT vectors.
-    val potentialCustomInstrs = logicClusters.flatMap { cluster =>
+    val potentialCustomCones = logicClusters.flatMap { cluster =>
       onCluster(dependenceGraph, cluster, maxCutSize = ctx.max_custom_instruction_inputs)(ctx)
     }
     .filter { cluster =>
@@ -580,13 +592,13 @@ object CustomLutInsertion
     // Select as many clusters as we have custom instructions available in the process.
     // We select the clusters in decreasing order of their size so we get the maximum
     // reduction in instructions.
-    val selectedCustomInstrs = potentialCustomInstrs
+    val selectedCustomCones = potentialCustomCones
       .sortBy { cluster =>
         cluster.size
       }(Ordering.Int.reverse)
       .take(ctx.max_custom_instructions)
 
-    val numSavedInstructions = selectedCustomInstrs.map(cone => cone.size - 1).sum
+    val numSavedInstructions = selectedCustomCones.map(cone => cone.size - 1).sum
     ctx.logger.info(s"Will save ${numSavedInstructions} instructions.")
 
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
@@ -594,7 +606,7 @@ object CustomLutInsertion
     ctx.logger.dumpArtifact(
       s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedLogicCones.dot"
     ) {
-      dumpGraph(dependenceGraph, selectedCustomInstrs)
+      dumpGraph(dependenceGraph, selectedCustomCones.map(cone => cone.vertices))
     }
 
     // We can now replace each cluster with a single custom instruction.
