@@ -66,9 +66,9 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
     * @return
     */
   def addCarryEvaluator(
-      rs1: Constant,
-      rs2: Constant,
-      ci: Constant
+      rs1: ConcreteConstant,
+      rs2: ConcreteConstant,
+      ci: ConcreteConstant
   )(implicit ctx: AssemblyContext): (Constant, Constant)
 
   /** returns a fresh constant (unique name), the value [[v]] given to the
@@ -78,7 +78,7 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
     * @param ctx
     * @return
     */
-  def freshConst(v: Constant)(implicit ctx: AssemblyContext): DefReg
+  def freshConst(v: ConcreteConstant)(implicit ctx: AssemblyContext): DefReg
 
   /** Helper stateful class to create a reduced process
     *
@@ -180,12 +180,13 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
       * @param v
       */
     def bindConst(n: Name, v: Constant): Unit = {
-      val width = m_regs(n).variable.width
-      // val truncated = truncate(width, v)
+
+      val concrete = asConcrete(v) { width(n) }
+
       m_evaluations += (n -> v)
       m_constants.get(v) match {
         case Some(m) => // do nothing
-        case None    => m_constants += v -> freshConst(v)
+        case None    => m_constants += v -> freshConst(concrete)
       }
     }
 
@@ -233,7 +234,10 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
             val rs2_val = builder.computedValue(rs2)
             (rs1_val, rs2_val, ci_val) match {
               case (Right(v1), Right(v2), Right(vci)) =>
-                val (rd_val, co_val) = addCarryEvaluator(v1, v2, vci)
+                val v1c = asConcrete(v1) { builder.width(rs1) }
+                val v2c = asConcrete(v2) { builder.width(rs2) }
+                val vcic = asConcrete(vci) { builder.width(ci) }
+                val (rd_val, co_val) = addCarryEvaluator(v1c, v2c, vcic)
                 builder.bindConst(rd, rd_val)
                 builder.bindConst(co, co_val)
               case (Right(ConstZero), Right(ConstZero), Left(ci_subst)) =>
@@ -372,6 +376,9 @@ trait ConstantFolding extends Flavored with CanRename with ProgramStatCounter {
                 case Some(Left(dyn_val))    => builder.bindName(rd, dyn_val)
               }
             }
+          case jtb @ JumpTable(_, results, blocks, dslot, _) =>
+            builder.keep(jtb)
+
         }
 
         builder

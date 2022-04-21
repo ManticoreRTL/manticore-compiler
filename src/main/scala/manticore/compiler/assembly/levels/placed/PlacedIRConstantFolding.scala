@@ -91,9 +91,13 @@ object PlacedIRConstantFolding
     // evaluate if only one of the operands is constant
     case (ADD, Right(ConstZero), Left(n2))      => Left(n2)
     case (ADD, Left(n1), Right(ConstZero))      => Left(n1)
+
     case (SUB, Left(n1), Right(ConstZero))      => Left(n1)
+
     case (AND, Left(n1), Right(UInt16(0xffff))) => Left(n1)
     case (AND, Right(UInt16(0xffff)), Left(n2)) => Left(n2)
+
+
     case (OR | XOR, Left(n1), Right(ConstZero)) => Left(n1)
     case (OR | XOR, Right(ConstZero), Left(n2)) => Left(n2)
 
@@ -116,7 +120,7 @@ object PlacedIRConstantFolding
   override def freshConst(v: UInt16)(implicit
       ctx: AssemblyContext
   ): DefReg = {
-    val name = s"c%${ctx.uniqueNumber()}"
+    val name = s"%c${ctx.uniqueNumber()}"
     DefReg(
       ValueVariable(
         name,
