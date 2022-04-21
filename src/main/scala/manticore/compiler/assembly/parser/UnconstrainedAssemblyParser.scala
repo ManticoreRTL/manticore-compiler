@@ -206,21 +206,35 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def annotations: Parser[Seq[AssemblyAnnotation]] = rep(single_annon)
 
-  def def_reg: Parser[DefReg] =
-    (annotations ~ (RegTypes
-      .map(keyword(_))
-      .reduce(_ | _)) ~ ident ~ const_value ~
-      opt(const_value) <~ opt(";")) ^^ { case (a ~ t ~ name ~ s ~ v) =>
-      val tt = t.chars match {
-        case (".wire")   => WireType
-        case (".reg")    => RegType
-        case (".input")  => InputType
-        case (".output") => OutputType
-        case (".mem")    => MemoryType
-        case (".const")  => ConstType
-      }
-      DefReg(LogicVariable(name.chars, s.toInt, tt), v, a)
+  def def_const: Parser[DefReg] =
+    (annotations ~ keyword(".const") ~ ident ~ const_value ~ const_value <~ opt(
+      ";"
+    )) ^^ { case a ~ _ ~ name ~ w ~ v =>
+      DefReg(LogicVariable(name.chars, w.toInt, ConstType), Some(v), a)
     }
+  def def_wire: Parser[DefReg] =
+    (annotations ~ keyword(".wire") ~ ident ~ const_value ~ opt(
+      const_value
+    ) <~ opt(";")) ^^ { case a ~ _ ~ name ~ w  ~ v =>
+      DefReg(LogicVariable(name.chars, w.toInt, WireType), v, a)
+    }
+  def def_input: Parser[DefReg] =
+    (annotations ~ keyword(".input") ~ ident ~ const_value ~ opt(
+      const_value
+    ) <~ opt(";")) ^^ { case a ~ _ ~ name ~ w ~ v =>
+      DefReg(LogicVariable(name.chars, w.toInt, InputType), v, a)
+    }
+  def def_output: Parser[DefReg] =
+    (annotations ~ keyword(".output") ~ ident ~ const_value <~ opt(";")) ^^ {
+      case a ~ _ ~ name ~ w =>
+        DefReg(LogicVariable(name.chars, w.toInt, OutputType), None, a)
+    }
+  def def_mem: Parser[DefReg] =
+    (annotations ~ keyword(".mem") ~ ident ~ const_value <~ opt(";")) ^^ {
+      case a ~ _ ~ name ~ w =>
+        DefReg(LogicVariable(name.chars, w.toInt, MemoryType), None, a)
+    }
+  def def_reg: Parser[DefReg] = def_const | def_wire | def_input | def_output | def_mem
 
   def func_single_value: Parser[Seq[BigInt]] = const_value ^^ { x => Seq(x) }
   def func_list_value: Parser[Seq[BigInt]] =
