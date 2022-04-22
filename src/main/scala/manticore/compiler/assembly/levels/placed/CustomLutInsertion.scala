@@ -116,7 +116,7 @@ object CustomLutInsertion
 
   def findLogicClusters(
     g: Graph[Instruction, DefaultEdge]
-  ): Seq[Set[Instruction]] = {
+  ): Set[Set[Instruction]] = {
     // We use Union-Find to cluster logic instructions together.
     val uf = new UnionFind(g.vertexSet())
 
@@ -138,42 +138,61 @@ object CustomLutInsertion
       }
       .groupBy { v =>
         uf.find(v)
-      }.values.toSeq
+      }.values.toSet
 
     logicClusters
   }
 
   /**
-    * Groups the instructions that make up the input cluster into a set of
+    * Groups the instructions that make up the input clusters into a set of
     * non-overlapping cones that can be transformed into a custom instruction.
     * We solve the non-overlapping cone problem optimally with an ILP formulation.
     */
   def findOptimalConeCover(
     instructionGraph: Graph[Instruction, DefaultEdge],
-    cluster: Set[Instruction],
-    maxCutSize: Int
+    clusters: Set[Set[Instruction]],
+    maxCutSize: Int,
+    maxNumCones: Int
   )(
     implicit ctx: AssemblyContext
   ): Set[Cone[Instruction]] = {
-    // Graph where vertices are represented as Ints to simplify debugging.
-    // The graph's vertices are all logic instructions of the cluster *and* their primary inputs (which are not logic
+    ctx.logger.debug {
+      val clusterSizesStr = clusters.zipWithIndex.map { case (cluster, idx) =>
+        s"cluster_${idx} -> ${cluster.size} instructions"
+      }.mkString("\n")
+
+      s"Covering ${clusters.size} logic clusters with sizes:\n${clusterSizesStr}"
+    }
+
+    // All the vertices in the various input clusters.
+    val allClustersInstrs = clusters.flatten
+
+    // As a sanity check we verify they are all logic instructions.
+    assert(
+      allClustersInstrs.forall(instr => isLogicInstr(instr)),
+      s"Error: The input clusters do not all contain logic instructions!"
+    )
+
+    // Graph where vertices are represented as Ints to simplify debugging as
+    // the identifiers in an instruction change at every compile.
+    // The graph's vertices are all logic instructions of the clusters *and* their primary inputs (which are not logic
     // instructions by definition). The primary inputs are needed as otherwise we would not know the in-degree of the
-    // first vertices in the logic cluster.
+    // first vertices in each logic cluster.
     def getIdGraph(
-      cluster: Set[Instruction]
+      clusters: Set[Set[Instruction]]
     ): (
       Graph[Int, DefaultEdge],
       Map[Int, Instruction]
     ) = {
       // The primary inputs of the cluster are vertices *outside* the logic cluster that are connected
       // to vertices *inside* the cluster.
-      val primaryInputs = cluster.flatMap { vCluster =>
-        Graphs.predecessorListOf(instructionGraph, vCluster).asScala
-      }.filter { vGeneral =>
-        !cluster.contains(vGeneral)
+      val primaryInputs = allClustersInstrs.flatMap { vInACluster =>
+        Graphs.predecessorListOf(instructionGraph, vInACluster).asScala
+      }.filter { vAnywhere =>
+        !allClustersInstrs.contains(vAnywhere)
       }
 
-      val subgraphVertices = primaryInputs ++ cluster
+      val subgraphVertices = primaryInputs ++ allClustersInstrs
       val instructionSubgraph = new AsSubgraph(instructionGraph, subgraphVertices.asJava)
 
       // The vertices are numbered in topological order for easier debugging.
@@ -195,18 +214,13 @@ object CustomLutInsertion
       (idGraph, idToInstrMap)
     }
 
-    ctx.logger.debug {
-      val clusterInstrs = cluster.mkString("\n")
-      s"logicCluster of size ${cluster.size}:\n${clusterInstrs}"
-    }
-
-    val (idGraph, idToInstrMap) = getIdGraph(cluster)
+    val (idGraph, idToInstrMap) = getIdGraph(clusters)
 
     // Cut enumeration. We use a BitSet to represent a cut. If a bit is set, then the
     // corresponding vertex is part of the cut.
     // We use an ordered collection (ArrayBuffer) instead of an unordered collection (Set) to
     // represent a SET of cuts for every vertex as we refer to cuts by their index in this
-    // array later. A Cut will only be added to a vertex's cut "SET" if it contains a vertex
+    // array later. A cut will only be added to a vertex's cut "SET" if it contains a vertex
     // that doesn't exist in the other cuts.
     type Cuts = ArrayBuffer[Cut]
     val vCuts = MHashMap.empty[Int, Cuts]
@@ -216,8 +230,8 @@ object CustomLutInsertion
     ////////////////////////////////////////////////////////////////////////////
 
     def enumerateCuts(
-       v: Int
-     ): Unit = {
+      v: Int
+    ): Unit = {
       // Operation to perform on each n-tuple. In the cut generation algorithm this
       // involves computing a new cut from the fan-in nodes' selected cuts, checking
       // whether an existing cut dominates it, and if not, adding it to the cuts
@@ -332,18 +346,18 @@ object CustomLutInsertion
     // Main algorithm //////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    // The primary inputs of the cluster are the vertices that are not part of
-    // the cluster. These are technically vertices that are *not* logic instructions
+    // The primary inputs of the clusters are the vertices that are not part of
+    // the clusters. These are technically vertices that are *not* logic instructions
     // as otherwise they would have been included in the cluster.
     val (logicVertices, primaryInputs) = idGraph.vertexSet().asScala.partition { v =>
       val instr = idToInstrMap(v)
-      cluster.contains(instr)
+      allClustersInstrs.contains(instr)
     }
 
     ctx.logger.debug {
       val piInstrsStr = primaryInputs.map(idToInstrMap).mkString("\n")
       val logicInstrsStr = logicVertices.map(idToInstrMap).mkString("\n")
-      s"primaryInputs:\n${piInstrsStr}\nlogicVertices:\n${logicInstrsStr}"
+      s"primaryInputs:\n${piInstrsStr}\n\nlogicVertices:\n${logicInstrsStr}"
     }
 
     // Initialize cut set of every vertex to the empty set.
@@ -409,12 +423,10 @@ object CustomLutInsertion
     }
 
     // Sanity check.
-    if (invalidCones.nonEmpty) {
-      ctx.logger.fail {
-        val invalidConesStr = invalidCones.mkString("\n")
-        s"Found invalid cones as they contain non-logic instructions:\n${invalidConesStr}"
-      }
-    }
+    assert(
+      invalidCones.isEmpty,
+      s"Found invalid cones as they contain non-logic instructions:\n${invalidCones.mkString("\n")}"
+    )
 
     // Keep only the cones that are "valid". A cone is considered valid if it is fanout-free.
     // Fanout-free means that only the root of the cone has outgoing edges to a vertex *outside*
@@ -448,14 +460,16 @@ object CustomLutInsertion
     // replacing a cone by a custom instruction. We save |C_i| - 1 vertices by replacing
     // the instructions of a cone with a single custom instruction.
     //
-    //    max sum_{i = 0}{i = num_cones} x_i * (|C_i|-1)
+    //    max sum_{i = 0}{i = num_cones-1} x_i * (|C_i|-1)
     //
     // constraints
     // -----------
     //
-    //    x_i \in {0, 1} \forall i \in [0 .. num_cones]          (1) Each cone is either selected, or not selected.
+    //    x_i \in {0, 1} \forall i \in [0 .. num_cones-1]        (1) Each cone is either selected, or not selected.
     //
-    //    sum_{C_i : v \in C_i} x_i = 1                          (2) Each vertex is covered by exactly one cone.
+    //    sum_{C_i : v \in C_i} x_i <= 1                         (2) Each vertex is covered by at most one cone.
+    //
+    //    sum_{i = 0}{i = num_cones-1} x_i <= maxNumCones        (3) Bound the number of custom instructions to force large cones to be generated.
 
     Loader.loadNativeLibraries()
     val solver = MPSolver.createSolver("SCIP")
@@ -465,21 +479,21 @@ object CustomLutInsertion
 
     // (1) Each cone is either selected, or not selected (binary variable).
     //
-    //    x_i \in {0, 1} \forall i \in [0 .. num_cones]
+    //    x_i \in {0, 1} \forall i \in [0 .. num_cones-1]
     //
     val coneVars = MHashMap.empty[Int, MPVariable]
     idToConeMap.foreach { case (coneId, cone) =>
       coneVars += coneId -> solver.makeIntVar(0, 1, s"x_${coneId}")
     }
 
-    // (2) Each vertex is covered by exactly one cone.
+    // (2) Each vertex is covered by at most one cone.
     //
-    //    sum_{C_i : v \in C_i} x_i = 1
+    //    sum_{C_i : v \in C_i} x_i <= 1
     //
     logicVertices.foreach { v =>
-      // The equality constraint with 1 is defined by setting the lower and upper bound
-      // of the constraint to 1.
-      val constraint = solver.makeConstraint(1, 1, s"coveredOnce_v${v}")
+      // The inequality constraint is defined by setting the lower/upper bound of the
+      // constraint to 0/1.
+      val constraint = solver.makeConstraint(0, 1, s"covered_v${v}")
 
       idToConeMap.foreach { case (coneId, cone) =>
         val coefficient = if (cone.vertices.contains(v)) 1 else 0
@@ -487,9 +501,18 @@ object CustomLutInsertion
       }
     }
 
+    // (3) Bound the number of custom instructions to force large cones to be generated.
+    //
+    //    sum_{i = 0}{i = num_cones-1} x_i <= maxNumCones
+    val maxNumConesConstraint = solver.makeConstraint(0, maxNumCones, s"maxNumCones_constraint")
+    idToConeMap.foreach { case (coneId, cone) =>
+      val coefficient = 1
+      maxNumConesConstraint.setCoefficient(coneVars(coneId), coefficient)
+    }
+
     // objective function
     //
-    //    max sum_{i = 0}{i = num_cones} x_i * (|C_i|-1)
+    //    max sum_{i = 0}{i = num_cones-1} x_i * (|C_i|-1)
     //
     val objective = solver.objective()
     idToConeMap.foreach { case (coneId, cone) =>
@@ -504,7 +527,7 @@ object CustomLutInsertion
     if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
       val idConesUsed = coneVars.filter { case (coneId, coneVar) =>
         // A cone is used if it is part of the cone cover.
-        coneVar.solutionValue > 0
+        coneVar.solutionValue.toInt > 0
       }.map { case (coneId, _) =>
         coneId -> idToConeMap(coneId)
       }
@@ -535,8 +558,9 @@ object CustomLutInsertion
   )(
     implicit ctx: AssemblyContext
   ): (
-    DefProcess, // Unmodified process
-    Int // Number of instructions saved if custom instructions are implemented
+    DefProcess,
+    Int, // Number of instructions saved when custom instructions are implemented
+    Int, // Number of custom functions used
   ) = {
     val dependenceGraph = createDependenceGraph(proc)
 
@@ -544,37 +568,26 @@ object CustomLutInsertion
     val logicClusters = findLogicClusters(dependenceGraph)
       .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
 
-    // Find the optimal cone cover for every logic cluster.
-    val potentialCustomCones = logicClusters.flatMap { cluster =>
-      findOptimalConeCover(dependenceGraph, cluster, maxCutSize = ctx.max_custom_instruction_inputs)(ctx)
-    }
-    .filter { cluster =>
-      // Singleton cones may exist in the result as we try to cover the entire cluster.
-      // However, such singleton cones give us 0 reduction in number of instructions, so
-      // we just filter them out to avoid polluting the custom instruction space
-      // with something that can be computed with a standard instruction.
-      cluster.size > 1
-    }
+    // Find the optimal cone cover globally.
+    val bestCones = findOptimalConeCover(
+      dependenceGraph,
+      logicClusters,
+      maxCutSize = ctx.max_custom_instruction_inputs,
+      maxNumCones = ctx.max_custom_instructions
+    )(ctx)
 
-    // Select as many cones as we have custom instructions available in the process.
-    // We select the cones in decreasing order of their size so we get the maximum
-    // reduction in instructions.
-    val selectedCustomCones = potentialCustomCones
-      .sortBy { cluster =>
-        cluster.size
-      }(Ordering.Int.reverse)
-      .take(ctx.max_custom_instructions)
-
-    val numSavedInstructions = selectedCustomCones.map(cone => cone.size - 1).sum
-    ctx.logger.info(s"We save ${numSavedInstructions} instructions in ${proc.id} using ${selectedCustomCones.size} custom instructions.")
+    // Must convert to a Seq before mapping as otherwise cones of identical size will
+    // "disappear" from the count due to the semantics of Set[Int].
+    val numSavedInstructions = bestCones.toSeq.map(cone => cone.size - 1).sum
+    ctx.logger.info(s"We save ${numSavedInstructions} instructions in ${proc.id} using ${bestCones.size} custom instructions.")
 
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
     // showing each cone with a different color.
     ctx.logger.dumpArtifact(
       s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
     ) {
-      val colors = CyclicColorGenerator(selectedCustomCones.size)
-      val colorMap = selectedCustomCones
+      val colors = CyclicColorGenerator(bestCones.size)
+      val colorMap = bestCones
         .zip(colors)
         .flatMap { case (cone, color) =>
           cone.vertices.map { v =>
@@ -588,7 +601,7 @@ object CustomLutInsertion
     // We can now replace each cluster with a single custom instruction.
     // TODO (skashani)
 
-    (proc, numSavedInstructions)
+    (proc, numSavedInstructions, bestCones.size)
   }
 
   override def transform(
@@ -601,16 +614,20 @@ object CustomLutInsertion
 
     val newProcesses = program.processes.map(proc => onProcess(proc)(context))
 
-    val progNumSavedInstructions = newProcesses.map { case (proc, procNumSavedInstructions) =>
-      procNumSavedInstructions
+    val progNumSavedInstructions = newProcesses.map { case (proc, numSavedInstructions, numCustomFunctionsUsed) =>
+      numSavedInstructions
     }.sum
 
-    val newvirtualCycleLen = newProcesses.map { case (proc, procNumSavedInstructions) =>
+    val progNumCustomFunctions = newProcesses.map { case (proc, numSavedInstructions, numCustomFunctionsUsed) =>
+      numCustomFunctionsUsed
+    }.sum
+
+    val newVirtualCycleLen = newProcesses.map { case (proc, procNumSavedInstructions, numCustomFunctionsUsed) =>
       proc.body.length - procNumSavedInstructions
     }.max
 
-    context.logger.info(s"Virtual cycle length = ${origVirtualCycleLen} (before), ${newvirtualCycleLen} (after)")
-    context.logger.info(s"Will save ${progNumSavedInstructions} in the whole program")
+    context.logger.info(s"Virtual cycle length: ${origVirtualCycleLen} -> ${newVirtualCycleLen} (using ${progNumCustomFunctions} custom functions)")
+    context.logger.info(s"Will save ${progNumSavedInstructions} instructions in the whole program")
 
     program
   }
