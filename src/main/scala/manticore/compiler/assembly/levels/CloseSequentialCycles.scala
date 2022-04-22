@@ -14,7 +14,7 @@ import java.util.function.BinaryOperator
   * @author
   *   Mahyar Emami   <mahyar.emami@eplf.ch>
   */
-trait CloseSequentialCycles extends InputOutputPairs {
+trait CloseSequentialCycles extends CanCollectInputOutputPairs {
 
   import flavor._
 
@@ -22,7 +22,7 @@ trait CloseSequentialCycles extends InputOutputPairs {
       proc: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
 
-    val move_instructions = createInputOutputPairs(proc).map {
+    val move_instructions = InputOutputPairs.createInputOutputPairs(proc).map {
       case (curr, next) =>
         Mov(curr.variable.name, next.variable.name)
     }

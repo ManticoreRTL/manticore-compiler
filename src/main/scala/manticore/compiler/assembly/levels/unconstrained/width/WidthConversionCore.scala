@@ -2114,8 +2114,8 @@ object WidthConversionCore
         val rds = builder.getConversion(rd).parts
         val rss = values.map { case (lbl, n) =>
           builder.getConversion(n).parts.map((lbl, _))
-        }.transpose
-        rds.zip(rss).map { case (rd, rsv) =>  Phi(rd, rsv) }
+        }
+        rds.zip(rss.transpose).map { case (rd, rsv) =>  Phi(rd, rsv) }
 
       }
 

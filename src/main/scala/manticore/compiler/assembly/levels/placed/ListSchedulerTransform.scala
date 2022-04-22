@@ -81,7 +81,7 @@ object ListSchedulerTransform
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
 
     // instructions require to close sequential cycles
-    val output_input_pairs = createInputOutputPairs(proc)(ctx).map {
+    val output_input_pairs = InputOutputPairs.createInputOutputPairs(proc)(ctx).map {
       case (curr, next) => next.variable.name -> curr.variable.name
     }.toMap
 

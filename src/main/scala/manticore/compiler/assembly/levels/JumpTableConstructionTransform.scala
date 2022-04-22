@@ -30,7 +30,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
   }
 
   sealed trait JumpTableBuildRecipe
-  case class JumpTableConstructable(
+  case class JumpTableConstructible(
       instrs: Seq[Instruction],
       defs: Seq[DefReg],
       labels: DefLabelGroup,
@@ -107,18 +107,19 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
                 }
               }
             case _ =>
-              // we can optionally create a Mov instruction that assigns
-              // rs to a fresh register and then modify the Phi accordingly,
-              // but this isn't useful work, so we keep the branch essentially
-              // empty!
-              // Note that doing the following would break SSAness and should
-              // be avoided!
-              // subgraph += Mov(pmux.rd, rs)
+            // we can optionally create a Mov instruction that assigns
+            // rs to a fresh register and then modify the Phi accordingly,
+            // but this isn't useful work, so we keep the branch essentially
+            // empty!
+            // Note that doing the following would break SSAness and should
+            // be avoided!
+            // subgraph += Mov(pmux.rd, rs)
           }
+
           subgraph
         case None => // rs is a constant
           ArrayBuffer.empty[DataInstruction]
-          // ArrayBuffer[DataInstruction](Mov(pmux.rd, rs))
+        // ArrayBuffer[DataInstruction](Mov(pmux.rd, rs))
       }
     }
 
@@ -136,6 +137,8 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
     val conditionalCaseBodies = pmux.choices.map { case ParMuxCase(_, rs) =>
       createCaseBody(rs)
     }
+    instructionsToRemove ++= defaultCaseBody
+    conditionalCaseBodies.foreach { instructionsToRemove ++= _ }
 
     val numInstrInSlowestCase =
       defaultCaseBody.length.max(conditionalCaseBodies.map(_.length).max)
@@ -239,9 +242,13 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
           indexer = labelIndices map { _ -> uniqueLabel(ctx) },
           default = None
         )
-        val reduction =
-          instr.length + numInstrInSlowestCase - instructionsToRemove.size
-        if (reduction < 0)
+        val addedInstructions = instr.length + numInstrInSlowestCase
+        val removedInstructions = instructionsToRemove.size
+        ctx.logger.debug(
+          s"Converting pmux to jump table will add ${addedInstructions} instructions and remove ${removedInstructions}",
+          pmux
+        )
+        if (addedInstructions < removedInstructions)
           SlowLookup(
             index.variable.name,
             constDefs ++ Seq(memDef, index) ++ wires,
@@ -326,7 +333,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
 
     tryCreateTableLookup() match {
       case l @ FastLookup(index, defs, body, labelGroup) =>
-        JumpTableConstructable(
+        JumpTableConstructible(
           body :+ JumpTable(
             target = index,
             results = Seq(
@@ -347,7 +354,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
           instructionsToRemove.toSet
         )
       case l @ SlowLookup(index, defs, body, labelGroup) =>
-        JumpTableConstructable(
+        JumpTableConstructible(
           body :+ JumpTable(
             target = index,
             results = Seq(
@@ -411,7 +418,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
 
     val instrsToRemove =
       jumpTabs.foldLeft(scala.collection.mutable.Set.empty[Instruction]) {
-        case (s, _ -> JumpTableConstructable(_, _, _, deads)) => s ++= deads
+        case (s, _ -> JumpTableConstructible(_, _, _, deads)) => s ++= deads
         case (s, _ -> JumpTableEmpty)                         => s
       }
 
@@ -422,7 +429,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
           case None => ctx.logger.error("Some ParMux is unaccounted for!", pmux)
           case Some(pmux -> jmp) =>
             jmp match {
-              case JumpTableConstructable(instrs, defs, labels, deadInstrs) =>
+              case JumpTableConstructible(instrs, defs, labels, deadInstrs) =>
                 builder ++= instrs
               case JumpTableEmpty => builder += pmux
             }
@@ -437,11 +444,11 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
     }
 
     val newRegs = proc.registers ++ jumpTabs.flatMap {
-      case _ -> JumpTableConstructable(_, defs, _, _) => defs
+      case _ -> JumpTableConstructible(_, defs, _, _) => defs
       case _ -> JumpTableEmpty                        => Seq.empty[DefReg]
     }
     val labels = jumpTabs.collect {
-      case _ -> JumpTableConstructable(_, _, lgrp, _) => lgrp
+      case _ -> JumpTableConstructible(_, _, lgrp, _) => lgrp
     }
 
     proc.copy(

@@ -8,7 +8,7 @@ import manticore.compiler.assembly.levels.CanRename
 trait CommonSubexpressionElimination
     extends Flavored
     with CanRename
-    with ProgramStatCounter {
+    with CanCollectProgramStatistics {
 
   import flavor._
 
@@ -39,7 +39,7 @@ trait CommonSubexpressionElimination
         m_regs += m_defs(n)
         m_subst.getOrElse(n, n)
       }
-      val renamed_inst = asRenamed(instruction)(renaming)
+      val renamed_inst = Rename.asRenamed(instruction)(renaming)
       m_insts += renamed_inst
     }
 
@@ -72,7 +72,7 @@ trait CommonSubexpressionElimination
       processes = prog.processes.map(do_transform)
     )
     ctx.stats.record {
-      mkProgramStats(results)
+      ProgramStatistics.mkProgramStats(results)
     }
     results
   }

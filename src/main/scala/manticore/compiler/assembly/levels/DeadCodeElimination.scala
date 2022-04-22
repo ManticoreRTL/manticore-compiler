@@ -3,8 +3,8 @@ package manticore.compiler.assembly.levels
 /** DeadCodeElimination.scala
   *
   * @author
-  *   Sahand Kashani          <sahand.kashani@epfl.ch>
-  *   Mahyar Emami            <mahyar.emami@epfl.ch>
+  *   Sahand Kashani <sahand.kashani@epfl.ch> Mahyar Emami
+  *   <mahyar.emami@epfl.ch>
   */
 
 import manticore.compiler.assembly.DependenceGraphBuilder
@@ -21,12 +21,11 @@ import scalax.collection.GraphTraversal
 import javax.xml.crypto.Data
 import scala.annotation.tailrec
 
-/**
- *  A functional interface for performing DCE on processes.
- *  Do not use DCE on split processes that do not have their Send instructions
- *  because otherwise useful code gets removed.
- */
-trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
+/** A functional interface for performing DCE on processes. Do not use DCE on
+  * split processes that do not have their Send instructions because otherwise
+  * useful code gets removed.
+  */
+trait DeadCodeElimination extends DependenceGraphBuilder {
 
   import flavor._
 
@@ -112,8 +111,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
     graph
   }
 
-  /**
-    * Create dependence graph dot serialization (for debug dumps)
+  /** Create dependence graph dot serialization (for debug dumps)
     *
     * @param graph
     * @param ctx
@@ -170,15 +168,17 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
     dotExport
   }
 
-  /**
-    * Collect the live instructions given some other live "sink" instructions
+  /** Collect the live instructions given some other live "sink" instructions
     * This function performs a backward BFS (could be any graph search) to
     * determine a set of instructions that are backward reachable from the set
     * of known live instructions.
     *
-    * @param sinks set of already known live instructions
-    * @param graph data dependence graph (maybe cyclic)
-    * @param ctx assembly context
+    * @param sinks
+    *   set of already known live instructions
+    * @param graph
+    *   data dependence graph (maybe cyclic)
+    * @param ctx
+    *   assembly context
     * @return
     */
   def collectAlive(
@@ -250,9 +250,12 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
       def next() = IterationIndex(index + 1)
     }
 
-    val inputOutputPairs = createInputOutputPairs(process).map {
-      case (curr, next) => curr.variable.name -> next.variable.name
-    }.toMap
+    val inputOutputPairs = InputOutputPairs
+      .createInputOutputPairs(process)
+      .map { case (curr, next) =>
+        curr.variable.name -> next.variable.name
+      }
+      .toMap
 
     /** It may be counterintuitive, but DCE needs a closed loop, i.e., a program
       * where instructions like MOV curr, next are present. Without them, the
@@ -300,12 +303,13 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
         val depGraph = createDependenceGraph(block, defInst, inputOutputPairs)
         // we need to handle EXPECTs rather carefully, normally, and EXPECT is
         // singular node in the dependence graph because it takes
-        ctx.logger.dumpArtifact(
-          s"dce_${ctx.logger.countProgress()}_iter_${index.index}_pre.dot"
-        ) {
-          createDotDependenceGraph(depGraph)
-        }
+        // ctx.logger.dumpArtifact(
+        //   s"dce_${ctx.logger.countProgress()}_iter_${index.index}_pre.dot"
+        // ) {
+        //   createDotDependenceGraph(depGraph)
+        // }
         val alive = collectAlive(sinks, depGraph)
+
         // we now have the block with dead codes eliminated, but since we handle
         // a JumpTable as a single instruction, the Phis nodes are consolidated into
         // one from the perspective of the dependence graph, therefore, although
@@ -314,13 +318,13 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
         // where there exists at least one instruction in the [[alive]] set that
         // uses the value produced by that phi and remove it otherwise
         val aliveBlock = block.filter { alive.contains(_) }
-        ctx.logger.dumpArtifact(
-          s"dce_${ctx.logger.countProgress()}_iter_${index.index}_post.dot"
-        ) {
-          createDotDependenceGraph(
-            createDependenceGraph(aliveBlock, defInst, inputOutputPairs)
-          )
-        }
+        // ctx.logger.dumpArtifact(
+        //   s"dce_${ctx.logger.countProgress()}_iter_${index.index}_post.dot"
+        // ) {
+        //   createDotDependenceGraph(
+        //     createDependenceGraph(aliveBlock, defInst, inputOutputPairs)
+        //   )
+        // }
         aliveBlock.map {
           case jtb @ JumpTable(_, results, _, _, _) =>
             val filteredPhis = results.filter { case Phi(rd, _) =>
@@ -337,8 +341,9 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
           // extra care
         }
       }
-      val outerDceResult = dceBlock(current) { name =>
-        globallyTrackedSet.contains(name) // only keep Names with Track annons
+      val outerDceResult = dceBlock(current) {
+        globallyTrackedSet
+        // only keep Names with Track annons
       }
       val finalDceResult = outerDceResult.map {
         // perform DCE for the body of the jump
@@ -393,7 +398,21 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
       if (iter.index >= maxIter) {
         last.block
       } else {
+        ctx.logger.dumpArtifact(
+          s"dce_${ctx.logger.countProgress()}_iter_${iter.index}_pre.dot"
+        ) {
+          createDotDependenceGraph(
+            createDependenceGraph(last.block, defInst, inputOutputPairs)
+          )
+        }
         val newRes = dceOnce(last.block, iter)
+        ctx.logger.dumpArtifact(
+          s"dce_${ctx.logger.countProgress()}_iter_${iter.index}_post.dot"
+        ) {
+          createDotDependenceGraph(
+            createDependenceGraph(last.block, defInst, inputOutputPairs)
+          )
+        }
         if (newRes.score < last.score) {
           fixedPointDoWhile(iter.next(), newRes)
         } else {
@@ -405,8 +424,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder with InputOutputPairs {
     // we first close sequential cycles
 
     val optBlock = fixedPointDoWhile(
-      IterationIndex(1),
-      dceOnce(closedBlock, IterationIndex(0))
+      IterationIndex(0),
+      DceResult(closedBlock, countInstructions(closedBlock))
     )
 
     // now we need to go through the optimized block and create a set of names
