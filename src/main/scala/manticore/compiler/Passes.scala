@@ -26,7 +26,7 @@ import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.ExpectIdInsertion
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
-import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubexpressionElimination
+import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElimination
 // import manticore.compiler.assembly.levels.placed.PlacedIrJumpTableConstructionTransform
 
 object ManticorePasses {
@@ -70,7 +70,7 @@ object ManticorePasses {
   def backend =
     UnconstrainedToPlacedTransform followedBy
     PlacedIRConstantFolding followedBy
-    PlacedIRCommonSubexpressionElimination followedBy
+    PlacedIRCommonSubExpressionElimination followedBy
     ExtractParallelism followedBy
     BackendLowerEnd
 

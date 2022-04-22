@@ -1,15 +1,14 @@
-package manticore.compiler.assembly.levels.placed
+package manticore.compiler.assembly.levels.unconstrained
 
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.CommonSubExpressionElimination
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.ManticoreAssemblyIR
 
-object PlacedIRCommonSubExpressionElimination
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram]
+object UnconstrainedIRCommonSubExpressionElimination
+    extends AssemblyTransformer[UnconstrainedIR.DefProgram, UnconstrainedIR.DefProgram]
     with CommonSubExpressionElimination {
 
-  override val flavor = PlacedIR
+  override val flavor = UnconstrainedIR
   import flavor._
 
   override def transform(
