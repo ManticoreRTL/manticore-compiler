@@ -4,6 +4,7 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator.{AND, OR, XOR}
 import manticore.compiler.assembly.DependenceGraphBuilder
 import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.{Color, CyclicColorGenerator}
 import org.jgrapht.{Graph, Graphs}
 import org.jgrapht.alg.util.UnionFind
 import org.jgrapht.graph.{AsSubgraph, DefaultEdge, DirectedAcyclicGraph, SimpleGraph}
@@ -47,30 +48,8 @@ object CustomLutInsertion
 
   def dumpGraph[V](
     g: Graph[V, DefaultEdge],
-    highlightClusters: Iterable[Iterable[V]] = Seq.empty
+    vColorMap: Map[V, Color] = Map.empty[V, Color]
   ): String = {
-    // These colors were generated using the following website:
-    //
-    //    https://medialab.github.io/iwanthue/
-    //
-    val colors = Vector(
-      "#d45079", "#4fc656", "#b969e9", "#86be36", "#835dd8", "#c4ba32", "#436ae3", "#92ab38",
-      "#9e40b5", "#3c8f29", "#d336a7", "#3ac37d", "#f82387", "#298443", "#e672d5", "#77b55d",
-      "#3351bd", "#e28f30", "#7e84ed", "#d2a43f", "#6649ae", "#628124", "#c37fde", "#968721",
-      "#5e64c1", "#e2672a", "#428ae4", "#ce452b", "#4cc3e3", "#e53578", "#56cbb0", "#d14791",
-      "#80c687", "#ac4197", "#4b9e74", "#d5404f", "#39a8a4", "#884b9f", "#89a660", "#5b4d99",
-      "#c2bb6f", "#826cb5", "#596416", "#b297e1", "#52783a", "#de8bc2", "#367042", "#983f69",
-      "#277257", "#e8846d", "#4695c7", "#b4682b", "#4365a3", "#886624", "#809bdb", "#9c4c2c",
-      "#754f8c", "#968c4b", "#a66495", "#60642d", "#e08698", "#d19968", "#914a57", "#ad4b51"
-    )
-
-    val vColorMap = highlightClusters.zipWithIndex.flatMap { case (vertices, colorIdx) =>
-      // We have a limited number of colors and we must reuse them when the number of
-      // clusters is too large (hence the modulo operation).
-      val color = colors(colorIdx % colors.size)
-      vertices.map(v => v -> color)
-    }.toMap
-
     val vertexIdProvider = new Function[V, String] {
       def apply(v: V): String = {
         val vStr = v.toString
@@ -88,7 +67,7 @@ object CustomLutInsertion
         // We color the vertices that will be fused into a custom instruction.
         if (vColorMap.contains(v)) {
           val color = vColorMap(v)
-          attrMap += "fillcolor" -> DefaultAttribute.createAttribute(color)
+          attrMap += "fillcolor" -> DefaultAttribute.createAttribute(color.toCssHexString())
           attrMap += "style" -> DefaultAttribute.createAttribute("filled")
         }
 
@@ -167,9 +146,9 @@ object CustomLutInsertion
   /**
     * Groups the instructions that make up the input cluster into a set of
     * non-overlapping cones that can be transformed into a custom instruction.
-    * The non-overlapping cones are the optimal ones.
+    * We solve the non-overlapping cone problem optimally with an ILP formulation.
     */
-  def onCluster(
+  def findOptimalConeCover(
     instructionGraph: Graph[Instruction, DefaultEdge],
     cluster: Set[Instruction],
     maxCutSize: Int
@@ -361,17 +340,11 @@ object CustomLutInsertion
       cluster.contains(instr)
     }
 
-    // ctx.logger.dumpArtifact(
-    //   s"dependence_graph_id_graph${ctx.logger.countProgress()}.dot"
-    // ) {
-
-    //   dumpGraph(idGraph, Set(logicVertices, primaryInputs))
-    // }
-
-    // ctx.logger.debug {
-    //   val instrsStr = primaryInputs.map(idToInstrMap).mkString("\n")
-    //   s"primaryInputs:\n${instrsStr}"
-    // }
+    ctx.logger.debug {
+      val piInstrsStr = primaryInputs.map(idToInstrMap).mkString("\n")
+      val logicInstrsStr = logicVertices.map(idToInstrMap).mkString("\n")
+      s"primaryInputs:\n${piInstrsStr}\nlogicVertices:\n${logicInstrsStr}"
+    }
 
     // Initialize cut set of every vertex to the empty set.
     idGraph.vertexSet().asScala.foreach { v =>
@@ -427,17 +400,20 @@ object CustomLutInsertion
       Cone(root, Set(root))
     }
 
-    val invalidCones = allCones.filter { cone =>
-      cone.vertices.exists { v =>
-        val instr = idToInstrMap(v)
-        val isLogic = isLogicInstr(instr)
-        !isLogic
+    val invalidCones = allCones.map { idCone =>
+      idCone.renameVertices(idToInstrMap)
+    }.filter { instrCone =>
+      instrCone.vertices.exists { instr =>
+        !isLogicInstr(instr)
       }
     }
 
-    ctx.logger.debug {
-      val invalidConesStr = invalidCones.map(cone => cone.toString()).mkString("\n")
-      s"Found invalid cones:\n${invalidConesStr}"
+    // Sanity check.
+    if (invalidCones.nonEmpty) {
+      ctx.logger.fail {
+        val invalidConesStr = invalidCones.mkString("\n")
+        s"Found invalid cones as they contain non-logic instructions:\n${invalidConesStr}"
+      }
     }
 
     // Keep only the cones that are "valid". A cone is considered valid if it is fanout-free.
@@ -525,9 +501,9 @@ object CustomLutInsertion
 
     // solve optimization problem
     val resultStatus = solver.solve()
-    ctx.logger.debug(s"Solved non-overlapping cone covering problem (resultStatus = ${resultStatus})")
     if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
       val idConesUsed = coneVars.filter { case (coneId, coneVar) =>
+        // A cone is used if it is part of the cone cover.
         coneVar.solutionValue > 0
       }.map { case (coneId, _) =>
         coneId -> idToConeMap(coneId)
@@ -540,20 +516,15 @@ object CustomLutInsertion
         cone.renameVertices(idToInstrMap)
       }.toSet
 
-      ctx.logger.info {
-        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${idConesUsed.size} cones."
-      }
       ctx.logger.debug {
-        val conesUsedStr = idConesUsed.map { case (coneId, cone) =>
-          s"coneId ${coneId} = {${instrConesUsed}}}"
-        }.mkString("\n")
-        conesUsedStr
+        val instrConesUsedStr = instrConesUsed.mkString("\n")
+        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${instrConesUsed.size} cones:\n${instrConesUsedStr}"
       }
 
       instrConesUsed
 
     } else {
-      ctx.logger.fail("Could not optimally solve cone cover problem.")
+      ctx.logger.fail(s"Could not optimally solve cone cover problem (resultStatus = ${resultStatus}).")
       // We return the empty set to signal that no logic instructions could be fused together.
       Set.empty
     }
@@ -568,29 +539,25 @@ object CustomLutInsertion
     Int // Number of instructions saved if custom instructions are implemented
   ) = {
     val dependenceGraph = createDependenceGraph(proc)
-    ctx.logger.dumpArtifact(
-      s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_orig.dot"
-    ) {
-      dumpGraph(dependenceGraph)
-    }
 
     // Identify logic clusters in the graph.
     val logicClusters = findLogicClusters(dependenceGraph)
       .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
 
-    // Attempt to reduce cluster sizes by using custom LUT vectors.
+    // Find the optimal cone cover for every logic cluster.
     val potentialCustomCones = logicClusters.flatMap { cluster =>
-      onCluster(dependenceGraph, cluster, maxCutSize = ctx.max_custom_instruction_inputs)(ctx)
+      findOptimalConeCover(dependenceGraph, cluster, maxCutSize = ctx.max_custom_instruction_inputs)(ctx)
     }
     .filter { cluster =>
-      // Singleton clusters give us 0 reduction in number of instructions, so
+      // Singleton cones may exist in the result as we try to cover the entire cluster.
+      // However, such singleton cones give us 0 reduction in number of instructions, so
       // we just filter them out to avoid polluting the custom instruction space
       // with something that can be computed with a standard instruction.
       cluster.size > 1
     }
 
-    // Select as many clusters as we have custom instructions available in the process.
-    // We select the clusters in decreasing order of their size so we get the maximum
+    // Select as many cones as we have custom instructions available in the process.
+    // We select the cones in decreasing order of their size so we get the maximum
     // reduction in instructions.
     val selectedCustomCones = potentialCustomCones
       .sortBy { cluster =>
@@ -599,14 +566,23 @@ object CustomLutInsertion
       .take(ctx.max_custom_instructions)
 
     val numSavedInstructions = selectedCustomCones.map(cone => cone.size - 1).sum
-    ctx.logger.info(s"Will save ${numSavedInstructions} instructions.")
+    ctx.logger.info(s"We save ${numSavedInstructions} instructions in ${proc.id} using ${selectedCustomCones.size} custom instructions.")
 
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
-    // showing each cluster with a different color.
+    // showing each cone with a different color.
     ctx.logger.dumpArtifact(
-      s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedLogicCones.dot"
+      s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
     ) {
-      dumpGraph(dependenceGraph, selectedCustomCones.map(cone => cone.vertices))
+      val colors = CyclicColorGenerator(selectedCustomCones.size)
+      val colorMap = selectedCustomCones
+        .zip(colors)
+        .flatMap { case (cone, color) =>
+          cone.vertices.map { v =>
+            v -> color
+          }
+        }.toMap
+
+      dumpGraph(dependenceGraph, colorMap)
     }
 
     // We can now replace each cluster with a single custom instruction.

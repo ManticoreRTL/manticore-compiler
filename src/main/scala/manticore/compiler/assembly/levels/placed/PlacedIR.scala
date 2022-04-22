@@ -82,7 +82,7 @@ object PlacedIR extends ManticoreAssemblyIR {
     override def toString(): String = s"${msg}_${id}"
   }
 
-  final class CustomFunctionImpl(
+  final class CustomFunctionImpl private (
     val arity: Int,
     val expr: CustomFunctionImpl.ExprTree,
   ) extends HasSerialized {
