@@ -8,7 +8,11 @@ import scalax.collection.Graph
 import scalax.collection.GraphEdge
 import scalax.collection.edge.LDiEdge
 import javax.xml.crypto.Data
-
+/**
+  * Construct JumpTables from ParMux instructions where it is beneficial
+  *
+  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 trait JumpTableConstructionTransform extends DependenceGraphBuilder {
 
   import flavor._
@@ -29,7 +33,7 @@ trait JumpTableConstructionTransform extends DependenceGraphBuilder {
     prog.copy(processes = prog.processes.map(do_transform))
   }
 
-  sealed trait JumpTableBuildRecipe
+  protected sealed trait JumpTableBuildRecipe
   case class JumpTableConstructible(
       instrs: Seq[Instruction],
       defs: Seq[DefReg],

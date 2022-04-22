@@ -3,8 +3,9 @@ package manticore.compiler.assembly.levels
 /** DeadCodeElimination.scala
   *
   * @author
-  *   Sahand Kashani <sahand.kashani@epfl.ch> Mahyar Emami
-  *   <mahyar.emami@epfl.ch>
+  * Sahand Kashani <sahand.kashani@epfl.ch>
+  *
+  * Mahyar Emami <mahyar.emami@epfl.ch>
   */
 
 import manticore.compiler.assembly.DependenceGraphBuilder

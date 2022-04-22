@@ -5,7 +5,10 @@ import manticore.compiler.assembly.BinaryOperator
 
 import manticore.compiler.assembly.levels.CanRename
 import manticore.compiler.assembly.DependenceGraphBuilder
-
+/**
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 trait CommonSubExpressionElimination
     extends Flavored
     with CanRename

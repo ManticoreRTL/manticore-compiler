@@ -19,6 +19,7 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVaria
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRConstantFolding
 import manticore.compiler.HasLoggerId
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRCommonSubExpressionElimination
 
 class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
@@ -27,7 +28,8 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
   val InitialPasses = UnconstrainedNameChecker followedBy
     UnconstrainedMakeDebugSymbols followedBy
     UnconstrainedOrderInstructions followedBy
-    UnconstrainedIRConstantFolding followedBy
+    // UnconstrainedIRConstantFolding followedBy
+    UnconstrainedIRCommonSubExpressionElimination followedBy
     UnconstrainedDeadCodeElimination followedBy
     UnconstrainedRenameVariables
 
@@ -92,6 +94,7 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
           UnconstrainedJumpTableConstruction followedBy
           WidthConversion.transformation followedBy
           UnconstrainedIRConstantFolding followedBy
+          UnconstrainedIRCommonSubExpressionElimination followedBy
           UnconstrainedDeadCodeElimination followedBy
           UnconstrainedCloseSequentialCycles followedBy
           UnconstrainedInterpreter
