@@ -22,9 +22,9 @@ class CustomLutInsertionTester extends UnitFixtureTest {
     val ctx = AssemblyContext(
       dump_all = true,
       dump_dir = Some(f.test_dir.toFile()),
-      debug_message = false,
+      debug_message = true,
       max_custom_instructions = 32,
-      max_custom_instruction_inputs = 2,
+      max_custom_instruction_inputs = 4,
       max_dimx = 4,
       max_dimy = 4,
       log_file = Some(f.test_dir.resolve("output.log").toFile())
@@ -48,9 +48,21 @@ class CustomLutInsertionTester extends UnitFixtureTest {
     val inputLoweredPath = f.test_dir.resolve(s"${benchmarkName}_lowered.masm")
     Files.writeString(inputLoweredPath, inputLoweredProg.serialized)
 
+    val inputLoweredWithLutsPath = f.test_dir.resolve(s"${benchmarkName}_lowered_luts.masm")
     val withLutsProg = CustomLutInsertion(inputLoweredProg, ctx)._1
+    Files.writeString(inputLoweredWithLutsPath, withLutsProg.serialized)
 
-    // println(withLutsProg)
+    val inputLoweredWithLutsDcePath = f.test_dir.resolve(s"${benchmarkName}_lowered_luts_dce.masm")
+    val withLutsDceProg = PlacedIRDeadCodeElimination(withLutsProg, ctx)._1
+    Files.writeString(inputLoweredWithLutsDcePath, withLutsDceProg.serialized)
+
+    def computeVirtualCycle(prog: DefProgram): Int = {
+      prog.processes.map(proc => proc.body.length).max
+    }
+
+    val vCyclesBefore = computeVirtualCycle(inputLoweredProg)
+    val vCyclesAfter = computeVirtualCycle(withLutsDceProg)
+    println(s"vCycle ${vCyclesBefore} -> ${vCyclesAfter}")
 
     // inputLowered shouldBe gotOutput
   }
