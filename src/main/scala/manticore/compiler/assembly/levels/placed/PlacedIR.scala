@@ -94,10 +94,12 @@ object PlacedIR extends ManticoreAssemblyIR {
     // expression tree, which does not require the equation).
     lazy val equation: Seq[BigInt] = computeEquation(arity, expr)
 
-    override def serialized: String = {
+    override def toString: String = {
       val args = Seq.tabulate(arity) { idx => s"%${idx}" }.mkString(", ")
       s"(${args}) => ${expr}"
     }
+
+    override def serialized: String = toString
   }
 
   object CustomFunctionImpl {

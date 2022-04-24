@@ -21,6 +21,7 @@ import com.google.ortools.linearsolver.{MPSolver, MPVariable}
 import org.jgrapht.nio.Attribute
 import scala.collection.mutable.LinkedHashMap
 import org.jgrapht.nio.DefaultAttribute
+import manticore.compiler.assembly.levels.ConstType
 
 object CustomLutInsertion
     extends DependenceGraphBuilder
@@ -28,6 +29,8 @@ object CustomLutInsertion
 
   val flavor = PlacedIR
   import PlacedIR._
+
+  import CustomFunctionImpl._
 
   // The primary inputs are *outside* the cone and feed the cone.
   case class Cone[V](root: V, primaryInputs: Set[V], vertices: Set[V]) {
@@ -44,6 +47,10 @@ object CustomLutInsertion
 
     def exists(p: V => Boolean): Boolean = {
       vertices.exists(p)
+    }
+
+    def isPrimaryInput(v: V): Boolean = {
+      primaryInputs.contains(v)
     }
 
     // Useful for returning the cone with different names (or different types, like
@@ -383,38 +390,58 @@ object CustomLutInsertion
     findBestConeCover(logicVertices, validCones)
   }
 
-  def substituteCones(
-    dependenceGraph: Graph[Instruction, DefaultEdge],
-    cones: Set[Cone[Instruction]]
-  ): (
-    Graph[Instruction, DefaultEdge],
-    Seq[CustomFunction]
-  ) = {
-    // def coneToExprTree(
-    //   cone: Cone[Instruction],
-    // ): CustomFunctionImpl.ExprTree = {
+  def coneToExprTree(
+    cone: Cone[Instruction],
+    nameToConstMap: Map[Name, Constant],
+    nameToInstrMap: Map[Name, Instruction]
+  ): CustomFunctionImpl.ExprTree = {
 
-    //   def makeExpr(
-    //     v: Instruction
-    //   ): CustomFunctionImpl.ExprTree = {
-    //     val preds = Graphs.predecessorListOf(dependenceGraph, v).asScala
-    //     v match {
-    //       case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
-    //         operator match {
-    //           case
-    //         }
-    //       case _ =>
-    //         throw new IllegalArgumentException(s"${v} is not a logic instruction!")
-    //     }
-    //   }
+    // We already know all primary inputs of the cone. We therefore assign an
+    // AtomArg with an increasing index to each so we can refer to them when
+    // constructing the cone's expression tree.
+    val nameToAtomArgMap = cone.primaryInputs.zipWithIndex.map { case (piInstr, idx) =>
+      val piName = DependenceAnalysis.regDef(piInstr).head
+      piName -> AtomArg(idx)
+    }.toMap
 
-    //   makeExpr(cone.root)
-    // }
+    def makeExpr(
+      name: Name
+    ): CustomFunctionImpl.ExprTree = {
+      if (nameToAtomArgMap.contains(name)) {
+        // Base case: The name is a primary input.
+        val atomArg = nameToAtomArgMap(name)
+        IdExpr(atomArg)
 
-    val newBody = ArrayBuffer.empty[Instruction]
+      } else if (nameToConstMap.contains(name)) {
+        // Base case: The name is a constant.
+        val const = nameToConstMap(name)
+        IdExpr(AtomConst(const))
 
+      } else {
+        // General case: Create expression for each argument of the instruction and
+        // join them to form an expression tree.
+        val instr = nameToInstrMap(name)
+        instr match {
+          case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
+            val rs1Expr = makeExpr(rs1)
+            val rs2Expr = makeExpr(rs2)
 
-    (dependenceGraph, Seq.empty)
+            operator match {
+              case AND => AndExpr(rs1Expr, rs2Expr)
+              case OR => OrExpr(rs1Expr, rs2Expr)
+              case XOR => XorExpr(rs1Expr, rs2Expr)
+              case _ =>
+                throw new IllegalArgumentException(s"Unexpected non-logic operator ${operator}.")
+            }
+
+          case _ =>
+            throw new IllegalArgumentException(s"Expected to see a logic instruction, but saw \"${instr}\" instead.")
+        }
+      }
+    }
+
+    val rootName = DependenceAnalysis.regDef(cone.root).head
+    makeExpr(rootName)
   }
 
   def onProcess(
@@ -470,15 +497,48 @@ object CustomLutInsertion
       dumpGraph(dependenceGraph, colorMap)
     }
 
-    // We can now replace each cluster with a single custom instruction.
-    val customDependenceGraph = substituteCones(dependenceGraph, bestCones)
+    // Compute a custom function for every cone found.
+
+    val nameToConstMap = proc.registers.filter { reg =>
+      reg.variable.varType == ConstType
+    }.map { constReg =>
+      // constants are guaranteed to have a constant assigned to their variable value, so
+      // it is safe to call `get`.
+      constReg.variable.name -> constReg.value.get
+    }.toMap
+
+    val nameToInstrMap = proc.body.filter { instr =>
+      isLogicInstr(instr)
+    }.flatMap { instr =>
+      DependenceAnalysis.regDef(instr) match {
+        // We have the guarantee that logic instructions only define 1 output name, so it
+        // is safe to pattern match against Seq(rd).
+        case Seq(rd) => Some(rd -> instr)
+        case Nil => None
+      }
+    }.toMap
+
+    val coneRootToCustomFuncMap = bestCones.map { cone =>
+      val expr = coneToExprTree(cone, nameToConstMap, nameToInstrMap)
+      val customFunc = CustomFunctionImpl(expr)
+      cone.root -> customFunc
+    }.toMap
+
+    // // Debug
+    // coneToCustomFuncMap.foreach { case (cone, customFunc) =>
+    //   println(cone)
+    //   println(customFunc)
+    //   println()
+    // }
+
+    // Replace the cone roots with their custom functions.
 
     (proc, numSavedInstructions, bestCones.size)
   }
 
   override def transform(
-      program: DefProgram,
-      context: AssemblyContext
+    program: DefProgram,
+    context: AssemblyContext
   ): DefProgram = {
     val origVirtualCycleLen = program.processes.map { proc =>
       proc.body.length
