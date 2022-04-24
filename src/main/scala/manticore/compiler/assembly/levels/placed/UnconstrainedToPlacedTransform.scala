@@ -272,8 +272,8 @@ object UnconstrainedToPlacedTransform
 
     case S.BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
       T.BinaryArithmetic(operator, rd, rs1, rs2, annons)
-    case S.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-      T.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons)
+    case S.CustomInstruction(func, rd, rsx, annons) =>
+      T.CustomInstruction(func, rd, rsx, annons)
     case S.Expect(ref, got, error_id, annons) =>
       val kind = annons.collectFirst { case x: Trap => x } match {
         case Some(trap) =>

@@ -75,12 +75,9 @@ trait RenameTransformation extends Flavored {
               */
             i.copy(rs1 = subst(rs1), rs2 = subst(rs2))
               .copy(rd = createNewRdDef(rd))
-          case i @ CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
+          case i @ CustomInstruction(func, rd, rsx, _) =>
             i.copy(
-              rs1 = subst(rs1),
-              rs2 = subst(rs2),
-              rs3 = subst(rs3),
-              rs4 = subst(rs4)
+              rsx = rsx.map(rs => subst(rs))
             ).copy(rd = createNewRdDef(rd))
           case i @ LocalLoad(rd, base, _, _) =>
             i.copy(base = subst(base)).copy(rd = createNewRdDef(rd))

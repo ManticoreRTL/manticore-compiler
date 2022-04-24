@@ -59,6 +59,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
     )
   )
 
+  // TODO (skashani): Remove custom functions from this UnconstrainedIR test as
+  // custom functions are not supported at this level of the IR.
   val funcs = ("", Seq.empty)
 
   val insts = (
@@ -80,8 +82,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         "xi",
         "xi"
       ),
-      CustomInstruction("f0", "xi", "y", "y", "yi", "yi"),
-      CustomInstruction("f1", "x", "y", "y", "yi", "yi"),
+      CustomInstruction("f0", "xi", Seq("y", "y", "yi", "yi")),
+      CustomInstruction("f1", "x", Seq("y", "y", "yi", "yi")),
       LocalLoad("o", "m", BigInt(0x01)),
       LocalStore("i", "mi", BigInt(0x02), Some("p")),
       SetValue("mi", BigInt(0x12123)),

@@ -236,19 +236,34 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         BinaryArithmetic(op, rd.chars, rs1.chars, rs2.chars, a)
     }
 
+  // def lvec_inst: Parser[CustomInstruction] =
+  //   (annotations ~ keyword(
+  //     "CUST"
+  //   ) ~ ident ~ "," ~ "[" ~ ident ~ "]" ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident) ^^ {
+  //     case (a ~ Keyword("CUST")
+  //         ~ rd ~ _ ~ _ ~ fn ~ _ ~ _ ~ rs1 ~ _ ~ rs2 ~ _ ~ rs3 ~ _ ~ rs4) =>
+  //       CustomInstruction(
+  //         fn.chars,
+  //         rd.chars,
+  //         rs1.chars,
+  //         rs2.chars,
+  //         rs3.chars,
+  //         rs4.chars,
+  //         a
+  //       )
+  //   }
+
   def lvec_inst: Parser[CustomInstruction] =
+    // TODO (skashani): Absolutely not sure how to get a Seq[Name] from the grammer.
     (annotations ~ keyword(
       "CUST"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "]" ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident) ^^ {
+    ) ~ ident ~ "," ~ "[" ~ ident ~ "]" ~ "," ~ ident) ^^ {
       case (a ~ Keyword("CUST")
-          ~ rd ~ _ ~ _ ~ fn ~ _ ~ _ ~ rs1 ~ _ ~ rs2 ~ _ ~ rs3 ~ _ ~ rs4) =>
+          ~ rd ~ _ ~ _ ~ fn ~ _ ~ _ ~ rsx) =>
         CustomInstruction(
           fn.chars,
           rd.chars,
-          rs1.chars,
-          rs2.chars,
-          rs3.chars,
-          rs4.chars,
+          rsx.chars.split(","),
           a
         )
     }

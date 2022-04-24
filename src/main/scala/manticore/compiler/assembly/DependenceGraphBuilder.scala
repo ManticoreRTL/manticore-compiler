@@ -44,8 +44,8 @@ trait DependenceGraphBuilder extends InputOutputPairs {
       inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
           Seq(rs1, rs2)
-        case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-          Seq(rs1, rs2, rs3, rs4)
+        case CustomInstruction(func, rd, rsx, annons) =>
+          rsx
         case LocalLoad(rd, base, offset, annons) =>
           Seq(base)
         case LocalStore(rs, base, offset, predicate, annons) =>
@@ -98,7 +98,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
     ): Seq[Name] = {
       inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Seq(rd)
-        case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) => Seq(rd)
+        case CustomInstruction(func, rd, rsx, annons)                => Seq(rd)
         case LocalLoad(rd, base, offset, annons)                     => Seq(rd)
         case LocalStore(rs, base, offset, p, annons)                 => Nil
         case GlobalLoad(rd, base, annons)                            => Seq(rd)
