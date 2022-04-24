@@ -537,20 +537,8 @@ object CustomLutInsertion
       s"Mapped custom functions:\n${defFuncsStr}"
     }
 
-    // Not all custom functions use the full arith of the LUTs in the hardware.
-    // Nevertheless, we still need a named for every argument of the custom function.
-    // We use the constant 0 for all unused LUT inputs in this case.
-    //
-    // TODO (skashani): Not sure if constant 0 always exists in the register file.
-    // If it does not, then I'll need to insert it.
-    val constZeroName = nameToConstMap.find { case (name, value) =>
-      value.toInt == 0
-    }.map { case (name, valueZero) =>
-      name
-    }.get
-
     // Replace the cone roots with their custom functions.
-    // Note that this leaves all intermediate vertices of the cones in the process body.
+    // Note that this keeps all intermediate vertices of the cones in the process body.
     // A subsequent DeadCodeElimination pass will be needed to eliminate these now-unused instructions.
     val newBody = proc.body.map { instr =>
       rootToDefFuncMap.get(instr) match {
@@ -561,13 +549,15 @@ object CustomLutInsertion
           val rd = DependenceAnalysis.regDef(instr).head
 
           // The LUT hardware has "arity" inputs, but the custom function may have less
-          // than this count. We use the named constant 0 to fill up the unused inputs.
+          // than this count. Nevertheless, we still need a named for every argument of
+          // the custom function. We just re-use the first LUT input in all unused inputs.
+          val defaultInput = argToNameMap(AtomArg(0))
 
           val rsx = Seq.tabulate(ctx.max_custom_instruction_inputs) { argIdx =>
             // Unused inputs use the name of constant 0 here.
             argToNameMap.get(AtomArg(argIdx)) match {
               case Some(name) => name
-              case None => constZeroName
+              case None => defaultInput
             }
           }
 
