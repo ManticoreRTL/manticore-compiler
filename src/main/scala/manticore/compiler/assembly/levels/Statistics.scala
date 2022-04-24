@@ -246,7 +246,7 @@ object StatisticCollector {
         }
         if (pairs.nonEmpty) {
           str ++= s"${tabs}\tdata: \n"
-          runtime.foreach { case (k, v) =>
+          pairs.foreach { case (k, v) =>
             str ++= s"${tabs}\t\t- ${k}: ${v}\n"
           }
         }
@@ -295,7 +295,7 @@ object StatisticCollector {
 
     override def record(name: String, value: Any): Unit = value match {
       case (_: Double | _: Int | _: String) =>
-        currentTrans.copy(
+        currentTrans = currentTrans.copy(
           user = currentTrans.user.copy(pairs =
             currentTrans.user.pairs :+ (name -> value)
           )
