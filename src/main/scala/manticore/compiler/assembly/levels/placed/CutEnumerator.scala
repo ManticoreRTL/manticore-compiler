@@ -180,8 +180,7 @@ object CutEnumerator {
       // val vCutsStr = vCuts(vId).map { cut =>
       //   cut.mkString("-")
       // }.mkString("\n")
-      // println(s"${maxCutSize}-cuts of root ${v}, num_cuts = ${vCuts(vId).size}\n${vCutsStr}")
-
+      // println(s"${maxCutSize}-cuts of root ${vId}, num_cuts = ${vCuts(vId).size}\n${vCutsStr}")
     }
 
     // Transform vertex IDs back to the original input vertices.

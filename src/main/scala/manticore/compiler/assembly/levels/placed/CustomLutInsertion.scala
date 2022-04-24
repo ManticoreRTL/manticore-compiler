@@ -26,10 +26,14 @@ object CustomLutInsertion
     extends DependenceGraphBuilder
     with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
-  case class Cone[V](root: V, vertices: Set[V]) {
+  val flavor = PlacedIR
+  import PlacedIR._
+
+  // The primary inputs are *outside* the cone and feed the cone.
+  case class Cone[V](root: V, primaryInputs: Set[V], vertices: Set[V]) {
     override def toString(): String = {
       val nonRootVertices = vertices - root
-      s"(${root}) --- ${nonRootVertices.mkString(" --- ")}"
+      s"(root = ${root}), (body = ${nonRootVertices.mkString(" --- ")}), (primary inputs = ${primaryInputs.mkString(" --- ")})"
     }
 
     def size: Int = vertices.size
@@ -46,13 +50,11 @@ object CustomLutInsertion
     // for replacing a Cone[Int] with a Cone[Instruction]).
     def renameVertices[T](f: V => T): Cone[T] = {
       val rootRenamed = f(root)
+      val pisRenamed = primaryInputs.map(v => f(v))
       val verticesRenamed = vertices.map(v => f(v))
-      Cone(rootRenamed, verticesRenamed)
+      Cone(rootRenamed, pisRenamed, verticesRenamed)
     }
   }
-
-  val flavor = PlacedIR
-  import PlacedIR._
 
   def dumpGraph[V](
     g: Graph[V, DefaultEdge],
@@ -172,50 +174,53 @@ object CustomLutInsertion
     // Returns a subgraph of g containing the given vertices *and* their primary inputs (which are not logic
     // instructions by definition). The primary inputs are needed to perform cut enumeration as otherwise we
     // would not know the in-degree of the first vertices in each logic cluster.
-    def getClustersSubgraph(
-      g: Graph[Instruction, DefaultEdge],
-      vertices: Set[Instruction]
+    def getClustersSubgraph[V](
+      g: Graph[V, DefaultEdge],
+      clusterVertices: Set[V]
     ): (
-      Graph[Instruction, DefaultEdge],
-      Set[Instruction] // primary inputs (non-logic instructions by construction).
+      Graph[V, DefaultEdge],
+      Set[V] // primary inputs
     ) = {
       // The primary inputs are vertices *outside* the given set of vertices that are connected
       // to vertices *inside* the cluster.
-      val primaryInputs = vertices.flatMap { vInACluster =>
-        Graphs.predecessorListOf(instructionGraph, vInACluster).asScala
+      val primaryInputs = clusterVertices.flatMap { vInACluster =>
+        Graphs.predecessorListOf(g, vInACluster).asScala
       }.filter { vAnywhere =>
-        !vertices.contains(vAnywhere)
+        !clusterVertices.contains(vAnywhere)
       }
 
-      val subgraphVertices = primaryInputs ++ vertices
-      val instructionSubgraph = new AsSubgraph(instructionGraph, subgraphVertices.asJava)
+      val subgraphVertices = primaryInputs ++ clusterVertices
+      val subgraph = new AsSubgraph(g, subgraphVertices.asJava)
 
-      (instructionSubgraph, primaryInputs)
+      (subgraph, primaryInputs)
     }
 
-    def cutToCone(
-      g: Graph[Instruction, DefaultEdge],
-      root: Instruction,
-      cutLeaves: Set[Instruction]
-    ): Cone[Instruction] = {
-      val coneVertices = MHashSet.empty[Instruction]
+    // Backtracks from the root until the cut vertices. All vertices encountered along the
+    // way form a cone. The cut vertices themselves are not part of the cone and are instead
+    // its "primary inputs".
+    def cutToCone[V](
+      g: Graph[V, DefaultEdge],
+      root: V,
+      cut: Set[V]
+    ): Cone[V] = {
+      val coneVertices = MHashSet.empty[V]
 
-      // Backtrack from the given vertex until a vertex in the cutLeaves is seen.
-      def backtrack(v: Instruction): Unit = {
-        if (!cutLeaves.contains(v)) {
+      // Backtrack from the given vertex until a vertex in the cut is seen.
+      def backtrack(v: V): Unit = {
+        if (!cut.contains(v)) {
           coneVertices += v
           Graphs.predecessorListOf(g, v).asScala.foreach(pred => backtrack(pred))
         }
       }
 
       backtrack(root)
-      Cone(root, coneVertices.toSet)
+      Cone(root, cut, coneVertices.toSet)
     }
 
-    def findBestConeCover(
-      vertices: Set[Instruction],
-      cones: Set[Cone[Instruction]]
-    ): Set[Cone[Instruction]] = {
+    def findBestConeCover[V](
+      vertices: Set[V],
+      cones: Set[Cone[V]]
+    ): Set[Cone[V]] = {
       // We want to maximize the number of instructions we can remove from the cluster.
       // The cones must be non-overlapping as otherwise a vertex *outside* the cone uses an intermediate
       // result from within the cone and we therefore can't remove the vertices that make up the cone.
@@ -345,11 +350,10 @@ object CustomLutInsertion
       // These do NOT include the "singleton" cones that consist of a single
       // vertex as the backtracking algorithm to generate a cone from a (root, cut)
       // pair stops before the cut leaves are seen.
+      // Note though that this is not a problem as we are not computing a full
+      // set cover where *every* vertex of the graph must be covered, but rather
+      // the largest partial cover using the cones that have at least 2 vertices.
       rootCuts.map(cut => cutToCone(clusterSubgraph, root, cut))
-    } ++ logicVertices.map { root =>
-      // Add the "singleton" cones. These are needed to guarantee a feasible
-      // solution exists in the non-overlapping set cover problem.
-      Cone(root, Set(root))
     }
 
     // Sanity check.
@@ -377,6 +381,40 @@ object CustomLutInsertion
     }
 
     findBestConeCover(logicVertices, validCones)
+  }
+
+  def substituteCones(
+    dependenceGraph: Graph[Instruction, DefaultEdge],
+    cones: Set[Cone[Instruction]]
+  ): (
+    Graph[Instruction, DefaultEdge],
+    Seq[CustomFunction]
+  ) = {
+    // def coneToExprTree(
+    //   cone: Cone[Instruction],
+    // ): CustomFunctionImpl.ExprTree = {
+
+    //   def makeExpr(
+    //     v: Instruction
+    //   ): CustomFunctionImpl.ExprTree = {
+    //     val preds = Graphs.predecessorListOf(dependenceGraph, v).asScala
+    //     v match {
+    //       case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
+    //         operator match {
+    //           case
+    //         }
+    //       case _ =>
+    //         throw new IllegalArgumentException(s"${v} is not a logic instruction!")
+    //     }
+    //   }
+
+    //   makeExpr(cone.root)
+    // }
+
+    val newBody = ArrayBuffer.empty[Instruction]
+
+
+    (dependenceGraph, Seq.empty)
   }
 
   def onProcess(
@@ -433,7 +471,7 @@ object CustomLutInsertion
     }
 
     // We can now replace each cluster with a single custom instruction.
-    // TODO (skashani)
+    val customDependenceGraph = substituteCones(dependenceGraph, bestCones)
 
     (proc, numSavedInstructions, bestCones.size)
   }
