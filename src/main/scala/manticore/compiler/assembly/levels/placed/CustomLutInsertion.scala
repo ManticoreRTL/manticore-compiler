@@ -390,11 +390,14 @@ object CustomLutInsertion
     findBestConeCover(logicVertices, validCones)
   }
 
-  def coneToExprTree(
+  def coneToCustomFunction(
     cone: Cone[Instruction],
     nameToConstMap: Map[Name, Constant],
     nameToInstrMap: Map[Name, Instruction]
-  ): CustomFunctionImpl.ExprTree = {
+  ): (
+    CustomFunction, // The custom function of this cone.
+    Map[AtomArg, Name] // The names of the custom function's inputs.
+  ) = {
 
     // We already know all primary inputs of the cone. We therefore assign an
     // AtomArg with an increasing index to each so we can refer to them when
@@ -441,18 +444,18 @@ object CustomLutInsertion
     }
 
     val rootName = DependenceAnalysis.regDef(cone.root).head
-    makeExpr(rootName)
+    val rootExpr = makeExpr(rootName)
+    val customFunc = CustomFunctionImpl(rootExpr)
+    val atomArgToNameMap = nameToAtomArgMap.map(kv => kv.swap)
+
+    (customFunc, atomArgToNameMap)
   }
 
   def onProcess(
     proc: DefProcess
   )(
     implicit ctx: AssemblyContext
-  ): (
-    DefProcess,
-    Int, // Number of instructions saved when custom instructions are implemented
-    Int, // Number of custom functions used
-  ) = {
+  ): DefProcess = {
     val dependenceGraph = createDependenceGraph(proc)
 
     // Identify logic clusters in the graph.
@@ -483,7 +486,7 @@ object CustomLutInsertion
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
     // showing each cone with a different color.
     ctx.logger.dumpArtifact(
-      s"dependence_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
+      s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
     ) {
       val colors = CyclicColorGenerator(bestCones.size)
       val colorMap = bestCones
@@ -518,49 +521,73 @@ object CustomLutInsertion
       }
     }.toMap
 
-    val coneRootToCustomFuncMap = bestCones.map { cone =>
-      val expr = coneToExprTree(cone, nameToConstMap, nameToInstrMap)
-      val customFunc = CustomFunctionImpl(expr)
-      cone.root -> customFunc
+    val rootToDefFuncMap = bestCones.zipWithIndex.map { case (cone, idx) =>
+      val (customFunc, argToNameMap) = coneToCustomFunction(cone,nameToConstMap, nameToInstrMap)
+      // Custom functions are wrapped in a named DefFunc as per the IR spec.
+      val defFunc = DefFunc(s"custom_func_${idx}", customFunc)
+      // We map the root INSTRUCTION (not its regDef-ed name) to the DefFunc so we can later
+      // map the instruction in the process body without extra processing.
+      cone.root -> (defFunc, argToNameMap)
     }.toMap
 
-    // // Debug
-    // coneToCustomFuncMap.foreach { case (cone, customFunc) =>
-    //   println(cone)
-    //   println(customFunc)
-    //   println()
-    // }
+    ctx.logger.debug {
+      val defFuncsStr = rootToDefFuncMap.map { case (root, customFunc) =>
+        s"${root} -> ${customFunc}"
+      }.mkString("\n")
+      s"Mapped custom functions:\n${defFuncsStr}"
+    }
+
+    // Not all custom functions use the full arith of the LUTs in the hardware.
+    // Nevertheless, we still need a named for every argument of the custom function.
+    // We use the constant 0 for all unused LUT inputs in this case.
+    //
+    // TODO (skashani): Not sure if constant 0 always exists in the register file.
+    // If it does not, then I'll need to insert it.
+    val constZeroName = nameToConstMap.find { case (name, value) =>
+      value.toInt == 0
+    }.map { case (name, valueZero) =>
+      name
+    }.get
 
     // Replace the cone roots with their custom functions.
+    // Note that this leaves all intermediate vertices of the cones in the process body.
+    // A subsequent DeadCodeElimination pass will be needed to eliminate these now-unused instructions.
+    val newBody = proc.body.map { instr =>
+      rootToDefFuncMap.get(instr) match {
+        case Some((defFunc, argToNameMap)) =>
+          // Replace the instruction with a custom instruction.
 
-    (proc, numSavedInstructions, bestCones.size)
+          // We have the guarantee there is only 1 target register by construction.
+          val rd = DependenceAnalysis.regDef(instr).head
+
+          // The LUT hardware has "arity" inputs, but the custom function may have less
+          // than this count. We use the named constant 0 to fill up the unused inputs.
+
+          val rsx = Seq.tabulate(ctx.max_custom_instruction_inputs) { argIdx =>
+            // Unused inputs use the name of constant 0 here.
+            argToNameMap.get(AtomArg(argIdx)) match {
+              case Some(name) => name
+              case None => constZeroName
+            }
+          }
+
+          CustomInstruction(defFunc.name, rd, rsx)
+
+        case None =>
+          // Leave the instruction unchanged.
+          instr
+      }
+    }
+
+    val newProc = proc.copy(body = newBody)
+    newProc
   }
 
   override def transform(
     program: DefProgram,
     context: AssemblyContext
   ): DefProgram = {
-    val origVirtualCycleLen = program.processes.map { proc =>
-      proc.body.length
-    }.max
-
     val newProcesses = program.processes.map(proc => onProcess(proc)(context))
-
-    val progNumSavedInstructions = newProcesses.map { case (proc, numSavedInstructions, numCustomFunctionsUsed) =>
-      numSavedInstructions
-    }.sum
-
-    val progNumCustomFunctions = newProcesses.map { case (proc, numSavedInstructions, numCustomFunctionsUsed) =>
-      numCustomFunctionsUsed
-    }.sum
-
-    val newVirtualCycleLen = newProcesses.map { case (proc, procNumSavedInstructions, numCustomFunctionsUsed) =>
-      proc.body.length - procNumSavedInstructions
-    }.max
-
-    context.logger.info(s"Virtual cycle length: ${origVirtualCycleLen} -> ${newVirtualCycleLen} (using ${progNumCustomFunctions} custom functions)")
-    context.logger.info(s"Will save ${progNumSavedInstructions} instructions in the whole program")
-
-    program
+    program.copy(processes = newProcesses)
   }
 }
