@@ -40,7 +40,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
       */
     def regUses(
         inst: Instruction
-    )(implicit ctx: AssemblyContext): Seq[Name] = {
+    ): Seq[Name] = {
       inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
           Seq(rs1, rs2)
@@ -95,7 +95,7 @@ trait DependenceGraphBuilder extends InputOutputPairs {
       */
     def regDef(
         inst: Instruction
-    )(implicit ctx: AssemblyContext): Seq[Name] = {
+    ): Seq[Name] = {
       inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Seq(rd)
         case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) => Seq(rd)
