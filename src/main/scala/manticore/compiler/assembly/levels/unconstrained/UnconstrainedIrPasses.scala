@@ -25,10 +25,34 @@ object UnconstrainedNameChecker
     extends AssemblyNameChecker
     with AssemblyChecker[UnconstrainedIR.DefProgram] {
   val flavor = UnconstrainedIR
+  import flavor._
   override def check(
-      source: UnconstrainedIR.DefProgram,
+      program: DefProgram,
       context: AssemblyContext
-  ): Unit = do_check(source, context)
+  ): Unit = {
+
+    program.processes.foreach { case process =>
+      NameCheck.checkNames(process) { case (name, inst) =>
+        context.logger.error(s"name ${name} is not defined!", inst)
+      }
+      NameCheck.checkLabels(process) { case (label, inst) =>
+        context.logger.error(s"label ${label} is not defined!", inst)
+      }
+      NameCheck.checkSSA(process) { case NameCheck.NonSSA(rd, assigns) =>
+        context.logger.error(
+          s"${rd} is assigned ${assigns.length} times:\n${assigns.mkString("\n")}"
+        )
+      }
+
+    }
+    NameCheck.checkSends(program)(
+      badDest = inst => context.logger.error("invalid destination", inst),
+      selfDest = inst => context.logger.error("self SEND is not allowed", inst),
+      badRegister =
+        inst => context.logger.error("Bad destination register", inst)
+    )
+
+  }
 
 }
 

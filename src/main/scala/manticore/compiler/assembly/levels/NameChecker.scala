@@ -20,137 +20,309 @@ trait AssemblyNameChecker extends Flavored {
 
   import flavor._
 
-  def do_check(prog: DefProgram, context: AssemblyContext): Unit = {
+  object NameCheck {
 
-    case class DefinedName[TT](name: TT, owner: Declaration)
-    @tailrec
-    def checkDecls[TT](decls: Seq[DefinedName[TT]]): Unit = decls match {
-      case Nil      => ()
-      case r :: Nil => ()
-      case r :: tail =>
-        if (tail.contains(r)) {
-          context.logger.error(
-            s"${r.name} is declared multiple times, first time at ${r.owner.pos}"
-          )
+    /** Collect any undefined registers in the process
+      *
+      * @param process
+      * @return
+      */
+    def collectUndefinedRegRefs(
+        process: DefProcess
+    ): Seq[(Name, Instruction)] = {
+
+      val isDefinedReg: Name => Boolean = process.registers.map { r =>
+        r.variable.name
+      }.toSet
+
+      def checkBlock(
+          undefs: Seq[(Name, Instruction)],
+          block: Seq[Instruction]
+      ): Seq[(Name, Instruction)] = {
+        block.foldLeft(undefs) { case (acc, inst) =>
+          inst match {
+            case Expect(ref, got, error_id, annons) =>
+              acc ++ Seq(ref, got).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case GlobalLoad(rd, base, annons) =>
+              acc ++ Seq(rd, base._1, base._2, base._3).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case GlobalStore(rs, base, predicate, annons) =>
+              acc ++ (Seq(rs, base._1, base._2, base._3) ++ predicate.toSeq)
+                .collect { case n if !isDefinedReg(n) => (n -> inst) }
+            case JumpTable(target, results, blocks, dslot, annons) =>
+              val defTarget = isDefinedReg(target) match {
+                case true  => Seq.empty
+                case false => Seq((target -> inst))
+              }
+              (blocks.map(_.block) :+ dslot).foldLeft(acc ++ defTarget) {
+                case (prev, blkc) =>
+                  checkBlock(prev, blkc)
+              }
+
+            case Lookup(rd, index, base, annons) =>
+              acc ++ Seq(rd, index, base).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case ParMux(rd, choices, default, annons) =>
+              acc ++ (
+                Seq(rd, default) ++ choices
+                  .flatMap { case ParMuxCase(c, rs) => Seq(c, rs) }
+              ).collect { case n if !isDefinedReg(n) => (n -> inst) }
+
+            case Nop =>
+              acc
+            case Recv(rd, rs, source_id, annons) =>
+              if (isDefinedReg(rd)) {
+                acc
+              } else {
+                acc :+ ((rd -> inst))
+              }
+            case Send(rd, rs, dest_id, annons) =>
+              if (isDefinedReg(rs)) {
+                acc
+              } else {
+                acc :+ ((rs -> inst))
+              }
+            case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
+              acc ++ Seq(rd, rs1, rs2, rs3, rs4).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case Mux(rd, sel, rfalse, rtrue, annons) =>
+              acc ++ Seq(rd, sel, rfalse, rtrue).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case SetValue(rd, value, annons) =>
+              if (isDefinedReg(rd)) {
+                acc
+              } else {
+                acc :+ ((rd -> inst))
+              }
+            case LocalLoad(rd, base, offset, annons) =>
+              acc ++ Seq(rd, base).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case AddC(rd, co, rs1, rs2, ci, annons) =>
+              acc ++ Seq(rd, co, rs1, rs2, ci).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case LocalStore(rs, base, offset, predicate, annons) =>
+              acc ++ (Seq(rs, base) ++ predicate.toSeq).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case ClearCarry(carry, annons) =>
+              if (isDefinedReg(carry)) {
+                acc
+              } else {
+                acc :+ ((carry -> inst))
+              }
+            case Mov(rd, rs, annons) =>
+              acc ++ Seq(rd, rs).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case Predicate(rs, annons) =>
+              if (isDefinedReg(rs)) {
+                acc
+              } else {
+                acc :+ ((rs -> inst))
+              }
+            case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
+              acc ++ Seq(rd, rs1, rs2).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case PadZero(rd, rs, width, annons) =>
+              acc ++ Seq(rd, rs).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
+            case SetCarry(carry, annons) =>
+              if (isDefinedReg(carry)) {
+                acc
+              } else {
+                acc :+ ((carry -> inst))
+              }
+          }
 
         }
-        checkDecls(tail)
+
+      }
+
+      checkBlock(Seq.empty, process.body)
     }
 
-    def checkProcess(proc: DefProcess): Unit = {
+    /** Collect any undefined labels in the process
+      *
+      * @param process
+      * @return
+      */
 
-      val reg_defs: Seq[DefinedName[Name]] = proc.registers.map { r =>
-        DefinedName(r.variable.name, r)
+    def collectUndefinedLabels(process: DefProcess): Seq[(Label, JumpTable)] = {
+      val isDefinedLabel: Label => Boolean = process.labels.flatMap { lgrp =>
+        (lgrp.default.toSeq ++ lgrp.indexer.map(_._2))
+      }.toSet
+      def checkJumpTables(
+          undefs: Seq[(Label, JumpTable)],
+          block: Seq[Instruction]
+      ): Seq[(Label, JumpTable)] = block.foldLeft(undefs) {
+        case (acc, i @ JumpTable(_, _, blocks, _, _)) =>
+          blocks.foldLeft(acc) { case (prev, JumpCase(lbl, blk)) =>
+            if (!isDefinedLabel(lbl)) {
+              checkJumpTables(prev :+ (lbl -> i), blk)
+            } else {
+              checkJumpTables(prev, blk)
+            }
+          }
+        case (acc, _) => acc
+
       }
-      checkDecls(reg_defs)
-      val func_defs = proc.functions.map { f => DefinedName(f.name, f) }
-      checkDecls(func_defs)
+      checkJumpTables(Seq.empty, process.body)
+    }
 
-      val reg_names = reg_defs.map { _.name }
-      val func_names = func_defs.map { _.name }
-      def checkRegs(regs: Seq[Name])(implicit inst: Instruction) =
-        regs.foreach { r =>
-          if (!reg_names.contains(r)) {
-            context.logger.error(
-              s"undefined register ${r} at ${inst.serialized}:${inst.pos}"
-            )
+    case class NonSSA(rd: Name, assigns: Seq[Instruction]) {
+      def :+(inst: Instruction) = copy(assigns = assigns :+ inst)
+    }
 
+    /** Collect non SSA assignments, i.e., collect any name that has been
+      * assigned multiple times
+      *
+      * @param process
+      * @return
+      */
+    def collectNonSSA(process: DefProcess): Iterable[NonSSA] = {
+      def checkSSA(
+          dirty: Map[Name, Seq[Instruction]],
+          block: Seq[Instruction]
+      ): Map[Name, Seq[Instruction]] =
+        block.foldLeft(dirty) { case (assigns, inst) =>
+          inst match {
+            case GlobalLoad(rd, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case JumpTable(_, results, blocks, dslot, _) =>
+              checkSSA(
+                assigns ++ results.map { case Phi(rd, _) =>
+                  (rd -> (assigns(rd) :+ inst))
+                },
+                blocks.flatMap(_.block) ++ dslot
+              )
+            case Lookup(rd, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case ParMux(rd, choices, default, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+
+            case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case AddC(rd, co, _, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst)) + (co -> (assigns(
+                co
+              ) :+ inst))
+            case Mov(rd, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case BinaryArithmetic(_, rd, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case Mux(rd, sel, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case ClearCarry(rd, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case SetValue(rd, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case PadZero(rd, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case SetCarry(rd, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case LocalLoad(rd, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case Recv(rd, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
+            case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect |
+                _: GlobalStore) =>
+              assigns
           }
         }
-
-      def checkInst(inst: Instruction): Unit = {
-        implicit val implicit_inst = inst
-        inst match {
-          case BinaryArithmetic(_, rd, rs1, rs2, _) =>
-            checkRegs(Seq(rd, rs1, rs2))
-          case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
-            if (!func_names.contains(func)) {
-              context.logger.error(
-                s"undefined function ${func} at ${inst.serialized}:${inst.pos}"
-              )
-
-            }
-            checkRegs(Seq(rd, rs1, rs2, rs3, rs4))
-          case LocalLoad(rd, base, _, _) => checkRegs(Seq(rd, base))
-          case LocalStore(rs, base, _, p, _) =>
-            checkRegs(Seq(rs, base) ++ p.toSeq)
-          case GlobalLoad(rd, (hh, h, l), _) =>
-            checkRegs(Seq(rd, hh, h, l))
-          case GlobalStore(rs, (hh, h, l), p, _) =>
-            checkRegs(Seq(rs, hh, h, l) ++ p.toSeq)
-          case SetValue(rd, _, _)     => checkRegs(Seq(rd))
-          case Expect(ref, got, _, _) => checkRegs(Seq(ref, got))
-          case Send(rd, rs, _, _)     => checkRegs(Seq(rs))
-          case Predicate(rs, _)       => checkRegs(Seq(rs))
-          case Mux(rd, sel, rs1, rs2, _) =>
-            checkRegs(Seq(rd, sel, rs1, rs2))
-          case Nop                            => // do nothing
-          case PadZero(rd, rs, width, annons) => checkRegs(Seq(rd, rs))
-          case AddC(rd, co, rs1, rs2, ci, annons) =>
-            checkRegs(Seq(rd, co, rs1, rs2, ci))
-          case Mov(rd, rs, _)    => checkRegs(Seq(rd, rs))
-          case ClearCarry(rd, _) => checkRegs(Seq(rd))
-          case SetCarry(rd, _)   => checkRegs(Seq(rd))
-          case _: Recv =>
-            context.logger.error("can not check instruction", inst)
-            context.logger.fail("Failed checkInst")
-          case ParMux(rd, choices, default, annons) =>
-            checkRegs(rd +: choices.flatMap { case ParMuxCase(a, b) =>
-              Seq(a, b)
-            })
-
-        }
+      checkSSA(
+        Map.empty[Name, Seq[Instruction]].withDefaultValue(Seq.empty),
+        process.body
+      ).collect {
+        case (name, assigns) if (assigns.length > 1) =>
+          NonSSA(name, assigns)
       }
-
-      proc.body.foreach(i => checkInst(i))
     }
 
-    /** Check that every used named in each process is defined and not name is
-      * defined twice in the same process scope
+    /** Check all register names have a DefReg
+      *
+      * @param process
+      * @param notifier
       */
-    prog.processes.foreach(checkProcess)
+    def checkNames(
+        process: DefProcess
+    )(notifier: (Name, Instruction) => Unit): Unit = {
+      val undefinedNames = collectUndefinedRegRefs(process)
+      undefinedNames.foreach { case (n, inst) => notifier(n, inst) }
+    }
+
+    /** Check all labels in the process are defined
+      *
+      * @param process
+      * @param notifier
+      */
+    def checkLabels(
+        process: DefProcess
+    )(notifier: (Label, Instruction) => Unit): Unit = {
+      val undefinedLabels = collectUndefinedLabels(process)
+      undefinedLabels.foreach { case (l, inst) => notifier(l, inst) }
+    }
+
+    /** Check that the process is in SSA form
+      *
+      * @param process
+      * @param notifier
+      */
+    def checkSSA(process: DefProcess)(notifier: NonSSA => Unit): Unit = {
+      val nonSSA = collectNonSSA(process)
+      nonSSA.foreach { notifier }
+    }
 
     /** Check cross process names, make sure all send messages have valid
-      * destinations
+      * destinations and target registers
+      * @param prog
+      * @param selfDest
+      * @param badDest
+      * @param badRegister
       */
-    val proc_ids = prog.processes.map { _.id }
+    def checkSends(prog: DefProgram)(
+        selfDest: Send => Unit,
+        badDest: Send => Unit,
+        badRegister: Send => Unit
+    ): Unit = {
 
-    val proc_map = prog.processes.map { p => p.id -> p }.toMap
+      /** Check cross process names, make sure all send messages have valid
+        * destinations
+        */
+      val procIds = prog.processes.map { _.id }
 
-    checkDecls {
-      proc_ids.zip(prog.processes).map { case (n, o) => DefinedName(n, o) }
-    }
-
-    prog.processes.foreach { p =>
-      p.body.filter { _.isInstanceOf[Send] }.map(_.asInstanceOf[Send]).foreach {
-        case inst @ Send(rd, _, dest, _) =>
-          if (dest == p.id) {
-            context.logger
-              .error(s"self-send instruction at ${inst.serialized}:${inst.pos}")
-
-          }
-          if (!proc_ids.contains(dest)) {
-            context.logger
-              .error(
-                s"invalid destination id at ${inst.serialized}:${inst.pos}"
-              )
-
-          } else {
-
-            // check if dest reg is defined
-            if (
-              !proc_map(dest).registers
-                .map { r => r.variable.name }
-                .contains(rd)
-            ) {
-              context.logger.error(
-                s"destination register ${rd} is not defined in process ${dest} in ${inst}:${inst.pos}"
-              )
-
+      val procMap = prog.processes.map { p => p.id -> p }.toMap
+      prog.processes.foreach { p =>
+        p.body
+          .filter { _.isInstanceOf[Send] }
+          .map(_.asInstanceOf[Send])
+          .foreach { case inst @ Send(rd, _, dest, _) =>
+            if (dest == p.id) { selfDest(inst) }
+            if (!procIds.contains(dest)) {
+              badDest(inst)
+            } else {
+              // check if dest reg is defined
+              if (
+                !procMap(dest).registers
+                  .map { r => r.variable.name }
+                  .contains(rd)
+              ) {
+                badRegister(inst)
+              }
             }
           }
       }
     }
+
 
   }
 }
