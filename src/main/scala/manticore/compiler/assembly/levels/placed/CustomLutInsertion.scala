@@ -569,7 +569,13 @@ object CustomLutInsertion
       }
     }
 
-    val newProc = proc.copy(body = newBody)
+    val newProc = proc.copy(
+      body = newBody,
+      functions = rootToDefFuncMap.values.map {
+        case (defFunc, argToNameMap) => defFunc
+      }.toSeq
+    )
+
     newProc
   }
 
