@@ -31,9 +31,8 @@ trait Transformation[
 ] extends ((S, AssemblyContext) => (T, AssemblyContext))
     with HasTransformationID {
 
-  // def transform(s: S)(implicit ctx: AssemblyContext): T
   def apply(s: S, ctx: AssemblyContext): (T, AssemblyContext)
-  // (transform(s)(ctx), ctx)
+
   def followedBy[R <: ManticoreAssemblyIR#DefProgram](
       g: Transformation[T, R]
   ): Transformation[S, R] = { case (source_ir, source_ctx) =>
@@ -46,6 +45,24 @@ trait Transformation[
   ): (S, AssemblyContext) => Unit = { case (source_ir, source_ctx) =>
     val (target_ir, target_ctx) = this.apply(source_ir, source_ctx)
     g.apply(target_ir, target_ctx)
+  }
+
+}
+
+object Transformation {
+
+  def predicated[T <: ManticoreAssemblyIR#DefProgram](
+      predicate: => Boolean
+  )(original: Transformation[T, T]) = new Transformation[T, T] {
+
+    override def apply(s: T, ctx: AssemblyContext): (T, AssemblyContext) = {
+      if (predicate) {
+        // ctx.logger.info("Skipping transformation")
+        original(s, ctx)
+      } else {
+        (s, ctx)
+      }
+    }
   }
 
 }
@@ -118,13 +135,9 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
     *
     * @param cond
     */
-  def guard(cond: Boolean): AssemblyChecker[T] = {
-    if (cond) {
-      this
-    } else {
-      new SkippedCheck[T](phase_id) {}
-    }
-  }
+  def guard(cond: Boolean) =
+    Transformation.predicated(cond) { this }
+
 
   override final def apply(
       source: T,
@@ -142,15 +155,6 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
     context.logger.end("")
     (source, context)
   }
-}
-
-abstract class SkippedCheck[T <: ManticoreAssemblyIR#DefProgram](
-    original: TransformationID
-) extends AssemblyChecker[T] {
-  override implicit val phase_id: TransformationID = TransformationID(
-    original.id + "(skipped)"
-  )
-  override def check(source: T, context: AssemblyContext): Unit = ()
 }
 
 trait AssemblyPrinter[T <: ManticoreAssemblyIR#DefProgram]

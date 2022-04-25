@@ -19,7 +19,8 @@ import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.CloseSequentialCycles
 import manticore.compiler.assembly.levels.BreakSequentialCycles
 import manticore.compiler.assembly.levels.CarryType
-import manticore.compiler.assembly.levels.JumpTableConstructionTransform
+import manticore.compiler.assembly.levels.JumpTableConstruction
+import manticore.compiler.assembly.levels.ParMuxDeconstruction
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
@@ -164,7 +165,7 @@ object UnconstrainedPrinter
     extends AssemblyPrinter[UnconstrainedIR.DefProgram] {}
 
 object UnconstrainedJumpTableConstruction
-    extends JumpTableConstructionTransform
+    extends JumpTableConstruction
     with AssemblyTransformer[
       UnconstrainedIR.DefProgram,
       UnconstrainedIR.DefProgram
@@ -208,5 +209,32 @@ object UnconstrainedJumpTableConstruction
       source: DefProgram,
       context: AssemblyContext
   ): DefProgram = do_transform(source)(context)
+
+}
+
+object UnconstrainedIRParMuxDeconstructionTransform
+    extends ParMuxDeconstruction
+    with AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
+  val flavor = UnconstrainedIR
+  import flavor._
+
+  def mkWire(orig: DefReg)(implicit ctx: AssemblyContext): DefReg =
+    orig.copy(
+      variable = orig.variable.withName(s"%w${ctx.uniqueNumber()}")
+    )
+
+  override def transform(
+      program: DefProgram,
+      context: AssemblyContext
+  ): DefProgram = {
+
+    program.copy(processes = program.processes.map { proc =>
+      do_transform(proc)(context)
+    })
+
+  }
 
 }

@@ -110,6 +110,13 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
     }
   }
 
+  override def equals(other: Any): Boolean = other match {
+    case that: UIntWide => that.width == this.width && that.v == this.v
+    case _ => false
+  }
+
+  override def hashCode(): Int = (this.v, this.width).hashCode()
+
 
 }
 
@@ -137,9 +144,6 @@ object UIntWide {
       apply(v, v.bitLength)
     }
   }
-  // do not include the width in unapply to be able to
-  // easily pattern match constants without dealing with
-  // width differences
-  def unapply(v: UIntWide) = Some(v.v)
+
 
 }

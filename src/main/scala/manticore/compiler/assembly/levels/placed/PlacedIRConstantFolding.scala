@@ -27,9 +27,6 @@ object PlacedIRConstantFolding
   import BinaryOperator._
   import flavor._
 
-  override val ConstOne: UInt16 = UInt16(1)
-
-  override val ConstZero: UInt16 = UInt16(0)
 
   type ConcreteConstant = UInt16
 
@@ -89,17 +86,17 @@ object PlacedIRConstantFolding
         }
       }
     // evaluate if only one of the operands is constant
-    case (ADD, Right(ConstZero), Left(n2))      => Left(n2)
-    case (ADD, Left(n1), Right(ConstZero))      => Left(n1)
+    case (ADD, Right(UInt16(0)), Left(n2))      => Left(n2)
+    case (ADD, Left(n1), Right(UInt16(0)))      => Left(n1)
 
-    case (SUB, Left(n1), Right(ConstZero))      => Left(n1)
+    case (SUB, Left(n1), Right(UInt16(0)))      => Left(n1)
 
     case (AND, Left(n1), Right(UInt16(0xffff))) => Left(n1)
     case (AND, Right(UInt16(0xffff)), Left(n2)) => Left(n2)
 
 
-    case (OR | XOR, Left(n1), Right(ConstZero)) => Left(n1)
-    case (OR | XOR, Right(ConstZero), Left(n2)) => Left(n2)
+    case (OR | XOR, Left(n1), Right(UInt16(0))) => Left(n1)
+    case (OR | XOR, Right(UInt16(0)), Left(n2)) => Left(n2)
 
   }
 

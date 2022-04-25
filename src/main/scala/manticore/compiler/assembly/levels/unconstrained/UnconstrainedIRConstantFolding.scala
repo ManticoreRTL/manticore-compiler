@@ -18,8 +18,6 @@ object UnconstrainedIRConstantFolding
   import flavor._
   import BinaryOperator._
 
-  override val ConstOne: BigInt = BigInt(1)
-  override val ConstZero: BigInt = BigInt(0)
 
   type ConcreteConstant = UIntWide
 
@@ -32,45 +30,45 @@ object UnconstrainedIRConstantFolding
         Either[Name, ConcreteConstant],
         Either[Name, ConcreteConstant]
     ),
-    Either[Name, Constant]
+    Either[Name, ConcreteConstant]
   ] = {
 
-    case (ADD, Right(c1), Right(c2)) => Right((c1 + c2).toBigInt)
-    case (SUB, Right(c1), Right(c2)) => Right((c1 - c2).toBigInt)
-    case (OR, Right(c1), Right(c2))  => Right((c1 | c2).toBigInt)
-    case (AND, Right(c1), Right(c2)) => Right((c1 & c2).toBigInt)
-    case (XOR, Right(c1), Right(c2)) => Right((c1 ^ c2).toBigInt)
+    case (ADD, Right(c1), Right(c2)) => Right((c1 + c2))
+    case (SUB, Right(c1), Right(c2)) => Right((c1 - c2))
+    case (OR, Right(c1), Right(c2))  => Right((c1 | c2))
+    case (AND, Right(c1), Right(c2)) => Right((c1 & c2))
+    case (XOR, Right(c1), Right(c2)) => Right((c1 ^ c2))
     case (SEQ, Right(c1), Right(c2)) =>
       Right(
-        if (c1 == c2) BigInt(1) else BigInt(0)
+        if (c1 == c2) UIntWide(1, 1) else UIntWide(0, 1)
       )
 
-    case (SLL, Right(c1), Right(c2)) => Right((c1 >> c2.toIntChecked).toBigInt)
-    case (SRL, Right(c1), Right(c2)) => Right((c1 << c2.toIntChecked).toBigInt)
+    case (SLL, Right(c1), Right(c2)) => Right((c1 >> c2.toIntChecked))
+    case (SRL, Right(c1), Right(c2)) => Right((c1 << c2.toIntChecked))
     case (SLTS, Right(c1), Right(c2)) =>
       val sign1 = (c1 >> (c1.width - 1)) == 1
       val sign2 = (c2 >> (c2.width - 1)) == 1
       if (sign1 && !sign2) {
         // c1 is negative, definitely smaller that c2
-        Right(ConstOne)
+        Right(UIntWide(1, 1))
       } else if (!sign1 && sign2) {
         // c1 is positive and c2 is negative
-        Right(ConstZero)
+        Right(UIntWide(0, 1))
       } else if (!sign1 && !sign2) {
         // both are positive
         if (c1 < c2) {
-          Right(ConstOne)
+          Right(UIntWide(1, 1))
         } else {
-          Right(ConstZero)
+          Right(UIntWide(0, 1))
         }
       } else {
         // both are negative
         val c1Pos = ~c1 + UIntWide(1, c1.width)
         val c2Pos = ~c2 + UIntWide(1, c2.width)
         if (c1Pos > c2Pos) {
-          Right(ConstOne)
+          Right(UIntWide(1, 1))
         } else {
-          Right(ConstZero)
+          Right(UIntWide(0, 1))
         }
       }
     // partial evaluation
@@ -87,7 +85,7 @@ object UnconstrainedIRConstantFolding
 
   def addCarryEvaluator(rs1: UIntWide, rs2: UIntWide, ci: UIntWide)(implicit
       ctx: AssemblyContext
-  ): (Constant, Constant) = {
+  ): (UIntWide, UIntWide) = {
 
     assert(
       rs1.width == rs2.width,
@@ -101,7 +99,7 @@ object UnconstrainedIRConstantFolding
     val sum = rs1B + rs2B + ciB
     val rd = UIntWide.clipped(sum, rs1.width)
     assert(ciB <= 1, "Something is wrong in carry computation")
-    (rd.toBigInt, ciB)
+    (rd, UIntWide(ciB, 1))
   }
 
   def freshConst(v: UIntWide)(implicit ctx: AssemblyContext): DefReg = {

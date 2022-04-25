@@ -93,6 +93,10 @@ trait ConversionBuilder extends Flavored {
       */
     def mkConstant(value: Int): Name = {
       require(value < (1 << 16), "constants should fit in 16 bits")
+      if (value < 0) {
+
+        require(value > 0, "Can not make negative constant!")
+      }
       m_constants
         .getOrElseUpdate(
           value,

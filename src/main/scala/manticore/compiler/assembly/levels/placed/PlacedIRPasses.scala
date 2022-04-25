@@ -5,7 +5,6 @@ import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.OrderInstructions
 import manticore.compiler.assembly.levels.CloseSequentialCycles
-import manticore.compiler.assembly.levels.JumpTableConstructionTransform
 import manticore.compiler.assembly.ManticoreAssemblyIR
 
 object PlacedIRDeadCodeElimination

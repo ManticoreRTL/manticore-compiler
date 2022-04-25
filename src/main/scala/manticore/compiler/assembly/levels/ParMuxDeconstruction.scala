@@ -8,7 +8,7 @@ import manticore.compiler.AssemblyContext
   *
   * @author Mahyar Emami <mahyar.emami@epfl.ch>
   */
-trait ParMuxDeconstructionTransform extends Flavored {
+trait ParMuxDeconstruction extends Flavored {
 
   import flavor._
 

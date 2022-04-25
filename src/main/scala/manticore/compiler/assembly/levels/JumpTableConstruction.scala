@@ -13,7 +13,7 @@ import javax.xml.crypto.Data
   *
   * @author Mahyar Emami <mahyar.emami@epfl.ch>
   */
-trait JumpTableConstructionTransform extends DependenceGraphBuilder {
+trait JumpTableConstruction extends DependenceGraphBuilder {
 
   import flavor._
 

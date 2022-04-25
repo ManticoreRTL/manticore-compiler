@@ -20,18 +20,18 @@ import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRConstantFolding
 import manticore.compiler.HasLoggerId
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRCommonSubExpressionElimination
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRParMuxDeconstructionTransform
+import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.ManticoreAssemblyIR
+import manticore.compiler.assembly.levels.Transformation
 
 class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
   behavior of "JumpTable extraction"
 
-  val InitialPasses = UnconstrainedNameChecker followedBy
-    UnconstrainedMakeDebugSymbols followedBy
-    UnconstrainedOrderInstructions followedBy
-    // UnconstrainedIRConstantFolding followedBy
+  val Optimizations = UnconstrainedIRConstantFolding followedBy
     UnconstrainedIRCommonSubExpressionElimination followedBy
-    UnconstrainedDeadCodeElimination followedBy
-    UnconstrainedRenameVariables
+    UnconstrainedDeadCodeElimination
 
   object AluTestCommons {
     def getAluSource(fixture: FixtureParam) = {
@@ -66,44 +66,53 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       expected_cycles = Some(100),
       debug_message = true
     )
-  }
-  "ALU" should "work correctly with a JumpTable before width conversion " in {
-    fixture =>
+
+    def doTest(optimize: Boolean, useJump: Boolean, fixture: FixtureParam) = {
       val ctx = AluTestCommons.context(fixture)
       val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
-      // run the program
-      def compiler = InitialPasses followedBy
-        UnconstrainedJumpTableConstruction followedBy
-        UnconstrainedCloseSequentialCycles followedBy
-        UnconstrainedInterpreter
-      val (transformed, _) = compiler(program, ctx)
-      // then make sure there was at least one jump table
-      val hasJumpTable = transformed.processes.head.body.exists {
-        _.isInstanceOf[UnconstrainedIR.JumpTable]
-      }
-      hasJumpTable shouldEqual true
 
-  }
-
-  "ALU" should "work correctly with a JumpTable after width conversion" in {
-    fixture =>
-      val ctx = AluTestCommons.context(fixture)
-      val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
       def compiler =
-        InitialPasses followedBy
-          UnconstrainedJumpTableConstruction followedBy
+        UnconstrainedNameChecker followedBy
+          UnconstrainedMakeDebugSymbols followedBy
+          UnconstrainedRenameVariables followedBy
+          UnconstrainedOrderInstructions followedBy
+          Transformation.predicated(optimize)(Optimizations) followedBy
+          Transformation.predicated(useJump)(
+            UnconstrainedJumpTableConstruction
+          ) followedBy
+          UnconstrainedIRParMuxDeconstructionTransform followedBy
           WidthConversion.transformation followedBy
-          UnconstrainedIRConstantFolding followedBy
-          UnconstrainedIRCommonSubExpressionElimination followedBy
-          UnconstrainedDeadCodeElimination followedBy
+          Transformation.predicated(optimize)(Optimizations) followedBy
           UnconstrainedCloseSequentialCycles followedBy
           UnconstrainedInterpreter
+
       val (transformed, _) = compiler(program, ctx)
       val hasJumpTable = transformed.processes.head.body.exists {
         _.isInstanceOf[UnconstrainedIR.JumpTable]
       }
-      hasJumpTable shouldEqual true
-      ctx.logger.info(ctx.stats.asYaml)(new HasLoggerId { val id = "Test" } )
+      val hasParMux = transformed.processes.head.body.exists {
+        _.isInstanceOf[UnconstrainedIR.ParMux]
+      }
+
+      ctx.logger.info(ctx.stats.asYaml)(new HasLoggerId { val id = "Test" })
+      // hasJumpTable shouldEqual useJump
+      // hasParMux shouldEqual false
+    }
+  }
+
+  "ALU" should "work correctly without optimizations and without a JumpTable" in {
+    fixture =>
+      AluTestCommons.doTest(false, false, fixture)
+  }
+  "ALU" should "work correctly with optimizations and without a JumpTable" in {
+    fixture =>
+      AluTestCommons.doTest(true, false, fixture)
+  }
+  "ALU" should "work correctly with a sub-optimal JumpTable" in { fixture =>
+    AluTestCommons.doTest(false, true, fixture)
+  }
+  "ALU" should "work correctly with an optimal JumpTable" in { fixture =>
+    AluTestCommons.doTest(true, true, fixture)
   }
 
 }

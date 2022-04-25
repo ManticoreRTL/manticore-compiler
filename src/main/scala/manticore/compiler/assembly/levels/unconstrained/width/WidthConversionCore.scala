@@ -1128,8 +1128,6 @@ object WidthConversionCore
           val msbits =
             rs_width % 16 // number of valid bits in the most significant short word
 
-          val msbits_shift = builder.mkConstant(msbits - 1)
-
           if (msbits != 0) {
             // not 16-bit aligned, so need to extend the sign bit
             inst_q += BinaryArithmetic(

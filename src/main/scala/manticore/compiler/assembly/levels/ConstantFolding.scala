@@ -5,7 +5,6 @@ import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.Track
 import manticore.compiler.assembly.levels.CanRename
 import javax.xml.crypto.Data
-import com.sourcegraph.semanticdb_javac.Semanticdb.ConstantType
 import manticore.compiler.assembly.DependenceGraphBuilder
 import scala.collection.immutable.ListMap
 
@@ -44,9 +43,11 @@ trait ConstantFolding
     *
     * @return
     */
-  val ConstOne: Constant
-  val ConstZero: Constant
+  // val ConstOne: Constant
+  // val ConstZero: Constant
 
+  // def isTrue(v: ConcreteConstant): Boolean
+  // def isFalse(v: ConcreteConstant): Boolean
   /** A partial function to either fully or partially evaluate binary operators.
     *
     * The partial function should only be defined for input combinations that
@@ -64,7 +65,7 @@ trait ConstantFolding
         Either[Name, ConcreteConstant], // rs1
         Either[Name, ConcreteConstant] // rs2
     ),
-    Either[Name, Constant] // rd
+    Either[Name, ConcreteConstant] // rd
   ]
 
   /** A total function that fully evaluates and AddCarry instruction
@@ -79,7 +80,7 @@ trait ConstantFolding
       rs1: ConcreteConstant,
       rs2: ConcreteConstant,
       ci: ConcreteConstant
-  )(implicit ctx: AssemblyContext): (Constant, Constant)
+  )(implicit ctx: AssemblyContext): (ConcreteConstant, ConcreteConstant)
 
   /** returns a fresh constant (unique name), the value [[v]] given to the
     * function is unique too but can not be used to create the unique name
@@ -91,8 +92,8 @@ trait ConstantFolding
   def freshConst(v: ConcreteConstant)(implicit ctx: AssemblyContext): DefReg
 
   case class ConstantFoldingBuilder(
-      constants: ListMap[Constant, DefReg],
-      constBindings: Map[Name, Constant],
+      constants: ListMap[ConcreteConstant, DefReg],
+      constBindings: Map[Name, ConcreteConstant],
       nameBindings: Map[Name, Name],
       keptInstructions: Seq[Instruction],
       isUnopt: Name => Boolean,
@@ -100,7 +101,7 @@ trait ConstantFolding
   ) {
 
     def widthLookup(n: Name): Int = getReg(n).variable.width
-
+    // def widthLookup(c: Constant): Int =
     /** bind the name n to name m (i.e., n will no longer be used)
       *
       * @param n
@@ -117,23 +118,23 @@ trait ConstantFolding
       * @param n
       * @param v
       */
-    def bindConst(n: Name, v: Constant)(implicit
+    def bindConst(n: Name, v: ConcreteConstant)(implicit
         ctx: AssemblyContext
     ): ConstantFoldingBuilder = {
-      val concrete = asConcrete(v) { widthLookup(n) }
+      // val concrete = asConcrete(v) { widthLookup(n) }
       val newConstBindings = constBindings + (n -> v)
       val newConstants =
         // create a new constant if it not already available
         constants.get(v) match {
           case Some(m) => constants
-          case None    => constants + (v -> freshConst(concrete))
+          case None    => constants + (v -> freshConst(v))
         }
       copy(
         constBindings = newConstBindings,
         constants = newConstants
       )
     }
-    def bindConst(binding: (Name, Constant))(implicit
+    def bindConst(binding: (Name, ConcreteConstant))(implicit
         ctx: AssemblyContext
     ): ConstantFoldingBuilder =
       bindConst(binding._1, binding._2)
@@ -153,7 +154,7 @@ trait ConstantFolding
       copy(keptInstructions = keptInstructions ++ instructions)
     }
 
-    def computedValue(name: Name): Either[Name, Constant] =
+    def computedValue(name: Name): Either[Name, ConcreteConstant] =
       constBindings.get(name) match {
         case Some(v) => Right(v)
         case None =>
@@ -163,8 +164,8 @@ trait ConstantFolding
           }
       }
 
-    def concreteComputedValue(name: Name): Either[Name, ConcreteConstant] =
-      computedValue(name).map { asConcrete(_) { widthLookup(name) } }
+    // def concreteComputedValue(name: Name): Either[Name, ConcreteConstant] =
+    //   computedValue(name).map { asConcrete(_) { widthLookup(name) } }
 
     def withNewScope(): ConstantFoldingBuilder =
       copy(keptInstructions = Seq.empty[Instruction])
@@ -202,17 +203,14 @@ trait ConstantFolding
           val rs2_val = builder.computedValue(rs2)
           (rs1_val, rs2_val, ci_val) match {
             case (Right(v1), Right(v2), Right(vci)) =>
-              val v1c = asConcrete(v1) { builder.widthLookup(rs1) }
-              val v2c = asConcrete(v2) { builder.widthLookup(rs2) }
-              val vcic = asConcrete(vci) { builder.widthLookup(ci) }
-              val (rd_val, co_val) = addCarryEvaluator(v1c, v2c, vcic)
+              val (rd_val, co_val) = addCarryEvaluator(v1, v2, vci)
               builder.bindConst(rd, rd_val).bindConst(co, co_val)
-            case (Right(ConstZero), Right(ConstZero), Left(ci_subst)) =>
+            case (Right(c0), Right(c1), Left(ci_subst)) if c0 == 0 && c1 == 0 =>
               builder.bindName(co, ci_subst)
             case _ => builder.keep(i)
           }
         case SetValue(rd, value, annons) =>
-          builder.bindConst(rd, value)
+          builder.bindConst(rd, asConcrete(value) { builder.widthLookup(rd) })
         case i @ Mov(rd, rs, annons) =>
           if (builder.isUnopt(rd)) {
             // can not get rid of the rd alias
@@ -242,12 +240,12 @@ trait ConstantFolding
             val rtrue_value = builder.computedValue(rtrue)
             val rfalse_value = builder.computedValue(rfalse)
             sel_value match {
-              case Right(ConstOne) =>
+              case Right(c1) if (c1 == 1) =>
                 rtrue_value match {
                   case Right(ctrue) => builder.bindConst(rd, ctrue)
                   case Left(atrue)  => builder.bindName(rd, atrue)
                 }
-              case Right(ConstZero) =>
+              case Right(c0) if (c0 == 0) =>
                 rfalse_value match {
                   case Right(cfalse) => builder.bindConst(rd, cfalse)
                   case Left(afalse)  => builder.bindName(rd, afalse)
@@ -260,8 +258,11 @@ trait ConstantFolding
                 builder.keep(i)
               case Left(s) =>
                 (rfalse_value, rtrue_value) match {
-                  case (Right(ConstZero), Right(ConstOne))
-                      if (builder.widthLookup(rfalse) == builder.widthLookup(
+                  case (Right(c0), Right(c1))
+                      if ((c0 == 0) && (c1 == 1) &&
+                      builder.widthLookup(
+                        rfalse
+                      ) == builder.widthLookup(
                         sel
                       ) && builder
                         .widthLookup(rtrue) == builder.widthLookup(sel)) =>
@@ -297,8 +298,8 @@ trait ConstantFolding
           } else {
 
             // try to compute it
-            val rs1_val = builder.concreteComputedValue(rs1)
-            val rs2_val = builder.concreteComputedValue(rs2)
+            val rs1_val = builder.computedValue(rs1)
+            val rs2_val = builder.computedValue(rs2)
             if (binOpEvaluator.isDefinedAt(operator, rs1_val, rs2_val)) {
               binOpEvaluator(operator, rs1_val, rs2_val) match {
                 case Right(ct) =>
@@ -320,7 +321,7 @@ trait ConstantFolding
                 (builder.computedValue(cond), builder.computedValue(choice))
               }
             val found_true_case = computed_cases
-              .collectFirst { case (Right(ConstOne), rs_val) =>
+              .collectFirst { case (Right(c1), rs_val) if c1 == 1 =>
                 rs_val
               }
 
@@ -328,7 +329,7 @@ trait ConstantFolding
               case None => // maybe all conditions are zero!
                 if (
                   computed_cases.forall {
-                    case (Right(ConstZero), _) => true
+                    case (Right(c0), _) if c0 == 0 => true
                     case _                     => false
                   }
                 ) {
@@ -395,9 +396,11 @@ trait ConstantFolding
     }
     val initScope =
       ConstantFoldingBuilder(
-        constants = ListMap.from(constants.map { r => r.value.get -> r }),
+        constants = ListMap.from(constants.map { r =>
+          asConcrete(r.value.get) { r.variable.width } -> r
+        }),
         constBindings = constants.map { r =>
-          r.variable.name -> r.value.get
+          r.variable.name -> asConcrete(r.value.get) { r.variable.width }
         }.toMap,
         nameBindings = Map.empty[Name, Name],
         keptInstructions = Seq.empty[Instruction],
