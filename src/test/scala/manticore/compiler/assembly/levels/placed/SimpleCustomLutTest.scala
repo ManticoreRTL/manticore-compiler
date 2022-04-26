@@ -21,38 +21,9 @@ class SimpleCustomLutTester extends UnitFixtureTest {
 
   import manticore.compiler.assembly.levels.placed.PlacedIR._
 
-  def genInputsAndExpectedOutputs(
-    numTests: Int,
-    width: Int
-  ): Seq[(
-    UInt16, // Input
-    UInt16  // Expected output
-  )] = {
-    def binStr(x: Int, width: Int): String = {
-      // Scala's toBinaryString does not emit leading 0s. We therefore interpret
-      // the binary string as an int and use a 0-padded format string to get the
-      // width of interest.
-      //
-      // Note that the following intuitive alternative will fail as the string
-      // formatter "%s" does not support padding with 0.
-      //
-      //    s"%0${width}s".format(x.toBinaryString)
-      //       ^
-      //
-      s"%0${width}d".format(x.toBinaryString.toInt)
-    }
-
-    Seq.tabulate(numTests) { idx =>
-      val input = binStr(idx, 16)
-      val output = input.reverse
-      (UInt16(input, 2), UInt16(output, 2))
-    }
-  }
-
   behavior of "custom lut insertion transform"
 
-  it should "correctly identify LUTs" in { f =>
-
+  def mkProgram(f: FixtureParam): (String, AssemblyContext) = {
     val regs = ArrayBuffer.empty[String]
     val wires = ArrayBuffer.empty[String]
     val consts = ArrayBuffer.empty[String]
@@ -91,7 +62,7 @@ class SimpleCustomLutTester extends UnitFixtureTest {
       dump_dir = Some(f.test_dir.toFile()),
       debug_message = true,
       max_custom_instructions = 32,
-      max_custom_instruction_inputs = 4,
+      max_custom_instruction_inputs = 6,
       max_dimx = 1,
       max_dimy = 1,
       log_file = Some(f.test_dir.resolve("output.log").toFile())
@@ -248,15 +219,36 @@ class SimpleCustomLutTester extends UnitFixtureTest {
                      |      ${instrs.mkString("\n")}
                      |""".stripMargin
 
-    println(program)
+    (program, ctx)
+  }
 
-    val compiler =
+  it should "correctly identify LUTs" in { f =>
+    val (programOrig, ctx) = mkProgram(f)
+    val programOrigUnconstrained = AssemblyParser(programOrig, ctx)
+
+    val lowerCompiler =
       UnconstrainedNameChecker followedBy
       UnconstrainedMakeDebugSymbols followedBy
-      UnconstrainedToPlacedTransform followedBy
-      AtomicInterpreter
+      UnconstrainedToPlacedTransform
 
-    compiler(AssemblyParser(program, ctx), ctx)
+    val lutCompiler =
+      CustomLutInsertion followedBy
+      PlacedIRDeadCodeElimination
+
+    val programPlaced = lowerCompiler(programOrigUnconstrained, ctx)._1
+    // println(programPlaced.serialized)
+
+    // Interpret the placed program to ensure it does not fail.
+    // If it crashes, then the program is ill-formed.
+    AtomicInterpreter(programPlaced, ctx)
+
+    val placedProgramWithLuts = lutCompiler(programPlaced, ctx)._1
+    // println(placedProgramWithLuts.serialized)
+
+    // Interpret the optimized program to ensure it does not fail.
+    // If it crashes, then the program is incorrect (as the previous lowered program
+    // is correct if we reached this point)
+    AtomicInterpreter(placedProgramWithLuts, ctx)
   }
 
 }
