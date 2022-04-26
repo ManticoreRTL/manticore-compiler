@@ -89,6 +89,9 @@ object UInt16 {
     new UInt16(v)
   }
 
+  def apply(s: String, radix: Int): UInt16 = {
+    apply(Integer.parseInt(s, radix))
+  }
 
   def unapply(v: UInt16): Option[Int] = Some(v.toInt)
 }
