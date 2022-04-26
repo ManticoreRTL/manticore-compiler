@@ -137,7 +137,8 @@ object UnconstrainedToPlacedTransform
     T.DefProcess(
       id = proc_map(proc.id),
       registers = proc.registers.map(convert),
-      functions = proc.functions.map(convert),
+      // UnconstrainedIR does not have any custom functions, so there is nothing to lower.
+      functions = Seq.empty,
       body = proc.body.map(convert(_, proc_map)),
       annons = proc.annons
     ).setPos(proc.pos)
@@ -259,20 +260,6 @@ object UnconstrainedToPlacedTransform
     ).setPos(r.pos)
   }
 
-  /** Unchecked conversion of DefFunc
-    *
-    * @param func
-    *   orignal function
-    * @return
-    *   converted one
-    */
-  private def convert(func: S.DefFunc): T.DefFunc =
-    T.DefFunc(
-      func.name,
-      T.CustomFunctionImpl(func.value.values.map(x => UInt16(x.toInt))),
-      func.annons
-    ).setPos(func.pos)
-
   /** Unchecked conversion of instructions
     *
     * @param inst
@@ -285,8 +272,8 @@ object UnconstrainedToPlacedTransform
 
     case S.BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
       T.BinaryArithmetic(operator, rd, rs1, rs2, annons)
-    case S.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-      T.CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons)
+    case S.CustomInstruction(func, rd, rsx, annons) =>
+      T.CustomInstruction(func, rd, rsx, annons)
     case S.Expect(ref, got, error_id, annons) =>
       val kind = annons.collectFirst { case x: Trap => x } match {
         case Some(trap) =>
@@ -400,29 +387,6 @@ object UnconstrainedToPlacedTransform
                   x < (1 << 16)
                 case _ => true
               }
-            }
-          }
-          .forall(_ == true) &&
-        p.functions
-          .map { f =>
-            // ensure every function has 16 elements
-            if (f.value.values.length != 16) {
-              ctx.logger.error(
-                s"function ${f.serialized} in process ${p.id} is not 16-bit"
-              )
-              false
-            } else {
-              // ensure every equation fits in 16 bits
-              if (f.value.values.forall { x => x < (1 << 16) } == false) {
-                ctx.logger.error(
-                  "" +
-                    s"function ${f.serialized} has illegal values"
-                )
-                false
-              } else {
-                true
-              }
-
             }
           }
           .forall(_ == true) &&

@@ -232,12 +232,9 @@ trait RemoveAliases extends Flavored {
             rs2 = replaceName(rs2)
           )
 
-        case i @ CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
+        case i @ CustomInstruction(func, rd, rsx, annons) =>
           i.copy(
-            rs1 = replaceName(rs1),
-            rs2 = replaceName(rs2),
-            rs3 = replaceName(rs3),
-            rs4 = replaceName(rs4)
+            rsx = rsx.map(rs => replaceName(rs))
           )
 
         case i @ LocalLoad(rd, base, offset, annons) =>

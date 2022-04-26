@@ -65,14 +65,14 @@ trait AssemblyNameChecker extends Flavored {
         inst match {
           case BinaryArithmetic(_, rd, rs1, rs2, _) =>
             checkRegs(Seq(rd, rs1, rs2))
-          case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
+          case CustomInstruction(func, rd, rsx, _) =>
             if (!func_names.contains(func)) {
               context.logger.error(
                 s"undefined function ${func} at ${inst.serialized}:${inst.pos}"
               )
 
             }
-            checkRegs(Seq(rd, rs1, rs2, rs3, rs4))
+            checkRegs(Seq(rd) ++ rsx)
           case LocalLoad(rd, base, _, _) => checkRegs(Seq(rd, base))
           case LocalStore(rs, base, _, p, _) =>
             checkRegs(Seq(rs, base) ++ p.toSeq)

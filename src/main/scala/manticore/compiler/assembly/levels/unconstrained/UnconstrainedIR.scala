@@ -34,17 +34,10 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
     def withName(n: Name): LogicVariable = this.copy(name = n)
   }
 
-  case class CustomFunctionImpl(values: Seq[BigInt]) extends HasSerialized {
-    def serialized: String = "[" + values.mkString(", ") + "]"
-  }
-
-  implicit def seqBigIntToCustomFuncImpl(
-      values: Seq[BigInt]
-  ): CustomFunctionImpl = CustomFunctionImpl(values)
-
   type Constant = BigInt // unlimited bits
   type Variable = LogicVariable
-  type CustomFunction = CustomFunctionImpl // unlimited bits
+  // UnconstrainedIR does not support custom functions. Only lower IRs use such optimizations.
+  type CustomFunction = Nothing
   type Name = String
   type ProcessId = String
   type ExceptionId = String

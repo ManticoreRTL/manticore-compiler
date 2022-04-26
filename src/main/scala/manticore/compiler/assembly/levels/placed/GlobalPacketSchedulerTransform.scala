@@ -160,7 +160,7 @@ object GlobalPacketSchedulerTransform
 
         proc.body.zipWithIndex.foreach { case (other_inst, cycle) =>
           DependenceAnalysis
-            .regDef(other_inst)(context)
+            .regDef(other_inst)
             .find(sends.contains) match {
             case Some(reg_to_send: Name) =>
               // Note that since we are traversing proc.body in order, we are

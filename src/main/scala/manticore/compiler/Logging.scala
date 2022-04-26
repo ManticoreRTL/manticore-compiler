@@ -206,7 +206,7 @@ object Logger {
           writer.print(gen)
           writer.close()
 
-        case _ => // dot nothing
+        case _ => // do nothing
       }
     }
 
