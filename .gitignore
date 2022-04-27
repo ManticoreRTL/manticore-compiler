@@ -2,6 +2,7 @@
 .bloop
 .metals
 .vscode
+.idea
 project
 target
 dumps
