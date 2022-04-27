@@ -11,6 +11,7 @@ import manticore.compiler.assembly.levels.placed.interpreter.PlacedValueChangeWr
 import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
+import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
 
 /** Basic interpreter for placed programs. The program needs to have Send and
   * Recv instructions but does not check for NoC contention and does not require
@@ -143,6 +144,22 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       }
 
     }
+
+    override def getFunc(name: Name): CustomFunction = {
+      proc.functions.find(func => func.name == name) match {
+        case None =>
+          ctx.logger.error(s"Custom function ${name} does not exist!")
+          // So the calling loop does not continue further after this cycle.
+          trap(InternalTrap)
+
+          // We return a custom function that takes no inputs and returns 0.
+          CustomFunctionImpl(IdExpr(AtomConst(UInt16(0))))
+
+        case Some(func) =>
+          func.value
+      }
+    }
+
     override def write(rd: Name, value: UInt16): Unit = {
       register_file.write(rd, value)
     }

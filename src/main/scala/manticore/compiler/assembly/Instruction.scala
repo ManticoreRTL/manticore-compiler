@@ -280,14 +280,11 @@ trait ManticoreAssemblyIR {
   case class CustomInstruction(
       func: Name,
       rd: Name,
-      rs1: Name,
-      rs2: Name,
-      rs3: Name,
-      rs4: Name,
+      rsx: Seq[Name],
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends DataInstruction {
     override def toString: String =
-      s"CUST ${rd}, [${func}], ${rs1}, ${rs2}, ${rs3}, ${rs4}"
+      s"CUST ${rd}, [${func}], ${rsx.mkString(", ")}"
 
   }
 

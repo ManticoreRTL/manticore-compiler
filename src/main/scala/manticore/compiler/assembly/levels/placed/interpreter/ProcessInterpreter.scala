@@ -14,6 +14,7 @@ trait ProcessInterpreter extends InterpreterBase {
 
   type Message <: MessageBase
 
+  def getFunc(name: Name): CustomFunction
   // write a register
   def write(rd: Name, value: UInt16): Unit
   // read a register
@@ -116,11 +117,28 @@ trait ProcessInterpreter extends InterpreterBase {
     write(rd, rd_val)
   }
 
+  def interpret(instr: CustomInstruction): Unit = {
+    import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
+
+    val CustomInstruction(name, rd, rsx, _) = instr
+    val func = getFunc(name)
+
+    // We must bind the arguments of the custom function to their concrete values
+    // at the current cycle.
+    val substMap = rsx.zipWithIndex.map { case (rs, idx) =>
+      val rsVal = read(rs)
+      AtomArg(idx) -> AtomConst(rsVal)
+    }.toMap
+
+    val exprWithArgs = substitute(func.expr)(substMap)
+    val rdVal = evaluate(exprWithArgs)
+
+    write(rd, rdVal)
+  }
+
   def interpret(instruction: Instruction): Unit = instruction match {
     case i: BinaryArithmetic => interpret(i)
-    case i: CustomInstruction =>
-      ctx.logger.error("Custom instruction can not be interpreted yet", i)
-      trap(InternalTrap)
+    case i: CustomInstruction => interpret(i)
     case LocalLoad(rd, base, offset, _) =>
       val base_val = read(base)
       val addr = offset + base_val

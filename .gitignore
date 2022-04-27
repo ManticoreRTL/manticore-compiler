@@ -11,3 +11,4 @@ operands
 test_run_dir
 .manticore
 runtime
+lib

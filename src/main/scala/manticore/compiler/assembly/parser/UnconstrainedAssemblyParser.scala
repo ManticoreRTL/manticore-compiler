@@ -285,12 +285,6 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     "[" ~> repsep(const_value, ",") <~ "]"
   def func_value: Parser[Seq[BigInt]] = func_list_value | func_single_value
 
-  def def_func: Parser[DefFunc] =
-    (keyword(".func") ~ ident ~ func_value <~ opt(";")) ^^ {
-      case (_ ~ name ~ vs) =>
-        DefFunc(name.chars, vs)
-    }
-
   def arith_op: Parser[BinaryOperator.BinaryOperator] =
     (arithOperator.keySet.map(keyword(_)).reduce(_ | _)) ^^ { op =>
       arithOperator(op.chars)
@@ -299,23 +293,6 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     (annotations ~ arith_op ~ ident ~ "," ~ ident ~ "," ~ ident) ^^ {
       case (a ~ op ~ rd ~ _ ~ rs1 ~ _ ~ rs2) =>
         BinaryArithmetic(op, rd.chars, rs1.chars, rs2.chars, a)
-    }
-
-  def lvec_inst: Parser[CustomInstruction] =
-    (annotations ~ keyword(
-      "CUST"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "]" ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident ~ "," ~ ident) ^^ {
-      case (a ~ _
-          ~ rd ~ _ ~ _ ~ fn ~ _ ~ _ ~ rs1 ~ _ ~ rs2 ~ _ ~ rs3 ~ _ ~ rs4) =>
-        CustomInstruction(
-          fn.chars,
-          rd.chars,
-          rs1.chars,
-          rs2.chars,
-          rs3.chars,
-          rs4.chars,
-          a
-        )
     }
 
   def lload_inst: Parser[LocalLoad] =
@@ -417,16 +394,16 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   }
 
   def instruction: Parser[Instruction] = positioned(
-    arith_inst | lvec_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
+    arith_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
       | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[Seq[DefReg]]] = rep(def_reg)
-  def funcs: Parser[Seq[DefFunc]] = rep(positioned(def_func))
+
   def process: Parser[DefProcess] =
-    (annotations ~ keyword(".proc") ~ ident ~ ":" ~ regs ~ funcs ~ body) ^^ {
-      case (a ~ _ ~ id ~ _ ~ rs ~ fs ~ insts) =>
-        DefProcess(id.chars, rs.flatten, fs, insts, Seq(), a)
+    (annotations ~ keyword(".proc") ~ ident ~ ":" ~ regs ~ body) ^^ {
+      case (a ~ _ ~ id ~ _ ~ rs ~ insts) =>
+        DefProcess(id.chars, rs.flatten, Seq.empty, insts, Seq(), a)
     }
 
   def program: Parser[DefProgram] =

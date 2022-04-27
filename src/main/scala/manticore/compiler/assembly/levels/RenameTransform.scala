@@ -96,12 +96,9 @@ trait RenameTransformation extends Flavored {
               */
             i.copy(rs1 = subst(rs1), rs2 = subst(rs2))
               .copy(rd = outerRenamer(rd))
-          case i @ CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
+          case i @ CustomInstruction(func, rd, rsx, _) =>
             i.copy(
-              rs1 = subst(rs1),
-              rs2 = subst(rs2),
-              rs3 = subst(rs3),
-              rs4 = subst(rs4)
+              rsx = rsx.map(rs => subst(rs))
             ).copy(rd = outerRenamer(rd))
           case i @ LocalLoad(rd, base, _, _) =>
             i.copy(base = subst(base)).copy(rd = outerRenamer(rd))
@@ -196,34 +193,7 @@ trait RenameTransformation extends Flavored {
 
         // case _: ControlInstruction =>
       }
-      // def renameJumpTable(inst: JumpTable): JumpTable = {
 
-      //   // create new names for the results
-      //   val results_renames = inst.results.map { n =>
-      //     nextName(original_defreg(n))
-      //   }
-
-      //   def renameInner(dinst: DataInstruction): DataInstruction = dinst match {
-      //     case LocalStore(rs, base, offset, predicate, annons)         =>
-      //     case GlobalLoad(rd, base, annons)                            =>
-      //     case Mov(rd, rs, annons)                                     =>
-      //     case SetCarry(carry, annons)                                 =>
-      //     case BinaryArithmetic(operator, rd, rs1, rs2, annons)        =>
-      //     case Predicate(rs, annons)                                   =>
-      //     case PadZero(rd, rs, width, annons)                          =>
-      //     case LocalLoad(rd, base, offset, annons)                     =>
-      //     case ClearCarry(carry, annons)                               =>
-      //     case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-      //     case SetValue(rd, value, annons)                             =>
-      //     case AddC(rd, co, rs1, rs2, ci, annons)                      =>
-      //     case Mux(rd, sel, rfalse, rtrue, annons)                     =>
-      //     case GlobalStore(rs, base, predicate, annons)                =>
-      //   }
-
-      //   ???
-      // }
-
-      // def renameJumpTable(inst: JumpTable): JumpTable = {}
       proc.body.foreach { inst =>
         val new_inst: Instruction = renameInstruction(inst)
 

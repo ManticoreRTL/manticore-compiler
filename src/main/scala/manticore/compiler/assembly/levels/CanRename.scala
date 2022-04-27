@@ -54,15 +54,8 @@ trait CanRename extends Flavored {
         case i @ Send(rd, rs, dest_id, _) =>
           ctx.logger.error("Can not rename instruction", i)
           i
-        case i @ CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
-          i.copy(
-            rd = renaming(rd),
-            rs1 = renaming(rs1),
-            rs2 = renaming(rs2),
-            rs3 = renaming(rs3),
-            rs4 = renaming(rs4)
-          )
-          i
+        case i @ CustomInstruction(func, rd, rss, _) =>
+          i.copy(rsx = rss.map { renaming })
         case i @ LocalLoad(rd, base, offset, _) =>
           i.copy(
             rd = renaming(rd),

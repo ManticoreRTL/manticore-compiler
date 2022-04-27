@@ -86,8 +86,8 @@ trait AssemblyNameChecker extends Flavored {
               } else {
                 acc :+ ((rs -> inst))
               }
-            case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, annons) =>
-              acc ++ Seq(rd, rs1, rs2, rs3, rs4).collect {
+            case CustomInstruction(func, rd, rss, _) =>
+              acc ++ (rd +: rss).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
             case Mux(rd, sel, rfalse, rtrue, annons) =>
@@ -210,7 +210,7 @@ trait AssemblyNameChecker extends Flavored {
             case ParMux(rd, choices, default, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
 
-            case CustomInstruction(func, rd, rs1, rs2, rs3, rs4, _) =>
+            case CustomInstruction(func, rd, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
             case AddC(rd, co, _, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst)) + (co -> (assigns(
