@@ -23,10 +23,10 @@ class CustomLutInsertionTester extends UnitFixtureTest {
       dump_all = true,
       dump_dir = Some(f.test_dir.toFile()),
       debug_message = true,
-      max_custom_instructions = 32,
-      max_custom_instruction_inputs = 4,
-      max_dimx = 4,
-      max_dimy = 4,
+      max_custom_instructions = Int.MaxValue,
+      max_custom_instruction_inputs = 6,
+      max_dimx = 1,
+      max_dimy = 1,
       log_file = Some(f.test_dir.resolve("output.log").toFile())
     )
 
@@ -38,7 +38,9 @@ class CustomLutInsertionTester extends UnitFixtureTest {
       ManticorePasses.ExtractParallelism
 
     // val benchmarkName = "swizzle"
-    val benchmarkName = "xormix32"
+    // val benchmarkName = "xormix32"
+    val benchmarkName = "mips32"
+    // val benchmarkName = "picorv32"
 
     // Lower the input file.
     val inputStr = scala.io.Source.fromResource(s"levels/placed/${benchmarkName}.masm").getLines().mkString("\n")

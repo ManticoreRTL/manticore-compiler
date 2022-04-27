@@ -1,0 +1,3618 @@
+@PROGRAM [name = "\TestVerilator"]
+.prog:
+  .proc \TestVerilator:
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:146.23-146.26|mips32.sv:433.19-440.4"]
+    @DEBUGSYMBOL [ symbol = "dut.dmem.mem"]
+    @MEMBLOCK [ block = "\dut.dmem.mem", width = 32, capacity = 128 ]
+    .mem \dut.dmem.mem 7
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:129.23-129.26|mips32.sv:399.25-408.4"]
+    @DEBUGSYMBOL [ symbol = "dut.regs.mem"]
+    @MEMBLOCK [ block = "\dut.regs.mem", width = 32, capacity = 32 ]
+    .mem \dut.regs.mem 5
+    @MEMINIT [ file = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/levels/placed/mips32.masm.sum_inst_mem.data", count = 256, width = 32]
+    @SOURCEINFO [file = "mips32.sv:511.15-511.23"]
+    @DEBUGSYMBOL [ symbol = "\inst_mem"]
+    @MEMBLOCK [ block = "\inst_mem", width = 32, capacity = 256 ]
+    .mem \inst_mem 8
+    .wire w_$auto$rtlil_cc_2363_Not$743 1
+    .wire w_$auto$rtlil_cc_2363_Not$775 1
+    .wire w_$auto$rtlil_cc_2363_Not$807 1
+    .wire w_$auto$rtlil_cc_2363_Not$835 1
+    .wire w_$auto$rtlil_cc_2363_Not$861 1
+    .wire w_$auto$rtlil_cc_2363_Not$889 1
+    .wire w_$auto$rtlil_cc_2363_Not$897 1
+    .wire w_$auto$rtlil_cc_2363_Not$905 1
+    .wire w_$auto$rtlil_cc_2363_Not$913 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$741 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$753 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$765 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$769 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$773 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$785 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$797 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$801 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$805 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$829 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$833 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$855 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$859 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$883 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$887 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$895 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$903 1
+    .wire w_$auto$rtlil_cc_2367_ReduceOr$911 1
+    .wire w_$auto$rtlil_cc_2394_Or$815 1
+    .wire w_$auto$rtlil_cc_2394_Or$825 1
+    .wire w_$auto$rtlil_cc_2394_Or$841 1
+    .wire w_$auto$rtlil_cc_2394_Or$851 1
+    .wire w_$auto$rtlil_cc_2394_Or$869 1
+    .wire w_$auto$rtlil_cc_2394_Or$879 1
+    .wire w_$auto$rtlil_cc_2460_Mux$745 32
+    .wire w_$auto$rtlil_cc_2460_Mux$747 32
+    .wire w_$auto$rtlil_cc_2460_Mux$749 32
+    .wire w_$auto$rtlil_cc_2460_Mux$751 32
+    .wire w_$auto$rtlil_cc_2460_Mux$755 32
+    .wire w_$auto$rtlil_cc_2460_Mux$757 32
+    .wire w_$auto$rtlil_cc_2460_Mux$759 32
+    .wire w_$auto$rtlil_cc_2460_Mux$761 32
+    .wire w_$auto$rtlil_cc_2460_Mux$763 32
+    .wire w_$auto$rtlil_cc_2460_Mux$767 32
+    .wire w_$auto$rtlil_cc_2460_Mux$771 32
+    .wire w_$auto$rtlil_cc_2460_Mux$777 4
+    .wire w_$auto$rtlil_cc_2460_Mux$779 4
+    .wire w_$auto$rtlil_cc_2460_Mux$781 4
+    .wire w_$auto$rtlil_cc_2460_Mux$783 4
+    .wire w_$auto$rtlil_cc_2460_Mux$787 4
+    .wire w_$auto$rtlil_cc_2460_Mux$789 4
+    .wire w_$auto$rtlil_cc_2460_Mux$791 4
+    .wire w_$auto$rtlil_cc_2460_Mux$793 4
+    .wire w_$auto$rtlil_cc_2460_Mux$795 4
+    .wire w_$auto$rtlil_cc_2460_Mux$799 4
+    .wire w_$auto$rtlil_cc_2460_Mux$803 4
+    .wire w_$auto$rtlil_cc_2460_Mux$809 4
+    .wire w_$auto$rtlil_cc_2460_Mux$811 4
+    .wire w_$auto$rtlil_cc_2460_Mux$813 4
+    .wire w_$auto$rtlil_cc_2460_Mux$817 4
+    .wire w_$auto$rtlil_cc_2460_Mux$819 4
+    .wire w_$auto$rtlil_cc_2460_Mux$821 4
+    .wire w_$auto$rtlil_cc_2460_Mux$823 4
+    .wire w_$auto$rtlil_cc_2460_Mux$827 4
+    .wire w_$auto$rtlil_cc_2460_Mux$831 4
+    .wire w_$auto$rtlil_cc_2460_Mux$837 1
+    .wire w_$auto$rtlil_cc_2460_Mux$839 1
+    .wire w_$auto$rtlil_cc_2460_Mux$843 1
+    .wire w_$auto$rtlil_cc_2460_Mux$845 1
+    .wire w_$auto$rtlil_cc_2460_Mux$847 1
+    .wire w_$auto$rtlil_cc_2460_Mux$849 1
+    .wire w_$auto$rtlil_cc_2460_Mux$853 1
+    .wire w_$auto$rtlil_cc_2460_Mux$857 1
+    .wire w_$auto$rtlil_cc_2460_Mux$863 2
+    .wire w_$auto$rtlil_cc_2460_Mux$865 2
+    .wire w_$auto$rtlil_cc_2460_Mux$867 2
+    .wire w_$auto$rtlil_cc_2460_Mux$871 2
+    .wire w_$auto$rtlil_cc_2460_Mux$873 2
+    .wire w_$auto$rtlil_cc_2460_Mux$875 2
+    .wire w_$auto$rtlil_cc_2460_Mux$877 2
+    .wire w_$auto$rtlil_cc_2460_Mux$881 2
+    .wire w_$auto$rtlil_cc_2460_Mux$885 2
+    .wire w_$auto$rtlil_cc_2460_Mux$891 1
+    .wire w_$auto$rtlil_cc_2460_Mux$893 1
+    .wire w_$auto$rtlil_cc_2460_Mux$899 1
+    .wire w_$auto$rtlil_cc_2460_Mux$901 1
+    .wire w_$auto$rtlil_cc_2460_Mux$907 1
+    .wire w_$auto$rtlil_cc_2460_Mux$909 1
+    .wire w_$auto$rtlil_cc_2460_Mux$915 1
+    .wire w_$auto$rtlil_cc_2460_Mux$917 1
+    .wire w_$emit_masm_py_209_$tmp 11
+    .wire w_$emit_masm_py_209_$tmp_1 11
+    .wire w_$emit_masm_py_209_$tmp_10 3
+    .wire w_$emit_masm_py_209_$tmp_100 6
+    .wire w_$emit_masm_py_209_$tmp_101 6
+    .wire w_$emit_masm_py_209_$tmp_102 6
+    .wire w_$emit_masm_py_209_$tmp_103 4
+    .wire w_$emit_masm_py_209_$tmp_104 6
+    .wire w_$emit_masm_py_209_$tmp_105 6
+    .wire w_$emit_masm_py_209_$tmp_106 6
+    .wire w_$emit_masm_py_209_$tmp_107 6
+    .wire w_$emit_masm_py_209_$tmp_108 6
+    .wire w_$emit_masm_py_209_$tmp_109 6
+    .wire w_$emit_masm_py_209_$tmp_11 4
+    .wire w_$emit_masm_py_209_$tmp_110 6
+    .wire w_$emit_masm_py_209_$tmp_111 6
+    .wire w_$emit_masm_py_209_$tmp_112 6
+    .wire w_$emit_masm_py_209_$tmp_113 6
+    .wire w_$emit_masm_py_209_$tmp_114 6
+    .wire w_$emit_masm_py_209_$tmp_115 6
+    .wire w_$emit_masm_py_209_$tmp_116 6
+    .wire w_$emit_masm_py_209_$tmp_117 6
+    .wire w_$emit_masm_py_209_$tmp_118 6
+    .wire w_$emit_masm_py_209_$tmp_119 6
+    .wire w_$emit_masm_py_209_$tmp_12 3
+    .wire w_$emit_masm_py_209_$tmp_120 6
+    .wire w_$emit_masm_py_209_$tmp_121 6
+    .wire w_$emit_masm_py_209_$tmp_122 4
+    .wire w_$emit_masm_py_209_$tmp_123 1
+    .wire w_$emit_masm_py_209_$tmp_124 1
+    .wire w_$emit_masm_py_209_$tmp_125 1
+    .wire w_$emit_masm_py_209_$tmp_126 1
+    .wire w_$emit_masm_py_209_$tmp_127 6
+    .wire w_$emit_masm_py_209_$tmp_128 2
+    .wire w_$emit_masm_py_209_$tmp_129 2
+    .wire w_$emit_masm_py_209_$tmp_13 3
+    .wire w_$emit_masm_py_209_$tmp_130 2
+    .wire w_$emit_masm_py_209_$tmp_131 2
+    .wire w_$emit_masm_py_209_$tmp_132 2
+    .wire w_$emit_masm_py_209_$tmp_133 6
+    .wire w_$emit_masm_py_209_$tmp_134 1
+    .wire w_$emit_masm_py_209_$tmp_135 1
+    .wire w_$emit_masm_py_209_$tmp_136 1
+    .wire w_$emit_masm_py_209_$tmp_137 1
+    .wire w_$emit_masm_py_209_$tmp_138 6
+    .wire w_$emit_masm_py_209_$tmp_139 1
+    .wire w_$emit_masm_py_209_$tmp_14 4
+    .wire w_$emit_masm_py_209_$tmp_140 1
+    .wire w_$emit_masm_py_209_$tmp_141 1
+    .wire w_$emit_masm_py_209_$tmp_142 1
+    .wire w_$emit_masm_py_209_$tmp_143 6
+    .wire w_$emit_masm_py_209_$tmp_144 1
+    .wire w_$emit_masm_py_209_$tmp_145 1
+    .wire w_$emit_masm_py_209_$tmp_146 1
+    .wire w_$emit_masm_py_209_$tmp_147 1
+    .wire w_$emit_masm_py_209_$tmp_148 6
+    .wire w_$emit_masm_py_209_$tmp_149 1
+    .wire w_$emit_masm_py_209_$tmp_15 4
+    .wire w_$emit_masm_py_209_$tmp_150 1
+    .wire w_$emit_masm_py_209_$tmp_151 1
+    .wire w_$emit_masm_py_209_$tmp_152 1
+    .wire w_$emit_masm_py_209_$tmp_153 6
+    .wire w_$emit_masm_py_209_$tmp_154 1
+    .wire w_$emit_masm_py_209_$tmp_155 1
+    .wire w_$emit_masm_py_209_$tmp_156 1
+    .wire w_$emit_masm_py_209_$tmp_157 1
+    .wire w_$emit_masm_py_209_$tmp_158 6
+    .wire w_$emit_masm_py_209_$tmp_159 1
+    .wire w_$emit_masm_py_209_$tmp_16 3
+    .wire w_$emit_masm_py_209_$tmp_160 1
+    .wire w_$emit_masm_py_209_$tmp_161 1
+    .wire w_$emit_masm_py_209_$tmp_162 1
+    .wire w_$emit_masm_py_209_$tmp_163 6
+    .wire w_$emit_masm_py_209_$tmp_164 1
+    .wire w_$emit_masm_py_209_$tmp_165 1
+    .wire w_$emit_masm_py_209_$tmp_166 1
+    .wire w_$emit_masm_py_209_$tmp_167 6
+    .wire w_$emit_masm_py_209_$tmp_168 2
+    .wire w_$emit_masm_py_209_$tmp_169 2
+    .wire w_$emit_masm_py_209_$tmp_17 4
+    .wire w_$emit_masm_py_209_$tmp_170 2
+    .wire w_$emit_masm_py_209_$tmp_171 6
+    .wire w_$emit_masm_py_209_$tmp_172 1
+    .wire w_$emit_masm_py_209_$tmp_173 1
+    .wire w_$emit_masm_py_209_$tmp_174 1
+    .wire w_$emit_masm_py_209_$tmp_175 6
+    .wire w_$emit_masm_py_209_$tmp_176 1
+    .wire w_$emit_masm_py_209_$tmp_177 1
+    .wire w_$emit_masm_py_209_$tmp_178 1
+    .wire w_$emit_masm_py_209_$tmp_179 6
+    .wire w_$emit_masm_py_209_$tmp_18 32
+    .wire w_$emit_masm_py_209_$tmp_180 1
+    .wire w_$emit_masm_py_209_$tmp_181 1
+    .wire w_$emit_masm_py_209_$tmp_182 1
+    .wire w_$emit_masm_py_209_$tmp_183 6
+    .wire w_$emit_masm_py_209_$tmp_184 1
+    .wire w_$emit_masm_py_209_$tmp_185 1
+    .wire w_$emit_masm_py_209_$tmp_186 1
+    .wire w_$emit_masm_py_209_$tmp_187 6
+    .wire w_$emit_masm_py_209_$tmp_188 1
+    .wire w_$emit_masm_py_209_$tmp_189 1
+    .wire w_$emit_masm_py_209_$tmp_19 32
+    .wire w_$emit_masm_py_209_$tmp_190 1
+    .wire w_$emit_masm_py_209_$tmp_191 6
+    .wire w_$emit_masm_py_209_$tmp_192 1
+    .wire w_$emit_masm_py_209_$tmp_193 1
+    .wire w_$emit_masm_py_209_$tmp_194 1
+    .wire w_$emit_masm_py_209_$tmp_195 6
+    .wire w_$emit_masm_py_209_$tmp_196 1
+    .wire w_$emit_masm_py_209_$tmp_197 1
+    .wire w_$emit_masm_py_209_$tmp_198 6
+    .wire w_$emit_masm_py_209_$tmp_199 2
+    .wire w_$emit_masm_py_209_$tmp_2 9
+    .wire w_$emit_masm_py_209_$tmp_20 4
+    .wire w_$emit_masm_py_209_$tmp_200 2
+    .wire w_$emit_masm_py_209_$tmp_201 6
+    .wire w_$emit_masm_py_209_$tmp_202 1
+    .wire w_$emit_masm_py_209_$tmp_203 1
+    .wire w_$emit_masm_py_209_$tmp_204 6
+    .wire w_$emit_masm_py_209_$tmp_205 1
+    .wire w_$emit_masm_py_209_$tmp_206 1
+    .wire w_$emit_masm_py_209_$tmp_207 6
+    .wire w_$emit_masm_py_209_$tmp_208 1
+    .wire w_$emit_masm_py_209_$tmp_209 1
+    .wire w_$emit_masm_py_209_$tmp_21 4
+    .wire w_$emit_masm_py_209_$tmp_210 6
+    .wire w_$emit_masm_py_209_$tmp_211 1
+    .wire w_$emit_masm_py_209_$tmp_212 1
+    .wire w_$emit_masm_py_209_$tmp_213 6
+    .wire w_$emit_masm_py_209_$tmp_214 1
+    .wire w_$emit_masm_py_209_$tmp_215 1
+    .wire w_$emit_masm_py_209_$tmp_216 6
+    .wire w_$emit_masm_py_209_$tmp_217 1
+    .wire w_$emit_masm_py_209_$tmp_218 1
+    .wire w_$emit_masm_py_209_$tmp_219 6
+    .wire w_$emit_masm_py_209_$tmp_22 4
+    .wire w_$emit_masm_py_209_$tmp_220 6
+    .wire w_$emit_masm_py_209_$tmp_221 6
+    .wire w_$emit_masm_py_209_$tmp_222 6
+    .wire w_$emit_masm_py_209_$tmp_223 6
+    .wire w_$emit_masm_py_209_$tmp_224 6
+    .wire w_$emit_masm_py_209_$tmp_225 6
+    .wire w_$emit_masm_py_209_$tmp_226 6
+    .wire w_$emit_masm_py_209_$tmp_227 6
+    .wire w_$emit_masm_py_209_$tmp_228 6
+    .wire w_$emit_masm_py_209_$tmp_229 6
+    .wire w_$emit_masm_py_209_$tmp_23 4
+    .wire w_$emit_masm_py_209_$tmp_230 6
+    .wire w_$emit_masm_py_209_$tmp_231 6
+    .wire w_$emit_masm_py_209_$tmp_232 6
+    .wire w_$emit_masm_py_209_$tmp_233 6
+    .wire w_$emit_masm_py_209_$tmp_234 6
+    .wire w_$emit_masm_py_209_$tmp_235 6
+    .wire w_$emit_masm_py_209_$tmp_236 6
+    .wire w_$emit_masm_py_209_$tmp_237 6
+    .wire w_$emit_masm_py_209_$tmp_238 6
+    .wire w_$emit_masm_py_209_$tmp_239 6
+    .wire w_$emit_masm_py_209_$tmp_24 4
+    .wire w_$emit_masm_py_209_$tmp_240 6
+    .wire w_$emit_masm_py_209_$tmp_241 6
+    .wire w_$emit_masm_py_209_$tmp_242 6
+    .wire w_$emit_masm_py_209_$tmp_243 6
+    .wire w_$emit_masm_py_209_$tmp_244 6
+    .wire w_$emit_masm_py_209_$tmp_245 6
+    .wire w_$emit_masm_py_209_$tmp_246 6
+    .wire w_$emit_masm_py_209_$tmp_247 6
+    .wire w_$emit_masm_py_209_$tmp_248 6
+    .wire w_$emit_masm_py_209_$tmp_249 6
+    .wire w_$emit_masm_py_209_$tmp_25 4
+    .wire w_$emit_masm_py_209_$tmp_250 6
+    .wire w_$emit_masm_py_209_$tmp_251 6
+    .wire w_$emit_masm_py_209_$tmp_252 6
+    .wire w_$emit_masm_py_209_$tmp_253 6
+    .wire w_$emit_masm_py_209_$tmp_254 6
+    .wire w_$emit_masm_py_209_$tmp_255 6
+    .wire w_$emit_masm_py_209_$tmp_256 6
+    .wire w_$emit_masm_py_209_$tmp_257 6
+    .wire w_$emit_masm_py_209_$tmp_258 6
+    .wire w_$emit_masm_py_209_$tmp_259 6
+    .wire w_$emit_masm_py_209_$tmp_26 4
+    .wire w_$emit_masm_py_209_$tmp_260 6
+    .wire w_$emit_masm_py_209_$tmp_261 6
+    .wire w_$emit_masm_py_209_$tmp_262 6
+    .wire w_$emit_masm_py_209_$tmp_263 6
+    .wire w_$emit_masm_py_209_$tmp_264 1
+    .wire w_$emit_masm_py_209_$tmp_265 6
+    .wire w_$emit_masm_py_209_$tmp_266 1
+    .wire w_$emit_masm_py_209_$tmp_267 6
+    .wire w_$emit_masm_py_209_$tmp_268 32
+    .wire w_$emit_masm_py_209_$tmp_269 32
+    .wire w_$emit_masm_py_209_$tmp_27 4
+    .wire w_$emit_masm_py_209_$tmp_270 32
+    .wire w_$emit_masm_py_209_$tmp_271 7
+    .wire w_$emit_masm_py_209_$tmp_272 7
+    .wire w_$emit_masm_py_209_$tmp_273 32
+    .wire w_$emit_masm_py_209_$tmp_274 32
+    .wire w_$emit_masm_py_209_$tmp_275 32
+    .wire w_$emit_masm_py_209_$tmp_276 5
+    .wire w_$emit_masm_py_209_$tmp_277 3
+    .wire w_$emit_masm_py_209_$tmp_278 1
+    .wire w_$emit_masm_py_209_$tmp_279 1
+    .wire w_$emit_masm_py_209_$tmp_28 4
+    .wire w_$emit_masm_py_209_$tmp_280 32
+    .wire w_$emit_masm_py_209_$tmp_281 1
+    .wire w_$emit_masm_py_209_$tmp_282 32
+    .wire w_$emit_masm_py_209_$tmp_283 1
+    .wire w_$emit_masm_py_209_$tmp_284 32
+    .wire w_$emit_masm_py_209_$tmp_285 1
+    .wire w_$emit_masm_py_209_$tmp_286 1
+    .wire w_$emit_masm_py_209_$tmp_287 5
+    .wire w_$emit_masm_py_209_$tmp_288 5
+    .wire w_$emit_masm_py_209_$tmp_289 5
+    .wire w_$emit_masm_py_209_$tmp_29 4
+    .wire w_$emit_masm_py_209_$tmp_290 5
+    .wire w_$emit_masm_py_209_$tmp_291 16
+    .wire w_$emit_masm_py_209_$tmp_292 16
+    .wire w_$emit_masm_py_209_$tmp_293 1
+    .wire w_$emit_masm_py_209_$tmp_294 32
+    .wire w_$emit_masm_py_209_$tmp_295 6
+    .wire w_$emit_masm_py_209_$tmp_296 6
+    .wire w_$emit_masm_py_209_$tmp_297 32
+    .wire w_$emit_masm_py_209_$tmp_298 32
+    .wire w_$emit_masm_py_209_$tmp_299 32
+    .wire w_$emit_masm_py_209_$tmp_3 8
+    .wire w_$emit_masm_py_209_$tmp_30 4
+    .wire w_$emit_masm_py_209_$tmp_300 32
+    .wire w_$emit_masm_py_209_$tmp_301 5
+    .wire w_$emit_masm_py_209_$tmp_302 5
+    .wire w_$emit_masm_py_209_$tmp_303 5
+    .wire w_$emit_masm_py_209_$tmp_304 6
+    .wire w_$emit_masm_py_209_$tmp_305 6
+    .wire w_$emit_masm_py_209_$tmp_306 6
+    .wire w_$emit_masm_py_209_$tmp_307 6
+    .wire w_$emit_masm_py_209_$tmp_308 6
+    .wire w_$emit_masm_py_209_$tmp_309 6
+    .wire w_$emit_masm_py_209_$tmp_31 4
+    .wire w_$emit_masm_py_209_$tmp_310 1
+    .wire w_$emit_masm_py_209_$tmp_311 1
+    .wire w_$emit_masm_py_209_$tmp_312 7
+    .wire w_$emit_masm_py_209_$tmp_313 1
+    .wire w_$emit_masm_py_209_$tmp_314 1
+    .wire w_$emit_masm_py_209_$tmp_315 5
+    .wire w_$emit_masm_py_209_$tmp_316 1
+    .wire w_$emit_masm_py_209_$tmp_317 1
+    .wire w_$emit_masm_py_209_$tmp_318 32
+    .wire w_$emit_masm_py_209_$tmp_319 32
+    .wire w_$emit_masm_py_209_$tmp_32 4
+    .wire w_$emit_masm_py_209_$tmp_33 4
+    .wire w_$emit_masm_py_209_$tmp_34 4
+    .wire w_$emit_masm_py_209_$tmp_35 4
+    .wire w_$emit_masm_py_209_$tmp_36 4
+    .wire w_$emit_masm_py_209_$tmp_37 4
+    .wire w_$emit_masm_py_209_$tmp_38 4
+    .wire w_$emit_masm_py_209_$tmp_39 4
+    .wire w_$emit_masm_py_209_$tmp_4 9
+    .wire w_$emit_masm_py_209_$tmp_40 4
+    .wire w_$emit_masm_py_209_$tmp_41 4
+    .wire w_$emit_masm_py_209_$tmp_42 1
+    .wire w_$emit_masm_py_209_$tmp_43 1
+    .wire w_$emit_masm_py_209_$tmp_44 1
+    .wire w_$emit_masm_py_209_$tmp_45 1
+    .wire w_$emit_masm_py_209_$tmp_46 1
+    .wire w_$emit_masm_py_209_$tmp_47 1
+    .wire w_$emit_masm_py_209_$tmp_48 1
+    .wire w_$emit_masm_py_209_$tmp_49 1
+    .wire w_$emit_masm_py_209_$tmp_5 2
+    .wire w_$emit_masm_py_209_$tmp_50 2
+    .wire w_$emit_masm_py_209_$tmp_51 2
+    .wire w_$emit_masm_py_209_$tmp_52 2
+    .wire w_$emit_masm_py_209_$tmp_53 2
+    .wire w_$emit_masm_py_209_$tmp_54 2
+    .wire w_$emit_masm_py_209_$tmp_55 2
+    .wire w_$emit_masm_py_209_$tmp_56 2
+    .wire w_$emit_masm_py_209_$tmp_57 2
+    .wire w_$emit_masm_py_209_$tmp_58 2
+    .wire w_$emit_masm_py_209_$tmp_59 1
+    .wire w_$emit_masm_py_209_$tmp_6 2
+    .wire w_$emit_masm_py_209_$tmp_60 1
+    .wire w_$emit_masm_py_209_$tmp_61 1
+    .wire w_$emit_masm_py_209_$tmp_62 1
+    .wire w_$emit_masm_py_209_$tmp_63 1
+    .wire w_$emit_masm_py_209_$tmp_64 1
+    .wire w_$emit_masm_py_209_$tmp_65 1
+    .wire w_$emit_masm_py_209_$tmp_66 1
+    .wire w_$emit_masm_py_209_$tmp_67 1
+    .wire w_$emit_masm_py_209_$tmp_68 1
+    .wire w_$emit_masm_py_209_$tmp_69 32
+    .wire w_$emit_masm_py_209_$tmp_7 2
+    .wire w_$emit_masm_py_209_$tmp_70 32
+    .wire w_$emit_masm_py_209_$tmp_71 4
+    .wire w_$emit_masm_py_209_$tmp_72 4
+    .wire w_$emit_masm_py_209_$tmp_73 4
+    .wire w_$emit_masm_py_209_$tmp_74 4
+    .wire w_$emit_masm_py_209_$tmp_75 4
+    .wire w_$emit_masm_py_209_$tmp_76 4
+    .wire w_$emit_masm_py_209_$tmp_77 4
+    .wire w_$emit_masm_py_209_$tmp_78 4
+    .wire w_$emit_masm_py_209_$tmp_79 4
+    .wire w_$emit_masm_py_209_$tmp_8 2
+    .wire w_$emit_masm_py_209_$tmp_80 4
+    .wire w_$emit_masm_py_209_$tmp_81 6
+    .wire w_$emit_masm_py_209_$tmp_82 6
+    .wire w_$emit_masm_py_209_$tmp_83 6
+    .wire w_$emit_masm_py_209_$tmp_84 6
+    .wire w_$emit_masm_py_209_$tmp_85 6
+    .wire w_$emit_masm_py_209_$tmp_86 6
+    .wire w_$emit_masm_py_209_$tmp_87 6
+    .wire w_$emit_masm_py_209_$tmp_88 6
+    .wire w_$emit_masm_py_209_$tmp_89 6
+    .wire w_$emit_masm_py_209_$tmp_9 3
+    .wire w_$emit_masm_py_209_$tmp_90 6
+    .wire w_$emit_masm_py_209_$tmp_91 6
+    .wire w_$emit_masm_py_209_$tmp_92 6
+    .wire w_$emit_masm_py_209_$tmp_93 6
+    .wire w_$emit_masm_py_209_$tmp_94 6
+    .wire w_$emit_masm_py_209_$tmp_95 6
+    .wire w_$emit_masm_py_209_$tmp_96 6
+    .wire w_$emit_masm_py_209_$tmp_97 6
+    .wire w_$emit_masm_py_209_$tmp_98 6
+    .wire w_$emit_masm_py_209_$tmp_99 6
+    @REG [id = "$flatten\dut.$procdff$727", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$727_curr 1 1
+    @REG [id = "$flatten\dut.$procdff$728", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$728_curr 1 1
+    @REG [id = "$flatten\dut.$procdff$729", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$729_curr 32 0
+    @REG [id = "$flatten\dut.$procdff$730", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$730_curr 1 0
+    @REG [id = "$flatten\rdriver.$procdff$737", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_316_$flatten\rdriver_$procdff$737_curr 3 7
+    @REG [id = "$flatten\dut.$procdff$727", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_329_$flatten\dut_$procdff$727_next 1
+    @REG [id = "$flatten\dut.$procdff$728", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_329_$flatten\dut_$procdff$728_next 1
+    @REG [id = "$flatten\dut.$procdff$729", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_329_$flatten\dut_$procdff$729_next 32
+    @REG [id = "$flatten\dut.$procdff$730", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_329_$flatten\dut_$procdff$730_next 1
+    @REG [id = "$flatten\rdriver.$procdff$737", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_329_$flatten\rdriver_$procdff$737_next 3
+    .wire w_$emit_masm_py_429_$concat_out_ 2
+    .wire w_$emit_masm_py_429_$concat_out__1 3
+    .wire w_$emit_masm_py_429_$concat_out__10 2
+    .wire w_$emit_masm_py_429_$concat_out__11 3
+    .wire w_$emit_masm_py_429_$concat_out__12 4
+    .wire w_$emit_masm_py_429_$concat_out__13 5
+    .wire w_$emit_masm_py_429_$concat_out__14 6
+    .wire w_$emit_masm_py_429_$concat_out__15 7
+    .wire w_$emit_masm_py_429_$concat_out__16 8
+    .wire w_$emit_masm_py_429_$concat_out__17 9
+    .wire w_$emit_masm_py_429_$concat_out__18 10
+    .wire w_$emit_masm_py_429_$concat_out__19 11
+    .wire w_$emit_masm_py_429_$concat_out__2 4
+    .wire w_$emit_masm_py_429_$concat_out__20 2
+    .wire w_$emit_masm_py_429_$concat_out__21 3
+    .wire w_$emit_masm_py_429_$concat_out__22 4
+    .wire w_$emit_masm_py_429_$concat_out__23 5
+    .wire w_$emit_masm_py_429_$concat_out__24 6
+    .wire w_$emit_masm_py_429_$concat_out__25 7
+    .wire w_$emit_masm_py_429_$concat_out__26 8
+    .wire w_$emit_masm_py_429_$concat_out__27 9
+    .wire w_$emit_masm_py_429_$concat_out__28 2
+    .wire w_$emit_masm_py_429_$concat_out__29 3
+    .wire w_$emit_masm_py_429_$concat_out__3 5
+    .wire w_$emit_masm_py_429_$concat_out__30 4
+    .wire w_$emit_masm_py_429_$concat_out__31 5
+    .wire w_$emit_masm_py_429_$concat_out__32 6
+    .wire w_$emit_masm_py_429_$concat_out__33 7
+    .wire w_$emit_masm_py_429_$concat_out__34 8
+    .wire w_$emit_masm_py_429_$concat_out__35 2
+    .wire w_$emit_masm_py_429_$concat_out__36 3
+    .wire w_$emit_masm_py_429_$concat_out__37 4
+    .wire w_$emit_masm_py_429_$concat_out__38 5
+    .wire w_$emit_masm_py_429_$concat_out__39 6
+    .wire w_$emit_masm_py_429_$concat_out__4 6
+    .wire w_$emit_masm_py_429_$concat_out__40 7
+    .wire w_$emit_masm_py_429_$concat_out__41 8
+    .wire w_$emit_masm_py_429_$concat_out__42 9
+    .wire w_$emit_masm_py_429_$concat_out__43 2
+    .wire w_$emit_masm_py_429_$concat_out__44 2
+    .wire w_$emit_masm_py_429_$concat_out__45 2
+    .wire w_$emit_masm_py_429_$concat_out__46 2
+    .wire w_$emit_masm_py_429_$concat_out__47 2
+    .wire w_$emit_masm_py_429_$concat_out__48 3
+    .wire w_$emit_masm_py_429_$concat_out__49 2
+    .wire w_$emit_masm_py_429_$concat_out__5 7
+    .wire w_$emit_masm_py_429_$concat_out__50 3
+    .wire w_$emit_masm_py_429_$concat_out__51 2
+    .wire w_$emit_masm_py_429_$concat_out__52 3
+    .wire w_$emit_masm_py_429_$concat_out__53 4
+    .wire w_$emit_masm_py_429_$concat_out__54 2
+    .wire w_$emit_masm_py_429_$concat_out__55 3
+    .wire w_$emit_masm_py_429_$concat_out__56 2
+    .wire w_$emit_masm_py_429_$concat_out__57 3
+    .wire w_$emit_masm_py_429_$concat_out__58 2
+    .wire w_$emit_masm_py_429_$concat_out__59 3
+    .wire w_$emit_masm_py_429_$concat_out__6 8
+    .wire w_$emit_masm_py_429_$concat_out__60 4
+    .wire w_$emit_masm_py_429_$concat_out__61 2
+    .wire w_$emit_masm_py_429_$concat_out__62 3
+    .wire w_$emit_masm_py_429_$concat_out__63 4
+    .wire w_$emit_masm_py_429_$concat_out__64 2
+    .wire w_$emit_masm_py_429_$concat_out__65 3
+    .wire w_$emit_masm_py_429_$concat_out__66 2
+    .wire w_$emit_masm_py_429_$concat_out__67 3
+    .wire w_$emit_masm_py_429_$concat_out__68 4
+    .wire w_$emit_masm_py_429_$concat_out__69 32
+    .wire w_$emit_masm_py_429_$concat_out__7 9
+    .wire w_$emit_masm_py_429_$concat_out__70 28
+    .wire w_$emit_masm_py_429_$concat_out__71 32
+    .wire w_$emit_masm_py_429_$concat_out__72 32
+    .wire w_$emit_masm_py_429_$concat_out__73 32
+    .wire w_$emit_masm_py_429_$concat_out__74 32
+    .wire w_$emit_masm_py_429_$concat_out__75 18
+    .wire w_$emit_masm_py_429_$concat_out__76 32
+    .wire w_$emit_masm_py_429_$concat_out__8 10
+    .wire w_$emit_masm_py_429_$concat_out__9 11
+    .wire w_$emit_masm_py_550_$slice_out_ 6
+    .wire w_$emit_masm_py_550_$slice_out__1 6
+    .wire w_$emit_masm_py_550_$slice_out__10 6
+    .wire w_$emit_masm_py_550_$slice_out__11 6
+    .wire w_$emit_masm_py_550_$slice_out__12 6
+    .wire w_$emit_masm_py_550_$slice_out__13 6
+    .wire w_$emit_masm_py_550_$slice_out__14 6
+    .wire w_$emit_masm_py_550_$slice_out__15 6
+    .wire w_$emit_masm_py_550_$slice_out__16 6
+    .wire w_$emit_masm_py_550_$slice_out__17 6
+    .wire w_$emit_masm_py_550_$slice_out__18 6
+    .wire w_$emit_masm_py_550_$slice_out__19 6
+    .wire w_$emit_masm_py_550_$slice_out__2 6
+    .wire w_$emit_masm_py_550_$slice_out__20 6
+    .wire w_$emit_masm_py_550_$slice_out__21 6
+    .wire w_$emit_masm_py_550_$slice_out__22 6
+    .wire w_$emit_masm_py_550_$slice_out__23 6
+    .wire w_$emit_masm_py_550_$slice_out__24 6
+    .wire w_$emit_masm_py_550_$slice_out__25 6
+    .wire w_$emit_masm_py_550_$slice_out__26 6
+    .wire w_$emit_masm_py_550_$slice_out__27 6
+    .wire w_$emit_masm_py_550_$slice_out__28 6
+    .wire w_$emit_masm_py_550_$slice_out__29 6
+    .wire w_$emit_masm_py_550_$slice_out__3 6
+    .wire w_$emit_masm_py_550_$slice_out__30 6
+    .wire w_$emit_masm_py_550_$slice_out__31 6
+    .wire w_$emit_masm_py_550_$slice_out__32 6
+    .wire w_$emit_masm_py_550_$slice_out__33 6
+    .wire w_$emit_masm_py_550_$slice_out__34 6
+    .wire w_$emit_masm_py_550_$slice_out__35 6
+    .wire w_$emit_masm_py_550_$slice_out__36 6
+    .wire w_$emit_masm_py_550_$slice_out__37 6
+    .wire w_$emit_masm_py_550_$slice_out__38 6
+    .wire w_$emit_masm_py_550_$slice_out__39 6
+    .wire w_$emit_masm_py_550_$slice_out__4 6
+    .wire w_$emit_masm_py_550_$slice_out__40 6
+    .wire w_$emit_masm_py_550_$slice_out__41 6
+    .wire w_$emit_masm_py_550_$slice_out__42 6
+    .wire w_$emit_masm_py_550_$slice_out__43 6
+    .wire w_$emit_masm_py_550_$slice_out__44 6
+    .wire w_$emit_masm_py_550_$slice_out__45 6
+    .wire w_$emit_masm_py_550_$slice_out__46 6
+    .wire w_$emit_masm_py_550_$slice_out__47 6
+    .wire w_$emit_masm_py_550_$slice_out__48 6
+    .wire w_$emit_masm_py_550_$slice_out__49 6
+    .wire w_$emit_masm_py_550_$slice_out__5 6
+    .wire w_$emit_masm_py_550_$slice_out__50 6
+    .wire w_$emit_masm_py_550_$slice_out__51 6
+    .wire w_$emit_masm_py_550_$slice_out__52 6
+    .wire w_$emit_masm_py_550_$slice_out__53 6
+    .wire w_$emit_masm_py_550_$slice_out__54 6
+    .wire w_$emit_masm_py_550_$slice_out__55 6
+    .wire w_$emit_masm_py_550_$slice_out__56 6
+    .wire w_$emit_masm_py_550_$slice_out__57 6
+    .wire w_$emit_masm_py_550_$slice_out__58 6
+    .wire w_$emit_masm_py_550_$slice_out__59 6
+    .wire w_$emit_masm_py_550_$slice_out__6 6
+    .wire w_$emit_masm_py_550_$slice_out__60 6
+    .wire w_$emit_masm_py_550_$slice_out__61 6
+    .wire w_$emit_masm_py_550_$slice_out__62 6
+    .wire w_$emit_masm_py_550_$slice_out__63 6
+    .wire w_$emit_masm_py_550_$slice_out__64 6
+    .wire w_$emit_masm_py_550_$slice_out__65 6
+    .wire w_$emit_masm_py_550_$slice_out__66 6
+    .wire w_$emit_masm_py_550_$slice_out__67 6
+    .wire w_$emit_masm_py_550_$slice_out__68 6
+    .wire w_$emit_masm_py_550_$slice_out__69 6
+    .wire w_$emit_masm_py_550_$slice_out__7 6
+    .wire w_$emit_masm_py_550_$slice_out__70 6
+    .wire w_$emit_masm_py_550_$slice_out__71 7
+    .wire w_$emit_masm_py_550_$slice_out__72 3
+    .wire w_$emit_masm_py_550_$slice_out__73 1
+    .wire w_$emit_masm_py_550_$slice_out__74 1
+    .wire w_$emit_masm_py_550_$slice_out__75 1
+    .wire w_$emit_masm_py_550_$slice_out__76 1
+    .wire w_$emit_masm_py_550_$slice_out__77 5
+    .wire w_$emit_masm_py_550_$slice_out__78 5
+    .wire w_$emit_masm_py_550_$slice_out__79 5
+    .wire w_$emit_masm_py_550_$slice_out__8 6
+    .wire w_$emit_masm_py_550_$slice_out__80 1
+    .wire w_$emit_masm_py_550_$slice_out__81 6
+    .wire w_$emit_masm_py_550_$slice_out__82 5
+    .wire w_$emit_masm_py_550_$slice_out__83 5
+    .wire w_$emit_masm_py_550_$slice_out__84 5
+    .wire w_$emit_masm_py_550_$slice_out__85 6
+    .wire w_$emit_masm_py_550_$slice_out__86 6
+    .wire w_$emit_masm_py_550_$slice_out__87 6
+    .wire w_$emit_masm_py_550_$slice_out__88 7
+    .wire w_$emit_masm_py_550_$slice_out__89 5
+    .wire w_$emit_masm_py_550_$slice_out__9 6
+    .wire w_$emit_masm_py_550_$slice_out__90 16
+    .wire w_$emit_masm_py_550_$slice_out__91 26
+    .wire w_$emit_masm_py_550_$slice_out__92 4
+    .wire w_$emit_masm_py_550_$slice_out__93 30
+    .wire w_$emit_masm_py_550_$slice_out__94 16
+    .wire w_$emit_masm_py_550_$slice_out__95 5
+    .wire w_$emit_masm_py_550_$slice_out__96 16
+    .wire w_$emit_masm_py_550_$slice_out__97 14
+    .wire w_$emit_masm_py_662_$const_out_ 32
+    .wire w_$emit_masm_py_662_$const_out__1 4
+    .wire w_$emit_masm_py_662_$const_out__10 4
+    .wire w_$emit_masm_py_662_$const_out__100 1
+    .wire w_$emit_masm_py_662_$const_out__101 1
+    .wire w_$emit_masm_py_662_$const_out__102 1
+    .wire w_$emit_masm_py_662_$const_out__103 1
+    .wire w_$emit_masm_py_662_$const_out__104 1
+    .wire w_$emit_masm_py_662_$const_out__105 1
+    .wire w_$emit_masm_py_662_$const_out__106 1
+    .wire w_$emit_masm_py_662_$const_out__107 1
+    .wire w_$emit_masm_py_662_$const_out__108 1
+    .wire w_$emit_masm_py_662_$const_out__109 1
+    .wire w_$emit_masm_py_662_$const_out__11 4
+    .wire w_$emit_masm_py_662_$const_out__110 1
+    .wire w_$emit_masm_py_662_$const_out__111 1
+    .wire w_$emit_masm_py_662_$const_out__112 1
+    .wire w_$emit_masm_py_662_$const_out__113 1
+    .wire w_$emit_masm_py_662_$const_out__114 1
+    .wire w_$emit_masm_py_662_$const_out__115 1
+    .wire w_$emit_masm_py_662_$const_out__116 1
+    .wire w_$emit_masm_py_662_$const_out__117 1
+    .wire w_$emit_masm_py_662_$const_out__118 1
+    .wire w_$emit_masm_py_662_$const_out__119 2
+    .wire w_$emit_masm_py_662_$const_out__12 4
+    .wire w_$emit_masm_py_662_$const_out__120 2
+    .wire w_$emit_masm_py_662_$const_out__121 2
+    .wire w_$emit_masm_py_662_$const_out__122 1
+    .wire w_$emit_masm_py_662_$const_out__123 1
+    .wire w_$emit_masm_py_662_$const_out__124 1
+    .wire w_$emit_masm_py_662_$const_out__125 1
+    .wire w_$emit_masm_py_662_$const_out__126 1
+    .wire w_$emit_masm_py_662_$const_out__127 1
+    .wire w_$emit_masm_py_662_$const_out__128 1
+    .wire w_$emit_masm_py_662_$const_out__129 1
+    .wire w_$emit_masm_py_662_$const_out__13 4
+    .wire w_$emit_masm_py_662_$const_out__130 1
+    .wire w_$emit_masm_py_662_$const_out__131 1
+    .wire w_$emit_masm_py_662_$const_out__132 1
+    .wire w_$emit_masm_py_662_$const_out__133 1
+    .wire w_$emit_masm_py_662_$const_out__134 1
+    .wire w_$emit_masm_py_662_$const_out__135 1
+    .wire w_$emit_masm_py_662_$const_out__136 1
+    .wire w_$emit_masm_py_662_$const_out__137 1
+    .wire w_$emit_masm_py_662_$const_out__138 1
+    .wire w_$emit_masm_py_662_$const_out__139 1
+    .wire w_$emit_masm_py_662_$const_out__14 4
+    .wire w_$emit_masm_py_662_$const_out__140 1
+    .wire w_$emit_masm_py_662_$const_out__141 1
+    .wire w_$emit_masm_py_662_$const_out__142 2
+    .wire w_$emit_masm_py_662_$const_out__143 2
+    .wire w_$emit_masm_py_662_$const_out__144 1
+    .wire w_$emit_masm_py_662_$const_out__145 1
+    .wire w_$emit_masm_py_662_$const_out__146 1
+    .wire w_$emit_masm_py_662_$const_out__147 1
+    .wire w_$emit_masm_py_662_$const_out__148 1
+    .wire w_$emit_masm_py_662_$const_out__149 1
+    .wire w_$emit_masm_py_662_$const_out__15 4
+    .wire w_$emit_masm_py_662_$const_out__150 1
+    .wire w_$emit_masm_py_662_$const_out__151 1
+    .wire w_$emit_masm_py_662_$const_out__152 1
+    .wire w_$emit_masm_py_662_$const_out__153 1
+    .wire w_$emit_masm_py_662_$const_out__154 1
+    .wire w_$emit_masm_py_662_$const_out__155 1
+    .wire w_$emit_masm_py_662_$const_out__156 6
+    .wire w_$emit_masm_py_662_$const_out__157 6
+    .wire w_$emit_masm_py_662_$const_out__158 6
+    .wire w_$emit_masm_py_662_$const_out__159 6
+    .wire w_$emit_masm_py_662_$const_out__16 4
+    .wire w_$emit_masm_py_662_$const_out__160 6
+    .wire w_$emit_masm_py_662_$const_out__161 6
+    .wire w_$emit_masm_py_662_$const_out__162 6
+    .wire w_$emit_masm_py_662_$const_out__163 6
+    .wire w_$emit_masm_py_662_$const_out__164 6
+    .wire w_$emit_masm_py_662_$const_out__165 6
+    .wire w_$emit_masm_py_662_$const_out__166 6
+    .wire w_$emit_masm_py_662_$const_out__167 6
+    .wire w_$emit_masm_py_662_$const_out__168 6
+    .wire w_$emit_masm_py_662_$const_out__169 6
+    .wire w_$emit_masm_py_662_$const_out__17 4
+    .wire w_$emit_masm_py_662_$const_out__170 6
+    .wire w_$emit_masm_py_662_$const_out__171 6
+    .wire w_$emit_masm_py_662_$const_out__172 6
+    .wire w_$emit_masm_py_662_$const_out__173 6
+    .wire w_$emit_masm_py_662_$const_out__174 6
+    .wire w_$emit_masm_py_662_$const_out__175 1
+    .wire w_$emit_masm_py_662_$const_out__176 1
+    .wire w_$emit_masm_py_662_$const_out__177 32
+    .wire w_$emit_masm_py_662_$const_out__178 32
+    .wire w_$emit_masm_py_662_$const_out__179 32
+    .wire w_$emit_masm_py_662_$const_out__18 4
+    .wire w_$emit_masm_py_662_$const_out__180 7
+    .wire w_$emit_masm_py_662_$const_out__181 32
+    .wire w_$emit_masm_py_662_$const_out__182 32
+    .wire w_$emit_masm_py_662_$const_out__183 32
+    .wire w_$emit_masm_py_662_$const_out__184 5
+    .wire w_$emit_masm_py_662_$const_out__185 1
+    .wire w_$emit_masm_py_662_$const_out__186 1
+    .wire w_$emit_masm_py_662_$const_out__187 5
+    .wire w_$emit_masm_py_662_$const_out__188 16
+    .wire w_$emit_masm_py_662_$const_out__189 16
+    .wire w_$emit_masm_py_662_$const_out__19 4
+    .wire w_$emit_masm_py_662_$const_out__190 32
+    .wire w_$emit_masm_py_662_$const_out__191 6
+    .wire w_$emit_masm_py_662_$const_out__192 32
+    .wire w_$emit_masm_py_662_$const_out__193 32
+    .wire w_$emit_masm_py_662_$const_out__194 32
+    .wire w_$emit_masm_py_662_$const_out__195 6
+    .wire w_$emit_masm_py_662_$const_out__196 6
+    .wire w_$emit_masm_py_662_$const_out__197 6
+    .wire w_$emit_masm_py_662_$const_out__198 1
+    .wire w_$emit_masm_py_662_$const_out__199 1
+    .wire w_$emit_masm_py_662_$const_out__2 4
+    .wire w_$emit_masm_py_662_$const_out__20 4
+    .wire w_$emit_masm_py_662_$const_out__200 1
+    .wire w_$emit_masm_py_662_$const_out__201 1
+    .wire w_$emit_masm_py_662_$const_out__202 1
+    .wire w_$emit_masm_py_662_$const_out__203 1
+    .wire w_$emit_masm_py_662_$const_out__204 32
+    .wire w_$emit_masm_py_662_$const_out__205 32
+    .wire w_$emit_masm_py_662_$const_out__206 16
+    .wire w_$emit_masm_py_662_$const_out__207 2
+    .wire w_$emit_masm_py_662_$const_out__208 2
+    .wire w_$emit_masm_py_662_$const_out__209 27
+    .wire w_$emit_masm_py_662_$const_out__21 4
+    .wire w_$emit_masm_py_662_$const_out__210 2
+    .wire w_$emit_masm_py_662_$const_out__22 4
+    .wire w_$emit_masm_py_662_$const_out__23 1
+    .wire w_$emit_masm_py_662_$const_out__24 1
+    .wire w_$emit_masm_py_662_$const_out__25 1
+    .wire w_$emit_masm_py_662_$const_out__26 1
+    .wire w_$emit_masm_py_662_$const_out__27 1
+    .wire w_$emit_masm_py_662_$const_out__28 1
+    .wire w_$emit_masm_py_662_$const_out__29 1
+    .wire w_$emit_masm_py_662_$const_out__3 4
+    .wire w_$emit_masm_py_662_$const_out__30 1
+    .wire w_$emit_masm_py_662_$const_out__31 2
+    .wire w_$emit_masm_py_662_$const_out__32 2
+    .wire w_$emit_masm_py_662_$const_out__33 2
+    .wire w_$emit_masm_py_662_$const_out__34 2
+    .wire w_$emit_masm_py_662_$const_out__35 2
+    .wire w_$emit_masm_py_662_$const_out__36 2
+    .wire w_$emit_masm_py_662_$const_out__37 2
+    .wire w_$emit_masm_py_662_$const_out__38 2
+    .wire w_$emit_masm_py_662_$const_out__39 2
+    .wire w_$emit_masm_py_662_$const_out__4 4
+    .wire w_$emit_masm_py_662_$const_out__40 1
+    .wire w_$emit_masm_py_662_$const_out__41 1
+    .wire w_$emit_masm_py_662_$const_out__42 1
+    .wire w_$emit_masm_py_662_$const_out__43 1
+    .wire w_$emit_masm_py_662_$const_out__44 1
+    .wire w_$emit_masm_py_662_$const_out__45 1
+    .wire w_$emit_masm_py_662_$const_out__46 1
+    .wire w_$emit_masm_py_662_$const_out__47 1
+    .wire w_$emit_masm_py_662_$const_out__48 1
+    .wire w_$emit_masm_py_662_$const_out__49 1
+    .wire w_$emit_masm_py_662_$const_out__5 4
+    .wire w_$emit_masm_py_662_$const_out__50 32
+    .wire w_$emit_masm_py_662_$const_out__51 4
+    .wire w_$emit_masm_py_662_$const_out__52 4
+    .wire w_$emit_masm_py_662_$const_out__53 4
+    .wire w_$emit_masm_py_662_$const_out__54 4
+    .wire w_$emit_masm_py_662_$const_out__55 4
+    .wire w_$emit_masm_py_662_$const_out__56 4
+    .wire w_$emit_masm_py_662_$const_out__57 4
+    .wire w_$emit_masm_py_662_$const_out__58 4
+    .wire w_$emit_masm_py_662_$const_out__59 4
+    .wire w_$emit_masm_py_662_$const_out__6 4
+    .wire w_$emit_masm_py_662_$const_out__60 4
+    .wire w_$emit_masm_py_662_$const_out__61 6
+    .wire w_$emit_masm_py_662_$const_out__62 6
+    .wire w_$emit_masm_py_662_$const_out__63 6
+    .wire w_$emit_masm_py_662_$const_out__64 6
+    .wire w_$emit_masm_py_662_$const_out__65 6
+    .wire w_$emit_masm_py_662_$const_out__66 6
+    .wire w_$emit_masm_py_662_$const_out__67 6
+    .wire w_$emit_masm_py_662_$const_out__68 6
+    .wire w_$emit_masm_py_662_$const_out__69 6
+    .wire w_$emit_masm_py_662_$const_out__7 4
+    .wire w_$emit_masm_py_662_$const_out__70 6
+    .wire w_$emit_masm_py_662_$const_out__71 6
+    .wire w_$emit_masm_py_662_$const_out__72 4
+    .wire w_$emit_masm_py_662_$const_out__73 6
+    .wire w_$emit_masm_py_662_$const_out__74 6
+    .wire w_$emit_masm_py_662_$const_out__75 6
+    .wire w_$emit_masm_py_662_$const_out__76 6
+    .wire w_$emit_masm_py_662_$const_out__77 6
+    .wire w_$emit_masm_py_662_$const_out__78 6
+    .wire w_$emit_masm_py_662_$const_out__79 6
+    .wire w_$emit_masm_py_662_$const_out__8 4
+    .wire w_$emit_masm_py_662_$const_out__80 6
+    .wire w_$emit_masm_py_662_$const_out__81 6
+    .wire w_$emit_masm_py_662_$const_out__82 4
+    .wire w_$emit_masm_py_662_$const_out__83 1
+    .wire w_$emit_masm_py_662_$const_out__84 1
+    .wire w_$emit_masm_py_662_$const_out__85 1
+    .wire w_$emit_masm_py_662_$const_out__86 1
+    .wire w_$emit_masm_py_662_$const_out__87 2
+    .wire w_$emit_masm_py_662_$const_out__88 2
+    .wire w_$emit_masm_py_662_$const_out__89 2
+    .wire w_$emit_masm_py_662_$const_out__9 4
+    .wire w_$emit_masm_py_662_$const_out__90 2
+    .wire w_$emit_masm_py_662_$const_out__91 2
+    .wire w_$emit_masm_py_662_$const_out__92 1
+    .wire w_$emit_masm_py_662_$const_out__93 1
+    .wire w_$emit_masm_py_662_$const_out__94 1
+    .wire w_$emit_masm_py_662_$const_out__95 1
+    .wire w_$emit_masm_py_662_$const_out__96 1
+    .wire w_$emit_masm_py_662_$const_out__97 1
+    .wire w_$emit_masm_py_662_$const_out__98 1
+    .wire w_$emit_masm_py_662_$const_out__99 1
+    .wire w_$emit_masm_py_863_$replicate_out_ 1
+    .wire w_$emit_masm_py_863_$replicate_out__1 1
+    .wire w_$emit_masm_py_863_$replicate_out__10 1
+    .wire w_$emit_masm_py_863_$replicate_out__11 1
+    .wire w_$emit_masm_py_863_$replicate_out__12 1
+    .wire w_$emit_masm_py_863_$replicate_out__13 1
+    .wire w_$emit_masm_py_863_$replicate_out__14 1
+    .wire w_$emit_masm_py_863_$replicate_out__15 1
+    .wire w_$emit_masm_py_863_$replicate_out__16 1
+    .wire w_$emit_masm_py_863_$replicate_out__17 1
+    .wire w_$emit_masm_py_863_$replicate_out__18 1
+    .wire w_$emit_masm_py_863_$replicate_out__19 1
+    .wire w_$emit_masm_py_863_$replicate_out__2 1
+    .wire w_$emit_masm_py_863_$replicate_out__20 1
+    .wire w_$emit_masm_py_863_$replicate_out__21 1
+    .wire w_$emit_masm_py_863_$replicate_out__22 1
+    .wire w_$emit_masm_py_863_$replicate_out__23 1
+    .wire w_$emit_masm_py_863_$replicate_out__24 1
+    .wire w_$emit_masm_py_863_$replicate_out__25 1
+    .wire w_$emit_masm_py_863_$replicate_out__26 1
+    .wire w_$emit_masm_py_863_$replicate_out__27 1
+    .wire w_$emit_masm_py_863_$replicate_out__28 1
+    .wire w_$emit_masm_py_863_$replicate_out__29 1
+    .wire w_$emit_masm_py_863_$replicate_out__3 1
+    .wire w_$emit_masm_py_863_$replicate_out__30 1
+    .wire w_$emit_masm_py_863_$replicate_out__31 1
+    .wire w_$emit_masm_py_863_$replicate_out__32 1
+    .wire w_$emit_masm_py_863_$replicate_out__33 1
+    .wire w_$emit_masm_py_863_$replicate_out__34 1
+    .wire w_$emit_masm_py_863_$replicate_out__35 1
+    .wire w_$emit_masm_py_863_$replicate_out__36 1
+    .wire w_$emit_masm_py_863_$replicate_out__37 1
+    .wire w_$emit_masm_py_863_$replicate_out__38 1
+    .wire w_$emit_masm_py_863_$replicate_out__39 1
+    .wire w_$emit_masm_py_863_$replicate_out__4 1
+    .wire w_$emit_masm_py_863_$replicate_out__40 1
+    .wire w_$emit_masm_py_863_$replicate_out__41 1
+    .wire w_$emit_masm_py_863_$replicate_out__42 1
+    .wire w_$emit_masm_py_863_$replicate_out__43 1
+    .wire w_$emit_masm_py_863_$replicate_out__44 1
+    .wire w_$emit_masm_py_863_$replicate_out__45 1
+    .wire w_$emit_masm_py_863_$replicate_out__46 1
+    .wire w_$emit_masm_py_863_$replicate_out__47 1
+    .wire w_$emit_masm_py_863_$replicate_out__48 1
+    .wire w_$emit_masm_py_863_$replicate_out__49 1
+    .wire w_$emit_masm_py_863_$replicate_out__5 1
+    .wire w_$emit_masm_py_863_$replicate_out__50 1
+    .wire w_$emit_masm_py_863_$replicate_out__51 1
+    .wire w_$emit_masm_py_863_$replicate_out__52 1
+    .wire w_$emit_masm_py_863_$replicate_out__53 1
+    .wire w_$emit_masm_py_863_$replicate_out__54 1
+    .wire w_$emit_masm_py_863_$replicate_out__55 1
+    .wire w_$emit_masm_py_863_$replicate_out__56 1
+    .wire w_$emit_masm_py_863_$replicate_out__57 1
+    .wire w_$emit_masm_py_863_$replicate_out__58 1
+    .wire w_$emit_masm_py_863_$replicate_out__59 1
+    .wire w_$emit_masm_py_863_$replicate_out__6 1
+    .wire w_$emit_masm_py_863_$replicate_out__60 1
+    .wire w_$emit_masm_py_863_$replicate_out__61 1
+    .wire w_$emit_masm_py_863_$replicate_out__62 1
+    .wire w_$emit_masm_py_863_$replicate_out__63 1
+    .wire w_$emit_masm_py_863_$replicate_out__64 1
+    .wire w_$emit_masm_py_863_$replicate_out__65 1
+    .wire w_$emit_masm_py_863_$replicate_out__66 1
+    .wire w_$emit_masm_py_863_$replicate_out__67 1
+    .wire w_$emit_masm_py_863_$replicate_out__68 1
+    .wire w_$emit_masm_py_863_$replicate_out__69 1
+    .wire w_$emit_masm_py_863_$replicate_out__7 1
+    .wire w_$emit_masm_py_863_$replicate_out__70 1
+    .wire w_$emit_masm_py_863_$replicate_out__71 1
+    .wire w_$emit_masm_py_863_$replicate_out__72 1
+    .wire w_$emit_masm_py_863_$replicate_out__73 1
+    .wire w_$emit_masm_py_863_$replicate_out__74 1
+    .wire w_$emit_masm_py_863_$replicate_out__75 1
+    .wire w_$emit_masm_py_863_$replicate_out__76 1
+    .wire w_$emit_masm_py_863_$replicate_out__77 1
+    .wire w_$emit_masm_py_863_$replicate_out__78 1
+    .wire w_$emit_masm_py_863_$replicate_out__79 1
+    .wire w_$emit_masm_py_863_$replicate_out__8 1
+    .wire w_$emit_masm_py_863_$replicate_out__80 1
+    .wire w_$emit_masm_py_863_$replicate_out__81 1
+    .wire w_$emit_masm_py_863_$replicate_out__82 1
+    .wire w_$emit_masm_py_863_$replicate_out__83 1
+    .wire w_$emit_masm_py_863_$replicate_out__84 1
+    .wire w_$emit_masm_py_863_$replicate_out__85 1
+    .wire w_$emit_masm_py_863_$replicate_out__86 1
+    .wire w_$emit_masm_py_863_$replicate_out__9 1
+    .wire w_$flatten\dut_$procmux$114_Y 1
+    .wire w_$flatten\dut_$procmux$120_Y 32
+    .wire w_$flatten\dut_$procmux$123_Y 32
+    .wire w_$flatten\dut_$procmux$125_Y 32
+    .wire w_$flatten\dut_\alu_$procmux$132_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$133_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$134_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$135_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$136_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$137_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$138_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$139_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$140_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$141_CMP 1
+    .wire w_$flatten\dut_\alu_$procmux$142_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$144_Y 4
+    .wire w_$flatten\dut_\alu_control_$procmux$145_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$146_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$147_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$148_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$149_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$150_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$151_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$152_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$153_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$154_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$155_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$161_Y 4
+    .wire w_$flatten\dut_\alu_control_$procmux$162_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$163_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$164_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$165_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$166_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$167_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$168_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$169_CMP 1
+    .wire w_$flatten\dut_\alu_control_$procmux$170_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$190_Y 1
+    .wire w_$flatten\dut_\control_$procmux$193_Y 1
+    .wire w_$flatten\dut_\control_$procmux$196_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$209_Y 2
+    .wire w_$flatten\dut_\control_$procmux$212_Y 2
+    .wire w_$flatten\dut_\control_$procmux$215_Y 2
+    .wire w_$flatten\dut_\control_$procmux$218_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$233_Y 1
+    .wire w_$flatten\dut_\control_$procmux$236_Y 1
+    .wire w_$flatten\dut_\control_$procmux$239_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$254_Y 1
+    .wire w_$flatten\dut_\control_$procmux$257_Y 1
+    .wire w_$flatten\dut_\control_$procmux$260_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$275_Y 1
+    .wire w_$flatten\dut_\control_$procmux$278_Y 1
+    .wire w_$flatten\dut_\control_$procmux$281_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$296_Y 1
+    .wire w_$flatten\dut_\control_$procmux$299_Y 1
+    .wire w_$flatten\dut_\control_$procmux$302_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$317_Y 1
+    .wire w_$flatten\dut_\control_$procmux$320_Y 1
+    .wire w_$flatten\dut_\control_$procmux$323_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$338_Y 1
+    .wire w_$flatten\dut_\control_$procmux$341_Y 1
+    .wire w_$flatten\dut_\control_$procmux$344_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$357_Y 1
+    .wire w_$flatten\dut_\control_$procmux$360_Y 1
+    .wire w_$flatten\dut_\control_$procmux$363_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$376_Y 2
+    .wire w_$flatten\dut_\control_$procmux$379_Y 2
+    .wire w_$flatten\dut_\control_$procmux$382_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$395_Y 1
+    .wire w_$flatten\dut_\control_$procmux$398_Y 1
+    .wire w_$flatten\dut_\control_$procmux$401_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$414_Y 1
+    .wire w_$flatten\dut_\control_$procmux$417_Y 1
+    .wire w_$flatten\dut_\control_$procmux$420_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$433_Y 1
+    .wire w_$flatten\dut_\control_$procmux$436_Y 1
+    .wire w_$flatten\dut_\control_$procmux$439_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$452_Y 1
+    .wire w_$flatten\dut_\control_$procmux$455_Y 1
+    .wire w_$flatten\dut_\control_$procmux$458_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$471_Y 1
+    .wire w_$flatten\dut_\control_$procmux$474_Y 1
+    .wire w_$flatten\dut_\control_$procmux$477_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$490_Y 1
+    .wire w_$flatten\dut_\control_$procmux$493_Y 1
+    .wire w_$flatten\dut_\control_$procmux$496_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$509_Y 1
+    .wire w_$flatten\dut_\control_$procmux$512_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$525_Y 2
+    .wire w_$flatten\dut_\control_$procmux$528_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$541_Y 1
+    .wire w_$flatten\dut_\control_$procmux$544_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$557_Y 1
+    .wire w_$flatten\dut_\control_$procmux$560_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$573_Y 1
+    .wire w_$flatten\dut_\control_$procmux$576_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$589_Y 1
+    .wire w_$flatten\dut_\control_$procmux$592_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$605_Y 1
+    .wire w_$flatten\dut_\control_$procmux$608_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$621_Y 1
+    .wire w_$flatten\dut_\control_$procmux$624_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$628_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$629_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$630_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$631_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$632_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$633_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$634_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$635_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$638_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$639_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$640_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$641_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$642_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$643_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$644_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$645_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$646_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$649_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$650_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$654_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$655_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$666_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$667_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$679_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$680_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$693_CMP 1
+    .wire w_$flatten\dut_\control_$procmux$706_CMP 1
+    @SOURCEINFO [file = "mips32.sv:507.16-507.21"]
+    @DEBUGSYMBOL [ symbol = "\clock"]
+    .input pi_\clock 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    .wire w_\dut__12_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    .wire w_\dut__13_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    .wire w_\dut__14_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    .wire w_\dut__16_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    .wire w_\dut__19_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    .wire w_\dut__20_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    .wire w_\dut__21_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:470.22-470.37"]
+    .wire w_\dut__23_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:454.11-454.30"]
+    .wire w_\dut__27_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:425.61-425.89"]
+    .wire w_\dut__2_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:460.22-460.35"]
+    .wire w_\dut__32_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:425.26-425.56"]
+    .wire w_\dut__3_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:448.3-480.6"]
+    .wire w_\dut__41_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:448.3-480.6"]
+    .wire w_\dut__42_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:389.22-389.47"]
+    .wire w_\dut__7_ 16
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:105.25-105.34|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__0_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:106.25-106.37|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__10_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:103.25-103.34|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__12_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:101.25-101.34|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__13_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:107.25-107.44|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__1_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:102.25-102.34|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__2_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:100.25-100.41|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__3_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:99.25-99.40|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__4_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:98.25-98.40|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__5_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:106.27-106.36|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__7_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:104.25-104.34|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__8_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:107.26-107.35|mips32.sv:422.7-428.4"]
+    .wire w_\dut_alu__9_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:90.20-90.24|mips32.sv:422.7-428.4"]
+    @DEBUGSYMBOL [ symbol = "dut.alu.ctrl"]
+    .wire w_\dut_alu_ctrl 4
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:91.21-91.24|mips32.sv:422.7-428.4"]
+    @DEBUGSYMBOL [ symbol = "dut.alu.op1"]
+    .wire w_\dut_alu_op1 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:92.21-92.24|mips32.sv:422.7-428.4"]
+    @DEBUGSYMBOL [ symbol = "dut.alu.op2"]
+    .wire w_\dut_alu_op2 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:94.21-94.27|mips32.sv:422.7-428.4"]
+    @DEBUGSYMBOL [ symbol = "dut.alu.result"]
+    .wire w_\dut_alu_result 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:93.15-93.19|mips32.sv:422.7-428.4"]
+    @DEBUGSYMBOL [ symbol = "dut.alu.zero"]
+    .wire w_\dut_alu_zero 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:45.3-80.6|mips32.sv:412.14-417.4"]
+    .wire w_\dut_alu_control__1_ 4
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:45.3-80.6|mips32.sv:412.14-417.4"]
+    .wire w_\dut_alu_control__2_ 4
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:40.14-40.20|mips32.sv:412.14-417.4"]
+    @DEBUGSYMBOL [ symbol = "dut.alu_control.alu_op"]
+    .wire w_\dut_alu_control_alu_op 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:373.14-373.21"]
+    @DEBUGSYMBOL [ symbol = "dut.alu_src"]
+    .wire w_\dut_alu_src 2
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:369.8-369.14"]
+    @DEBUGSYMBOL [ symbol = "dut.branch"]
+    .wire w_\dut_branch 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:393.15-393.26"]
+    @DEBUGSYMBOL [ symbol = "dut.branch_addr"]
+    .wire w_\dut_branch_addr 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:374.8-374.19"]
+    @DEBUGSYMBOL [ symbol = "dut.c_reg_write"]
+    .wire w_\dut_c_reg_write 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "dut.cond_out.$masm_expect.2"]
+    .wire w_\dut_cond_out_$masm_expect_2 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "dut.cond_out.$masm_stop.5"]
+    .wire w_\dut_cond_out_$masm_stop_5 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:201.13-201.36|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__0_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__10_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__11_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__12_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__13_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__14_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__15_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__16_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__17_ 2
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__18_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__19_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:189.13-189.36|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__1_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__20_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__21_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__22_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__23_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__24_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__25_ 2
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__26_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:177.13-177.38|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__2_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__3_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__4_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__5_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__6_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__7_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__8_ 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:172.3-347.6|mips32.sv:375.11-385.4"]
+    .wire w_\dut_control__9_ 2
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:162.21-162.32|mips32.sv:375.11-385.4"]
+    @DEBUGSYMBOL [ symbol = "dut.control.instruction"]
+    .wire w_\dut_control_instruction 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:164.14-164.18|mips32.sv:375.11-385.4"]
+    @DEBUGSYMBOL [ symbol = "dut.control.jump"]
+    .wire w_\dut_control_jump 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:166.14-166.24|mips32.sv:375.11-385.4"]
+    @DEBUGSYMBOL [ symbol = "dut.control.mem_to_reg"]
+    .wire w_\dut_control_mem_to_reg 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:168.14-168.23|mips32.sv:375.11-385.4"]
+    @DEBUGSYMBOL [ symbol = "dut.control.mem_write"]
+    .wire w_\dut_control_mem_write 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:163.14-163.21|mips32.sv:375.11-385.4"]
+    @DEBUGSYMBOL [ symbol = "dut.control.reg_dst"]
+    .wire w_\dut_control_reg_dst 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:148.3-148.56|mips32.sv:433.19-440.4"]
+    .wire w_\dut_dmem__4_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:148.3-148.56|mips32.sv:433.19-440.4"]
+    .wire w_\dut_dmem__5_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:148.3-148.56|mips32.sv:433.19-440.4"]
+    .wire w_\dut_dmem__6_ 7
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:142.33-142.39|mips32.sv:433.19-440.4"]
+    @DEBUGSYMBOL [ symbol = "dut.dmem.rdata1"]
+    .wire w_\dut_dmem_rdata1 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:144.32-144.37|mips32.sv:433.19-440.4"]
+    @DEBUGSYMBOL [ symbol = "dut.dmem.wdata"]
+    .wire w_\dut_dmem_wdata 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:442.7-442.15"]
+    @DEBUGSYMBOL [ symbol = "dut.halted_r"]
+    .wire w_\dut_halted_r 1 0
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:359.14-359.16"]
+    @DEBUGSYMBOL [ symbol = "dut.pc"]
+    .wire w_\dut_pc 32 0
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:360.15-360.19"]
+    @DEBUGSYMBOL [ symbol = "dut.pc_4"]
+    .wire w_\dut_pc_4 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "dut.reg_cond.$masm_expect.0"]
+    .wire w_\dut_reg_cond_$masm_expect_0 1 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "dut.reg_cond.$masm_stop.3"]
+    .wire w_\dut_reg_cond_$masm_stop_3 1 1
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:396.15-396.24"]
+    @DEBUGSYMBOL [ symbol = "dut.reg_read1"]
+    .wire w_\dut_reg_read1 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:398.15-398.24"]
+    @DEBUGSYMBOL [ symbol = "dut.reg_write"]
+    .wire w_\dut_reg_write 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:132.3-132.56|mips32.sv:399.25-408.4"]
+    .wire w_\dut_regs__10_ 5
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:132.3-132.56|mips32.sv:399.25-408.4"]
+    .wire w_\dut_regs__5_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:132.3-132.56|mips32.sv:399.25-408.4"]
+    .wire w_\dut_regs__6_ 32
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:122.32-122.38|mips32.sv:399.25-408.4"]
+    @DEBUGSYMBOL [ symbol = "dut.regs.raddr1"]
+    .wire w_\dut_regs_raddr1 5
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:126.32-126.37|mips32.sv:399.25-408.4"]
+    @DEBUGSYMBOL [ symbol = "dut.regs.waddr"]
+    .wire w_\dut_regs_waddr 5
+    @SOURCEINFO [file = "mips32.sv:523.10-529.4|mips32.sv:355.16-355.21"]
+    @DEBUGSYMBOL [ symbol = "dut.reset"]
+    .wire w_\dut_reset 1
+    @SOURCEINFO [file = "mips32.sv:519.15-522.4|mips32.sv:497.45-497.62"]
+    .wire w_\rdriver__0_ 32
+    @SOURCEINFO [file = "mips32.sv:519.15-522.4|mips32.sv:497.9-497.26"]
+    .wire w_\rdriver__2_ 1
+    @SOURCEINFO [file = "mips32.sv:519.15-522.4|mips32.sv:496.3-498.6"]
+    .wire w_\rdriver__4_ 3
+    @SOURCEINFO [file = "mips32.sv:519.15-522.4|mips32.sv:494.13-494.26"]
+    @DEBUGSYMBOL [ symbol = "rdriver.reset_counter"]
+    .wire w_\rdriver_reset_counter 3 7
+    .const c_0 11 0b00000000000
+    .wire w_0 1
+    .const c_1 1 0b1
+    .const c_2 11 0b00000000000
+    .wire w_1 1
+    .const c_3 1 0b1
+    .const c_4 9 0b000000000
+    .wire w_2 1
+    .const c_5 1 0b1
+    .const c_6 8 0b00000000
+    .wire w_3 1
+    .const c_7 1 0b1
+    .const c_8 9 0b000000000
+    .wire w_4 1
+    .const c_9 1 0b1
+    .const c_10 2 0b00
+    .wire w_5 1
+    .const c_11 1 0b1
+    .const c_12 2 0b00
+    .wire w_6 1
+    .const c_13 1 0b1
+    .const c_14 2 0b00
+    .wire w_7 1
+    .const c_15 1 0b1
+    .const c_16 2 0b00
+    .wire w_8 1
+    .const c_17 1 0b1
+    .const c_18 1 0b1
+    .const c_19 1 0b1
+    .const c_20 1 0b1
+    .const c_21 1 0b1
+    .const c_22 1 0b1
+    .const c_23 1 0b1
+    .const c_24 1 0b1
+    .const c_25 1 0b1
+    .const c_26 1 0b1
+    .const c_27 3 0b000
+    .wire w_9 1
+    .const c_28 1 0b1
+    .const c_29 3 0b000
+    .wire w_10 1
+    .const c_30 1 0b1
+    .const c_31 4 0b0000
+    .wire w_11 1
+    .const c_32 1 0b1
+    .const c_33 3 0b000
+    .wire w_12 1
+    .const c_34 1 0b1
+    .const c_35 3 0b000
+    .wire w_13 1
+    .const c_36 1 0b1
+    .const c_37 4 0b0000
+    .wire w_14 1
+    .const c_38 1 0b1
+    .const c_39 4 0b0000
+    .wire w_15 1
+    .const c_40 1 0b1
+    .const c_41 3 0b000
+    .wire w_16 1
+    .const c_42 1 0b1
+    .const c_43 4 0b0000
+    .wire w_17 1
+    .const c_44 1 0b1
+    .wire w_18 2
+    .wire w_19 2
+    .wire w_20 2
+    .const c_45 1 0b1
+    .wire w_21 3
+    .wire w_22 3
+    .wire w_23 3
+    .const c_46 2 0b10
+    .wire w_24 2
+    .wire w_25 2
+    .wire w_26 2
+    .const c_47 1 0b1
+    .wire w_27 3
+    .wire w_28 3
+    .wire w_29 3
+    .const c_48 2 0b10
+    .wire w_30 4
+    .wire w_31 4
+    .wire w_32 4
+    .const c_49 2 0b11
+    .wire w_33 5
+    .wire w_34 5
+    .wire w_35 5
+    .const c_50 3 0b100
+    .wire w_36 6
+    .wire w_37 6
+    .wire w_38 6
+    .const c_51 3 0b101
+    .wire w_39 7
+    .wire w_40 7
+    .wire w_41 7
+    .const c_52 3 0b110
+    .wire w_42 8
+    .wire w_43 8
+    .wire w_44 8
+    .const c_53 3 0b111
+    .wire w_45 9
+    .wire w_46 9
+    .wire w_47 9
+    .const c_54 4 0b1000
+    .wire w_48 10
+    .wire w_49 10
+    .wire w_50 10
+    .const c_55 4 0b1001
+    .wire w_51 11
+    .wire w_52 11
+    .wire w_53 11
+    .const c_56 4 0b1010
+    .wire w_54 4
+    .wire w_55 4
+    .wire w_56 4
+    .const c_57 2 0b11
+    .wire w_57 2
+    .wire w_58 2
+    .wire w_59 2
+    .const c_58 1 0b1
+    .wire w_60 3
+    .wire w_61 3
+    .wire w_62 3
+    .const c_59 2 0b10
+    .wire w_63 4
+    .wire w_64 4
+    .wire w_65 4
+    .const c_60 2 0b11
+    .wire w_66 5
+    .wire w_67 5
+    .wire w_68 5
+    .const c_61 3 0b100
+    .wire w_69 6
+    .wire w_70 6
+    .wire w_71 6
+    .const c_62 3 0b101
+    .wire w_72 7
+    .wire w_73 7
+    .wire w_74 7
+    .const c_63 3 0b110
+    .wire w_75 8
+    .wire w_76 8
+    .wire w_77 8
+    .const c_64 3 0b111
+    .wire w_78 9
+    .wire w_79 9
+    .wire w_80 9
+    .const c_65 4 0b1000
+    .wire w_81 2
+    .wire w_82 2
+    .wire w_83 2
+    .const c_66 1 0b1
+    .wire w_84 3
+    .wire w_85 3
+    .wire w_86 3
+    .const c_67 2 0b10
+    .wire w_87 5
+    .wire w_88 5
+    .wire w_89 5
+    .const c_68 3 0b100
+    .wire w_90 4
+    .wire w_91 4
+    .wire w_92 4
+    .const c_69 2 0b11
+    .wire w_93 5
+    .wire w_94 5
+    .wire w_95 5
+    .const c_70 3 0b100
+    .wire w_96 6
+    .wire w_97 6
+    .wire w_98 6
+    .const c_71 3 0b101
+    .wire w_99 7
+    .wire w_100 7
+    .wire w_101 7
+    .const c_72 3 0b110
+    .wire w_102 8
+    .wire w_103 8
+    .wire w_104 8
+    .const c_73 3 0b111
+    .wire w_105 2
+    .wire w_106 2
+    .wire w_107 2
+    .const c_74 1 0b1
+    .wire w_108 3
+    .wire w_109 3
+    .wire w_110 3
+    .const c_75 2 0b10
+    .wire w_111 4
+    .wire w_112 4
+    .wire w_113 4
+    .const c_76 2 0b11
+    .wire w_114 5
+    .wire w_115 5
+    .wire w_116 5
+    .const c_77 3 0b100
+    .wire w_117 6
+    .wire w_118 6
+    .wire w_119 6
+    .const c_78 3 0b101
+    .wire w_120 6
+    .wire w_121 6
+    .wire w_122 6
+    .const c_79 3 0b101
+    .wire w_123 7
+    .wire w_124 7
+    .wire w_125 7
+    .const c_80 3 0b110
+    .wire w_126 8
+    .wire w_127 8
+    .wire w_128 8
+    .const c_81 3 0b111
+    .wire w_129 9
+    .wire w_130 9
+    .wire w_131 9
+    .const c_82 4 0b1000
+    .wire w_132 2
+    .wire w_133 2
+    .wire w_134 2
+    .const c_83 1 0b1
+    .wire w_135 2
+    .wire w_136 2
+    .wire w_137 2
+    .const c_84 1 0b1
+    .wire w_138 2
+    .wire w_139 2
+    .wire w_140 2
+    .const c_85 1 0b1
+    .wire w_141 2
+    .wire w_142 2
+    .wire w_143 2
+    .const c_86 1 0b1
+    .wire w_144 2
+    .wire w_145 2
+    .wire w_146 2
+    .const c_87 1 0b1
+    .wire w_147 3
+    .wire w_148 3
+    .wire w_149 3
+    .const c_88 2 0b10
+    .wire w_150 2
+    .wire w_151 2
+    .wire w_152 2
+    .const c_89 1 0b1
+    .wire w_153 7
+    .wire w_154 7
+    .wire w_155 7
+    .const c_90 3 0b110
+    .wire w_156 3
+    .wire w_157 3
+    .wire w_158 3
+    .const c_91 2 0b10
+    .wire w_159 2
+    .wire w_160 2
+    .wire w_161 2
+    .const c_92 1 0b1
+    .wire w_162 3
+    .wire w_163 3
+    .wire w_164 3
+    .const c_93 2 0b10
+    .wire w_165 4
+    .wire w_166 4
+    .wire w_167 4
+    .const c_94 2 0b11
+    .wire w_168 2
+    .wire w_169 2
+    .wire w_170 2
+    .const c_95 1 0b1
+    .wire w_171 3
+    .wire w_172 3
+    .wire w_173 3
+    .const c_96 2 0b10
+    .wire w_174 2
+    .wire w_175 2
+    .wire w_176 2
+    .const c_97 1 0b1
+    .wire w_177 3
+    .wire w_178 3
+    .wire w_179 3
+    .const c_98 2 0b10
+    .wire w_180 2
+    .wire w_181 2
+    .wire w_182 2
+    .const c_99 1 0b1
+    .wire w_183 3
+    .wire w_184 3
+    .wire w_185 3
+    .const c_100 2 0b10
+    .wire w_186 8
+    .wire w_187 8
+    .wire w_188 8
+    .const c_101 3 0b111
+    .wire w_189 4
+    .wire w_190 4
+    .wire w_191 4
+    .const c_102 2 0b11
+    .wire w_192 2
+    .wire w_193 2
+    .wire w_194 2
+    .const c_103 1 0b1
+    .wire w_195 3
+    .wire w_196 3
+    .wire w_197 3
+    .const c_104 2 0b10
+    .wire w_198 4
+    .wire w_199 4
+    .wire w_200 4
+    .const c_105 2 0b11
+    .wire w_201 2
+    .wire w_202 2
+    .wire w_203 2
+    .const c_106 1 0b1
+    .wire w_204 3
+    .wire w_205 3
+    .wire w_206 3
+    .const c_107 2 0b10
+    .wire w_207 2
+    .wire w_208 2
+    .wire w_209 2
+    .const c_108 1 0b1
+    .wire w_210 3
+    .wire w_211 3
+    .wire w_212 3
+    .const c_109 2 0b10
+    .wire w_213 4
+    .wire w_214 4
+    .wire w_215 4
+    .const c_110 2 0b11
+    .wire w_216 32
+    .wire w_217 32
+    .wire w_218 32
+    .const c_111 5 0b10000
+    .wire w_219 9
+    .wire w_220 9
+    .wire w_221 9
+    .const c_112 4 0b1000
+    .wire w_222 28
+    .wire w_223 28
+    .wire w_224 28
+    .const c_113 2 0b10
+    .wire w_225 32
+    .wire w_226 32
+    .wire w_227 32
+    .const c_114 5 0b11100
+    .wire w_228 32
+    .wire w_229 32
+    .wire w_230 32
+    .const c_115 5 0b11110
+    .wire w_231 32
+    .wire w_232 32
+    .wire w_233 32
+    .const c_116 5 0b10000
+    .wire w_234 32
+    .wire w_235 32
+    .wire w_236 32
+    .const c_117 3 0b101
+    .wire w_237 18
+    .wire w_238 18
+    .wire w_239 18
+    .const c_118 2 0b10
+    .wire w_240 32
+    .wire w_241 32
+    .wire w_242 32
+    .const c_119 5 0b10010
+    .wire w_243 10
+    .wire w_244 10
+    .wire w_245 10
+    .const c_120 4 0b1001
+    .wire w_246 11
+    .wire w_247 11
+    .wire w_248 11
+    .const c_121 4 0b1010
+    .const c_122 6 0b000000
+    .const c_123 6 0b000000
+    .const c_124 6 0b000000
+    .const c_125 6 0b011010
+    .const c_126 6 0b011010
+    .const c_127 6 0b011010
+    .const c_128 6 0b011010
+    .const c_129 6 0b011010
+    .const c_130 6 0b011010
+    .const c_131 6 0b011010
+    .const c_132 6 0b011010
+    .const c_133 6 0b011010
+    .const c_134 6 0b000000
+    .const c_135 6 0b011010
+    .const c_136 6 0b011010
+    .const c_137 6 0b011010
+    .const c_138 6 0b011010
+    .const c_139 6 0b011010
+    .const c_140 6 0b011010
+    .const c_141 6 0b011010
+    .const c_142 6 0b011010
+    .const c_143 6 0b011010
+    .const c_144 6 0b011010
+    .const c_145 6 0b000000
+    .const c_146 6 0b011010
+    .const c_147 6 0b011010
+    .const c_148 6 0b011010
+    .const c_149 6 0b011010
+    .const c_150 6 0b011010
+    .const c_151 6 0b011010
+    .const c_152 6 0b011010
+    .const c_153 6 0b011010
+    .const c_154 6 0b011010
+    .const c_155 6 0b011010
+    .const c_156 6 0b000000
+    .const c_157 6 0b011010
+    .const c_158 6 0b011010
+    .const c_159 6 0b011010
+    .const c_160 6 0b011010
+    .const c_161 6 0b011010
+    .const c_162 6 0b011010
+    .const c_163 6 0b011010
+    .const c_164 6 0b011010
+    .const c_165 6 0b011010
+    .const c_166 6 0b011010
+    .const c_167 6 0b000000
+    .const c_168 6 0b011010
+    .const c_169 6 0b011010
+    .const c_170 6 0b011010
+    .const c_171 6 0b011010
+    .const c_172 6 0b011010
+    .const c_173 6 0b011010
+    .const c_174 6 0b011010
+    .const c_175 6 0b011010
+    .const c_176 6 0b011010
+    .const c_177 6 0b011010
+    .const c_178 6 0b000000
+    .const c_179 6 0b011010
+    .const c_180 6 0b011010
+    .const c_181 6 0b011010
+    .const c_182 6 0b011010
+    .const c_183 6 0b011010
+    .const c_184 6 0b011010
+    .const c_185 6 0b011010
+    .const c_186 6 0b011010
+    .const c_187 6 0b011010
+    .const c_188 6 0b011010
+    .const c_189 6 0b000000
+    .const c_190 6 0b011010
+    .const c_191 6 0b000010
+    .const c_192 6 0b000000
+    .const c_193 2 0b01
+    .const c_194 2 0b00
+    .const c_195 2 0b00
+    .const c_196 2 0b01
+    .const c_197 6 0b010000
+    .const c_198 6 0b001011
+    .const c_199 6 0b010101
+    .const c_200 6 0b000000
+    .const c_201 6 0b001111
+    .const c_202 6 0b000000
+    .const c_203 6 0b000000
+    .const c_204 6 0b000000
+    .const c_205 6 0b000000
+    .const c_206 6 0b000000
+    .const c_207 6 0b000000
+    .const c_208 6 0b000000
+    .const c_209 6 0b000010
+    .const c_210 6 0b010000
+    .const c_211 6 0b000000
+    .const c_212 6 0b000000
+    .const c_213 6 0b000000
+    .const c_214 6 0b011100
+    .const c_215 6 0b000010
+    .const c_216 6 0b000000
+    .const c_217 6 0b000110
+    .const c_218 6 0b000000
+    .const c_219 5 0b00000
+    .const c_220 1 0b1
+    .const c_221 1 0b1
+    .const c_222 32 0b00000000000000000000000000000000
+    .const c_223 4 0b0111
+    .const c_224 4 0b0000
+    .const c_225 1 0b0
+    .const c_226 1 0b0
+    .const c_227 1 0b0
+    .const c_228 1 0b0
+    .const c_229 1 0b0
+    .const c_230 1 0b0
+    .const c_231 1 0b0
+    .const c_232 1 0b0
+    .const c_233 1 0b0
+    .const c_234 1 0b0
+    .const c_235 4 0b0001
+    .const c_236 1 0b0
+    .const c_237 1 0b0
+    .const c_238 1 0b1
+    .const c_239 1 0b0
+    .const c_240 1 0b0
+    .const c_241 1 0b0
+    .const c_242 1 0b1
+    .const c_243 1 0b0
+    .const c_244 1 0b0
+    .const c_245 2 0b10
+    .const c_246 4 0b0010
+    .const c_247 2 0b00
+    .const c_248 2 0b00
+    .const c_249 1 0b0
+    .const c_250 1 0b0
+    .const c_251 1 0b0
+    .const c_252 1 0b1
+    .const c_253 1 0b0
+    .const c_254 1 0b0
+    .const c_255 1 0b0
+    .const c_256 1 0b0
+    .const c_257 4 0b0011
+    .const c_258 1 0b0
+    .const c_259 1 0b0
+    .const c_260 1 0b0
+    .const c_261 1 0b0
+    .const c_262 1 0b0
+    .const c_263 1 0b0
+    .const c_264 1 0b0
+    .const c_265 1 0b1
+    .const c_266 1 0b0
+    .const c_267 1 0b0
+    .const c_268 4 0b0011
+    .const c_269 1 0b0
+    .const c_270 1 0b0
+    .const c_271 2 0b00
+    .const c_272 2 0b00
+    .const c_273 1 0b0
+    .const c_274 1 0b0
+    .const c_275 1 0b0
+    .const c_276 1 0b0
+    .const c_277 1 0b0
+    .const c_278 1 0b0
+    .const c_279 4 0b0110
+    .const c_280 1 0b0
+    .const c_281 1 0b0
+    .const c_282 1 0b0
+    .const c_283 1 0b0
+    .const c_284 1 0b0
+    .const c_285 1 0b0
+    .const c_286 6 0b100011
+    .const c_287 6 0b001111
+    .const c_288 6 0b001110
+    .const c_289 6 0b001101
+    .const c_290 4 0b0111
+    .const c_291 6 0b001100
+    .const c_292 6 0b001010
+    .const c_293 6 0b001000
+    .const c_294 6 0b101011
+    .const c_295 6 0b100011
+    .const c_296 6 0b001111
+    .const c_297 6 0b001110
+    .const c_298 6 0b001101
+    .const c_299 6 0b001100
+    .const c_300 6 0b001010
+    .const c_301 4 0b1010
+    .const c_302 6 0b001000
+    .const c_303 6 0b101011
+    .const c_304 6 0b100011
+    .const c_305 6 0b000100
+    .const c_306 6 0b000010
+    .const c_307 1 0b0
+    .const c_308 1 0b0
+    .const c_309 32 0b00000000000000000000000000000000
+    .const c_310 32 0b11111111111111111111111111111111
+    .const c_311 32 0b00000000000000000000000000000000
+    .const c_312 4 0b1001
+    .const c_313 7 0b0000000
+    .const c_314 32 0b00000000000000000000000000000000
+    .const c_315 32 0b11111111111111111111111111111111
+    .const c_316 32 0b00000000000000000000000000000000
+    .const c_317 5 0b00000
+    .const c_318 1 0b0
+    .const c_319 1 0b0
+    .const c_320 5 0b00010
+    .const c_321 16 0b0000000000000000
+    .const c_322 16 0b0000000000000001
+    .const c_323 4 0b0101
+    .const c_324 32 0b00000000000000000000000000101101
+    .const c_325 6 0b001101
+    .const c_326 32 0b00000000000000000000000000000100
+    .const c_327 32 0b00000000000000000000000000000000
+    .const c_328 32 0b00000000000000000000000000000001
+    .const c_329 6 0b001000
+    .const c_330 6 0b000100
+    .const c_331 6 0b001101
+    .const c_332 1 0b0
+    .const c_333 1 0b0
+    .const c_334 4 0b1000
+    .const c_335 4 0b0000
+    .const c_336 1 0b0
+    .const c_337 1 0b0
+    .const c_338 1 0b0
+    .const c_339 1 0b0
+    .const c_340 32 0b00000000000000000000000000000001
+    .const c_341 32 0b00000000000000000000000000000000
+    .const c_342 16 0b0000000000000000
+    .const c_343 2 0b00
+    .const c_344 2 0b00
+    .const c_345 27 0b000000000000000000000000000
+    .const c_346 4 0b0100
+    .const c_347 2 0b00
+    .const c_348 4 0b0011
+    .const c_349 1 0b1
+    .const c_350 1 0b1
+    .const c_351 1 0b1
+    .const c_352 1 0b1
+    .const c_353 1 0b1
+    .const c_354 1 0b1
+    .const c_355 1 0b0
+    .const c_356 4 0b1001
+    .const c_357 1 0b1
+    .const c_358 2 0b01
+    .const c_359 2 0b01
+    .const c_360 2 0b01
+    .const c_361 2 0b01
+    .const c_362 2 0b01
+    .const c_363 2 0b01
+    .const c_364 2 0b01
+    .const c_365 2 0b00
+    .const c_366 2 0b01
+    .const c_367 4 0b0100
+    .const c_368 1 0b0
+    .const c_369 1 0b1
+    .const c_370 1 0b0
+    .const c_371 1 0b1
+    .const c_372 1 0b0
+    .const c_373 1 0b1
+    .const c_374 1 0b0
+    .const c_375 1 0b1
+    .const c_376 1 0b1
+    .const c_377 1 0b0
+    .const c_378 4 0b0101
+    .const c_379 32 0b00000000000000000000000000000000
+    .const c_380 4 0b1010
+    .const c_381 4 0b1001
+    .const c_382 4 0b1000
+    .const c_383 4 0b0111
+    .const c_384 4 0b0110
+    .const c_385 4 0b0101
+    .const c_386 4 0b0100
+    .const c_387 4 0b0011
+    .const c_388 4 0b0010
+    .const c_389 4 0b0110
+    .const c_390 4 0b0001
+    .const c_391 6 0b101010
+    .const c_392 6 0b100111
+    .const c_393 6 0b100110
+    .const c_394 6 0b100101
+    .const c_395 6 0b100100
+    .const c_396 6 0b100010
+    .const c_397 6 0b100000
+    .const c_398 6 0b000111
+    .const c_399 6 0b000110
+    .const c_400 4 0b0001
+    .const c_401 6 0b000011
+    .const c_402 6 0b000010
+    .const c_403 4 0b0000
+    .const c_404 6 0b101011
+    .const c_405 6 0b100011
+    .const c_406 6 0b001111
+    .const c_407 6 0b001110
+    .const c_408 6 0b001101
+    .const c_409 6 0b001100
+    .const c_410 6 0b001010
+    .const c_411 4 0b0010
+    .const c_412 6 0b001000
+    .const c_413 6 0b000100
+    .const c_414 4 0b0000
+    .const c_415 1 0b1
+    .const c_416 1 0b0
+    .const c_417 1 0b0
+    .const c_418 1 0b0
+    .const c_419 2 0b00
+    .const c_420 2 0b11
+    .const c_421 2 0b00
+    .const c_422 4 0b0011
+    .const c_423 2 0b00
+    .const c_424 2 0b00
+    .const c_425 1 0b0
+    .const c_426 1 0b0
+    .const c_427 1 0b0
+    .const c_428 1 0b0
+    .const c_429 1 0b1
+    .const c_430 1 0b0
+    .const c_431 1 0b0
+    .const c_432 1 0b0
+    .const c_433 1 0b0
+    .const c_434 1 0b1
+    .const c_435 1 0b0
+    .const c_436 1 0b1
+    .const c_437 1 0b0
+    .const c_438 1 0b1
+    .const c_439 1 0b0
+    .const c_440 1 0b1
+    .const c_441 1 0b0
+    .const c_442 1 0b1
+    .const c_443 1 0b0
+    .const c_444 1 0b1
+    .const c_445 1 0b0
+    .const c_446 1 0b1
+    .const c_447 1 0b0
+    .const c_448 1 0b1
+    .const c_449 1 0b0
+    .const c_450 1 0b1
+    .const c_451 1 0b0
+    .const c_452 1 0b1
+    .const c_453 1 0b0
+    .const c_454 1 0b1
+    .const c_455 1 0b0
+    .const c_456 1 0b1
+    .const c_457 1 0b0
+    .const c_458 1 0b1
+    .const c_459 1 0b0
+    .const c_460 1 0b1
+    .const c_461 1 0b0
+    .const c_462 1 0b1
+    .const c_463 1 0b0
+    .const c_464 1 0b1
+    .const c_465 1 0b0
+    .const c_466 1 0b1
+    .const c_467 1 0b0
+    .const c_468 1 0b1
+    .const c_469 1 0b0
+    .const c_470 1 0b1
+    .const c_471 1 0b0
+    .const c_472 1 0b1
+    .const c_473 1 0b0
+    .const c_474 1 0b1
+    .const c_475 1 0b0
+    .const c_476 1 0b1
+    .const c_477 1 0b0
+    .const c_478 1 0b1
+    .const c_479 1 0b0
+    .const c_480 1 0b1
+    .const c_481 1 0b0
+    .const c_482 1 0b1
+    .const c_483 1 0b0
+    .const c_484 1 0b1
+    .const c_485 1 0b0
+    .const c_486 1 0b1
+    .const c_487 1 0b0
+    .const c_488 1 0b1
+    .const c_489 1 0b0
+    .const c_490 1 0b1
+    .const c_491 1 0b0
+    .const c_492 1 0b1
+    .const c_493 1 0b0
+    .const c_494 1 0b1
+    .const c_495 1 0b0
+    .const c_496 1 0b1
+    .const c_497 1 0b0
+    .const c_498 1 0b1
+    .const c_499 1 0b0
+    .const c_500 1 0b1
+    .const c_501 1 0b0
+    .const c_502 1 0b1
+    .const c_503 1 0b0
+    .const c_504 1 0b1
+    .const c_505 1 0b0
+    .const c_506 1 0b1
+    .const c_507 1 0b0
+    .const c_508 1 0b1
+    .const c_509 1 0b0
+    .const c_510 1 0b1
+    .const c_511 1 0b0
+    .const c_512 1 0b1
+    .const c_513 1 0b0
+    .const c_514 1 0b1
+    .const c_515 1 0b0
+    .const c_516 1 0b1
+    .const c_517 1 0b0
+    .const c_518 1 0b1
+    .const c_519 1 0b0
+    .const c_520 1 0b1
+    .const c_521 1 0b0
+    .const c_522 1 0b1
+    .const c_523 1 0b0
+    .const c_524 1 0b1
+    .const c_525 1 0b0
+    .const c_526 1 0b1
+    .const c_527 1 0b0
+    .const c_528 1 0b1
+    .const c_529 1 0b0
+    .const c_530 1 0b1
+    .const c_531 1 0b0
+    .const c_532 1 0b1
+    .const c_533 1 0b0
+    .const c_534 1 0b1
+    .const c_535 1 0b0
+    .const c_536 1 0b1
+    .const c_537 1 0b0
+    .const c_538 1 0b1
+    .const c_539 1 0b0
+    .const c_540 1 0b1
+    .const c_541 1 0b0
+    .const c_542 1 0b1
+    .const c_543 1 0b0
+    .const c_544 1 0b1
+    .const c_545 1 0b0
+    .const c_546 1 0b1
+    .const c_547 1 0b0
+    .const c_548 1 0b1
+    .const c_549 1 0b0
+    .const c_550 1 0b1
+    .const c_551 1 0b0
+    .const c_552 1 0b1
+    .const c_553 1 0b0
+    .const c_554 1 0b1
+    .const c_555 1 0b0
+    .const c_556 1 0b1
+    .const c_557 1 0b0
+    .const c_558 1 0b1
+    .const c_559 1 0b0
+    .const c_560 1 0b1
+    .const c_561 1 0b0
+    .const c_562 1 0b1
+    .const c_563 1 0b0
+    .const c_564 1 0b1
+    .const c_565 1 0b0
+    .const c_566 1 0b1
+    .const c_567 1 0b0
+    .const c_568 1 0b1
+    .const c_569 1 0b0
+    .const c_570 1 0b1
+    .const c_571 1 0b0
+    .const c_572 1 0b1
+    .const c_573 1 0b0
+    .const c_574 1 0b1
+    .const c_575 1 0b0
+    .const c_576 1 0b1
+    .const c_577 1 0b0
+    .const c_578 1 0b1
+    .const c_579 1 0b0
+    .const c_580 1 0b1
+    .const c_581 1 0b0
+    .const c_582 1 0b1
+    .const c_583 1 0b0
+    .const c_584 1 0b1
+    .const c_585 1 0b0
+    .const c_586 1 0b1
+    .const c_587 1 0b0
+    .const c_588 1 0b1
+    .const c_589 1 0b0
+    .const c_590 1 0b1
+    .const c_591 1 0b0
+    .const c_592 1 0b1
+    .const c_593 1 0b0
+    .const c_594 1 0b1
+    .const c_595 1 0b0
+    .const c_596 1 0b1
+    .const c_597 1 0b0
+    .const c_598 1 0b1
+    .const c_599 1 0b0
+    .const c_600 1 0b1
+    .const c_601 1 0b0
+    .const c_602 1 0b1
+    .const c_603 1 0b0
+    .const c_604 1 0b1
+    .const c_605 1 0b0
+    .const c_606 1 0b1
+    .const c_607 4 0b0000
+    .const c_608 6 0b000000
+    .const c_609 6 0b000000
+    .const c_610 6 0b000000
+    .const c_611 6 0b000000
+    .const c_612 6 0b000000
+    .const c_613 6 0b000000
+    .const c_614 6 0b000000
+    .const c_615 6 0b000000
+    .const c_616 6 0b000000
+    .const c_617 6 0b000000
+    .const c_618 6 0b000000
+    .const c_619 6 0b000000
+    .const c_620 6 0b000000
+    .const c_621 6 0b000000
+    .const c_622 6 0b000000
+    .const c_623 6 0b000000
+    .const c_624 6 0b000000
+    .const c_625 6 0b000000
+    .const c_626 6 0b000000
+    .const c_627 6 0b000000
+    .const c_628 6 0b000000
+    .const c_629 6 0b000000
+    .const c_630 6 0b000000
+    .const c_631 6 0b000000
+    .const c_632 6 0b000000
+    .const c_633 6 0b000000
+    .const c_634 6 0b000000
+    .const c_635 6 0b000000
+    .const c_636 6 0b000000
+    .const c_637 6 0b000000
+    .const c_638 6 0b000000
+    .const c_639 6 0b000000
+    .const c_640 32 0b11111111111111111111111111111111
+    .wire w_249 1
+    .wire w_250 7
+    .const c_641 32 0b11111111111111111111111111111111
+    .wire w_251 1
+    .wire w_252 5
+    .wire w_253 32
+    .const c_642 1 0b1
+    .const c_643 1 0b0
+    .const c_644 1 0b0
+    .wire w_254 1
+    .wire w_255 1
+    .wire w_256 1
+    .wire w_257 1
+    .const c_645 1 0b0
+    .const c_646 1 0b0
+    .const c_647 1 0b0
+    .const c_648 1 0b0
+    .const c_649 1 0b1
+    .const c_650 1 0b0
+    .const c_651 1 0b0
+    .wire w_258 1
+    .wire w_259 1
+    .wire w_260 1
+    .wire w_261 1
+    .const c_652 1 0b1
+    .const c_653 1 0b0
+    .const c_654 1 0b0
+    .wire w_262 1
+    .wire w_263 1
+    .wire w_264 1
+    .wire w_265 1
+    .const c_655 32 0b00000000000000000000000000000000
+    .wire w_266 33
+    .wire w_267 33
+    .wire w_268 33
+    .const c_656 32 0b00000000000000000000000000000000
+    .const c_657 32 0b00000000000000000000000000000000
+    .const c_658 6 0b000000
+    .wire w_269 7
+    .wire w_270 7
+    .wire w_271 7
+    .const c_659 6 0b000000
+    .wire w_272 7
+    .wire w_273 7
+    .wire w_274 7
+    .wire w_275 7
+    .wire w_276 5
+    .wire w_277 5
+    .const c_660 3 0b000
+    .wire w_278 1
+    .const c_661 1 0b1
+    .const c_662 3 0b000
+    .wire w_279 33
+    .wire w_280 33
+    .wire w_281 33
+    MOV w_\dut_alu_result, w_$auto$rtlil_cc_2460_Mux$771;
+    MOV w_$flatten\dut_\alu_control_$procmux$144_Y, w_$auto$rtlil_cc_2460_Mux$803;
+    MOV w_$flatten\dut_\alu_control_$procmux$161_Y, w_$auto$rtlil_cc_2460_Mux$831;
+    MOV w_\dut_c_reg_write, w_$auto$rtlil_cc_2460_Mux$857;
+    MOV w_\dut_alu_src, w_$auto$rtlil_cc_2460_Mux$885;
+    MOV w_\dut_control_mem_write, w_$auto$rtlil_cc_2460_Mux$893;
+    MOV w_\dut_control_mem_to_reg, w_$auto$rtlil_cc_2460_Mux$901;
+    MOV w_\dut_branch, w_$auto$rtlil_cc_2460_Mux$909;
+    MOV w_\dut_control_jump, w_$auto$rtlil_cc_2460_Mux$917;
+    MOV w_$emit_masm_py_209_$tmp, w_$emit_masm_py_429_$concat_out__9;
+    MOV w_$emit_masm_py_209_$tmp_1, w_$emit_masm_py_429_$concat_out__19;
+    MOV w_$emit_masm_py_209_$tmp_2, w_$emit_masm_py_429_$concat_out__27;
+    MOV w_$emit_masm_py_209_$tmp_3, w_$emit_masm_py_429_$concat_out__34;
+    MOV w_$emit_masm_py_209_$tmp_4, w_$emit_masm_py_429_$concat_out__42;
+    MOV w_$emit_masm_py_209_$tmp_5, w_$emit_masm_py_429_$concat_out__43;
+    MOV w_$emit_masm_py_209_$tmp_6, w_$emit_masm_py_429_$concat_out__44;
+    MOV w_$emit_masm_py_209_$tmp_7, w_$emit_masm_py_429_$concat_out__45;
+    MOV w_$emit_masm_py_209_$tmp_8, w_$emit_masm_py_429_$concat_out__46;
+    MOV w_$emit_masm_py_209_$tmp_9, w_$emit_masm_py_429_$concat_out__48;
+    MOV w_$emit_masm_py_209_$tmp_10, w_$emit_masm_py_429_$concat_out__50;
+    MOV w_$emit_masm_py_209_$tmp_11, w_$emit_masm_py_429_$concat_out__53;
+    MOV w_$emit_masm_py_209_$tmp_12, w_$emit_masm_py_429_$concat_out__55;
+    MOV w_$emit_masm_py_209_$tmp_13, w_$emit_masm_py_429_$concat_out__57;
+    MOV w_$emit_masm_py_209_$tmp_14, w_$emit_masm_py_429_$concat_out__60;
+    MOV w_$emit_masm_py_209_$tmp_15, w_$emit_masm_py_429_$concat_out__63;
+    MOV w_$emit_masm_py_209_$tmp_16, w_$emit_masm_py_429_$concat_out__65;
+    MOV w_$emit_masm_py_209_$tmp_17, w_$emit_masm_py_429_$concat_out__68;
+    MOV w_$emit_masm_py_209_$tmp_18, w_$emit_masm_py_429_$concat_out__69;
+    MOV w_$emit_masm_py_209_$tmp_19, w_$emit_masm_py_662_$const_out_;
+    MOV w_$emit_masm_py_209_$tmp_20, w_$emit_masm_py_662_$const_out__1;
+    MOV w_$emit_masm_py_209_$tmp_21, w_$emit_masm_py_662_$const_out__2;
+    MOV w_$emit_masm_py_209_$tmp_22, w_$emit_masm_py_662_$const_out__3;
+    MOV w_$emit_masm_py_209_$tmp_23, w_$emit_masm_py_662_$const_out__4;
+    MOV w_$emit_masm_py_209_$tmp_24, w_$emit_masm_py_662_$const_out__5;
+    MOV w_$emit_masm_py_209_$tmp_25, w_$emit_masm_py_662_$const_out__6;
+    MOV w_$emit_masm_py_209_$tmp_26, w_$emit_masm_py_662_$const_out__7;
+    MOV w_$emit_masm_py_209_$tmp_27, w_$emit_masm_py_662_$const_out__8;
+    MOV w_$emit_masm_py_209_$tmp_28, w_$emit_masm_py_662_$const_out__9;
+    MOV w_$emit_masm_py_209_$tmp_29, w_$emit_masm_py_662_$const_out__10;
+    MOV w_$emit_masm_py_209_$tmp_30, w_$emit_masm_py_662_$const_out__11;
+    MOV w_$emit_masm_py_209_$tmp_31, w_$emit_masm_py_662_$const_out__12;
+    MOV w_$emit_masm_py_209_$tmp_32, w_$emit_masm_py_662_$const_out__13;
+    MOV w_$emit_masm_py_209_$tmp_33, w_$emit_masm_py_662_$const_out__14;
+    MOV w_$emit_masm_py_209_$tmp_34, w_$emit_masm_py_662_$const_out__15;
+    MOV w_$emit_masm_py_209_$tmp_35, w_$emit_masm_py_662_$const_out__16;
+    MOV w_$emit_masm_py_209_$tmp_36, w_$emit_masm_py_662_$const_out__17;
+    MOV w_$emit_masm_py_209_$tmp_37, w_$emit_masm_py_662_$const_out__18;
+    MOV w_$emit_masm_py_209_$tmp_38, w_$emit_masm_py_662_$const_out__19;
+    MOV w_$emit_masm_py_209_$tmp_39, w_$emit_masm_py_662_$const_out__20;
+    MOV w_$emit_masm_py_209_$tmp_40, w_$emit_masm_py_662_$const_out__21;
+    MOV w_$emit_masm_py_209_$tmp_41, w_$emit_masm_py_662_$const_out__22;
+    MOV w_$emit_masm_py_209_$tmp_42, w_$emit_masm_py_662_$const_out__23;
+    MOV w_$emit_masm_py_209_$tmp_43, w_$emit_masm_py_662_$const_out__24;
+    MOV w_$emit_masm_py_209_$tmp_44, w_$emit_masm_py_662_$const_out__25;
+    MOV w_$emit_masm_py_209_$tmp_45, w_$emit_masm_py_662_$const_out__26;
+    MOV w_$emit_masm_py_209_$tmp_46, w_$emit_masm_py_662_$const_out__27;
+    MOV w_$emit_masm_py_209_$tmp_47, w_$emit_masm_py_662_$const_out__28;
+    MOV w_$emit_masm_py_209_$tmp_48, w_$emit_masm_py_662_$const_out__29;
+    MOV w_$emit_masm_py_209_$tmp_49, w_$emit_masm_py_662_$const_out__30;
+    MOV w_$emit_masm_py_209_$tmp_50, w_$emit_masm_py_662_$const_out__31;
+    MOV w_$emit_masm_py_209_$tmp_51, w_$emit_masm_py_662_$const_out__32;
+    MOV w_$emit_masm_py_209_$tmp_52, w_$emit_masm_py_662_$const_out__33;
+    MOV w_$emit_masm_py_209_$tmp_53, w_$emit_masm_py_662_$const_out__34;
+    MOV w_$emit_masm_py_209_$tmp_54, w_$emit_masm_py_662_$const_out__35;
+    MOV w_$emit_masm_py_209_$tmp_55, w_$emit_masm_py_662_$const_out__36;
+    MOV w_$emit_masm_py_209_$tmp_56, w_$emit_masm_py_662_$const_out__37;
+    MOV w_$emit_masm_py_209_$tmp_57, w_$emit_masm_py_662_$const_out__38;
+    MOV w_$emit_masm_py_209_$tmp_58, w_$emit_masm_py_662_$const_out__39;
+    MOV w_$emit_masm_py_209_$tmp_59, w_$emit_masm_py_662_$const_out__40;
+    MOV w_$emit_masm_py_209_$tmp_60, w_$emit_masm_py_662_$const_out__41;
+    MOV w_$emit_masm_py_209_$tmp_61, w_$emit_masm_py_662_$const_out__42;
+    MOV w_$emit_masm_py_209_$tmp_62, w_$emit_masm_py_662_$const_out__43;
+    MOV w_$emit_masm_py_209_$tmp_63, w_$emit_masm_py_662_$const_out__44;
+    MOV w_$emit_masm_py_209_$tmp_64, w_$emit_masm_py_662_$const_out__45;
+    MOV w_$emit_masm_py_209_$tmp_65, w_$emit_masm_py_662_$const_out__46;
+    MOV w_$emit_masm_py_209_$tmp_66, w_$emit_masm_py_662_$const_out__47;
+    MOV w_$emit_masm_py_209_$tmp_67, w_$emit_masm_py_662_$const_out__48;
+    MOV w_$emit_masm_py_209_$tmp_68, w_$emit_masm_py_662_$const_out__49;
+    MOV w_$emit_masm_py_209_$tmp_69, w_$emit_masm_py_429_$concat_out__71;
+    MOV w_$emit_masm_py_209_$tmp_70, w_$emit_masm_py_662_$const_out__50;
+    MOV w_$emit_masm_py_209_$tmp_71, w_$emit_masm_py_662_$const_out__51;
+    MOV w_$emit_masm_py_209_$tmp_72, w_$emit_masm_py_662_$const_out__52;
+    MOV w_$emit_masm_py_209_$tmp_73, w_$emit_masm_py_662_$const_out__53;
+    MOV w_$emit_masm_py_209_$tmp_74, w_$emit_masm_py_662_$const_out__54;
+    MOV w_$emit_masm_py_209_$tmp_75, w_$emit_masm_py_662_$const_out__55;
+    MOV w_$emit_masm_py_209_$tmp_76, w_$emit_masm_py_662_$const_out__56;
+    MOV w_$emit_masm_py_209_$tmp_77, w_$emit_masm_py_662_$const_out__57;
+    MOV w_$emit_masm_py_209_$tmp_78, w_$emit_masm_py_662_$const_out__58;
+    MOV w_$emit_masm_py_209_$tmp_79, w_$emit_masm_py_662_$const_out__59;
+    MOV w_$emit_masm_py_209_$tmp_80, w_$emit_masm_py_662_$const_out__60;
+    MOV w_$emit_masm_py_209_$tmp_81, w_$emit_masm_py_550_$slice_out_;
+    MOV w_$emit_masm_py_209_$tmp_82, w_$emit_masm_py_662_$const_out__61;
+    MOV w_$emit_masm_py_209_$tmp_83, w_$emit_masm_py_550_$slice_out__1;
+    MOV w_$emit_masm_py_209_$tmp_84, w_$emit_masm_py_662_$const_out__62;
+    MOV w_$emit_masm_py_209_$tmp_85, w_$emit_masm_py_550_$slice_out__2;
+    MOV w_$emit_masm_py_209_$tmp_86, w_$emit_masm_py_662_$const_out__63;
+    MOV w_$emit_masm_py_209_$tmp_87, w_$emit_masm_py_550_$slice_out__3;
+    MOV w_$emit_masm_py_209_$tmp_88, w_$emit_masm_py_662_$const_out__64;
+    MOV w_$emit_masm_py_209_$tmp_89, w_$emit_masm_py_550_$slice_out__4;
+    MOV w_$emit_masm_py_209_$tmp_90, w_$emit_masm_py_662_$const_out__65;
+    MOV w_$emit_masm_py_209_$tmp_91, w_$emit_masm_py_550_$slice_out__5;
+    MOV w_$emit_masm_py_209_$tmp_92, w_$emit_masm_py_662_$const_out__66;
+    MOV w_$emit_masm_py_209_$tmp_93, w_$emit_masm_py_550_$slice_out__6;
+    MOV w_$emit_masm_py_209_$tmp_94, w_$emit_masm_py_662_$const_out__67;
+    MOV w_$emit_masm_py_209_$tmp_95, w_$emit_masm_py_550_$slice_out__7;
+    MOV w_$emit_masm_py_209_$tmp_96, w_$emit_masm_py_662_$const_out__68;
+    MOV w_$emit_masm_py_209_$tmp_97, w_$emit_masm_py_550_$slice_out__8;
+    MOV w_$emit_masm_py_209_$tmp_98, w_$emit_masm_py_662_$const_out__69;
+    MOV w_$emit_masm_py_209_$tmp_99, w_$emit_masm_py_550_$slice_out__9;
+    MOV w_$emit_masm_py_209_$tmp_100, w_$emit_masm_py_662_$const_out__70;
+    MOV w_$emit_masm_py_209_$tmp_101, w_$emit_masm_py_550_$slice_out__10;
+    MOV w_$emit_masm_py_209_$tmp_102, w_$emit_masm_py_662_$const_out__71;
+    MOV w_$emit_masm_py_209_$tmp_103, w_$emit_masm_py_662_$const_out__72;
+    MOV w_$emit_masm_py_209_$tmp_104, w_$emit_masm_py_550_$slice_out__11;
+    MOV w_$emit_masm_py_209_$tmp_105, w_$emit_masm_py_662_$const_out__73;
+    MOV w_$emit_masm_py_209_$tmp_106, w_$emit_masm_py_550_$slice_out__12;
+    MOV w_$emit_masm_py_209_$tmp_107, w_$emit_masm_py_662_$const_out__74;
+    MOV w_$emit_masm_py_209_$tmp_108, w_$emit_masm_py_550_$slice_out__13;
+    MOV w_$emit_masm_py_209_$tmp_109, w_$emit_masm_py_662_$const_out__75;
+    MOV w_$emit_masm_py_209_$tmp_110, w_$emit_masm_py_550_$slice_out__14;
+    MOV w_$emit_masm_py_209_$tmp_111, w_$emit_masm_py_662_$const_out__76;
+    MOV w_$emit_masm_py_209_$tmp_112, w_$emit_masm_py_550_$slice_out__15;
+    MOV w_$emit_masm_py_209_$tmp_113, w_$emit_masm_py_662_$const_out__77;
+    MOV w_$emit_masm_py_209_$tmp_114, w_$emit_masm_py_550_$slice_out__16;
+    MOV w_$emit_masm_py_209_$tmp_115, w_$emit_masm_py_662_$const_out__78;
+    MOV w_$emit_masm_py_209_$tmp_116, w_$emit_masm_py_550_$slice_out__17;
+    MOV w_$emit_masm_py_209_$tmp_117, w_$emit_masm_py_662_$const_out__79;
+    MOV w_$emit_masm_py_209_$tmp_118, w_$emit_masm_py_550_$slice_out__18;
+    MOV w_$emit_masm_py_209_$tmp_119, w_$emit_masm_py_662_$const_out__80;
+    MOV w_$emit_masm_py_209_$tmp_120, w_$emit_masm_py_550_$slice_out__19;
+    MOV w_$emit_masm_py_209_$tmp_121, w_$emit_masm_py_662_$const_out__81;
+    MOV w_$emit_masm_py_209_$tmp_122, w_$emit_masm_py_662_$const_out__82;
+    MOV w_$emit_masm_py_209_$tmp_123, w_$emit_masm_py_662_$const_out__83;
+    MOV w_$emit_masm_py_209_$tmp_124, w_$emit_masm_py_662_$const_out__84;
+    MOV w_$emit_masm_py_209_$tmp_125, w_$emit_masm_py_662_$const_out__85;
+    MOV w_$emit_masm_py_209_$tmp_126, w_$emit_masm_py_662_$const_out__86;
+    MOV w_$emit_masm_py_209_$tmp_127, w_$emit_masm_py_550_$slice_out__20;
+    MOV w_$emit_masm_py_209_$tmp_128, w_$emit_masm_py_662_$const_out__87;
+    MOV w_$emit_masm_py_209_$tmp_129, w_$emit_masm_py_662_$const_out__88;
+    MOV w_$emit_masm_py_209_$tmp_130, w_$emit_masm_py_662_$const_out__89;
+    MOV w_$emit_masm_py_209_$tmp_131, w_$emit_masm_py_662_$const_out__90;
+    MOV w_$emit_masm_py_209_$tmp_132, w_$emit_masm_py_662_$const_out__91;
+    MOV w_$emit_masm_py_209_$tmp_133, w_$emit_masm_py_550_$slice_out__21;
+    MOV w_$emit_masm_py_209_$tmp_134, w_$emit_masm_py_662_$const_out__92;
+    MOV w_$emit_masm_py_209_$tmp_135, w_$emit_masm_py_662_$const_out__93;
+    MOV w_$emit_masm_py_209_$tmp_136, w_$emit_masm_py_662_$const_out__94;
+    MOV w_$emit_masm_py_209_$tmp_137, w_$emit_masm_py_662_$const_out__95;
+    MOV w_$emit_masm_py_209_$tmp_138, w_$emit_masm_py_550_$slice_out__22;
+    MOV w_$emit_masm_py_209_$tmp_139, w_$emit_masm_py_662_$const_out__96;
+    MOV w_$emit_masm_py_209_$tmp_140, w_$emit_masm_py_662_$const_out__97;
+    MOV w_$emit_masm_py_209_$tmp_141, w_$emit_masm_py_662_$const_out__98;
+    MOV w_$emit_masm_py_209_$tmp_142, w_$emit_masm_py_662_$const_out__99;
+    MOV w_$emit_masm_py_209_$tmp_143, w_$emit_masm_py_550_$slice_out__23;
+    MOV w_$emit_masm_py_209_$tmp_144, w_$emit_masm_py_662_$const_out__100;
+    MOV w_$emit_masm_py_209_$tmp_145, w_$emit_masm_py_662_$const_out__101;
+    MOV w_$emit_masm_py_209_$tmp_146, w_$emit_masm_py_662_$const_out__102;
+    MOV w_$emit_masm_py_209_$tmp_147, w_$emit_masm_py_662_$const_out__103;
+    MOV w_$emit_masm_py_209_$tmp_148, w_$emit_masm_py_550_$slice_out__24;
+    MOV w_$emit_masm_py_209_$tmp_149, w_$emit_masm_py_662_$const_out__104;
+    MOV w_$emit_masm_py_209_$tmp_150, w_$emit_masm_py_662_$const_out__105;
+    MOV w_$emit_masm_py_209_$tmp_151, w_$emit_masm_py_662_$const_out__106;
+    MOV w_$emit_masm_py_209_$tmp_152, w_$emit_masm_py_662_$const_out__107;
+    MOV w_$emit_masm_py_209_$tmp_153, w_$emit_masm_py_550_$slice_out__25;
+    MOV w_$emit_masm_py_209_$tmp_154, w_$emit_masm_py_662_$const_out__108;
+    MOV w_$emit_masm_py_209_$tmp_155, w_$emit_masm_py_662_$const_out__109;
+    MOV w_$emit_masm_py_209_$tmp_156, w_$emit_masm_py_662_$const_out__110;
+    MOV w_$emit_masm_py_209_$tmp_157, w_$emit_masm_py_662_$const_out__111;
+    MOV w_$emit_masm_py_209_$tmp_158, w_$emit_masm_py_550_$slice_out__26;
+    MOV w_$emit_masm_py_209_$tmp_159, w_$emit_masm_py_662_$const_out__112;
+    MOV w_$emit_masm_py_209_$tmp_160, w_$emit_masm_py_662_$const_out__113;
+    MOV w_$emit_masm_py_209_$tmp_161, w_$emit_masm_py_662_$const_out__114;
+    MOV w_$emit_masm_py_209_$tmp_162, w_$emit_masm_py_662_$const_out__115;
+    MOV w_$emit_masm_py_209_$tmp_163, w_$emit_masm_py_550_$slice_out__27;
+    MOV w_$emit_masm_py_209_$tmp_164, w_$emit_masm_py_662_$const_out__116;
+    MOV w_$emit_masm_py_209_$tmp_165, w_$emit_masm_py_662_$const_out__117;
+    MOV w_$emit_masm_py_209_$tmp_166, w_$emit_masm_py_662_$const_out__118;
+    MOV w_$emit_masm_py_209_$tmp_167, w_$emit_masm_py_550_$slice_out__28;
+    MOV w_$emit_masm_py_209_$tmp_168, w_$emit_masm_py_662_$const_out__119;
+    MOV w_$emit_masm_py_209_$tmp_169, w_$emit_masm_py_662_$const_out__120;
+    MOV w_$emit_masm_py_209_$tmp_170, w_$emit_masm_py_662_$const_out__121;
+    MOV w_$emit_masm_py_209_$tmp_171, w_$emit_masm_py_550_$slice_out__29;
+    MOV w_$emit_masm_py_209_$tmp_172, w_$emit_masm_py_662_$const_out__122;
+    MOV w_$emit_masm_py_209_$tmp_173, w_$emit_masm_py_662_$const_out__123;
+    MOV w_$emit_masm_py_209_$tmp_174, w_$emit_masm_py_662_$const_out__124;
+    MOV w_$emit_masm_py_209_$tmp_175, w_$emit_masm_py_550_$slice_out__30;
+    MOV w_$emit_masm_py_209_$tmp_176, w_$emit_masm_py_662_$const_out__125;
+    MOV w_$emit_masm_py_209_$tmp_177, w_$emit_masm_py_662_$const_out__126;
+    MOV w_$emit_masm_py_209_$tmp_178, w_$emit_masm_py_662_$const_out__127;
+    MOV w_$emit_masm_py_209_$tmp_179, w_$emit_masm_py_550_$slice_out__31;
+    MOV w_$emit_masm_py_209_$tmp_180, w_$emit_masm_py_662_$const_out__128;
+    MOV w_$emit_masm_py_209_$tmp_181, w_$emit_masm_py_662_$const_out__129;
+    MOV w_$emit_masm_py_209_$tmp_182, w_$emit_masm_py_662_$const_out__130;
+    MOV w_$emit_masm_py_209_$tmp_183, w_$emit_masm_py_550_$slice_out__32;
+    MOV w_$emit_masm_py_209_$tmp_184, w_$emit_masm_py_662_$const_out__131;
+    MOV w_$emit_masm_py_209_$tmp_185, w_$emit_masm_py_662_$const_out__132;
+    MOV w_$emit_masm_py_209_$tmp_186, w_$emit_masm_py_662_$const_out__133;
+    MOV w_$emit_masm_py_209_$tmp_187, w_$emit_masm_py_550_$slice_out__33;
+    MOV w_$emit_masm_py_209_$tmp_188, w_$emit_masm_py_662_$const_out__134;
+    MOV w_$emit_masm_py_209_$tmp_189, w_$emit_masm_py_662_$const_out__135;
+    MOV w_$emit_masm_py_209_$tmp_190, w_$emit_masm_py_662_$const_out__136;
+    MOV w_$emit_masm_py_209_$tmp_191, w_$emit_masm_py_550_$slice_out__34;
+    MOV w_$emit_masm_py_209_$tmp_192, w_$emit_masm_py_662_$const_out__137;
+    MOV w_$emit_masm_py_209_$tmp_193, w_$emit_masm_py_662_$const_out__138;
+    MOV w_$emit_masm_py_209_$tmp_194, w_$emit_masm_py_662_$const_out__139;
+    MOV w_$emit_masm_py_209_$tmp_195, w_$emit_masm_py_550_$slice_out__35;
+    MOV w_$emit_masm_py_209_$tmp_196, w_$emit_masm_py_662_$const_out__140;
+    MOV w_$emit_masm_py_209_$tmp_197, w_$emit_masm_py_662_$const_out__141;
+    MOV w_$emit_masm_py_209_$tmp_198, w_$emit_masm_py_550_$slice_out__36;
+    MOV w_$emit_masm_py_209_$tmp_199, w_$emit_masm_py_662_$const_out__142;
+    MOV w_$emit_masm_py_209_$tmp_200, w_$emit_masm_py_662_$const_out__143;
+    MOV w_$emit_masm_py_209_$tmp_201, w_$emit_masm_py_550_$slice_out__37;
+    MOV w_$emit_masm_py_209_$tmp_202, w_$emit_masm_py_662_$const_out__144;
+    MOV w_$emit_masm_py_209_$tmp_203, w_$emit_masm_py_662_$const_out__145;
+    MOV w_$emit_masm_py_209_$tmp_204, w_$emit_masm_py_550_$slice_out__38;
+    MOV w_$emit_masm_py_209_$tmp_205, w_$emit_masm_py_662_$const_out__146;
+    MOV w_$emit_masm_py_209_$tmp_206, w_$emit_masm_py_662_$const_out__147;
+    MOV w_$emit_masm_py_209_$tmp_207, w_$emit_masm_py_550_$slice_out__39;
+    MOV w_$emit_masm_py_209_$tmp_208, w_$emit_masm_py_662_$const_out__148;
+    MOV w_$emit_masm_py_209_$tmp_209, w_$emit_masm_py_662_$const_out__149;
+    MOV w_$emit_masm_py_209_$tmp_210, w_$emit_masm_py_550_$slice_out__40;
+    MOV w_$emit_masm_py_209_$tmp_211, w_$emit_masm_py_662_$const_out__150;
+    MOV w_$emit_masm_py_209_$tmp_212, w_$emit_masm_py_662_$const_out__151;
+    MOV w_$emit_masm_py_209_$tmp_213, w_$emit_masm_py_550_$slice_out__41;
+    MOV w_$emit_masm_py_209_$tmp_214, w_$emit_masm_py_662_$const_out__152;
+    MOV w_$emit_masm_py_209_$tmp_215, w_$emit_masm_py_662_$const_out__153;
+    MOV w_$emit_masm_py_209_$tmp_216, w_$emit_masm_py_550_$slice_out__42;
+    MOV w_$emit_masm_py_209_$tmp_217, w_$emit_masm_py_662_$const_out__154;
+    MOV w_$emit_masm_py_209_$tmp_218, w_$emit_masm_py_662_$const_out__155;
+    MOV w_$emit_masm_py_209_$tmp_219, w_$emit_masm_py_550_$slice_out__43;
+    MOV w_$emit_masm_py_209_$tmp_220, w_$emit_masm_py_550_$slice_out__44;
+    MOV w_$emit_masm_py_209_$tmp_221, w_$emit_masm_py_662_$const_out__156;
+    MOV w_$emit_masm_py_209_$tmp_222, w_$emit_masm_py_550_$slice_out__45;
+    MOV w_$emit_masm_py_209_$tmp_223, w_$emit_masm_py_662_$const_out__157;
+    MOV w_$emit_masm_py_209_$tmp_224, w_$emit_masm_py_550_$slice_out__46;
+    MOV w_$emit_masm_py_209_$tmp_225, w_$emit_masm_py_662_$const_out__158;
+    MOV w_$emit_masm_py_209_$tmp_226, w_$emit_masm_py_550_$slice_out__47;
+    MOV w_$emit_masm_py_209_$tmp_227, w_$emit_masm_py_662_$const_out__159;
+    MOV w_$emit_masm_py_209_$tmp_228, w_$emit_masm_py_550_$slice_out__48;
+    MOV w_$emit_masm_py_209_$tmp_229, w_$emit_masm_py_662_$const_out__160;
+    MOV w_$emit_masm_py_209_$tmp_230, w_$emit_masm_py_550_$slice_out__49;
+    MOV w_$emit_masm_py_209_$tmp_231, w_$emit_masm_py_662_$const_out__161;
+    MOV w_$emit_masm_py_209_$tmp_232, w_$emit_masm_py_550_$slice_out__50;
+    MOV w_$emit_masm_py_209_$tmp_233, w_$emit_masm_py_662_$const_out__162;
+    MOV w_$emit_masm_py_209_$tmp_234, w_$emit_masm_py_550_$slice_out__51;
+    MOV w_$emit_masm_py_209_$tmp_235, w_$emit_masm_py_550_$slice_out__52;
+    MOV w_$emit_masm_py_209_$tmp_236, w_$emit_masm_py_662_$const_out__163;
+    MOV w_$emit_masm_py_209_$tmp_237, w_$emit_masm_py_550_$slice_out__53;
+    MOV w_$emit_masm_py_209_$tmp_238, w_$emit_masm_py_662_$const_out__164;
+    MOV w_$emit_masm_py_209_$tmp_239, w_$emit_masm_py_550_$slice_out__54;
+    MOV w_$emit_masm_py_209_$tmp_240, w_$emit_masm_py_662_$const_out__165;
+    MOV w_$emit_masm_py_209_$tmp_241, w_$emit_masm_py_550_$slice_out__55;
+    MOV w_$emit_masm_py_209_$tmp_242, w_$emit_masm_py_662_$const_out__166;
+    MOV w_$emit_masm_py_209_$tmp_243, w_$emit_masm_py_550_$slice_out__56;
+    MOV w_$emit_masm_py_209_$tmp_244, w_$emit_masm_py_662_$const_out__167;
+    MOV w_$emit_masm_py_209_$tmp_245, w_$emit_masm_py_550_$slice_out__57;
+    MOV w_$emit_masm_py_209_$tmp_246, w_$emit_masm_py_662_$const_out__168;
+    MOV w_$emit_masm_py_209_$tmp_247, w_$emit_masm_py_550_$slice_out__58;
+    MOV w_$emit_masm_py_209_$tmp_248, w_$emit_masm_py_662_$const_out__169;
+    MOV w_$emit_masm_py_209_$tmp_249, w_$emit_masm_py_550_$slice_out__59;
+    MOV w_$emit_masm_py_209_$tmp_250, w_$emit_masm_py_662_$const_out__170;
+    MOV w_$emit_masm_py_209_$tmp_251, w_$emit_masm_py_550_$slice_out__60;
+    MOV w_$emit_masm_py_209_$tmp_252, w_$emit_masm_py_550_$slice_out__61;
+    MOV w_$emit_masm_py_209_$tmp_253, w_$emit_masm_py_662_$const_out__171;
+    MOV w_$emit_masm_py_209_$tmp_254, w_$emit_masm_py_550_$slice_out__62;
+    MOV w_$emit_masm_py_209_$tmp_255, w_$emit_masm_py_550_$slice_out__63;
+    MOV w_$emit_masm_py_209_$tmp_256, w_$emit_masm_py_662_$const_out__172;
+    MOV w_$emit_masm_py_209_$tmp_257, w_$emit_masm_py_550_$slice_out__64;
+    MOV w_$emit_masm_py_209_$tmp_258, w_$emit_masm_py_550_$slice_out__65;
+    MOV w_$emit_masm_py_209_$tmp_259, w_$emit_masm_py_662_$const_out__173;
+    MOV w_$emit_masm_py_209_$tmp_260, w_$emit_masm_py_550_$slice_out__66;
+    MOV w_$emit_masm_py_209_$tmp_261, w_$emit_masm_py_550_$slice_out__67;
+    MOV w_$emit_masm_py_209_$tmp_262, w_$emit_masm_py_662_$const_out__174;
+    MOV w_$emit_masm_py_209_$tmp_263, w_$emit_masm_py_550_$slice_out__68;
+    MOV w_$emit_masm_py_209_$tmp_264, w_$emit_masm_py_662_$const_out__175;
+    MOV w_$emit_masm_py_209_$tmp_265, w_$emit_masm_py_550_$slice_out__69;
+    MOV w_$emit_masm_py_209_$tmp_266, w_$emit_masm_py_662_$const_out__176;
+    MOV w_$emit_masm_py_209_$tmp_267, w_$emit_masm_py_550_$slice_out__70;
+    MOV w_$emit_masm_py_209_$tmp_268, w_$emit_masm_py_662_$const_out__177;
+    MOV w_$emit_masm_py_209_$tmp_269, w_$emit_masm_py_662_$const_out__178;
+    MOV w_$emit_masm_py_209_$tmp_270, w_$emit_masm_py_662_$const_out__179;
+    MOV w_$emit_masm_py_209_$tmp_271, w_$emit_masm_py_662_$const_out__180;
+    MOV w_$emit_masm_py_209_$tmp_272, w_$emit_masm_py_550_$slice_out__71;
+    MOV w_$emit_masm_py_209_$tmp_273, w_$emit_masm_py_662_$const_out__181;
+    MOV w_$emit_masm_py_209_$tmp_274, w_$emit_masm_py_662_$const_out__182;
+    MOV w_$emit_masm_py_209_$tmp_275, w_$emit_masm_py_662_$const_out__183;
+    MOV w_$emit_masm_py_209_$tmp_276, w_$emit_masm_py_662_$const_out__184;
+    MOV w_$emit_masm_py_209_$tmp_277, w_$emit_masm_py_550_$slice_out__72;
+    MOV w_$emit_masm_py_209_$tmp_278, w_$emit_masm_py_662_$const_out__185;
+    MOV w_$emit_masm_py_209_$tmp_279, w_$emit_masm_py_662_$const_out__186;
+    MOV w_$emit_masm_py_209_$tmp_280, w_$emit_masm_py_429_$concat_out__72;
+    MOV w_$emit_masm_py_209_$tmp_281, w_$emit_masm_py_550_$slice_out__73;
+    MOV w_$emit_masm_py_209_$tmp_282, w_$emit_masm_py_429_$concat_out__73;
+    MOV w_$emit_masm_py_209_$tmp_283, w_$emit_masm_py_550_$slice_out__74;
+    MOV w_$emit_masm_py_209_$tmp_284, w_$emit_masm_py_429_$concat_out__74;
+    MOV w_$emit_masm_py_209_$tmp_285, w_$emit_masm_py_550_$slice_out__75;
+    MOV w_$emit_masm_py_209_$tmp_286, w_$emit_masm_py_550_$slice_out__76;
+    MOV w_$emit_masm_py_209_$tmp_287, w_$emit_masm_py_550_$slice_out__77;
+    MOV w_$emit_masm_py_209_$tmp_288, w_$emit_masm_py_550_$slice_out__78;
+    MOV w_$emit_masm_py_209_$tmp_289, w_$emit_masm_py_550_$slice_out__79;
+    MOV w_$emit_masm_py_209_$tmp_290, w_$emit_masm_py_662_$const_out__187;
+    MOV w_$emit_masm_py_209_$tmp_291, w_$emit_masm_py_662_$const_out__188;
+    MOV w_$emit_masm_py_209_$tmp_292, w_$emit_masm_py_662_$const_out__189;
+    MOV w_$emit_masm_py_209_$tmp_293, w_$emit_masm_py_550_$slice_out__80;
+    MOV w_$emit_masm_py_209_$tmp_294, w_$emit_masm_py_662_$const_out__190;
+    MOV w_$emit_masm_py_209_$tmp_295, w_$emit_masm_py_550_$slice_out__81;
+    MOV w_$emit_masm_py_209_$tmp_296, w_$emit_masm_py_662_$const_out__191;
+    MOV w_$emit_masm_py_209_$tmp_297, w_$emit_masm_py_429_$concat_out__76;
+    MOV w_$emit_masm_py_209_$tmp_298, w_$emit_masm_py_662_$const_out__192;
+    MOV w_$emit_masm_py_209_$tmp_299, w_$emit_masm_py_662_$const_out__193;
+    MOV w_$emit_masm_py_209_$tmp_300, w_$emit_masm_py_662_$const_out__194;
+    MOV w_$emit_masm_py_209_$tmp_301, w_$emit_masm_py_550_$slice_out__82;
+    MOV w_$emit_masm_py_209_$tmp_302, w_$emit_masm_py_550_$slice_out__83;
+    MOV w_$emit_masm_py_209_$tmp_303, w_$emit_masm_py_550_$slice_out__84;
+    MOV w_$emit_masm_py_209_$tmp_304, w_$emit_masm_py_550_$slice_out__85;
+    MOV w_$emit_masm_py_209_$tmp_305, w_$emit_masm_py_662_$const_out__195;
+    MOV w_$emit_masm_py_209_$tmp_306, w_$emit_masm_py_550_$slice_out__86;
+    MOV w_$emit_masm_py_209_$tmp_307, w_$emit_masm_py_662_$const_out__196;
+    MOV w_$emit_masm_py_209_$tmp_308, w_$emit_masm_py_550_$slice_out__87;
+    MOV w_$emit_masm_py_209_$tmp_309, w_$emit_masm_py_662_$const_out__197;
+    MOV w_$emit_masm_py_209_$tmp_310, w_$emit_masm_py_662_$const_out__198;
+    MOV w_$emit_masm_py_209_$tmp_311, w_$emit_masm_py_662_$const_out__199;
+    MOV w_$emit_masm_py_209_$tmp_312, w_$emit_masm_py_550_$slice_out__88;
+    MOV w_$emit_masm_py_209_$tmp_313, w_$emit_masm_py_662_$const_out__200;
+    MOV w_$emit_masm_py_209_$tmp_314, w_$emit_masm_py_662_$const_out__201;
+    MOV w_$emit_masm_py_209_$tmp_315, w_$emit_masm_py_550_$slice_out__89;
+    MOV w_$emit_masm_py_209_$tmp_316, w_$emit_masm_py_662_$const_out__202;
+    MOV w_$emit_masm_py_209_$tmp_317, w_$emit_masm_py_662_$const_out__203;
+    MOV w_$emit_masm_py_209_$tmp_318, w_$emit_masm_py_662_$const_out__204;
+    MOV w_$emit_masm_py_209_$tmp_319, w_$emit_masm_py_662_$const_out__205;
+    MOV w_\dut_reg_cond_$masm_stop_3, pi_$emit_masm_py_316_$flatten\dut_$procdff$727_curr;
+    MOV po_$emit_masm_py_329_$flatten\dut_$procdff$727_next, w_\dut__13_;
+    MOV w_\dut_reg_cond_$masm_expect_0, pi_$emit_masm_py_316_$flatten\dut_$procdff$728_curr;
+    MOV po_$emit_masm_py_329_$flatten\dut_$procdff$728_next, w_\dut__12_;
+    MOV w_\dut_pc, pi_$emit_masm_py_316_$flatten\dut_$procdff$729_curr;
+    MOV po_$emit_masm_py_329_$flatten\dut_$procdff$729_next, w_\dut__41_;
+    MOV w_\dut_halted_r, pi_$emit_masm_py_316_$flatten\dut_$procdff$730_curr;
+    MOV po_$emit_masm_py_329_$flatten\dut_$procdff$730_next, w_\dut__42_;
+    MOV w_\rdriver_reset_counter, pi_$emit_masm_py_316_$flatten\rdriver_$procdff$737_curr;
+    MOV po_$emit_masm_py_329_$flatten\rdriver_$procdff$737_next, w_\rdriver__4_;
+    SEQ w_0, w_$emit_masm_py_209_$tmp, c_0;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$741, w_0, c_1;
+    SEQ w_1, w_$emit_masm_py_209_$tmp_1, c_2;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$773, w_1, c_3;
+    SEQ w_2, w_$emit_masm_py_209_$tmp_2, c_4;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$805, w_2, c_5;
+    SEQ w_3, w_$emit_masm_py_209_$tmp_3, c_6;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$833, w_3, c_7;
+    SEQ w_4, w_$emit_masm_py_209_$tmp_4, c_8;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$859, w_4, c_9;
+    SEQ w_5, w_$emit_masm_py_209_$tmp_5, c_10;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$887, w_5, c_11;
+    SEQ w_6, w_$emit_masm_py_209_$tmp_6, c_12;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$895, w_6, c_13;
+    SEQ w_7, w_$emit_masm_py_209_$tmp_7, c_14;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$903, w_7, c_15;
+    SEQ w_8, w_$emit_masm_py_209_$tmp_8, c_16;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$911, w_8, c_17;
+    XOR w_$auto$rtlil_cc_2363_Not$743, w_$auto$rtlil_cc_2367_ReduceOr$741, c_18;
+    XOR w_$auto$rtlil_cc_2363_Not$775, w_$auto$rtlil_cc_2367_ReduceOr$773, c_19;
+    XOR w_$auto$rtlil_cc_2363_Not$807, w_$auto$rtlil_cc_2367_ReduceOr$805, c_20;
+    XOR w_$auto$rtlil_cc_2363_Not$835, w_$auto$rtlil_cc_2367_ReduceOr$833, c_21;
+    XOR w_$auto$rtlil_cc_2363_Not$861, w_$auto$rtlil_cc_2367_ReduceOr$859, c_22;
+    XOR w_$auto$rtlil_cc_2363_Not$889, w_$auto$rtlil_cc_2367_ReduceOr$887, c_23;
+    XOR w_$auto$rtlil_cc_2363_Not$897, w_$auto$rtlil_cc_2367_ReduceOr$895, c_24;
+    XOR w_$auto$rtlil_cc_2363_Not$905, w_$auto$rtlil_cc_2367_ReduceOr$903, c_25;
+    XOR w_$auto$rtlil_cc_2363_Not$913, w_$auto$rtlil_cc_2367_ReduceOr$911, c_26;
+    OR w_$auto$rtlil_cc_2394_Or$815, w_$flatten\dut_\alu_control_$procmux$163_CMP, w_$flatten\dut_\alu_control_$procmux$162_CMP;
+    OR w_$auto$rtlil_cc_2394_Or$825, w_$flatten\dut_\alu_control_$procmux$168_CMP, w_$flatten\dut_\alu_control_$procmux$167_CMP;
+    OR w_$auto$rtlil_cc_2394_Or$841, w_$flatten\dut_\control_$procmux$629_CMP, w_$flatten\dut_\control_$procmux$628_CMP;
+    OR w_$auto$rtlil_cc_2394_Or$851, w_$flatten\dut_\control_$procmux$633_CMP, w_$flatten\dut_\control_$procmux$632_CMP;
+    OR w_$auto$rtlil_cc_2394_Or$869, w_$flatten\dut_\control_$procmux$639_CMP, w_$flatten\dut_\control_$procmux$638_CMP;
+    OR w_$auto$rtlil_cc_2394_Or$879, w_$flatten\dut_\control_$procmux$644_CMP, w_$flatten\dut_\control_$procmux$643_CMP;
+    SEQ w_9, w_$emit_masm_py_209_$tmp_9, c_27;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$753, w_9, c_28;
+    SEQ w_10, w_$emit_masm_py_209_$tmp_10, c_29;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$765, w_10, c_30;
+    SEQ w_11, w_$emit_masm_py_209_$tmp_11, c_31;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$769, w_11, c_32;
+    SEQ w_12, w_$emit_masm_py_209_$tmp_12, c_33;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$785, w_12, c_34;
+    SEQ w_13, w_$emit_masm_py_209_$tmp_13, c_35;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$797, w_13, c_36;
+    SEQ w_14, w_$emit_masm_py_209_$tmp_14, c_37;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$801, w_14, c_38;
+    SEQ w_15, w_$emit_masm_py_209_$tmp_15, c_39;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$829, w_15, c_40;
+    SEQ w_16, w_$emit_masm_py_209_$tmp_16, c_41;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$855, w_16, c_42;
+    SEQ w_17, w_$emit_masm_py_209_$tmp_17, c_43;
+    XOR w_$auto$rtlil_cc_2367_ReduceOr$883, w_17, c_44;
+    MUX w_$auto$rtlil_cc_2460_Mux$745, w_$flatten\dut_\alu_$procmux$133_CMP, w_\dut_alu__10_, w_\dut_alu__1_;
+    MUX w_$auto$rtlil_cc_2460_Mux$747, w_$flatten\dut_\alu_$procmux$132_CMP, w_$auto$rtlil_cc_2460_Mux$745, w_$emit_masm_py_209_$tmp_18;
+    MUX w_$auto$rtlil_cc_2460_Mux$749, w_$flatten\dut_\alu_$procmux$136_CMP, w_\dut_alu__12_, w_\dut_alu__8_;
+    MUX w_$auto$rtlil_cc_2460_Mux$751, w_$flatten\dut_\alu_$procmux$135_CMP, w_$auto$rtlil_cc_2460_Mux$749, w_\dut_alu__0_;
+    MUX w_$auto$rtlil_cc_2460_Mux$755, w_$auto$rtlil_cc_2367_ReduceOr$753, w_$auto$rtlil_cc_2460_Mux$751, w_$auto$rtlil_cc_2460_Mux$747;
+    MUX w_$auto$rtlil_cc_2460_Mux$757, w_$flatten\dut_\alu_$procmux$139_CMP, w_\dut_alu__3_, w_\dut_alu__13_;
+    MUX w_$auto$rtlil_cc_2460_Mux$759, w_$flatten\dut_\alu_$procmux$138_CMP, w_$auto$rtlil_cc_2460_Mux$757, w_\dut_alu__2_;
+    MUX w_$auto$rtlil_cc_2460_Mux$761, w_$flatten\dut_\alu_$procmux$142_CMP, w_$emit_masm_py_209_$tmp_19, w_\dut_alu__5_;
+    MUX w_$auto$rtlil_cc_2460_Mux$763, w_$flatten\dut_\alu_$procmux$141_CMP, w_$auto$rtlil_cc_2460_Mux$761, w_\dut_alu__4_;
+    MUX w_$auto$rtlil_cc_2460_Mux$767, w_$auto$rtlil_cc_2367_ReduceOr$765, w_$auto$rtlil_cc_2460_Mux$763, w_$auto$rtlil_cc_2460_Mux$759;
+    MUX w_$auto$rtlil_cc_2460_Mux$771, w_$auto$rtlil_cc_2367_ReduceOr$769, w_$auto$rtlil_cc_2460_Mux$767, w_$auto$rtlil_cc_2460_Mux$755;
+    MUX w_$auto$rtlil_cc_2460_Mux$777, w_$flatten\dut_\alu_control_$procmux$146_CMP, w_$emit_masm_py_209_$tmp_20, w_$emit_masm_py_209_$tmp_21;
+    MUX w_$auto$rtlil_cc_2460_Mux$779, w_$flatten\dut_\alu_control_$procmux$145_CMP, w_$auto$rtlil_cc_2460_Mux$777, w_$emit_masm_py_209_$tmp_22;
+    MUX w_$auto$rtlil_cc_2460_Mux$781, w_$flatten\dut_\alu_control_$procmux$149_CMP, w_$emit_masm_py_209_$tmp_23, w_$emit_masm_py_209_$tmp_24;
+    MUX w_$auto$rtlil_cc_2460_Mux$783, w_$flatten\dut_\alu_control_$procmux$148_CMP, w_$auto$rtlil_cc_2460_Mux$781, w_$emit_masm_py_209_$tmp_25;
+    MUX w_$auto$rtlil_cc_2460_Mux$787, w_$auto$rtlil_cc_2367_ReduceOr$785, w_$auto$rtlil_cc_2460_Mux$783, w_$auto$rtlil_cc_2460_Mux$779;
+    MUX w_$auto$rtlil_cc_2460_Mux$789, w_$flatten\dut_\alu_control_$procmux$152_CMP, w_$emit_masm_py_209_$tmp_26, w_$emit_masm_py_209_$tmp_27;
+    MUX w_$auto$rtlil_cc_2460_Mux$791, w_$flatten\dut_\alu_control_$procmux$151_CMP, w_$auto$rtlil_cc_2460_Mux$789, w_$emit_masm_py_209_$tmp_28;
+    MUX w_$auto$rtlil_cc_2460_Mux$793, w_$flatten\dut_\alu_control_$procmux$155_CMP, w_$emit_masm_py_209_$tmp_29, w_$emit_masm_py_209_$tmp_30;
+    MUX w_$auto$rtlil_cc_2460_Mux$795, w_$flatten\dut_\alu_control_$procmux$154_CMP, w_$auto$rtlil_cc_2460_Mux$793, w_$emit_masm_py_209_$tmp_31;
+    MUX w_$auto$rtlil_cc_2460_Mux$799, w_$auto$rtlil_cc_2367_ReduceOr$797, w_$auto$rtlil_cc_2460_Mux$795, w_$auto$rtlil_cc_2460_Mux$791;
+    MUX w_$auto$rtlil_cc_2460_Mux$803, w_$auto$rtlil_cc_2367_ReduceOr$801, w_$auto$rtlil_cc_2460_Mux$799, w_$auto$rtlil_cc_2460_Mux$787;
+    MUX w_$auto$rtlil_cc_2460_Mux$809, w_$flatten\dut_\alu_control_$procmux$162_CMP, w_$emit_masm_py_209_$tmp_32, w_$emit_masm_py_209_$tmp_33;
+    MUX w_$auto$rtlil_cc_2460_Mux$811, w_$flatten\dut_\alu_control_$procmux$165_CMP, w_$emit_masm_py_209_$tmp_34, w_$emit_masm_py_209_$tmp_35;
+    MUX w_$auto$rtlil_cc_2460_Mux$813, w_$flatten\dut_\alu_control_$procmux$164_CMP, w_$auto$rtlil_cc_2460_Mux$811, w_$emit_masm_py_209_$tmp_36;
+    MUX w_$auto$rtlil_cc_2460_Mux$817, w_$auto$rtlil_cc_2394_Or$815, w_$auto$rtlil_cc_2460_Mux$813, w_$auto$rtlil_cc_2460_Mux$809;
+    MUX w_$auto$rtlil_cc_2460_Mux$819, w_$flatten\dut_\alu_control_$procmux$167_CMP, w_$emit_masm_py_209_$tmp_37, w_$emit_masm_py_209_$tmp_38;
+    MUX w_$auto$rtlil_cc_2460_Mux$821, w_$flatten\dut_\alu_control_$procmux$170_CMP, w_$emit_masm_py_209_$tmp_39, w_$emit_masm_py_209_$tmp_40;
+    MUX w_$auto$rtlil_cc_2460_Mux$823, w_$flatten\dut_\alu_control_$procmux$169_CMP, w_$auto$rtlil_cc_2460_Mux$821, w_$emit_masm_py_209_$tmp_41;
+    MUX w_$auto$rtlil_cc_2460_Mux$827, w_$auto$rtlil_cc_2394_Or$825, w_$auto$rtlil_cc_2460_Mux$823, w_$auto$rtlil_cc_2460_Mux$819;
+    MUX w_$auto$rtlil_cc_2460_Mux$831, w_$auto$rtlil_cc_2367_ReduceOr$829, w_$auto$rtlil_cc_2460_Mux$827, w_$auto$rtlil_cc_2460_Mux$817;
+    MUX w_$auto$rtlil_cc_2460_Mux$837, w_$flatten\dut_\control_$procmux$628_CMP, w_$emit_masm_py_209_$tmp_42, w_$emit_masm_py_209_$tmp_43;
+    MUX w_$auto$rtlil_cc_2460_Mux$839, w_$flatten\dut_\control_$procmux$630_CMP, w_$emit_masm_py_209_$tmp_44, w_$emit_masm_py_209_$tmp_45;
+    MUX w_$auto$rtlil_cc_2460_Mux$843, w_$auto$rtlil_cc_2394_Or$841, w_$auto$rtlil_cc_2460_Mux$839, w_$auto$rtlil_cc_2460_Mux$837;
+    MUX w_$auto$rtlil_cc_2460_Mux$845, w_$flatten\dut_\control_$procmux$632_CMP, w_$emit_masm_py_209_$tmp_46, w_$emit_masm_py_209_$tmp_47;
+    MUX w_$auto$rtlil_cc_2460_Mux$847, w_$flatten\dut_\control_$procmux$635_CMP, w_$emit_masm_py_209_$tmp_48, w_\dut_control__19_;
+    MUX w_$auto$rtlil_cc_2460_Mux$849, w_$flatten\dut_\control_$procmux$634_CMP, w_$auto$rtlil_cc_2460_Mux$847, w_$emit_masm_py_209_$tmp_49;
+    MUX w_$auto$rtlil_cc_2460_Mux$853, w_$auto$rtlil_cc_2394_Or$851, w_$auto$rtlil_cc_2460_Mux$849, w_$auto$rtlil_cc_2460_Mux$845;
+    MUX w_$auto$rtlil_cc_2460_Mux$857, w_$auto$rtlil_cc_2367_ReduceOr$855, w_$auto$rtlil_cc_2460_Mux$853, w_$auto$rtlil_cc_2460_Mux$843;
+    MUX w_$auto$rtlil_cc_2460_Mux$863, w_$flatten\dut_\control_$procmux$638_CMP, w_$emit_masm_py_209_$tmp_50, w_$emit_masm_py_209_$tmp_51;
+    MUX w_$auto$rtlil_cc_2460_Mux$865, w_$flatten\dut_\control_$procmux$641_CMP, w_$emit_masm_py_209_$tmp_52, w_$emit_masm_py_209_$tmp_53;
+    MUX w_$auto$rtlil_cc_2460_Mux$867, w_$flatten\dut_\control_$procmux$640_CMP, w_$auto$rtlil_cc_2460_Mux$865, w_$emit_masm_py_209_$tmp_54;
+    MUX w_$auto$rtlil_cc_2460_Mux$871, w_$auto$rtlil_cc_2394_Or$869, w_$auto$rtlil_cc_2460_Mux$867, w_$auto$rtlil_cc_2460_Mux$863;
+    MUX w_$auto$rtlil_cc_2460_Mux$873, w_$flatten\dut_\control_$procmux$643_CMP, w_$emit_masm_py_209_$tmp_55, w_$emit_masm_py_209_$tmp_56;
+    MUX w_$auto$rtlil_cc_2460_Mux$875, w_$flatten\dut_\control_$procmux$646_CMP, w_$emit_masm_py_209_$tmp_57, w_\dut_control__25_;
+    MUX w_$auto$rtlil_cc_2460_Mux$877, w_$flatten\dut_\control_$procmux$645_CMP, w_$auto$rtlil_cc_2460_Mux$875, w_$emit_masm_py_209_$tmp_58;
+    MUX w_$auto$rtlil_cc_2460_Mux$881, w_$auto$rtlil_cc_2394_Or$879, w_$auto$rtlil_cc_2460_Mux$877, w_$auto$rtlil_cc_2460_Mux$873;
+    MUX w_$auto$rtlil_cc_2460_Mux$885, w_$auto$rtlil_cc_2367_ReduceOr$883, w_$auto$rtlil_cc_2460_Mux$881, w_$auto$rtlil_cc_2460_Mux$871;
+    MUX w_$auto$rtlil_cc_2460_Mux$891, w_$flatten\dut_\control_$procmux$650_CMP, w_$emit_masm_py_209_$tmp_59, w_\dut_control__21_;
+    MUX w_$auto$rtlil_cc_2460_Mux$893, w_$flatten\dut_\control_$procmux$649_CMP, w_$auto$rtlil_cc_2460_Mux$891, w_$emit_masm_py_209_$tmp_60;
+    MUX w_$auto$rtlil_cc_2460_Mux$899, w_$flatten\dut_\control_$procmux$655_CMP, w_$emit_masm_py_209_$tmp_61, w_\dut_control__22_;
+    MUX w_$auto$rtlil_cc_2460_Mux$901, w_$flatten\dut_\control_$procmux$654_CMP, w_$auto$rtlil_cc_2460_Mux$899, w_$emit_masm_py_209_$tmp_62;
+    MUX w_$auto$rtlil_cc_2460_Mux$907, w_$flatten\dut_\control_$procmux$667_CMP, w_$emit_masm_py_209_$tmp_63, w_\dut_control__24_;
+    MUX w_$auto$rtlil_cc_2460_Mux$909, w_$flatten\dut_\control_$procmux$666_CMP, w_$auto$rtlil_cc_2460_Mux$907, w_$emit_masm_py_209_$tmp_64;
+    MUX w_$auto$rtlil_cc_2460_Mux$915, w_$flatten\dut_\control_$procmux$680_CMP, w_$emit_masm_py_209_$tmp_65, w_\dut_control__23_;
+    MUX w_$auto$rtlil_cc_2460_Mux$917, w_$flatten\dut_\control_$procmux$679_CMP, w_$auto$rtlil_cc_2460_Mux$915, w_$emit_masm_py_209_$tmp_66;
+    PADZERO w_18, w_$emit_masm_py_863_$replicate_out_, 2;
+    PADZERO w_19, w_$emit_masm_py_863_$replicate_out__1, 2;
+    SLL w_20, w_19, c_45;
+    OR w_$emit_masm_py_429_$concat_out_, w_20, w_18;
+    PADZERO w_21, w_$emit_masm_py_429_$concat_out_, 3;
+    PADZERO w_22, w_$emit_masm_py_863_$replicate_out__2, 3;
+    SLL w_23, w_22, c_46;
+    OR w_$emit_masm_py_429_$concat_out__1, w_23, w_21;
+    PADZERO w_24, w_$emit_masm_py_863_$replicate_out__11, 2;
+    PADZERO w_25, w_$emit_masm_py_863_$replicate_out__12, 2;
+    SLL w_26, w_25, c_47;
+    OR w_$emit_masm_py_429_$concat_out__10, w_26, w_24;
+    PADZERO w_27, w_$emit_masm_py_429_$concat_out__10, 3;
+    PADZERO w_28, w_$emit_masm_py_863_$replicate_out__13, 3;
+    SLL w_29, w_28, c_48;
+    OR w_$emit_masm_py_429_$concat_out__11, w_29, w_27;
+    PADZERO w_30, w_$emit_masm_py_429_$concat_out__11, 4;
+    PADZERO w_31, w_$emit_masm_py_863_$replicate_out__14, 4;
+    SLL w_32, w_31, c_49;
+    OR w_$emit_masm_py_429_$concat_out__12, w_32, w_30;
+    PADZERO w_33, w_$emit_masm_py_429_$concat_out__12, 5;
+    PADZERO w_34, w_$emit_masm_py_863_$replicate_out__15, 5;
+    SLL w_35, w_34, c_50;
+    OR w_$emit_masm_py_429_$concat_out__13, w_35, w_33;
+    PADZERO w_36, w_$emit_masm_py_429_$concat_out__13, 6;
+    PADZERO w_37, w_$emit_masm_py_863_$replicate_out__16, 6;
+    SLL w_38, w_37, c_51;
+    OR w_$emit_masm_py_429_$concat_out__14, w_38, w_36;
+    PADZERO w_39, w_$emit_masm_py_429_$concat_out__14, 7;
+    PADZERO w_40, w_$emit_masm_py_863_$replicate_out__17, 7;
+    SLL w_41, w_40, c_52;
+    OR w_$emit_masm_py_429_$concat_out__15, w_41, w_39;
+    PADZERO w_42, w_$emit_masm_py_429_$concat_out__15, 8;
+    PADZERO w_43, w_$emit_masm_py_863_$replicate_out__18, 8;
+    SLL w_44, w_43, c_53;
+    OR w_$emit_masm_py_429_$concat_out__16, w_44, w_42;
+    PADZERO w_45, w_$emit_masm_py_429_$concat_out__16, 9;
+    PADZERO w_46, w_$emit_masm_py_863_$replicate_out__19, 9;
+    SLL w_47, w_46, c_54;
+    OR w_$emit_masm_py_429_$concat_out__17, w_47, w_45;
+    PADZERO w_48, w_$emit_masm_py_429_$concat_out__17, 10;
+    PADZERO w_49, w_$emit_masm_py_863_$replicate_out__20, 10;
+    SLL w_50, w_49, c_55;
+    OR w_$emit_masm_py_429_$concat_out__18, w_50, w_48;
+    PADZERO w_51, w_$emit_masm_py_429_$concat_out__18, 11;
+    PADZERO w_52, w_$emit_masm_py_863_$replicate_out__21, 11;
+    SLL w_53, w_52, c_56;
+    OR w_$emit_masm_py_429_$concat_out__19, w_53, w_51;
+    PADZERO w_54, w_$emit_masm_py_429_$concat_out__1, 4;
+    PADZERO w_55, w_$emit_masm_py_863_$replicate_out__3, 4;
+    SLL w_56, w_55, c_57;
+    OR w_$emit_masm_py_429_$concat_out__2, w_56, w_54;
+    PADZERO w_57, w_$emit_masm_py_863_$replicate_out__22, 2;
+    PADZERO w_58, w_$emit_masm_py_863_$replicate_out__23, 2;
+    SLL w_59, w_58, c_58;
+    OR w_$emit_masm_py_429_$concat_out__20, w_59, w_57;
+    PADZERO w_60, w_$emit_masm_py_429_$concat_out__20, 3;
+    PADZERO w_61, w_$emit_masm_py_863_$replicate_out__24, 3;
+    SLL w_62, w_61, c_59;
+    OR w_$emit_masm_py_429_$concat_out__21, w_62, w_60;
+    PADZERO w_63, w_$emit_masm_py_429_$concat_out__21, 4;
+    PADZERO w_64, w_$emit_masm_py_863_$replicate_out__25, 4;
+    SLL w_65, w_64, c_60;
+    OR w_$emit_masm_py_429_$concat_out__22, w_65, w_63;
+    PADZERO w_66, w_$emit_masm_py_429_$concat_out__22, 5;
+    PADZERO w_67, w_$emit_masm_py_863_$replicate_out__26, 5;
+    SLL w_68, w_67, c_61;
+    OR w_$emit_masm_py_429_$concat_out__23, w_68, w_66;
+    PADZERO w_69, w_$emit_masm_py_429_$concat_out__23, 6;
+    PADZERO w_70, w_$emit_masm_py_863_$replicate_out__27, 6;
+    SLL w_71, w_70, c_62;
+    OR w_$emit_masm_py_429_$concat_out__24, w_71, w_69;
+    PADZERO w_72, w_$emit_masm_py_429_$concat_out__24, 7;
+    PADZERO w_73, w_$emit_masm_py_863_$replicate_out__28, 7;
+    SLL w_74, w_73, c_63;
+    OR w_$emit_masm_py_429_$concat_out__25, w_74, w_72;
+    PADZERO w_75, w_$emit_masm_py_429_$concat_out__25, 8;
+    PADZERO w_76, w_$emit_masm_py_863_$replicate_out__29, 8;
+    SLL w_77, w_76, c_64;
+    OR w_$emit_masm_py_429_$concat_out__26, w_77, w_75;
+    PADZERO w_78, w_$emit_masm_py_429_$concat_out__26, 9;
+    PADZERO w_79, w_$emit_masm_py_863_$replicate_out__30, 9;
+    SLL w_80, w_79, c_65;
+    OR w_$emit_masm_py_429_$concat_out__27, w_80, w_78;
+    PADZERO w_81, w_$emit_masm_py_863_$replicate_out__31, 2;
+    PADZERO w_82, w_$emit_masm_py_863_$replicate_out__32, 2;
+    SLL w_83, w_82, c_66;
+    OR w_$emit_masm_py_429_$concat_out__28, w_83, w_81;
+    PADZERO w_84, w_$emit_masm_py_429_$concat_out__28, 3;
+    PADZERO w_85, w_$emit_masm_py_863_$replicate_out__33, 3;
+    SLL w_86, w_85, c_67;
+    OR w_$emit_masm_py_429_$concat_out__29, w_86, w_84;
+    PADZERO w_87, w_$emit_masm_py_429_$concat_out__2, 5;
+    PADZERO w_88, w_$emit_masm_py_863_$replicate_out__4, 5;
+    SLL w_89, w_88, c_68;
+    OR w_$emit_masm_py_429_$concat_out__3, w_89, w_87;
+    PADZERO w_90, w_$emit_masm_py_429_$concat_out__29, 4;
+    PADZERO w_91, w_$emit_masm_py_863_$replicate_out__34, 4;
+    SLL w_92, w_91, c_69;
+    OR w_$emit_masm_py_429_$concat_out__30, w_92, w_90;
+    PADZERO w_93, w_$emit_masm_py_429_$concat_out__30, 5;
+    PADZERO w_94, w_$emit_masm_py_863_$replicate_out__35, 5;
+    SLL w_95, w_94, c_70;
+    OR w_$emit_masm_py_429_$concat_out__31, w_95, w_93;
+    PADZERO w_96, w_$emit_masm_py_429_$concat_out__31, 6;
+    PADZERO w_97, w_$emit_masm_py_863_$replicate_out__36, 6;
+    SLL w_98, w_97, c_71;
+    OR w_$emit_masm_py_429_$concat_out__32, w_98, w_96;
+    PADZERO w_99, w_$emit_masm_py_429_$concat_out__32, 7;
+    PADZERO w_100, w_$emit_masm_py_863_$replicate_out__37, 7;
+    SLL w_101, w_100, c_72;
+    OR w_$emit_masm_py_429_$concat_out__33, w_101, w_99;
+    PADZERO w_102, w_$emit_masm_py_429_$concat_out__33, 8;
+    PADZERO w_103, w_$emit_masm_py_863_$replicate_out__38, 8;
+    SLL w_104, w_103, c_73;
+    OR w_$emit_masm_py_429_$concat_out__34, w_104, w_102;
+    PADZERO w_105, w_$emit_masm_py_863_$replicate_out__39, 2;
+    PADZERO w_106, w_$emit_masm_py_863_$replicate_out__40, 2;
+    SLL w_107, w_106, c_74;
+    OR w_$emit_masm_py_429_$concat_out__35, w_107, w_105;
+    PADZERO w_108, w_$emit_masm_py_429_$concat_out__35, 3;
+    PADZERO w_109, w_$emit_masm_py_863_$replicate_out__41, 3;
+    SLL w_110, w_109, c_75;
+    OR w_$emit_masm_py_429_$concat_out__36, w_110, w_108;
+    PADZERO w_111, w_$emit_masm_py_429_$concat_out__36, 4;
+    PADZERO w_112, w_$emit_masm_py_863_$replicate_out__42, 4;
+    SLL w_113, w_112, c_76;
+    OR w_$emit_masm_py_429_$concat_out__37, w_113, w_111;
+    PADZERO w_114, w_$emit_masm_py_429_$concat_out__37, 5;
+    PADZERO w_115, w_$emit_masm_py_863_$replicate_out__43, 5;
+    SLL w_116, w_115, c_77;
+    OR w_$emit_masm_py_429_$concat_out__38, w_116, w_114;
+    PADZERO w_117, w_$emit_masm_py_429_$concat_out__38, 6;
+    PADZERO w_118, w_$emit_masm_py_863_$replicate_out__44, 6;
+    SLL w_119, w_118, c_78;
+    OR w_$emit_masm_py_429_$concat_out__39, w_119, w_117;
+    PADZERO w_120, w_$emit_masm_py_429_$concat_out__3, 6;
+    PADZERO w_121, w_$emit_masm_py_863_$replicate_out__5, 6;
+    SLL w_122, w_121, c_79;
+    OR w_$emit_masm_py_429_$concat_out__4, w_122, w_120;
+    PADZERO w_123, w_$emit_masm_py_429_$concat_out__39, 7;
+    PADZERO w_124, w_$emit_masm_py_863_$replicate_out__45, 7;
+    SLL w_125, w_124, c_80;
+    OR w_$emit_masm_py_429_$concat_out__40, w_125, w_123;
+    PADZERO w_126, w_$emit_masm_py_429_$concat_out__40, 8;
+    PADZERO w_127, w_$emit_masm_py_863_$replicate_out__46, 8;
+    SLL w_128, w_127, c_81;
+    OR w_$emit_masm_py_429_$concat_out__41, w_128, w_126;
+    PADZERO w_129, w_$emit_masm_py_429_$concat_out__41, 9;
+    PADZERO w_130, w_$emit_masm_py_863_$replicate_out__47, 9;
+    SLL w_131, w_130, c_82;
+    OR w_$emit_masm_py_429_$concat_out__42, w_131, w_129;
+    PADZERO w_132, w_$emit_masm_py_863_$replicate_out__48, 2;
+    PADZERO w_133, w_$emit_masm_py_863_$replicate_out__49, 2;
+    SLL w_134, w_133, c_83;
+    OR w_$emit_masm_py_429_$concat_out__43, w_134, w_132;
+    PADZERO w_135, w_$emit_masm_py_863_$replicate_out__50, 2;
+    PADZERO w_136, w_$emit_masm_py_863_$replicate_out__51, 2;
+    SLL w_137, w_136, c_84;
+    OR w_$emit_masm_py_429_$concat_out__44, w_137, w_135;
+    PADZERO w_138, w_$emit_masm_py_863_$replicate_out__52, 2;
+    PADZERO w_139, w_$emit_masm_py_863_$replicate_out__53, 2;
+    SLL w_140, w_139, c_85;
+    OR w_$emit_masm_py_429_$concat_out__45, w_140, w_138;
+    PADZERO w_141, w_$emit_masm_py_863_$replicate_out__54, 2;
+    PADZERO w_142, w_$emit_masm_py_863_$replicate_out__55, 2;
+    SLL w_143, w_142, c_86;
+    OR w_$emit_masm_py_429_$concat_out__46, w_143, w_141;
+    PADZERO w_144, w_$emit_masm_py_863_$replicate_out__56, 2;
+    PADZERO w_145, w_$emit_masm_py_863_$replicate_out__57, 2;
+    SLL w_146, w_145, c_87;
+    OR w_$emit_masm_py_429_$concat_out__47, w_146, w_144;
+    PADZERO w_147, w_$emit_masm_py_429_$concat_out__47, 3;
+    PADZERO w_148, w_$emit_masm_py_863_$replicate_out__58, 3;
+    SLL w_149, w_148, c_88;
+    OR w_$emit_masm_py_429_$concat_out__48, w_149, w_147;
+    PADZERO w_150, w_$emit_masm_py_863_$replicate_out__59, 2;
+    PADZERO w_151, w_$emit_masm_py_863_$replicate_out__60, 2;
+    SLL w_152, w_151, c_89;
+    OR w_$emit_masm_py_429_$concat_out__49, w_152, w_150;
+    PADZERO w_153, w_$emit_masm_py_429_$concat_out__4, 7;
+    PADZERO w_154, w_$emit_masm_py_863_$replicate_out__6, 7;
+    SLL w_155, w_154, c_90;
+    OR w_$emit_masm_py_429_$concat_out__5, w_155, w_153;
+    PADZERO w_156, w_$emit_masm_py_429_$concat_out__49, 3;
+    PADZERO w_157, w_$emit_masm_py_863_$replicate_out__61, 3;
+    SLL w_158, w_157, c_91;
+    OR w_$emit_masm_py_429_$concat_out__50, w_158, w_156;
+    PADZERO w_159, w_$emit_masm_py_863_$replicate_out__62, 2;
+    PADZERO w_160, w_$emit_masm_py_863_$replicate_out__63, 2;
+    SLL w_161, w_160, c_92;
+    OR w_$emit_masm_py_429_$concat_out__51, w_161, w_159;
+    PADZERO w_162, w_$emit_masm_py_429_$concat_out__51, 3;
+    PADZERO w_163, w_$emit_masm_py_863_$replicate_out__64, 3;
+    SLL w_164, w_163, c_93;
+    OR w_$emit_masm_py_429_$concat_out__52, w_164, w_162;
+    PADZERO w_165, w_$emit_masm_py_429_$concat_out__52, 4;
+    PADZERO w_166, w_$emit_masm_py_863_$replicate_out__65, 4;
+    SLL w_167, w_166, c_94;
+    OR w_$emit_masm_py_429_$concat_out__53, w_167, w_165;
+    PADZERO w_168, w_$emit_masm_py_863_$replicate_out__66, 2;
+    PADZERO w_169, w_$emit_masm_py_863_$replicate_out__67, 2;
+    SLL w_170, w_169, c_95;
+    OR w_$emit_masm_py_429_$concat_out__54, w_170, w_168;
+    PADZERO w_171, w_$emit_masm_py_429_$concat_out__54, 3;
+    PADZERO w_172, w_$emit_masm_py_863_$replicate_out__68, 3;
+    SLL w_173, w_172, c_96;
+    OR w_$emit_masm_py_429_$concat_out__55, w_173, w_171;
+    PADZERO w_174, w_$emit_masm_py_863_$replicate_out__69, 2;
+    PADZERO w_175, w_$emit_masm_py_863_$replicate_out__70, 2;
+    SLL w_176, w_175, c_97;
+    OR w_$emit_masm_py_429_$concat_out__56, w_176, w_174;
+    PADZERO w_177, w_$emit_masm_py_429_$concat_out__56, 3;
+    PADZERO w_178, w_$emit_masm_py_863_$replicate_out__71, 3;
+    SLL w_179, w_178, c_98;
+    OR w_$emit_masm_py_429_$concat_out__57, w_179, w_177;
+    PADZERO w_180, w_$emit_masm_py_863_$replicate_out__72, 2;
+    PADZERO w_181, w_$emit_masm_py_863_$replicate_out__73, 2;
+    SLL w_182, w_181, c_99;
+    OR w_$emit_masm_py_429_$concat_out__58, w_182, w_180;
+    PADZERO w_183, w_$emit_masm_py_429_$concat_out__58, 3;
+    PADZERO w_184, w_$emit_masm_py_863_$replicate_out__74, 3;
+    SLL w_185, w_184, c_100;
+    OR w_$emit_masm_py_429_$concat_out__59, w_185, w_183;
+    PADZERO w_186, w_$emit_masm_py_429_$concat_out__5, 8;
+    PADZERO w_187, w_$emit_masm_py_863_$replicate_out__7, 8;
+    SLL w_188, w_187, c_101;
+    OR w_$emit_masm_py_429_$concat_out__6, w_188, w_186;
+    PADZERO w_189, w_$emit_masm_py_429_$concat_out__59, 4;
+    PADZERO w_190, w_$emit_masm_py_863_$replicate_out__75, 4;
+    SLL w_191, w_190, c_102;
+    OR w_$emit_masm_py_429_$concat_out__60, w_191, w_189;
+    PADZERO w_192, w_$emit_masm_py_863_$replicate_out__76, 2;
+    PADZERO w_193, w_$emit_masm_py_863_$replicate_out__77, 2;
+    SLL w_194, w_193, c_103;
+    OR w_$emit_masm_py_429_$concat_out__61, w_194, w_192;
+    PADZERO w_195, w_$emit_masm_py_429_$concat_out__61, 3;
+    PADZERO w_196, w_$emit_masm_py_863_$replicate_out__78, 3;
+    SLL w_197, w_196, c_104;
+    OR w_$emit_masm_py_429_$concat_out__62, w_197, w_195;
+    PADZERO w_198, w_$emit_masm_py_429_$concat_out__62, 4;
+    PADZERO w_199, w_$emit_masm_py_863_$replicate_out__79, 4;
+    SLL w_200, w_199, c_105;
+    OR w_$emit_masm_py_429_$concat_out__63, w_200, w_198;
+    PADZERO w_201, w_$emit_masm_py_863_$replicate_out__80, 2;
+    PADZERO w_202, w_$emit_masm_py_863_$replicate_out__81, 2;
+    SLL w_203, w_202, c_106;
+    OR w_$emit_masm_py_429_$concat_out__64, w_203, w_201;
+    PADZERO w_204, w_$emit_masm_py_429_$concat_out__64, 3;
+    PADZERO w_205, w_$emit_masm_py_863_$replicate_out__82, 3;
+    SLL w_206, w_205, c_107;
+    OR w_$emit_masm_py_429_$concat_out__65, w_206, w_204;
+    PADZERO w_207, w_$emit_masm_py_863_$replicate_out__83, 2;
+    PADZERO w_208, w_$emit_masm_py_863_$replicate_out__84, 2;
+    SLL w_209, w_208, c_108;
+    OR w_$emit_masm_py_429_$concat_out__66, w_209, w_207;
+    PADZERO w_210, w_$emit_masm_py_429_$concat_out__66, 3;
+    PADZERO w_211, w_$emit_masm_py_863_$replicate_out__85, 3;
+    SLL w_212, w_211, c_109;
+    OR w_$emit_masm_py_429_$concat_out__67, w_212, w_210;
+    PADZERO w_213, w_$emit_masm_py_429_$concat_out__67, 4;
+    PADZERO w_214, w_$emit_masm_py_863_$replicate_out__86, 4;
+    SLL w_215, w_214, c_110;
+    OR w_$emit_masm_py_429_$concat_out__68, w_215, w_213;
+    PADZERO w_216, w_$emit_masm_py_662_$const_out__206, 32;
+    PADZERO w_217, w_$emit_masm_py_550_$slice_out__90, 32;
+    SLL w_218, w_217, c_111;
+    OR w_$emit_masm_py_429_$concat_out__69, w_218, w_216;
+    PADZERO w_219, w_$emit_masm_py_429_$concat_out__6, 9;
+    PADZERO w_220, w_$emit_masm_py_863_$replicate_out__8, 9;
+    SLL w_221, w_220, c_112;
+    OR w_$emit_masm_py_429_$concat_out__7, w_221, w_219;
+    PADZERO w_222, w_$emit_masm_py_662_$const_out__207, 28;
+    PADZERO w_223, w_$emit_masm_py_550_$slice_out__91, 28;
+    SLL w_224, w_223, c_113;
+    OR w_$emit_masm_py_429_$concat_out__70, w_224, w_222;
+    PADZERO w_225, w_$emit_masm_py_429_$concat_out__70, 32;
+    PADZERO w_226, w_$emit_masm_py_550_$slice_out__92, 32;
+    SLL w_227, w_226, c_114;
+    OR w_$emit_masm_py_429_$concat_out__71, w_227, w_225;
+    PADZERO w_228, w_$emit_masm_py_550_$slice_out__93, 32;
+    PADZERO w_229, w_$emit_masm_py_662_$const_out__208, 32;
+    SLL w_230, w_229, c_115;
+    OR w_$emit_masm_py_429_$concat_out__72, w_230, w_228;
+    PADZERO w_231, w_$emit_masm_py_550_$slice_out__94, 32;
+    PADZERO w_232, w_\dut__7_, 32;
+    SLL w_233, w_232, c_116;
+    OR w_$emit_masm_py_429_$concat_out__73, w_233, w_231;
+    PADZERO w_234, w_$emit_masm_py_550_$slice_out__95, 32;
+    PADZERO w_235, w_$emit_masm_py_662_$const_out__209, 32;
+    SLL w_236, w_235, c_117;
+    OR w_$emit_masm_py_429_$concat_out__74, w_236, w_234;
+    PADZERO w_237, w_$emit_masm_py_662_$const_out__210, 18;
+    PADZERO w_238, w_$emit_masm_py_550_$slice_out__96, 18;
+    SLL w_239, w_238, c_118;
+    OR w_$emit_masm_py_429_$concat_out__75, w_239, w_237;
+    PADZERO w_240, w_$emit_masm_py_429_$concat_out__75, 32;
+    PADZERO w_241, w_$emit_masm_py_550_$slice_out__97, 32;
+    SLL w_242, w_241, c_119;
+    OR w_$emit_masm_py_429_$concat_out__76, w_242, w_240;
+    PADZERO w_243, w_$emit_masm_py_429_$concat_out__7, 10;
+    PADZERO w_244, w_$emit_masm_py_863_$replicate_out__9, 10;
+    SLL w_245, w_244, c_120;
+    OR w_$emit_masm_py_429_$concat_out__8, w_245, w_243;
+    PADZERO w_246, w_$emit_masm_py_429_$concat_out__8, 11;
+    PADZERO w_247, w_$emit_masm_py_863_$replicate_out__10, 11;
+    SLL w_248, w_247, c_121;
+    OR w_$emit_masm_py_429_$concat_out__9, w_248, w_246;
+    SRL w_$emit_masm_py_550_$slice_out_, w_\dut_control_instruction, c_122;
+    SRL w_$emit_masm_py_550_$slice_out__1, w_\dut_control_instruction, c_123;
+    SRL w_$emit_masm_py_550_$slice_out__10, w_\dut_control_instruction, c_124;
+    SRL w_$emit_masm_py_550_$slice_out__11, w_\dut_control_instruction, c_125;
+    SRL w_$emit_masm_py_550_$slice_out__12, w_\dut_control_instruction, c_126;
+    SRL w_$emit_masm_py_550_$slice_out__13, w_\dut_control_instruction, c_127;
+    SRL w_$emit_masm_py_550_$slice_out__14, w_\dut_control_instruction, c_128;
+    SRL w_$emit_masm_py_550_$slice_out__15, w_\dut_control_instruction, c_129;
+    SRL w_$emit_masm_py_550_$slice_out__16, w_\dut_control_instruction, c_130;
+    SRL w_$emit_masm_py_550_$slice_out__17, w_\dut_control_instruction, c_131;
+    SRL w_$emit_masm_py_550_$slice_out__18, w_\dut_control_instruction, c_132;
+    SRL w_$emit_masm_py_550_$slice_out__19, w_\dut_control_instruction, c_133;
+    SRL w_$emit_masm_py_550_$slice_out__2, w_\dut_control_instruction, c_134;
+    SRL w_$emit_masm_py_550_$slice_out__20, w_\dut_control_instruction, c_135;
+    SRL w_$emit_masm_py_550_$slice_out__21, w_\dut_control_instruction, c_136;
+    SRL w_$emit_masm_py_550_$slice_out__22, w_\dut_control_instruction, c_137;
+    SRL w_$emit_masm_py_550_$slice_out__23, w_\dut_control_instruction, c_138;
+    SRL w_$emit_masm_py_550_$slice_out__24, w_\dut_control_instruction, c_139;
+    SRL w_$emit_masm_py_550_$slice_out__25, w_\dut_control_instruction, c_140;
+    SRL w_$emit_masm_py_550_$slice_out__26, w_\dut_control_instruction, c_141;
+    SRL w_$emit_masm_py_550_$slice_out__27, w_\dut_control_instruction, c_142;
+    SRL w_$emit_masm_py_550_$slice_out__28, w_\dut_control_instruction, c_143;
+    SRL w_$emit_masm_py_550_$slice_out__29, w_\dut_control_instruction, c_144;
+    SRL w_$emit_masm_py_550_$slice_out__3, w_\dut_control_instruction, c_145;
+    SRL w_$emit_masm_py_550_$slice_out__30, w_\dut_control_instruction, c_146;
+    SRL w_$emit_masm_py_550_$slice_out__31, w_\dut_control_instruction, c_147;
+    SRL w_$emit_masm_py_550_$slice_out__32, w_\dut_control_instruction, c_148;
+    SRL w_$emit_masm_py_550_$slice_out__33, w_\dut_control_instruction, c_149;
+    SRL w_$emit_masm_py_550_$slice_out__34, w_\dut_control_instruction, c_150;
+    SRL w_$emit_masm_py_550_$slice_out__35, w_\dut_control_instruction, c_151;
+    SRL w_$emit_masm_py_550_$slice_out__36, w_\dut_control_instruction, c_152;
+    SRL w_$emit_masm_py_550_$slice_out__37, w_\dut_control_instruction, c_153;
+    SRL w_$emit_masm_py_550_$slice_out__38, w_\dut_control_instruction, c_154;
+    SRL w_$emit_masm_py_550_$slice_out__39, w_\dut_control_instruction, c_155;
+    SRL w_$emit_masm_py_550_$slice_out__4, w_\dut_control_instruction, c_156;
+    SRL w_$emit_masm_py_550_$slice_out__40, w_\dut_control_instruction, c_157;
+    SRL w_$emit_masm_py_550_$slice_out__41, w_\dut_control_instruction, c_158;
+    SRL w_$emit_masm_py_550_$slice_out__42, w_\dut_control_instruction, c_159;
+    SRL w_$emit_masm_py_550_$slice_out__43, w_\dut_control_instruction, c_160;
+    SRL w_$emit_masm_py_550_$slice_out__44, w_\dut_control_instruction, c_161;
+    SRL w_$emit_masm_py_550_$slice_out__45, w_\dut_control_instruction, c_162;
+    SRL w_$emit_masm_py_550_$slice_out__46, w_\dut_control_instruction, c_163;
+    SRL w_$emit_masm_py_550_$slice_out__47, w_\dut_control_instruction, c_164;
+    SRL w_$emit_masm_py_550_$slice_out__48, w_\dut_control_instruction, c_165;
+    SRL w_$emit_masm_py_550_$slice_out__49, w_\dut_control_instruction, c_166;
+    SRL w_$emit_masm_py_550_$slice_out__5, w_\dut_control_instruction, c_167;
+    SRL w_$emit_masm_py_550_$slice_out__50, w_\dut_control_instruction, c_168;
+    SRL w_$emit_masm_py_550_$slice_out__51, w_\dut_control_instruction, c_169;
+    SRL w_$emit_masm_py_550_$slice_out__52, w_\dut_control_instruction, c_170;
+    SRL w_$emit_masm_py_550_$slice_out__53, w_\dut_control_instruction, c_171;
+    SRL w_$emit_masm_py_550_$slice_out__54, w_\dut_control_instruction, c_172;
+    SRL w_$emit_masm_py_550_$slice_out__55, w_\dut_control_instruction, c_173;
+    SRL w_$emit_masm_py_550_$slice_out__56, w_\dut_control_instruction, c_174;
+    SRL w_$emit_masm_py_550_$slice_out__57, w_\dut_control_instruction, c_175;
+    SRL w_$emit_masm_py_550_$slice_out__58, w_\dut_control_instruction, c_176;
+    SRL w_$emit_masm_py_550_$slice_out__59, w_\dut_control_instruction, c_177;
+    SRL w_$emit_masm_py_550_$slice_out__6, w_\dut_control_instruction, c_178;
+    SRL w_$emit_masm_py_550_$slice_out__60, w_\dut_control_instruction, c_179;
+    SRL w_$emit_masm_py_550_$slice_out__61, w_\dut_control_instruction, c_180;
+    SRL w_$emit_masm_py_550_$slice_out__62, w_\dut_control_instruction, c_181;
+    SRL w_$emit_masm_py_550_$slice_out__63, w_\dut_control_instruction, c_182;
+    SRL w_$emit_masm_py_550_$slice_out__64, w_\dut_control_instruction, c_183;
+    SRL w_$emit_masm_py_550_$slice_out__65, w_\dut_control_instruction, c_184;
+    SRL w_$emit_masm_py_550_$slice_out__66, w_\dut_control_instruction, c_185;
+    SRL w_$emit_masm_py_550_$slice_out__67, w_\dut_control_instruction, c_186;
+    SRL w_$emit_masm_py_550_$slice_out__68, w_\dut_control_instruction, c_187;
+    SRL w_$emit_masm_py_550_$slice_out__69, w_\dut_control_instruction, c_188;
+    SRL w_$emit_masm_py_550_$slice_out__7, w_\dut_control_instruction, c_189;
+    SRL w_$emit_masm_py_550_$slice_out__70, w_\dut_control_instruction, c_190;
+    SRL w_$emit_masm_py_550_$slice_out__71, w_\dut_alu_result, c_191;
+    SRL w_$emit_masm_py_550_$slice_out__72, w_\rdriver__0_, c_192;
+    SRL w_$emit_masm_py_550_$slice_out__73, w_\dut_alu_src, c_193;
+    SRL w_$emit_masm_py_550_$slice_out__74, w_\dut_alu_src, c_194;
+    SRL w_$emit_masm_py_550_$slice_out__75, w_\dut_alu_src, c_195;
+    SRL w_$emit_masm_py_550_$slice_out__76, w_\dut_alu_src, c_196;
+    SRL w_$emit_masm_py_550_$slice_out__77, w_\dut_control_instruction, c_197;
+    SRL w_$emit_masm_py_550_$slice_out__78, w_\dut_control_instruction, c_198;
+    SRL w_$emit_masm_py_550_$slice_out__79, w_\dut_control_instruction, c_199;
+    SRL w_$emit_masm_py_550_$slice_out__8, w_\dut_control_instruction, c_200;
+    SRL w_$emit_masm_py_550_$slice_out__80, w_\dut_control_instruction, c_201;
+    SRL w_$emit_masm_py_550_$slice_out__81, w_\dut_control_instruction, c_202;
+    SRL w_$emit_masm_py_550_$slice_out__82, w_\dut_alu_op2, c_203;
+    SRL w_$emit_masm_py_550_$slice_out__83, w_\dut_alu_op2, c_204;
+    SRL w_$emit_masm_py_550_$slice_out__84, w_\dut_alu_op2, c_205;
+    SRL w_$emit_masm_py_550_$slice_out__85, w_\dut_control_instruction, c_206;
+    SRL w_$emit_masm_py_550_$slice_out__86, w_\dut_control_instruction, c_207;
+    SRL w_$emit_masm_py_550_$slice_out__87, w_\dut_control_instruction, c_208;
+    SRL w_$emit_masm_py_550_$slice_out__88, w_\dut_alu_result, c_209;
+    SRL w_$emit_masm_py_550_$slice_out__89, w_\dut_control_instruction, c_210;
+    SRL w_$emit_masm_py_550_$slice_out__9, w_\dut_control_instruction, c_211;
+    SRL w_$emit_masm_py_550_$slice_out__90, w_\dut_alu_op2, c_212;
+    SRL w_$emit_masm_py_550_$slice_out__91, w_\dut_control_instruction, c_213;
+    SRL w_$emit_masm_py_550_$slice_out__92, w_\dut_pc_4, c_214;
+    SRL w_$emit_masm_py_550_$slice_out__93, w_\dut_pc, c_215;
+    SRL w_$emit_masm_py_550_$slice_out__94, w_\dut_control_instruction, c_216;
+    SRL w_$emit_masm_py_550_$slice_out__95, w_\dut_control_instruction, c_217;
+    SRL w_$emit_masm_py_550_$slice_out__96, w_\dut_control_instruction, c_218;
+    SRL w_$emit_masm_py_550_$slice_out__97, w_\dut__7_, c_219;
+    @TRAP [type = "\fail", file="mips32.sv:523.10-529.4|mips32.sv:470.9-470.21"]
+    EXPECT w_\dut_reg_cond_$masm_expect_0, c_220, ["expected 45"];
+    @TRAP [type = "\stop", file="mips32.sv:523.10-529.4|mips32.sv:471.9-471.19"]
+    EXPECT w_\dut_reg_cond_$masm_stop_3, c_221, [""];
+    MOV w_$emit_masm_py_662_$const_out_, c_222;
+    MOV w_$emit_masm_py_662_$const_out__1, c_223;
+    MOV w_$emit_masm_py_662_$const_out__10, c_224;
+    MOV w_$emit_masm_py_662_$const_out__100, c_225;
+    MOV w_$emit_masm_py_662_$const_out__101, c_226;
+    MOV w_$emit_masm_py_662_$const_out__102, c_227;
+    MOV w_$emit_masm_py_662_$const_out__103, c_228;
+    MOV w_$emit_masm_py_662_$const_out__104, c_229;
+    MOV w_$emit_masm_py_662_$const_out__105, c_230;
+    MOV w_$emit_masm_py_662_$const_out__106, c_231;
+    MOV w_$emit_masm_py_662_$const_out__107, c_232;
+    MOV w_$emit_masm_py_662_$const_out__108, c_233;
+    MOV w_$emit_masm_py_662_$const_out__109, c_234;
+    MOV w_$emit_masm_py_662_$const_out__11, c_235;
+    MOV w_$emit_masm_py_662_$const_out__110, c_236;
+    MOV w_$emit_masm_py_662_$const_out__111, c_237;
+    MOV w_$emit_masm_py_662_$const_out__112, c_238;
+    MOV w_$emit_masm_py_662_$const_out__113, c_239;
+    MOV w_$emit_masm_py_662_$const_out__114, c_240;
+    MOV w_$emit_masm_py_662_$const_out__115, c_241;
+    MOV w_$emit_masm_py_662_$const_out__116, c_242;
+    MOV w_$emit_masm_py_662_$const_out__117, c_243;
+    MOV w_$emit_masm_py_662_$const_out__118, c_244;
+    MOV w_$emit_masm_py_662_$const_out__119, c_245;
+    MOV w_$emit_masm_py_662_$const_out__12, c_246;
+    MOV w_$emit_masm_py_662_$const_out__120, c_247;
+    MOV w_$emit_masm_py_662_$const_out__121, c_248;
+    MOV w_$emit_masm_py_662_$const_out__122, c_249;
+    MOV w_$emit_masm_py_662_$const_out__123, c_250;
+    MOV w_$emit_masm_py_662_$const_out__124, c_251;
+    MOV w_$emit_masm_py_662_$const_out__125, c_252;
+    MOV w_$emit_masm_py_662_$const_out__126, c_253;
+    MOV w_$emit_masm_py_662_$const_out__127, c_254;
+    MOV w_$emit_masm_py_662_$const_out__128, c_255;
+    MOV w_$emit_masm_py_662_$const_out__129, c_256;
+    MOV w_$emit_masm_py_662_$const_out__13, c_257;
+    MOV w_$emit_masm_py_662_$const_out__130, c_258;
+    MOV w_$emit_masm_py_662_$const_out__131, c_259;
+    MOV w_$emit_masm_py_662_$const_out__132, c_260;
+    MOV w_$emit_masm_py_662_$const_out__133, c_261;
+    MOV w_$emit_masm_py_662_$const_out__134, c_262;
+    MOV w_$emit_masm_py_662_$const_out__135, c_263;
+    MOV w_$emit_masm_py_662_$const_out__136, c_264;
+    MOV w_$emit_masm_py_662_$const_out__137, c_265;
+    MOV w_$emit_masm_py_662_$const_out__138, c_266;
+    MOV w_$emit_masm_py_662_$const_out__139, c_267;
+    MOV w_$emit_masm_py_662_$const_out__14, c_268;
+    MOV w_$emit_masm_py_662_$const_out__140, c_269;
+    MOV w_$emit_masm_py_662_$const_out__141, c_270;
+    MOV w_$emit_masm_py_662_$const_out__142, c_271;
+    MOV w_$emit_masm_py_662_$const_out__143, c_272;
+    MOV w_$emit_masm_py_662_$const_out__144, c_273;
+    MOV w_$emit_masm_py_662_$const_out__145, c_274;
+    MOV w_$emit_masm_py_662_$const_out__146, c_275;
+    MOV w_$emit_masm_py_662_$const_out__147, c_276;
+    MOV w_$emit_masm_py_662_$const_out__148, c_277;
+    MOV w_$emit_masm_py_662_$const_out__149, c_278;
+    MOV w_$emit_masm_py_662_$const_out__15, c_279;
+    MOV w_$emit_masm_py_662_$const_out__150, c_280;
+    MOV w_$emit_masm_py_662_$const_out__151, c_281;
+    MOV w_$emit_masm_py_662_$const_out__152, c_282;
+    MOV w_$emit_masm_py_662_$const_out__153, c_283;
+    MOV w_$emit_masm_py_662_$const_out__154, c_284;
+    MOV w_$emit_masm_py_662_$const_out__155, c_285;
+    MOV w_$emit_masm_py_662_$const_out__156, c_286;
+    MOV w_$emit_masm_py_662_$const_out__157, c_287;
+    MOV w_$emit_masm_py_662_$const_out__158, c_288;
+    MOV w_$emit_masm_py_662_$const_out__159, c_289;
+    MOV w_$emit_masm_py_662_$const_out__16, c_290;
+    MOV w_$emit_masm_py_662_$const_out__160, c_291;
+    MOV w_$emit_masm_py_662_$const_out__161, c_292;
+    MOV w_$emit_masm_py_662_$const_out__162, c_293;
+    MOV w_$emit_masm_py_662_$const_out__163, c_294;
+    MOV w_$emit_masm_py_662_$const_out__164, c_295;
+    MOV w_$emit_masm_py_662_$const_out__165, c_296;
+    MOV w_$emit_masm_py_662_$const_out__166, c_297;
+    MOV w_$emit_masm_py_662_$const_out__167, c_298;
+    MOV w_$emit_masm_py_662_$const_out__168, c_299;
+    MOV w_$emit_masm_py_662_$const_out__169, c_300;
+    MOV w_$emit_masm_py_662_$const_out__17, c_301;
+    MOV w_$emit_masm_py_662_$const_out__170, c_302;
+    MOV w_$emit_masm_py_662_$const_out__171, c_303;
+    MOV w_$emit_masm_py_662_$const_out__172, c_304;
+    MOV w_$emit_masm_py_662_$const_out__173, c_305;
+    MOV w_$emit_masm_py_662_$const_out__174, c_306;
+    MOV w_$emit_masm_py_662_$const_out__175, c_307;
+    MOV w_$emit_masm_py_662_$const_out__176, c_308;
+    MOV w_$emit_masm_py_662_$const_out__177, c_309;
+    MOV w_$emit_masm_py_662_$const_out__178, c_310;
+    MOV w_$emit_masm_py_662_$const_out__179, c_311;
+    MOV w_$emit_masm_py_662_$const_out__18, c_312;
+    MOV w_$emit_masm_py_662_$const_out__180, c_313;
+    MOV w_$emit_masm_py_662_$const_out__181, c_314;
+    MOV w_$emit_masm_py_662_$const_out__182, c_315;
+    MOV w_$emit_masm_py_662_$const_out__183, c_316;
+    MOV w_$emit_masm_py_662_$const_out__184, c_317;
+    MOV w_$emit_masm_py_662_$const_out__185, c_318;
+    MOV w_$emit_masm_py_662_$const_out__186, c_319;
+    MOV w_$emit_masm_py_662_$const_out__187, c_320;
+    MOV w_$emit_masm_py_662_$const_out__188, c_321;
+    MOV w_$emit_masm_py_662_$const_out__189, c_322;
+    MOV w_$emit_masm_py_662_$const_out__19, c_323;
+    MOV w_$emit_masm_py_662_$const_out__190, c_324;
+    MOV w_$emit_masm_py_662_$const_out__191, c_325;
+    MOV w_$emit_masm_py_662_$const_out__192, c_326;
+    MOV w_$emit_masm_py_662_$const_out__193, c_327;
+    MOV w_$emit_masm_py_662_$const_out__194, c_328;
+    MOV w_$emit_masm_py_662_$const_out__195, c_329;
+    MOV w_$emit_masm_py_662_$const_out__196, c_330;
+    MOV w_$emit_masm_py_662_$const_out__197, c_331;
+    MOV w_$emit_masm_py_662_$const_out__198, c_332;
+    MOV w_$emit_masm_py_662_$const_out__199, c_333;
+    MOV w_$emit_masm_py_662_$const_out__2, c_334;
+    MOV w_$emit_masm_py_662_$const_out__20, c_335;
+    MOV w_$emit_masm_py_662_$const_out__200, c_336;
+    MOV w_$emit_masm_py_662_$const_out__201, c_337;
+    MOV w_$emit_masm_py_662_$const_out__202, c_338;
+    MOV w_$emit_masm_py_662_$const_out__203, c_339;
+    MOV w_$emit_masm_py_662_$const_out__204, c_340;
+    MOV w_$emit_masm_py_662_$const_out__205, c_341;
+    MOV w_$emit_masm_py_662_$const_out__206, c_342;
+    MOV w_$emit_masm_py_662_$const_out__207, c_343;
+    MOV w_$emit_masm_py_662_$const_out__208, c_344;
+    MOV w_$emit_masm_py_662_$const_out__209, c_345;
+    MOV w_$emit_masm_py_662_$const_out__21, c_346;
+    MOV w_$emit_masm_py_662_$const_out__210, c_347;
+    MOV w_$emit_masm_py_662_$const_out__22, c_348;
+    MOV w_$emit_masm_py_662_$const_out__23, c_349;
+    MOV w_$emit_masm_py_662_$const_out__24, c_350;
+    MOV w_$emit_masm_py_662_$const_out__25, c_351;
+    MOV w_$emit_masm_py_662_$const_out__26, c_352;
+    MOV w_$emit_masm_py_662_$const_out__27, c_353;
+    MOV w_$emit_masm_py_662_$const_out__28, c_354;
+    MOV w_$emit_masm_py_662_$const_out__29, c_355;
+    MOV w_$emit_masm_py_662_$const_out__3, c_356;
+    MOV w_$emit_masm_py_662_$const_out__30, c_357;
+    MOV w_$emit_masm_py_662_$const_out__31, c_358;
+    MOV w_$emit_masm_py_662_$const_out__32, c_359;
+    MOV w_$emit_masm_py_662_$const_out__33, c_360;
+    MOV w_$emit_masm_py_662_$const_out__34, c_361;
+    MOV w_$emit_masm_py_662_$const_out__35, c_362;
+    MOV w_$emit_masm_py_662_$const_out__36, c_363;
+    MOV w_$emit_masm_py_662_$const_out__37, c_364;
+    MOV w_$emit_masm_py_662_$const_out__38, c_365;
+    MOV w_$emit_masm_py_662_$const_out__39, c_366;
+    MOV w_$emit_masm_py_662_$const_out__4, c_367;
+    MOV w_$emit_masm_py_662_$const_out__40, c_368;
+    MOV w_$emit_masm_py_662_$const_out__41, c_369;
+    MOV w_$emit_masm_py_662_$const_out__42, c_370;
+    MOV w_$emit_masm_py_662_$const_out__43, c_371;
+    MOV w_$emit_masm_py_662_$const_out__44, c_372;
+    MOV w_$emit_masm_py_662_$const_out__45, c_373;
+    MOV w_$emit_masm_py_662_$const_out__46, c_374;
+    MOV w_$emit_masm_py_662_$const_out__47, c_375;
+    MOV w_$emit_masm_py_662_$const_out__48, c_376;
+    MOV w_$emit_masm_py_662_$const_out__49, c_377;
+    MOV w_$emit_masm_py_662_$const_out__5, c_378;
+    MOV w_$emit_masm_py_662_$const_out__50, c_379;
+    MOV w_$emit_masm_py_662_$const_out__51, c_380;
+    MOV w_$emit_masm_py_662_$const_out__52, c_381;
+    MOV w_$emit_masm_py_662_$const_out__53, c_382;
+    MOV w_$emit_masm_py_662_$const_out__54, c_383;
+    MOV w_$emit_masm_py_662_$const_out__55, c_384;
+    MOV w_$emit_masm_py_662_$const_out__56, c_385;
+    MOV w_$emit_masm_py_662_$const_out__57, c_386;
+    MOV w_$emit_masm_py_662_$const_out__58, c_387;
+    MOV w_$emit_masm_py_662_$const_out__59, c_388;
+    MOV w_$emit_masm_py_662_$const_out__6, c_389;
+    MOV w_$emit_masm_py_662_$const_out__60, c_390;
+    MOV w_$emit_masm_py_662_$const_out__61, c_391;
+    MOV w_$emit_masm_py_662_$const_out__62, c_392;
+    MOV w_$emit_masm_py_662_$const_out__63, c_393;
+    MOV w_$emit_masm_py_662_$const_out__64, c_394;
+    MOV w_$emit_masm_py_662_$const_out__65, c_395;
+    MOV w_$emit_masm_py_662_$const_out__66, c_396;
+    MOV w_$emit_masm_py_662_$const_out__67, c_397;
+    MOV w_$emit_masm_py_662_$const_out__68, c_398;
+    MOV w_$emit_masm_py_662_$const_out__69, c_399;
+    MOV w_$emit_masm_py_662_$const_out__7, c_400;
+    MOV w_$emit_masm_py_662_$const_out__70, c_401;
+    MOV w_$emit_masm_py_662_$const_out__71, c_402;
+    MOV w_$emit_masm_py_662_$const_out__72, c_403;
+    MOV w_$emit_masm_py_662_$const_out__73, c_404;
+    MOV w_$emit_masm_py_662_$const_out__74, c_405;
+    MOV w_$emit_masm_py_662_$const_out__75, c_406;
+    MOV w_$emit_masm_py_662_$const_out__76, c_407;
+    MOV w_$emit_masm_py_662_$const_out__77, c_408;
+    MOV w_$emit_masm_py_662_$const_out__78, c_409;
+    MOV w_$emit_masm_py_662_$const_out__79, c_410;
+    MOV w_$emit_masm_py_662_$const_out__8, c_411;
+    MOV w_$emit_masm_py_662_$const_out__80, c_412;
+    MOV w_$emit_masm_py_662_$const_out__81, c_413;
+    MOV w_$emit_masm_py_662_$const_out__82, c_414;
+    MOV w_$emit_masm_py_662_$const_out__83, c_415;
+    MOV w_$emit_masm_py_662_$const_out__84, c_416;
+    MOV w_$emit_masm_py_662_$const_out__85, c_417;
+    MOV w_$emit_masm_py_662_$const_out__86, c_418;
+    MOV w_$emit_masm_py_662_$const_out__87, c_419;
+    MOV w_$emit_masm_py_662_$const_out__88, c_420;
+    MOV w_$emit_masm_py_662_$const_out__89, c_421;
+    MOV w_$emit_masm_py_662_$const_out__9, c_422;
+    MOV w_$emit_masm_py_662_$const_out__90, c_423;
+    MOV w_$emit_masm_py_662_$const_out__91, c_424;
+    MOV w_$emit_masm_py_662_$const_out__92, c_425;
+    MOV w_$emit_masm_py_662_$const_out__93, c_426;
+    MOV w_$emit_masm_py_662_$const_out__94, c_427;
+    MOV w_$emit_masm_py_662_$const_out__95, c_428;
+    MOV w_$emit_masm_py_662_$const_out__96, c_429;
+    MOV w_$emit_masm_py_662_$const_out__97, c_430;
+    MOV w_$emit_masm_py_662_$const_out__98, c_431;
+    MOV w_$emit_masm_py_662_$const_out__99, c_432;
+    MUX w_$emit_masm_py_863_$replicate_out_, w_$flatten\dut_\alu_$procmux$132_CMP, c_433, c_434;
+    MUX w_$emit_masm_py_863_$replicate_out__1, w_$flatten\dut_\alu_$procmux$133_CMP, c_435, c_436;
+    MUX w_$emit_masm_py_863_$replicate_out__10, w_$flatten\dut_\alu_$procmux$142_CMP, c_437, c_438;
+    MUX w_$emit_masm_py_863_$replicate_out__11, w_$flatten\dut_\alu_control_$procmux$145_CMP, c_439, c_440;
+    MUX w_$emit_masm_py_863_$replicate_out__12, w_$flatten\dut_\alu_control_$procmux$146_CMP, c_441, c_442;
+    MUX w_$emit_masm_py_863_$replicate_out__13, w_$flatten\dut_\alu_control_$procmux$147_CMP, c_443, c_444;
+    MUX w_$emit_masm_py_863_$replicate_out__14, w_$flatten\dut_\alu_control_$procmux$148_CMP, c_445, c_446;
+    MUX w_$emit_masm_py_863_$replicate_out__15, w_$flatten\dut_\alu_control_$procmux$149_CMP, c_447, c_448;
+    MUX w_$emit_masm_py_863_$replicate_out__16, w_$flatten\dut_\alu_control_$procmux$150_CMP, c_449, c_450;
+    MUX w_$emit_masm_py_863_$replicate_out__17, w_$flatten\dut_\alu_control_$procmux$151_CMP, c_451, c_452;
+    MUX w_$emit_masm_py_863_$replicate_out__18, w_$flatten\dut_\alu_control_$procmux$152_CMP, c_453, c_454;
+    MUX w_$emit_masm_py_863_$replicate_out__19, w_$flatten\dut_\alu_control_$procmux$153_CMP, c_455, c_456;
+    MUX w_$emit_masm_py_863_$replicate_out__2, w_$flatten\dut_\alu_$procmux$134_CMP, c_457, c_458;
+    MUX w_$emit_masm_py_863_$replicate_out__20, w_$flatten\dut_\alu_control_$procmux$154_CMP, c_459, c_460;
+    MUX w_$emit_masm_py_863_$replicate_out__21, w_$flatten\dut_\alu_control_$procmux$155_CMP, c_461, c_462;
+    MUX w_$emit_masm_py_863_$replicate_out__22, w_$flatten\dut_\alu_control_$procmux$162_CMP, c_463, c_464;
+    MUX w_$emit_masm_py_863_$replicate_out__23, w_$flatten\dut_\alu_control_$procmux$163_CMP, c_465, c_466;
+    MUX w_$emit_masm_py_863_$replicate_out__24, w_$flatten\dut_\alu_control_$procmux$164_CMP, c_467, c_468;
+    MUX w_$emit_masm_py_863_$replicate_out__25, w_$flatten\dut_\alu_control_$procmux$165_CMP, c_469, c_470;
+    MUX w_$emit_masm_py_863_$replicate_out__26, w_$flatten\dut_\alu_control_$procmux$166_CMP, c_471, c_472;
+    MUX w_$emit_masm_py_863_$replicate_out__27, w_$flatten\dut_\alu_control_$procmux$167_CMP, c_473, c_474;
+    MUX w_$emit_masm_py_863_$replicate_out__28, w_$flatten\dut_\alu_control_$procmux$168_CMP, c_475, c_476;
+    MUX w_$emit_masm_py_863_$replicate_out__29, w_$flatten\dut_\alu_control_$procmux$169_CMP, c_477, c_478;
+    MUX w_$emit_masm_py_863_$replicate_out__3, w_$flatten\dut_\alu_$procmux$135_CMP, c_479, c_480;
+    MUX w_$emit_masm_py_863_$replicate_out__30, w_$flatten\dut_\alu_control_$procmux$170_CMP, c_481, c_482;
+    MUX w_$emit_masm_py_863_$replicate_out__31, w_$flatten\dut_\control_$procmux$628_CMP, c_483, c_484;
+    MUX w_$emit_masm_py_863_$replicate_out__32, w_$flatten\dut_\control_$procmux$629_CMP, c_485, c_486;
+    MUX w_$emit_masm_py_863_$replicate_out__33, w_$flatten\dut_\control_$procmux$630_CMP, c_487, c_488;
+    MUX w_$emit_masm_py_863_$replicate_out__34, w_$flatten\dut_\control_$procmux$631_CMP, c_489, c_490;
+    MUX w_$emit_masm_py_863_$replicate_out__35, w_$flatten\dut_\control_$procmux$632_CMP, c_491, c_492;
+    MUX w_$emit_masm_py_863_$replicate_out__36, w_$flatten\dut_\control_$procmux$633_CMP, c_493, c_494;
+    MUX w_$emit_masm_py_863_$replicate_out__37, w_$flatten\dut_\control_$procmux$634_CMP, c_495, c_496;
+    MUX w_$emit_masm_py_863_$replicate_out__38, w_$flatten\dut_\control_$procmux$635_CMP, c_497, c_498;
+    MUX w_$emit_masm_py_863_$replicate_out__39, w_$flatten\dut_\control_$procmux$638_CMP, c_499, c_500;
+    MUX w_$emit_masm_py_863_$replicate_out__4, w_$flatten\dut_\alu_$procmux$136_CMP, c_501, c_502;
+    MUX w_$emit_masm_py_863_$replicate_out__40, w_$flatten\dut_\control_$procmux$639_CMP, c_503, c_504;
+    MUX w_$emit_masm_py_863_$replicate_out__41, w_$flatten\dut_\control_$procmux$640_CMP, c_505, c_506;
+    MUX w_$emit_masm_py_863_$replicate_out__42, w_$flatten\dut_\control_$procmux$641_CMP, c_507, c_508;
+    MUX w_$emit_masm_py_863_$replicate_out__43, w_$flatten\dut_\control_$procmux$642_CMP, c_509, c_510;
+    MUX w_$emit_masm_py_863_$replicate_out__44, w_$flatten\dut_\control_$procmux$643_CMP, c_511, c_512;
+    MUX w_$emit_masm_py_863_$replicate_out__45, w_$flatten\dut_\control_$procmux$644_CMP, c_513, c_514;
+    MUX w_$emit_masm_py_863_$replicate_out__46, w_$flatten\dut_\control_$procmux$645_CMP, c_515, c_516;
+    MUX w_$emit_masm_py_863_$replicate_out__47, w_$flatten\dut_\control_$procmux$646_CMP, c_517, c_518;
+    MUX w_$emit_masm_py_863_$replicate_out__48, w_$flatten\dut_\control_$procmux$649_CMP, c_519, c_520;
+    MUX w_$emit_masm_py_863_$replicate_out__49, w_$flatten\dut_\control_$procmux$650_CMP, c_521, c_522;
+    MUX w_$emit_masm_py_863_$replicate_out__5, w_$flatten\dut_\alu_$procmux$137_CMP, c_523, c_524;
+    MUX w_$emit_masm_py_863_$replicate_out__50, w_$flatten\dut_\control_$procmux$654_CMP, c_525, c_526;
+    MUX w_$emit_masm_py_863_$replicate_out__51, w_$flatten\dut_\control_$procmux$655_CMP, c_527, c_528;
+    MUX w_$emit_masm_py_863_$replicate_out__52, w_$flatten\dut_\control_$procmux$666_CMP, c_529, c_530;
+    MUX w_$emit_masm_py_863_$replicate_out__53, w_$flatten\dut_\control_$procmux$667_CMP, c_531, c_532;
+    MUX w_$emit_masm_py_863_$replicate_out__54, w_$flatten\dut_\control_$procmux$679_CMP, c_533, c_534;
+    MUX w_$emit_masm_py_863_$replicate_out__55, w_$flatten\dut_\control_$procmux$680_CMP, c_535, c_536;
+    MUX w_$emit_masm_py_863_$replicate_out__56, w_$flatten\dut_\alu_$procmux$134_CMP, c_537, c_538;
+    MUX w_$emit_masm_py_863_$replicate_out__57, w_$flatten\dut_\alu_$procmux$133_CMP, c_539, c_540;
+    MUX w_$emit_masm_py_863_$replicate_out__58, w_$flatten\dut_\alu_$procmux$132_CMP, c_541, c_542;
+    MUX w_$emit_masm_py_863_$replicate_out__59, w_$flatten\dut_\alu_$procmux$140_CMP, c_543, c_544;
+    MUX w_$emit_masm_py_863_$replicate_out__6, w_$flatten\dut_\alu_$procmux$138_CMP, c_545, c_546;
+    MUX w_$emit_masm_py_863_$replicate_out__60, w_$flatten\dut_\alu_$procmux$139_CMP, c_547, c_548;
+    MUX w_$emit_masm_py_863_$replicate_out__61, w_$flatten\dut_\alu_$procmux$138_CMP, c_549, c_550;
+    MUX w_$emit_masm_py_863_$replicate_out__62, w_$flatten\dut_\alu_$procmux$137_CMP, c_551, c_552;
+    MUX w_$emit_masm_py_863_$replicate_out__63, w_$flatten\dut_\alu_$procmux$136_CMP, c_553, c_554;
+    MUX w_$emit_masm_py_863_$replicate_out__64, w_$flatten\dut_\alu_$procmux$135_CMP, c_555, c_556;
+    MUX w_$emit_masm_py_863_$replicate_out__65, w_$auto$rtlil_cc_2367_ReduceOr$753, c_557, c_558;
+    MUX w_$emit_masm_py_863_$replicate_out__66, w_$flatten\dut_\alu_control_$procmux$147_CMP, c_559, c_560;
+    MUX w_$emit_masm_py_863_$replicate_out__67, w_$flatten\dut_\alu_control_$procmux$146_CMP, c_561, c_562;
+    MUX w_$emit_masm_py_863_$replicate_out__68, w_$flatten\dut_\alu_control_$procmux$145_CMP, c_563, c_564;
+    MUX w_$emit_masm_py_863_$replicate_out__69, w_$flatten\dut_\alu_control_$procmux$153_CMP, c_565, c_566;
+    MUX w_$emit_masm_py_863_$replicate_out__7, w_$flatten\dut_\alu_$procmux$139_CMP, c_567, c_568;
+    MUX w_$emit_masm_py_863_$replicate_out__70, w_$flatten\dut_\alu_control_$procmux$152_CMP, c_569, c_570;
+    MUX w_$emit_masm_py_863_$replicate_out__71, w_$flatten\dut_\alu_control_$procmux$151_CMP, c_571, c_572;
+    MUX w_$emit_masm_py_863_$replicate_out__72, w_$flatten\dut_\alu_control_$procmux$150_CMP, c_573, c_574;
+    MUX w_$emit_masm_py_863_$replicate_out__73, w_$flatten\dut_\alu_control_$procmux$149_CMP, c_575, c_576;
+    MUX w_$emit_masm_py_863_$replicate_out__74, w_$flatten\dut_\alu_control_$procmux$148_CMP, c_577, c_578;
+    MUX w_$emit_masm_py_863_$replicate_out__75, w_$auto$rtlil_cc_2367_ReduceOr$785, c_579, c_580;
+    MUX w_$emit_masm_py_863_$replicate_out__76, w_$flatten\dut_\alu_control_$procmux$166_CMP, c_581, c_582;
+    MUX w_$emit_masm_py_863_$replicate_out__77, w_$flatten\dut_\alu_control_$procmux$165_CMP, c_583, c_584;
+    MUX w_$emit_masm_py_863_$replicate_out__78, w_$flatten\dut_\alu_control_$procmux$164_CMP, c_585, c_586;
+    MUX w_$emit_masm_py_863_$replicate_out__79, w_$auto$rtlil_cc_2394_Or$815, c_587, c_588;
+    MUX w_$emit_masm_py_863_$replicate_out__8, w_$flatten\dut_\alu_$procmux$140_CMP, c_589, c_590;
+    MUX w_$emit_masm_py_863_$replicate_out__80, w_$flatten\dut_\control_$procmux$631_CMP, c_591, c_592;
+    MUX w_$emit_masm_py_863_$replicate_out__81, w_$flatten\dut_\control_$procmux$630_CMP, c_593, c_594;
+    MUX w_$emit_masm_py_863_$replicate_out__82, w_$auto$rtlil_cc_2394_Or$841, c_595, c_596;
+    MUX w_$emit_masm_py_863_$replicate_out__83, w_$flatten\dut_\control_$procmux$642_CMP, c_597, c_598;
+    MUX w_$emit_masm_py_863_$replicate_out__84, w_$flatten\dut_\control_$procmux$641_CMP, c_599, c_600;
+    MUX w_$emit_masm_py_863_$replicate_out__85, w_$flatten\dut_\control_$procmux$640_CMP, c_601, c_602;
+    MUX w_$emit_masm_py_863_$replicate_out__86, w_$auto$rtlil_cc_2394_Or$869, c_603, c_604;
+    MUX w_$emit_masm_py_863_$replicate_out__9, w_$flatten\dut_\alu_$procmux$141_CMP, c_605, c_606;
+    MUX w_$flatten\dut_$procmux$114_Y, w_\dut__27_, w_\dut_halted_r, w_$emit_masm_py_209_$tmp_67;
+    MUX w_\dut__42_, w_\dut_reset, w_$flatten\dut_$procmux$114_Y, w_$emit_masm_py_209_$tmp_68;
+    MUX w_$flatten\dut_$procmux$120_Y, w_\dut__32_, w_\dut_pc_4, w_\dut_branch_addr;
+    MUX w_$flatten\dut_$procmux$123_Y, w_\dut_control_jump, w_$flatten\dut_$procmux$120_Y, w_$emit_masm_py_209_$tmp_69;
+    MUX w_$flatten\dut_$procmux$125_Y, w_\dut_halted_r, w_$flatten\dut_$procmux$123_Y, w_\dut_pc;
+    MUX w_\dut__41_, w_\dut_reset, w_$flatten\dut_$procmux$125_Y, w_$emit_masm_py_209_$tmp_70;
+    SEQ w_$flatten\dut_\alu_$procmux$132_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_71;
+    SEQ w_$flatten\dut_\alu_$procmux$133_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_72;
+    SEQ w_$flatten\dut_\alu_$procmux$134_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_73;
+    SEQ w_$flatten\dut_\alu_$procmux$135_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_74;
+    SEQ w_$flatten\dut_\alu_$procmux$136_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_75;
+    SEQ w_$flatten\dut_\alu_$procmux$137_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_76;
+    SEQ w_$flatten\dut_\alu_$procmux$138_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_77;
+    SEQ w_$flatten\dut_\alu_$procmux$139_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_78;
+    SEQ w_$flatten\dut_\alu_$procmux$140_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_79;
+    SEQ w_$flatten\dut_\alu_$procmux$141_CMP, w_\dut_alu_ctrl, w_$emit_masm_py_209_$tmp_80;
+    SEQ w_$flatten\dut_\alu_$procmux$142_CMP, w_\dut_alu_ctrl, c_607;
+    SEQ w_$flatten\dut_\alu_control_$procmux$145_CMP, w_$emit_masm_py_209_$tmp_81, w_$emit_masm_py_209_$tmp_82;
+    SEQ w_$flatten\dut_\alu_control_$procmux$146_CMP, w_$emit_masm_py_209_$tmp_83, w_$emit_masm_py_209_$tmp_84;
+    SEQ w_$flatten\dut_\alu_control_$procmux$147_CMP, w_$emit_masm_py_209_$tmp_85, w_$emit_masm_py_209_$tmp_86;
+    SEQ w_$flatten\dut_\alu_control_$procmux$148_CMP, w_$emit_masm_py_209_$tmp_87, w_$emit_masm_py_209_$tmp_88;
+    SEQ w_$flatten\dut_\alu_control_$procmux$149_CMP, w_$emit_masm_py_209_$tmp_89, w_$emit_masm_py_209_$tmp_90;
+    SEQ w_$flatten\dut_\alu_control_$procmux$150_CMP, w_$emit_masm_py_209_$tmp_91, w_$emit_masm_py_209_$tmp_92;
+    SEQ w_$flatten\dut_\alu_control_$procmux$151_CMP, w_$emit_masm_py_209_$tmp_93, w_$emit_masm_py_209_$tmp_94;
+    SEQ w_$flatten\dut_\alu_control_$procmux$152_CMP, w_$emit_masm_py_209_$tmp_95, w_$emit_masm_py_209_$tmp_96;
+    SEQ w_$flatten\dut_\alu_control_$procmux$153_CMP, w_$emit_masm_py_209_$tmp_97, w_$emit_masm_py_209_$tmp_98;
+    SEQ w_$flatten\dut_\alu_control_$procmux$154_CMP, w_$emit_masm_py_209_$tmp_99, w_$emit_masm_py_209_$tmp_100;
+    SEQ w_$flatten\dut_\alu_control_$procmux$155_CMP, w_$emit_masm_py_209_$tmp_101, w_$emit_masm_py_209_$tmp_102;
+    MUX w_\dut_alu_control__1_, w_\dut_alu_control_alu_op, w_$emit_masm_py_209_$tmp_103, w_$flatten\dut_\alu_control_$procmux$144_Y;
+    SEQ w_$flatten\dut_\alu_control_$procmux$162_CMP, w_$emit_masm_py_209_$tmp_104, w_$emit_masm_py_209_$tmp_105;
+    SEQ w_$flatten\dut_\alu_control_$procmux$163_CMP, w_$emit_masm_py_209_$tmp_106, w_$emit_masm_py_209_$tmp_107;
+    SEQ w_$flatten\dut_\alu_control_$procmux$164_CMP, w_$emit_masm_py_209_$tmp_108, w_$emit_masm_py_209_$tmp_109;
+    SEQ w_$flatten\dut_\alu_control_$procmux$165_CMP, w_$emit_masm_py_209_$tmp_110, w_$emit_masm_py_209_$tmp_111;
+    SEQ w_$flatten\dut_\alu_control_$procmux$166_CMP, w_$emit_masm_py_209_$tmp_112, w_$emit_masm_py_209_$tmp_113;
+    SEQ w_$flatten\dut_\alu_control_$procmux$167_CMP, w_$emit_masm_py_209_$tmp_114, w_$emit_masm_py_209_$tmp_115;
+    SEQ w_$flatten\dut_\alu_control_$procmux$168_CMP, w_$emit_masm_py_209_$tmp_116, w_$emit_masm_py_209_$tmp_117;
+    SEQ w_$flatten\dut_\alu_control_$procmux$169_CMP, w_$emit_masm_py_209_$tmp_118, w_$emit_masm_py_209_$tmp_119;
+    SEQ w_$flatten\dut_\alu_control_$procmux$170_CMP, w_$emit_masm_py_209_$tmp_120, w_$emit_masm_py_209_$tmp_121;
+    MUX w_\dut_alu_control__2_, w_\dut_alu_control_alu_op, w_$flatten\dut_\alu_control_$procmux$161_Y, w_$emit_masm_py_209_$tmp_122;
+    MUX w_\dut_alu_ctrl, w_\dut_alu_control_alu_op, w_\dut_alu_control__2_, w_\dut_alu_control__1_;
+    MUX w_$flatten\dut_\control_$procmux$190_Y, w_\dut_control__1_, w_$emit_masm_py_209_$tmp_123, w_$emit_masm_py_209_$tmp_124;
+    MUX w_$flatten\dut_\control_$procmux$193_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$190_Y, w_$emit_masm_py_209_$tmp_125;
+    MUX w_\dut_control__3_, w_$flatten\dut_\control_$procmux$196_CMP, w_$emit_masm_py_209_$tmp_126, w_$flatten\dut_\control_$procmux$193_Y;
+    SEQ w_$flatten\dut_\control_$procmux$196_CMP, w_$emit_masm_py_209_$tmp_127, c_608;
+    MUX w_$flatten\dut_\control_$procmux$209_Y, w_\dut_control__0_, w_$emit_masm_py_209_$tmp_128, w_$emit_masm_py_209_$tmp_129;
+    MUX w_$flatten\dut_\control_$procmux$212_Y, w_\dut_control__1_, w_$flatten\dut_\control_$procmux$209_Y, w_$emit_masm_py_209_$tmp_130;
+    MUX w_$flatten\dut_\control_$procmux$215_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$212_Y, w_$emit_masm_py_209_$tmp_131;
+    MUX w_\dut_control__9_, w_$flatten\dut_\control_$procmux$218_CMP, w_$emit_masm_py_209_$tmp_132, w_$flatten\dut_\control_$procmux$215_Y;
+    SEQ w_$flatten\dut_\control_$procmux$218_CMP, w_$emit_masm_py_209_$tmp_133, c_609;
+    MUX w_$flatten\dut_\control_$procmux$233_Y, w_\dut_control__1_, w_$emit_masm_py_209_$tmp_134, w_$emit_masm_py_209_$tmp_135;
+    MUX w_$flatten\dut_\control_$procmux$236_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$233_Y, w_$emit_masm_py_209_$tmp_136;
+    MUX w_\dut_control__5_, w_$flatten\dut_\control_$procmux$239_CMP, w_$emit_masm_py_209_$tmp_137, w_$flatten\dut_\control_$procmux$236_Y;
+    SEQ w_$flatten\dut_\control_$procmux$239_CMP, w_$emit_masm_py_209_$tmp_138, c_610;
+    MUX w_$flatten\dut_\control_$procmux$254_Y, w_\dut_control__1_, w_$emit_masm_py_209_$tmp_139, w_$emit_masm_py_209_$tmp_140;
+    MUX w_$flatten\dut_\control_$procmux$257_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$254_Y, w_$emit_masm_py_209_$tmp_141;
+    MUX w_\dut_control__10_, w_$flatten\dut_\control_$procmux$260_CMP, w_$emit_masm_py_209_$tmp_142, w_$flatten\dut_\control_$procmux$257_Y;
+    SEQ w_$flatten\dut_\control_$procmux$260_CMP, w_$emit_masm_py_209_$tmp_143, c_611;
+    MUX w_$flatten\dut_\control_$procmux$275_Y, w_\dut_control__1_, w_$emit_masm_py_209_$tmp_144, w_$emit_masm_py_209_$tmp_145;
+    MUX w_$flatten\dut_\control_$procmux$278_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$275_Y, w_$emit_masm_py_209_$tmp_146;
+    MUX w_\dut_control__6_, w_$flatten\dut_\control_$procmux$281_CMP, w_$emit_masm_py_209_$tmp_147, w_$flatten\dut_\control_$procmux$278_Y;
+    SEQ w_$flatten\dut_\control_$procmux$281_CMP, w_$emit_masm_py_209_$tmp_148, c_612;
+    MUX w_$flatten\dut_\control_$procmux$296_Y, w_\dut_control__1_, w_$emit_masm_py_209_$tmp_149, w_$emit_masm_py_209_$tmp_150;
+    MUX w_$flatten\dut_\control_$procmux$299_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$296_Y, w_$emit_masm_py_209_$tmp_151;
+    MUX w_\dut_control__8_, w_$flatten\dut_\control_$procmux$302_CMP, w_$emit_masm_py_209_$tmp_152, w_$flatten\dut_\control_$procmux$299_Y;
+    SEQ w_$flatten\dut_\control_$procmux$302_CMP, w_$emit_masm_py_209_$tmp_153, c_613;
+    MUX w_$flatten\dut_\control_$procmux$317_Y, w_\dut_control__1_, w_$emit_masm_py_209_$tmp_154, w_$emit_masm_py_209_$tmp_155;
+    MUX w_$flatten\dut_\control_$procmux$320_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$317_Y, w_$emit_masm_py_209_$tmp_156;
+    MUX w_\dut_control__7_, w_$flatten\dut_\control_$procmux$323_CMP, w_$emit_masm_py_209_$tmp_157, w_$flatten\dut_\control_$procmux$320_Y;
+    SEQ w_$flatten\dut_\control_$procmux$323_CMP, w_$emit_masm_py_209_$tmp_158, c_614;
+    MUX w_$flatten\dut_\control_$procmux$338_Y, w_\dut_control__1_, w_$emit_masm_py_209_$tmp_159, w_$emit_masm_py_209_$tmp_160;
+    MUX w_$flatten\dut_\control_$procmux$341_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$338_Y, w_$emit_masm_py_209_$tmp_161;
+    MUX w_\dut_control__4_, w_$flatten\dut_\control_$procmux$344_CMP, w_$emit_masm_py_209_$tmp_162, w_$flatten\dut_\control_$procmux$341_Y;
+    SEQ w_$flatten\dut_\control_$procmux$344_CMP, w_$emit_masm_py_209_$tmp_163, c_615;
+    MUX w_$flatten\dut_\control_$procmux$357_Y, w_\dut_control__1_, w_\dut_control__3_, w_$emit_masm_py_209_$tmp_164;
+    MUX w_$flatten\dut_\control_$procmux$360_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$357_Y, w_$emit_masm_py_209_$tmp_165;
+    MUX w_\dut_control__11_, w_$flatten\dut_\control_$procmux$363_CMP, w_$emit_masm_py_209_$tmp_166, w_$flatten\dut_\control_$procmux$360_Y;
+    SEQ w_$flatten\dut_\control_$procmux$363_CMP, w_$emit_masm_py_209_$tmp_167, c_616;
+    MUX w_$flatten\dut_\control_$procmux$376_Y, w_\dut_control__1_, w_\dut_control__9_, w_$emit_masm_py_209_$tmp_168;
+    MUX w_$flatten\dut_\control_$procmux$379_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$376_Y, w_$emit_masm_py_209_$tmp_169;
+    MUX w_\dut_control__17_, w_$flatten\dut_\control_$procmux$382_CMP, w_$emit_masm_py_209_$tmp_170, w_$flatten\dut_\control_$procmux$379_Y;
+    SEQ w_$flatten\dut_\control_$procmux$382_CMP, w_$emit_masm_py_209_$tmp_171, c_617;
+    MUX w_$flatten\dut_\control_$procmux$395_Y, w_\dut_control__1_, w_\dut_control__5_, w_$emit_masm_py_209_$tmp_172;
+    MUX w_$flatten\dut_\control_$procmux$398_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$395_Y, w_$emit_masm_py_209_$tmp_173;
+    MUX w_\dut_control__13_, w_$flatten\dut_\control_$procmux$401_CMP, w_$emit_masm_py_209_$tmp_174, w_$flatten\dut_\control_$procmux$398_Y;
+    SEQ w_$flatten\dut_\control_$procmux$401_CMP, w_$emit_masm_py_209_$tmp_175, c_618;
+    MUX w_$flatten\dut_\control_$procmux$414_Y, w_\dut_control__1_, w_\dut_control__10_, w_$emit_masm_py_209_$tmp_176;
+    MUX w_$flatten\dut_\control_$procmux$417_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$414_Y, w_$emit_masm_py_209_$tmp_177;
+    MUX w_\dut_control__18_, w_$flatten\dut_\control_$procmux$420_CMP, w_$emit_masm_py_209_$tmp_178, w_$flatten\dut_\control_$procmux$417_Y;
+    SEQ w_$flatten\dut_\control_$procmux$420_CMP, w_$emit_masm_py_209_$tmp_179, c_619;
+    MUX w_$flatten\dut_\control_$procmux$433_Y, w_\dut_control__1_, w_\dut_control__6_, w_$emit_masm_py_209_$tmp_180;
+    MUX w_$flatten\dut_\control_$procmux$436_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$433_Y, w_$emit_masm_py_209_$tmp_181;
+    MUX w_\dut_control__14_, w_$flatten\dut_\control_$procmux$439_CMP, w_$emit_masm_py_209_$tmp_182, w_$flatten\dut_\control_$procmux$436_Y;
+    SEQ w_$flatten\dut_\control_$procmux$439_CMP, w_$emit_masm_py_209_$tmp_183, c_620;
+    MUX w_$flatten\dut_\control_$procmux$452_Y, w_\dut_control__1_, w_\dut_control__8_, w_$emit_masm_py_209_$tmp_184;
+    MUX w_$flatten\dut_\control_$procmux$455_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$452_Y, w_$emit_masm_py_209_$tmp_185;
+    MUX w_\dut_control__16_, w_$flatten\dut_\control_$procmux$458_CMP, w_$emit_masm_py_209_$tmp_186, w_$flatten\dut_\control_$procmux$455_Y;
+    SEQ w_$flatten\dut_\control_$procmux$458_CMP, w_$emit_masm_py_209_$tmp_187, c_621;
+    MUX w_$flatten\dut_\control_$procmux$471_Y, w_\dut_control__1_, w_\dut_control__7_, w_$emit_masm_py_209_$tmp_188;
+    MUX w_$flatten\dut_\control_$procmux$474_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$471_Y, w_$emit_masm_py_209_$tmp_189;
+    MUX w_\dut_control__15_, w_$flatten\dut_\control_$procmux$477_CMP, w_$emit_masm_py_209_$tmp_190, w_$flatten\dut_\control_$procmux$474_Y;
+    SEQ w_$flatten\dut_\control_$procmux$477_CMP, w_$emit_masm_py_209_$tmp_191, c_622;
+    MUX w_$flatten\dut_\control_$procmux$490_Y, w_\dut_control__1_, w_\dut_control__4_, w_$emit_masm_py_209_$tmp_192;
+    MUX w_$flatten\dut_\control_$procmux$493_Y, w_\dut_control__2_, w_$flatten\dut_\control_$procmux$490_Y, w_$emit_masm_py_209_$tmp_193;
+    MUX w_\dut_control__12_, w_$flatten\dut_\control_$procmux$496_CMP, w_$emit_masm_py_209_$tmp_194, w_$flatten\dut_\control_$procmux$493_Y;
+    SEQ w_$flatten\dut_\control_$procmux$496_CMP, w_$emit_masm_py_209_$tmp_195, c_623;
+    MUX w_$flatten\dut_\control_$procmux$509_Y, w_\dut_control__2_, w_\dut_control__11_, w_$emit_masm_py_209_$tmp_196;
+    MUX w_\dut_control__19_, w_$flatten\dut_\control_$procmux$512_CMP, w_$emit_masm_py_209_$tmp_197, w_$flatten\dut_\control_$procmux$509_Y;
+    SEQ w_$flatten\dut_\control_$procmux$512_CMP, w_$emit_masm_py_209_$tmp_198, c_624;
+    MUX w_$flatten\dut_\control_$procmux$525_Y, w_\dut_control__2_, w_\dut_control__17_, w_$emit_masm_py_209_$tmp_199;
+    MUX w_\dut_control__25_, w_$flatten\dut_\control_$procmux$528_CMP, w_$emit_masm_py_209_$tmp_200, w_$flatten\dut_\control_$procmux$525_Y;
+    SEQ w_$flatten\dut_\control_$procmux$528_CMP, w_$emit_masm_py_209_$tmp_201, c_625;
+    MUX w_$flatten\dut_\control_$procmux$541_Y, w_\dut_control__2_, w_\dut_control__13_, w_$emit_masm_py_209_$tmp_202;
+    MUX w_\dut_control__21_, w_$flatten\dut_\control_$procmux$544_CMP, w_$emit_masm_py_209_$tmp_203, w_$flatten\dut_\control_$procmux$541_Y;
+    SEQ w_$flatten\dut_\control_$procmux$544_CMP, w_$emit_masm_py_209_$tmp_204, c_626;
+    MUX w_$flatten\dut_\control_$procmux$557_Y, w_\dut_control__2_, w_\dut_control__18_, w_$emit_masm_py_209_$tmp_205;
+    MUX w_\dut_control__26_, w_$flatten\dut_\control_$procmux$560_CMP, w_$emit_masm_py_209_$tmp_206, w_$flatten\dut_\control_$procmux$557_Y;
+    SEQ w_$flatten\dut_\control_$procmux$560_CMP, w_$emit_masm_py_209_$tmp_207, c_627;
+    MUX w_$flatten\dut_\control_$procmux$573_Y, w_\dut_control__2_, w_\dut_control__14_, w_$emit_masm_py_209_$tmp_208;
+    MUX w_\dut_control__22_, w_$flatten\dut_\control_$procmux$576_CMP, w_$emit_masm_py_209_$tmp_209, w_$flatten\dut_\control_$procmux$573_Y;
+    SEQ w_$flatten\dut_\control_$procmux$576_CMP, w_$emit_masm_py_209_$tmp_210, c_628;
+    MUX w_$flatten\dut_\control_$procmux$589_Y, w_\dut_control__2_, w_\dut_control__16_, w_$emit_masm_py_209_$tmp_211;
+    MUX w_\dut_control__24_, w_$flatten\dut_\control_$procmux$592_CMP, w_$emit_masm_py_209_$tmp_212, w_$flatten\dut_\control_$procmux$589_Y;
+    SEQ w_$flatten\dut_\control_$procmux$592_CMP, w_$emit_masm_py_209_$tmp_213, c_629;
+    MUX w_$flatten\dut_\control_$procmux$605_Y, w_\dut_control__2_, w_\dut_control__15_, w_$emit_masm_py_209_$tmp_214;
+    MUX w_\dut_control__23_, w_$flatten\dut_\control_$procmux$608_CMP, w_$emit_masm_py_209_$tmp_215, w_$flatten\dut_\control_$procmux$605_Y;
+    SEQ w_$flatten\dut_\control_$procmux$608_CMP, w_$emit_masm_py_209_$tmp_216, c_630;
+    MUX w_$flatten\dut_\control_$procmux$621_Y, w_\dut_control__2_, w_\dut_control__12_, w_$emit_masm_py_209_$tmp_217;
+    MUX w_\dut_control__20_, w_$flatten\dut_\control_$procmux$624_CMP, w_$emit_masm_py_209_$tmp_218, w_$flatten\dut_\control_$procmux$621_Y;
+    SEQ w_$flatten\dut_\control_$procmux$624_CMP, w_$emit_masm_py_209_$tmp_219, c_631;
+    SEQ w_$flatten\dut_\control_$procmux$628_CMP, w_$emit_masm_py_209_$tmp_220, w_$emit_masm_py_209_$tmp_221;
+    SEQ w_$flatten\dut_\control_$procmux$629_CMP, w_$emit_masm_py_209_$tmp_222, w_$emit_masm_py_209_$tmp_223;
+    SEQ w_$flatten\dut_\control_$procmux$630_CMP, w_$emit_masm_py_209_$tmp_224, w_$emit_masm_py_209_$tmp_225;
+    SEQ w_$flatten\dut_\control_$procmux$631_CMP, w_$emit_masm_py_209_$tmp_226, w_$emit_masm_py_209_$tmp_227;
+    SEQ w_$flatten\dut_\control_$procmux$632_CMP, w_$emit_masm_py_209_$tmp_228, w_$emit_masm_py_209_$tmp_229;
+    SEQ w_$flatten\dut_\control_$procmux$633_CMP, w_$emit_masm_py_209_$tmp_230, w_$emit_masm_py_209_$tmp_231;
+    SEQ w_$flatten\dut_\control_$procmux$634_CMP, w_$emit_masm_py_209_$tmp_232, w_$emit_masm_py_209_$tmp_233;
+    SEQ w_$flatten\dut_\control_$procmux$635_CMP, w_$emit_masm_py_209_$tmp_234, c_632;
+    SEQ w_$flatten\dut_\control_$procmux$638_CMP, w_$emit_masm_py_209_$tmp_235, w_$emit_masm_py_209_$tmp_236;
+    SEQ w_$flatten\dut_\control_$procmux$639_CMP, w_$emit_masm_py_209_$tmp_237, w_$emit_masm_py_209_$tmp_238;
+    SEQ w_$flatten\dut_\control_$procmux$640_CMP, w_$emit_masm_py_209_$tmp_239, w_$emit_masm_py_209_$tmp_240;
+    SEQ w_$flatten\dut_\control_$procmux$641_CMP, w_$emit_masm_py_209_$tmp_241, w_$emit_masm_py_209_$tmp_242;
+    SEQ w_$flatten\dut_\control_$procmux$642_CMP, w_$emit_masm_py_209_$tmp_243, w_$emit_masm_py_209_$tmp_244;
+    SEQ w_$flatten\dut_\control_$procmux$643_CMP, w_$emit_masm_py_209_$tmp_245, w_$emit_masm_py_209_$tmp_246;
+    SEQ w_$flatten\dut_\control_$procmux$644_CMP, w_$emit_masm_py_209_$tmp_247, w_$emit_masm_py_209_$tmp_248;
+    SEQ w_$flatten\dut_\control_$procmux$645_CMP, w_$emit_masm_py_209_$tmp_249, w_$emit_masm_py_209_$tmp_250;
+    SEQ w_$flatten\dut_\control_$procmux$646_CMP, w_$emit_masm_py_209_$tmp_251, c_633;
+    SEQ w_$flatten\dut_\control_$procmux$649_CMP, w_$emit_masm_py_209_$tmp_252, w_$emit_masm_py_209_$tmp_253;
+    SEQ w_$flatten\dut_\control_$procmux$650_CMP, w_$emit_masm_py_209_$tmp_254, c_634;
+    SEQ w_$flatten\dut_\control_$procmux$654_CMP, w_$emit_masm_py_209_$tmp_255, w_$emit_masm_py_209_$tmp_256;
+    SEQ w_$flatten\dut_\control_$procmux$655_CMP, w_$emit_masm_py_209_$tmp_257, c_635;
+    SEQ w_$flatten\dut_\control_$procmux$666_CMP, w_$emit_masm_py_209_$tmp_258, w_$emit_masm_py_209_$tmp_259;
+    SEQ w_$flatten\dut_\control_$procmux$667_CMP, w_$emit_masm_py_209_$tmp_260, c_636;
+    SEQ w_$flatten\dut_\control_$procmux$679_CMP, w_$emit_masm_py_209_$tmp_261, w_$emit_masm_py_209_$tmp_262;
+    SEQ w_$flatten\dut_\control_$procmux$680_CMP, w_$emit_masm_py_209_$tmp_263, c_637;
+    MUX w_\dut_control_reg_dst, w_$flatten\dut_\control_$procmux$693_CMP, w_$emit_masm_py_209_$tmp_264, w_\dut_control__20_;
+    SEQ w_$flatten\dut_\control_$procmux$693_CMP, w_$emit_masm_py_209_$tmp_265, c_638;
+    MUX w_\dut_alu_control_alu_op, w_$flatten\dut_\control_$procmux$706_CMP, w_$emit_masm_py_209_$tmp_266, w_\dut_control__26_;
+    SEQ w_$flatten\dut_\control_$procmux$706_CMP, w_$emit_masm_py_209_$tmp_267, c_639;
+    SEQ w_249, w_\dut_dmem__4_, c_640;
+    ADD w_250, \dut.dmem.mem, w_\dut_dmem__6_;
+    @MEMBLOCK [ block = "\dut.dmem.mem", width = 32, capacity = 128 ]
+    ST w_\dut_dmem__5_, w_250[0], w_249;
+    MUX w_\dut_dmem__4_, w_\dut_control_mem_write, w_$emit_masm_py_209_$tmp_268, w_$emit_masm_py_209_$tmp_269;
+    MUX w_\dut_dmem__5_, w_\dut_control_mem_write, w_$emit_masm_py_209_$tmp_270, w_\dut_dmem_wdata;
+    MUX w_\dut_dmem__6_, w_\dut_control_mem_write, w_$emit_masm_py_209_$tmp_271, w_$emit_masm_py_209_$tmp_272;
+    SEQ w_251, w_\dut_regs__5_, c_641;
+    ADD w_252, \dut.regs.mem, w_\dut_regs__10_;
+    @MEMBLOCK [ block = "\dut.regs.mem", width = 32, capacity = 32 ]
+    ST w_\dut_regs__6_, w_252[0], w_251;
+    MUX w_\dut_regs__5_, w_\dut_c_reg_write, w_$emit_masm_py_209_$tmp_273, w_$emit_masm_py_209_$tmp_274;
+    MUX w_\dut_regs__6_, w_\dut_c_reg_write, w_$emit_masm_py_209_$tmp_275, w_\dut_reg_write;
+    MUX w_\dut_regs__10_, w_\dut_c_reg_write, w_$emit_masm_py_209_$tmp_276, w_\dut_regs_waddr;
+    MUX w_\rdriver__4_, w_\rdriver__2_, w_\rdriver_reset_counter, w_$emit_masm_py_209_$tmp_277;
+    ADD w_253, \inst_mem, w_$emit_masm_py_209_$tmp_280;
+    @MEMBLOCK [ block = "\inst_mem", width = 32, capacity = 256 ]
+    LD w_\dut_control_instruction, w_253[0];
+    MUX w_\dut_reg_write, w_\dut_control_mem_to_reg, w_\dut_alu_result, w_\dut_dmem_rdata1;
+    MUX w_\dut_alu_op2, w_$emit_masm_py_209_$tmp_281, w_\dut__2_, w_\dut__3_;
+    MUX w_\dut__2_, w_$emit_masm_py_209_$tmp_283, w_\dut_dmem_wdata, w_$emit_masm_py_209_$tmp_282;
+    MUX w_\dut__3_, w_$emit_masm_py_209_$tmp_285, w_$emit_masm_py_209_$tmp_284, w_\dut_reg_read1;
+    MUX w_\dut_alu_op1, w_$emit_masm_py_209_$tmp_286, w_\dut_reg_read1, w_\dut_dmem_wdata;
+    MUX w_\dut_regs_waddr, w_\dut_control_reg_dst, w_$emit_masm_py_209_$tmp_287, w_$emit_masm_py_209_$tmp_288;
+    MUX w_\dut_regs_raddr1, w_\dut_halted_r, w_$emit_masm_py_209_$tmp_289, w_$emit_masm_py_209_$tmp_290;
+    MUX w_\dut__7_, w_$emit_masm_py_209_$tmp_293, w_$emit_masm_py_209_$tmp_291, w_$emit_masm_py_209_$tmp_292;
+    SEQ w_254, w_\dut__14_, c_643;
+    XOR w_255, w_254, c_642;
+    SEQ w_256, w_\dut__23_, c_644;
+    XOR w_257, w_256, c_642;
+    OR w_\dut__12_, w_255, w_257;
+    SEQ w_\dut__14_, w_\dut__20_, c_645;
+    SEQ w_\dut__16_, w_\dut_reset, c_646;
+    SEQ w_\dut__13_, w_\dut__21_, c_647;
+    SEQ w_\dut__19_, w_\dut_reset, c_648;
+    SEQ w_258, w_\dut__16_, c_650;
+    XOR w_259, w_258, c_649;
+    SEQ w_260, w_\dut_halted_r, c_651;
+    XOR w_261, w_260, c_649;
+    AND w_\dut__20_, w_259, w_261;
+    SEQ w_262, w_\dut__19_, c_653;
+    XOR w_263, w_262, c_652;
+    SEQ w_264, w_\dut_halted_r, c_654;
+    XOR w_265, w_264, c_652;
+    AND w_\dut__21_, w_263, w_265;
+    SEQ w_\dut__23_, w_\dut_reg_read1, w_$emit_masm_py_209_$tmp_294;
+    SEQ w_\dut__27_, w_$emit_masm_py_209_$tmp_295, w_$emit_masm_py_209_$tmp_296;
+    AND w_\dut__32_, w_\dut_branch, w_\dut_alu_zero;
+    ADD w_\dut_branch_addr, w_\dut_pc_4, w_$emit_masm_py_209_$tmp_297;
+    ADD w_\dut_pc_4, w_\dut_pc, w_$emit_masm_py_209_$tmp_298;
+    XOR w_\dut_alu__0_, w_\dut_alu_op1, w_\dut_alu_op2;
+    MUX w_\dut_alu__1_, w_\dut_alu__9_, w_$emit_masm_py_209_$tmp_299, w_$emit_masm_py_209_$tmp_300;
+    SUB w_\dut_alu__2_, w_\dut_alu_op1, w_\dut_alu_op2;
+    SRL w_\dut_alu__3_, w_\dut_alu_op1, w_$emit_masm_py_209_$tmp_301;
+    SRL w_\dut_alu__4_, w_\dut_alu_op1, w_$emit_masm_py_209_$tmp_302;
+    SLL w_\dut_alu__5_, w_\dut_alu_op1, w_$emit_masm_py_209_$tmp_303;
+    OR w_\dut_alu__7_, w_\dut_alu_op1, w_\dut_alu_op2;
+    OR w_\dut_alu__8_, w_\dut_alu_op1, w_\dut_alu_op2;
+    PADZERO w_267, w_\dut_alu_op1, 33;
+    PADZERO w_268, w_\dut_alu_op2, 33;
+    SUB w_266, w_267, w_268;
+    SLTS w_\dut_alu__9_, w_266, c_655;
+    SEQ w_\dut_alu__10_, w_\dut_alu__7_, c_656;
+    SEQ w_\dut_alu_zero, w_\dut_alu_result, c_657;
+    AND w_\dut_alu__12_, w_\dut_alu_op1, w_\dut_alu_op2;
+    ADD w_\dut_alu__13_, w_\dut_alu_op1, w_\dut_alu_op2;
+    PADZERO w_270, w_$emit_masm_py_209_$tmp_304, 7;
+    PADZERO w_271, w_$emit_masm_py_209_$tmp_305, 7;
+    SUB w_269, w_270, w_271;
+    SLTS w_\dut_control__0_, w_269, c_658;
+    PADZERO w_273, w_$emit_masm_py_209_$tmp_306, 7;
+    PADZERO w_274, w_$emit_masm_py_209_$tmp_307, 7;
+    SUB w_272, w_273, w_274;
+    SLTS w_\dut_control__1_, w_272, c_659;
+    SEQ w_\dut_control__2_, w_$emit_masm_py_209_$tmp_308, w_$emit_masm_py_209_$tmp_309;
+    ADD w_275, \dut.dmem.mem, w_$emit_masm_py_209_$tmp_312;
+    @MEMBLOCK [ block = "\dut.dmem.mem", width = 32, capacity = 128 ]
+    LD w_\dut_dmem_rdata1, w_275[0];
+    ADD w_276, \dut.regs.mem, w_$emit_masm_py_209_$tmp_315;
+    @MEMBLOCK [ block = "\dut.regs.mem", width = 32, capacity = 32 ]
+    LD w_\dut_dmem_wdata, w_276[0];
+    ADD w_277, \dut.regs.mem, w_\dut_regs_raddr1;
+    @MEMBLOCK [ block = "\dut.regs.mem", width = 32, capacity = 32 ]
+    LD w_\dut_reg_read1, w_277[0];
+    SUB w_\rdriver__0_, w_\rdriver_reset_counter, w_$emit_masm_py_209_$tmp_318;
+    SEQ w_278, w_\rdriver_reset_counter, c_660;
+    XOR w_\dut_reset, w_278, c_661;
+    PADZERO w_280, w_\rdriver_reset_counter, 33;
+    PADZERO w_281, w_$emit_masm_py_209_$tmp_319, 33;
+    SUB w_279, w_281, w_280;
+    SLTS w_\rdriver__2_, w_279, c_662;

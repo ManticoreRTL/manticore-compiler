@@ -105,23 +105,63 @@ object CustomLutInsertion
     proc: DefProcess
   )(
     implicit ctx: AssemblyContext
-  ): Graph[Instruction, DefaultEdge] = {
-    val dependenceGraph = DependenceAnalysis.build(proc, (_, _) => None)(ctx)
+  ): (
+    Graph[Name, DefaultEdge],
+    Map[Name, Instruction]
+   ) = {
+    val g: Graph[Name, DefaultEdge] = new DirectedAcyclicGraph(classOf[DefaultEdge])
 
-    // Convert dependence graph to jgrapht
-    val convertedGraph: Graph[Instruction, DefaultEdge] = new DirectedAcyclicGraph(classOf[DefaultEdge])
+    val nameToInstrMap = MHashMap.empty[Name, Instruction]
 
-    dependenceGraph.nodes.foreach { inode =>
-      convertedGraph.addVertex(inode.toOuter)
+    val constNames = proc.registers.filter { reg =>
+      reg.variable.varType == ConstType
+    }.map { constReg =>
+      constReg.variable.name
+    }.toSet
+
+    proc.body.foreach { instr =>
+      // Add a vertex for every register that is written and associate it with its instruction.
+      val regDefs = DependenceAnalysis.regDef(instr)
+      regDefs.foreach { rd =>
+        nameToInstrMap += rd -> instr
+        g.addVertex(rd)
+      }
+
+      // Add a vertex for every register that is read.
+      // However, we explicitly do not create vertices for constants as they do not contribute
+      // to cuts (they are not an "input" since their value is known at compile time).
+      val regUses = DependenceAnalysis.regUses(instr)
+      val nonConstRegUses = regUses.filter { rs =>
+        !constNames.contains(rs)
+      }
+      nonConstRegUses.foreach { rs =>
+        // The vertex will not be added again if it already exists (defined by a previous
+        // instruction).
+        g.addVertex(rs)
+      }
+
+      // Add edges between regDefs and regUses (excepts to constants).
+      regDefs.foreach { rd =>
+        nonConstRegUses.foreach { rs =>
+          g.addEdge(rs, rd)
+        }
+      }
     }
 
-    dependenceGraph.edges.foreach { iedge =>
-      val srcInstr = iedge.source.toOuter
-      val dstInstr = iedge.target.toOuter
-      convertedGraph.addEdge(srcInstr, dstInstr)
-    }
+    (g, nameToInstrMap.toMap)
+  }
 
-    convertedGraph
+  def isLogicInstr(
+    name: Name,
+    nameToInstrMap: Map[Name, Instruction]
+  ): Boolean = {
+    nameToInstrMap.get(name) match {
+      case None =>
+        // The name must be a top-level input or a constant as no instruction defines it.
+        false
+      case Some(instr) =>
+        isLogicInstr(instr)
+    }
   }
 
   def isLogicInstr(instr: Instruction): Boolean = {
@@ -132,8 +172,9 @@ object CustomLutInsertion
   }
 
   def findLogicClusters(
-    g: Graph[Instruction, DefaultEdge]
-  ): Set[Set[Instruction]] = {
+    g: Graph[Name, DefaultEdge],
+    nameToInstrMap: Map[Name, Instruction]
+  ): Set[Set[Name]] = {
     // We use Union-Find to cluster logic instructions together.
     val uf = new UnionFind(g.vertexSet())
 
@@ -142,7 +183,10 @@ object CustomLutInsertion
       val src = g.getEdgeSource(e)
       val dst = g.getEdgeTarget(e)
 
-      if (isLogicInstr(src) && isLogicInstr(dst)) {
+      val isSrcLogic = isLogicInstr(src, nameToInstrMap)
+      val isDstLogic = isLogicInstr(dst, nameToInstrMap)
+
+      if (isSrcLogic && isDstLogic) {
         uf.union(src, dst)
       }
     }
@@ -151,7 +195,7 @@ object CustomLutInsertion
       .asScala // Returns a mutable.Set
       .toSet // Convert to immutable.Set
       .filter { v =>
-        isLogicInstr(v)
+        isLogicInstr(v, nameToInstrMap)
       }
       .groupBy { v =>
         uf.find(v)
@@ -166,13 +210,14 @@ object CustomLutInsertion
     * We solve the non-overlapping cone problem optimally with an ILP formulation.
     */
   def findOptimalConeCover(
-    instructionGraph: Graph[Instruction, DefaultEdge],
-    clusters: Set[Set[Instruction]],
+    g: Graph[Name, DefaultEdge],
+    clusters: Set[Set[Name]],
+    nameToInstrMap: Map[Name, Instruction],
     maxCutSize: Int,
     maxNumCones: Int
   )(
     implicit ctx: AssemblyContext
-  ): Set[Cone[Instruction]] = {
+  ): Set[Cone[Name]] = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Helpers /////////////////////////////////////////////////////////////////
@@ -338,13 +383,13 @@ object CustomLutInsertion
 
     // All the vertices in the various input clusters.
     // As a sanity check we verify they are all logic instructions.
-    val allClustersInstrs = clusters.flatten
+    val allClustersVertices = clusters.flatten
     assert(
-      allClustersInstrs.forall(instr => isLogicInstr(instr)),
+      allClustersVertices.forall(v => isLogicInstr(v, nameToInstrMap)),
       s"Error: The input clusters do not all contain logic instructions!"
     )
 
-    val (clusterSubgraph, primaryInputs) = getClustersSubgraph(instructionGraph, allClustersInstrs)
+    val (clusterSubgraph, primaryInputs) = getClustersSubgraph(g, allClustersVertices)
     val logicVertices = clusterSubgraph.vertexSet().asScala.filter { v =>
       !primaryInputs.contains(v)
     }.toSet
@@ -365,7 +410,7 @@ object CustomLutInsertion
 
     // Sanity check.
     val invalidCones = allCones.filter { cone =>
-      cone.exists(instr => !isLogicInstr(instr))
+      cone.exists(v => !isLogicInstr(v, nameToInstrMap))
     }
     assert(
       invalidCones.isEmpty,
@@ -391,7 +436,7 @@ object CustomLutInsertion
   }
 
   def coneToCustomFunction(
-    cone: Cone[Instruction],
+    cone: Cone[Name],
     nameToConstMap: Map[Name, Constant],
     nameToInstrMap: Map[Name, Instruction]
   ): (
@@ -402,9 +447,8 @@ object CustomLutInsertion
     // We already know all primary inputs of the cone. We therefore assign an
     // AtomArg with an increasing index to each so we can refer to them when
     // constructing the cone's expression tree.
-    val nameToAtomArgMap = cone.primaryInputs.zipWithIndex.map { case (piInstr, idx) =>
-      val piName = DependenceAnalysis.regDef(piInstr).head
-      piName -> AtomArg(idx)
+    val nameToAtomArgMap = cone.primaryInputs.zipWithIndex.map { case (pi, idx) =>
+      pi -> AtomArg(idx)
     }.toMap
 
     def makeExpr(
@@ -443,7 +487,7 @@ object CustomLutInsertion
       }
     }
 
-    val rootName = DependenceAnalysis.regDef(cone.root).head
+    val rootName = cone.root
     val rootExpr = makeExpr(rootName)
     val customFunc = CustomFunctionImpl(rootExpr)
     val atomArgToNameMap = nameToAtomArgMap.map(kv => kv.swap)
@@ -456,10 +500,13 @@ object CustomLutInsertion
   )(
     implicit ctx: AssemblyContext
   ): DefProcess = {
-    val dependenceGraph = createDependenceGraph(proc)
+    // The dependence graph does NOT contain constants as we don't want them to influence
+    // the cuts we are generating (they are not "inputs" since constants are known at
+    // compile-time).
+    val (dependenceGraph, nameToInstrMap) = createDependenceGraph(proc)
 
     // Identify logic clusters in the graph.
-    val logicClusters = findLogicClusters(dependenceGraph)
+    val logicClusters = findLogicClusters(dependenceGraph, nameToInstrMap)
       .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
 
     ctx.logger.debug {
@@ -474,6 +521,7 @@ object CustomLutInsertion
     val bestCones = findOptimalConeCover(
       dependenceGraph,
       logicClusters,
+      nameToInstrMap,
       maxCutSize = ctx.max_custom_instruction_inputs,
       maxNumCones = ctx.max_custom_instructions
     )(ctx)
@@ -510,24 +558,14 @@ object CustomLutInsertion
       constReg.variable.name -> constReg.value.get
     }.toMap
 
-    val nameToInstrMap = proc.body.filter { instr =>
-      isLogicInstr(instr)
-    }.flatMap { instr =>
-      DependenceAnalysis.regDef(instr) match {
-        // We have the guarantee that logic instructions only define 1 output name, so it
-        // is safe to pattern match against Seq(rd).
-        case Seq(rd) => Some(rd -> instr)
-        case Nil => None
-      }
-    }.toMap
-
     val rootToDefFuncMap = bestCones.zipWithIndex.map { case (cone, idx) =>
-      val (customFunc, argToNameMap) = coneToCustomFunction(cone,nameToConstMap, nameToInstrMap)
+      val (customFunc, argToNameMap) = coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
       // Custom functions are wrapped in a named DefFunc as per the IR spec.
       val defFunc = DefFunc(s"custom_func_${idx}", customFunc)
       // We map the root INSTRUCTION (not its regDef-ed name) to the DefFunc so we can later
       // map the instruction in the process body without extra processing.
-      cone.root -> (defFunc, argToNameMap)
+      val rootInstr = nameToInstrMap(cone.root)
+      rootInstr -> (defFunc, argToNameMap)
     }.toMap
 
     ctx.logger.debug {
@@ -566,7 +604,7 @@ object CustomLutInsertion
         case None =>
           // Leave the instruction unchanged.
           instr
-      }
+        }
     }
 
     val newProc = proc.copy(
