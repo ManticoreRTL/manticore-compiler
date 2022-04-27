@@ -19,7 +19,6 @@ import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.compiler.assembly.levels.placed.SendInsertionTransform
 import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
 import manticore.compiler.assembly.levels.placed.RegisterAllocationTransform
-// import manticore.compiler.assembly.levels.placed.PlacedIRPrinter
 import manticore.compiler.assembly.levels.AssemblyPrinter
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
@@ -27,7 +26,6 @@ import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.ExpectIdInsertion
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
 import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElimination
-// import manticore.compiler.assembly.levels.placed.PlacedIrJumpTableConstructionTransform
 
 object ManticorePasses {
 

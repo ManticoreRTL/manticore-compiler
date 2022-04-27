@@ -298,7 +298,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       */
     def referencedNames(
         block: Iterable[Instruction]
-    )(implicit ctx: AssemblyContext): scala.collection.Set[Name] = {
+    )(implicit ctx: AssemblyContext): Set[Name] = {
 
       val namesToKeep = scala.collection.mutable.Set.empty[Name]
 
@@ -319,7 +319,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         }
       }
 
-      namesToKeep
+      namesToKeep.toSet
     }
   }
 

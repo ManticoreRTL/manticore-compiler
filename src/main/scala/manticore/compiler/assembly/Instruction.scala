@@ -176,53 +176,6 @@ trait ManticoreAssemblyIR {
   sealed trait PrivilegedInstruction extends Instruction
   sealed trait SynchronizationInstruction extends Instruction
 
-  // case class BitRange(high: Int, low: Int) {
-  //   require(low <= high, "Invalid bit range")
-  // }
-
-  // /**
-  //   * Extracts a bit slice, equivalent to the following Verilog statement
-  //   * wire [HIGH - LOW: 0] rd;
-  //   * wire [RSLEN - 1 : 0] rs; // RSLEN >= HIGH - LOW + 1
-  //   * assign rd = rs[HIGH - 1 : LOW];
-  //   * @param rd
-  //   * @param rs
-  //   * @param range
-  //   * @param annons
-  //   */
-  // case class Slice(
-  //     rd: Name,
-  //     rs: Name,
-  //     range: BitRange, // (high, low)
-  //     annons: Seq[AssemblyAnnotation] = Seq()
-  // ) extends Instruction {
-  //   override def toString: String =
-  //     s"SLICE ${rd}, ${rs}[${range.high}, ${range.low}]"
-  // }
-
-  // /**
-  //   * Concatenates rs1 and rs2 by replacing the upper bits of rs2 with lower bits
-  //   * of rs1, equivalent to the following Verilog statement
-  //   * wire [RDL - 1 : 0] rd;
-  //   * wire [BITPOS - 1 : 0] rs1;
-  //   * wire [RDL - BITPOS - 1 : 0] rs2;
-  //   * assign rd = {rs2, rs1};
-  //   * @param rd
-  //   * @param rs1
-  //   * @param rs2
-  //   * @param bitpos
-  //   * @param annons
-  //   */
-  // case class Concat(
-  //     rd: Name,
-  //     rs1: Name,
-  //     rs2: Name,
-  //     bitpos: Int,
-  //     annons: Seq[AssemblyAnnotation] = Seq()
-  // ) extends Instruction {
-  //   override def toString: String =
-  //     s"CONCAT ${rd}, ${rs1}, ${rs2}[${bitpos}]"
-  // }
 
   /** A parallel multiplexer
     *

@@ -49,6 +49,8 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
       UIntWide.clipped(this.v ^ that.v, maxW(that))
   }
 
+  // The following functions compare literals to literals, without considering
+  // the width
   def ==(that: UIntWide): Boolean = this.v == that.v
   def ==(that: Int): Boolean = this.v == that
 
@@ -110,11 +112,21 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
     }
   }
 
+  /**
+   * Object [[equals]] and [[hashCode]] are used by collections library to
+   * create [[Set]]s and [[Map]]s.
+   */
   override def equals(other: Any): Boolean = other match {
     case that: UIntWide => that.width == this.width && that.v == this.v
     case _ => false
   }
 
+  /**
+    * Return the hashCode of the UIntWide as the hashCode of the tuple
+    * value and width
+    *
+    * @return
+    */
   override def hashCode(): Int = (this.v, this.width).hashCode()
 
 
