@@ -411,7 +411,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
           s"dce_${ctx.logger.countProgress()}_iter_${iter.index}_post.dot"
         ) {
           createDotDependenceGraph(
-            createDependenceGraph(last.block, defInst, inputOutputPairs)
+            createDependenceGraph(newRes.block, defInst, inputOutputPairs)
           )
         }
         if (newRes.score < last.score) {

@@ -21,6 +21,7 @@ import scala.collection.immutable.NumericRange
 import manticore.compiler.assembly.levels.ValueChangeWriterBase
 import scalax.collection.edge.LDiEdge
 import scalax.collection.Graph
+import manticore.compiler.assembly.levels.InterpreterMonitor
 
 /** Simple interpreter for unconstrained flavored programs with a single process
   * @author
@@ -38,7 +39,7 @@ object UnconstrainedInterpreter
       block: String
   )
 
-  abstract class InterpretationTrap
+  sealed trait InterpretationTrap
 
   case object InterpretationFailure extends InterpretationTrap
   case object InterpretationStop extends InterpretationTrap
@@ -186,10 +187,13 @@ object UnconstrainedInterpreter
     val label_bindings = scala.collection.mutable.Map.empty[Name, Label]
 
   }
-  private final class ProcessInterpreter(val proc: DefProcess)(implicit
-      val ctx: AssemblyContext,
-      val vcd_writer: Option[UnconstrainedValueChangeWriter]
-  ) {
+  final class ProcessInterpreter private[UnconstrainedInterpreter] (
+      val proc: DefProcess,
+      val vcd_writer: Option[UnconstrainedValueChangeWriter],
+      val monitor: Option[UnconstrainedIRInterpreterMonitor]
+  )(implicit
+      val ctx: AssemblyContext
+  ) extends  InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter]{
 
     private def handleMemoryAccess(base: Name, instruction: Instruction)(
         handler: (BlockRam, Option[Int]) => Unit
@@ -220,7 +224,7 @@ object UnconstrainedInterpreter
       r.variable.name -> r
     }.toMap
 
-    val state = new ProcessState(proc)
+    private val state = new ProcessState(proc)
 
     sealed trait ExecutionEdgeLabel
     case class Conditional(l: Label) extends ExecutionEdgeLabel
@@ -253,7 +257,7 @@ object UnconstrainedInterpreter
 
     }
 
-    val exec_graph_root: ExecutionVertex = {
+    private val exec_graph_root: ExecutionVertex = {
       val root = new ExecutionVertex
 
       val last = proc.body.foldLeft(
@@ -403,8 +407,13 @@ object UnconstrainedInterpreter
           BigInt(if (is_less) 1 else 0)
       }
 
-      vcd_writer.foreach { _.update(rd, rd_val) }
-      state.register_file(rd) = rd_val
+      update(rd, rd_val)
+    }
+
+    private def update(rd: Name, v: BigInt): Unit = {
+      vcd_writer.foreach { _.update(rd, v) }
+      monitor.foreach { _.update(rd, v) }
+      state.register_file(rd) = v
     }
 
     private def nextPower2BitMask(x: Int): Int = {
@@ -462,8 +471,8 @@ object UnconstrainedInterpreter
                 case _ =>
                   rd_val
               }
-              vcd_writer.foreach { _.update(rd, rd_val_actual) }
-              state.register_file(rd) = rd_val_actual
+              update(rd, rd_val_actual)
+
             }
         }
       case LocalStore(rs, base, offset, predicate, annons) =>
@@ -597,8 +606,8 @@ object UnconstrainedInterpreter
           ctx.logger.error(s"Select has illegal value ${sel_val}", instruction)
           BigInt(0)
         }
-        vcd_writer.foreach { _.update(rd, rd_val) }
-        state.register_file(rd) = rd_val
+        update(rd, rd_val)
+
       case Nop =>
         // do nothing
         ctx.logger.warn("Nops are unnecessary for interpretation", instruction)
@@ -624,27 +633,23 @@ object UnconstrainedInterpreter
         val rd_carry_val = rs1_val + rs2_val + ci_val
         val rd_val = clipped(rd_carry_val)(ClipWidth(rd_width))
         val co_val = BigInt(if (rd_carry_val.testBit(rd_width)) 1 else 0)
-        vcd_writer.foreach { _.update(rd, rd_val) }
-        state.register_file(rd) = rd_val
-        vcd_writer.foreach { _.update(co, co_val) }
-        state.register_file(co) = co_val
+        update(rd, rd_val)
+        update(co, co_val)
 
       case PadZero(rd, rs, width, annons) =>
         val rs_val = state.register_file(rs)
-        vcd_writer.foreach { _.update(rd, rs_val) }
-        state.register_file(rd) = rs_val
+        update(rd, rs_val)
+
       case Mov(rd, rs, _) =>
         val rs_val = state.register_file(rs)
-        vcd_writer.foreach { _.update(rd, rs_val) }
-        state.register_file(rd) = rs_val
+        update(rd, rs_val)
+
       case SetCarry(rd, _) =>
         val rd_val = BigInt(1)
-        vcd_writer.foreach { _.update(rd, rd_val) }
-        state.register_file(rd) = rd_val
+        update(rd, rd_val)
       case ClearCarry(rd, _) =>
         val rd_val = BigInt(0)
-        vcd_writer.foreach { _.update(rd, rd_val) }
-        state.register_file(rd) = rd_val
+        update(rd, rd_val)
       case ParMux(rd, choices, default, _) =>
         // ensure that only a single condition is true
         val valid_choice = choices.collect {
@@ -658,13 +663,11 @@ object UnconstrainedInterpreter
           )
         } else if (valid_choice.length == 1) {
           val rd_val = valid_choice.head._2
-          vcd_writer.foreach { _.update(rd, rd_val) }
-          state.register_file(rd) = rd_val
+          update(rd, rd_val)
         } else {
           // choose default
           val rd_val = state.register_file(default)
-          vcd_writer.foreach { _.update(rd, rd_val) }
-          state.register_file(rd) = rd_val
+          update(rd, rd_val)
         }
       case JumpTable(target, results, blocks, dslot, _) =>
         ctx.logger.fail(
@@ -701,58 +704,6 @@ object UnconstrainedInterpreter
       case _: Recv =>
         ctx.logger.error("Illegal instruction", instruction)
         state.exception_occurred = Some(InterpretationFailure)
-    }
-
-    def dumpRegisterFile(file_name: String): Unit = {
-      // dump the state of registers
-      ctx.logger.dumpArtifact(file_name) {
-
-        case class RegDump(index: Int, value: BigInt) extends Ordered[RegDump] {
-          override def compare(that: RegDump): Int =
-            Ordering[Int].compare(this.index, that.index)
-        }
-
-        val width_map = scala.collection.mutable.Map.empty[String, Int]
-        val index_map = scala.collection.mutable.Map
-          .empty[String, scala.collection.mutable.PriorityQueue[RegDump]]
-
-        state.register_file.foreach { case (n, v) =>
-          val name_def = definitions(n)
-          val dbginfo = name_def.findAnnotation(DebugSymbol.name)
-
-          // get the debug symbol, if one exits, otherwise get the info
-          // from the DefReg node
-          val (dbg_name: String, dbg_index: Int, dbg_w: Int) =
-            dbginfo match {
-              case Some(dbgsym: DebugSymbol) =>
-                (dbgsym.getSymbol(), dbgsym.getIndex(), dbgsym.getWidth())
-              case _ => (name_def.variable.name, 0, name_def.variable.width)
-            }
-          if (index_map contains dbg_name) {
-            index_map(dbg_name) += RegDump(dbg_index, v)
-            assert(width_map(dbg_name) == dbg_w)
-          } else {
-            index_map += (dbg_name -> scala.collection.mutable
-              .PriorityQueue[RegDump](RegDump(dbg_index, v)))
-            width_map += (dbg_name -> dbg_w)
-          }
-        }
-
-        index_map
-          .map { case (dbg_name, indexed_values) =>
-            val ordered_vals = indexed_values.dequeueAll.toSeq
-            if (dbg_name == "rs_2")
-              println(ordered_vals)
-            val value: BigInt = ordered_vals.foldLeft(BigInt(0)) {
-              case (carry, x) =>
-                (carry << 16) | x.value
-            }
-            s"${dbg_name}[${width_map(dbg_name) - 1} : 0] = ${value}"
-          }
-          .toSeq
-          .sorted
-          .mkString("\n")
-      }
     }
 
     sealed trait StepStatus
@@ -839,6 +790,34 @@ object UnconstrainedInterpreter
     def toBigInt(v: BigInt): BigInt = v
 
   }
+
+  /**
+    * Create an instance of the interpreter to use outside the check
+    *
+    * @param program
+    * @param vcdDump
+    * @param monitor
+    * @param ctx
+    * @return
+    */
+  def instance(
+      program: DefProgram,
+      vcdDump: Option[UnconstrainedValueChangeWriter],
+      monitor: Option[UnconstrainedIRInterpreterMonitor]
+  )(implicit ctx: AssemblyContext): ProcessInterpreter = {
+    require(
+      program.processes.length == 1,
+      "Could only interpret a single process"
+    )
+    new ProcessInterpreter(program.processes.head, vcdDump, monitor)(ctx)
+  }
+
+  /**
+    *
+    *
+    * @param source
+    * @param context
+    */
   override def check(
       source: UnconstrainedIR.DefProgram,
       context: AssemblyContext
@@ -847,13 +826,13 @@ object UnconstrainedInterpreter
     if (source.processes.length != 1) {
       context.logger.error("Can not handle more than one process for now")
     } else {
-      var cycles = 0
+
       val vcd_writer =
         if (context.dump_all)
           Some(new UnconstrainedValueChangeWriter(source, "trace.vcd")(context))
         else None
       val interp =
-        new ProcessInterpreter(source.processes.head)(context, vcd_writer)
+        instance(source, vcd_writer, None)(context)
 
       interp.runCompletion()
 

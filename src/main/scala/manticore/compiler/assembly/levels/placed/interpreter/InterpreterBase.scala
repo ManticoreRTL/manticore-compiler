@@ -9,6 +9,8 @@ import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.ValueChangeWriterBase
+import manticore.compiler.assembly.levels.InterpreterMonitor
+import manticore.compiler.assembly.levels.InterpreterMonitorCompanion
 
 trait InterpreterBase {
   implicit val phase_id: TransformationID
@@ -22,6 +24,11 @@ trait MessageBase {
   val value: UInt16
   val target_register: Name
 }
+
+sealed abstract class InterpretationTrap
+case object FailureTrap extends InterpretationTrap
+case object StopTrap extends InterpretationTrap
+case object InternalTrap extends InterpretationTrap
 
 trait PlacedValueChangeWriter extends ValueChangeWriterBase {
   val flavor = PlacedIR
@@ -40,7 +47,46 @@ object PlacedValueChangeWriter {
 
 }
 
-sealed abstract class InterpretationTrap
-case object FailureTrap extends InterpretationTrap
-case object StopTrap extends InterpretationTrap
-case object InternalTrap extends InterpretationTrap
+final class PlacedIRInterpreterMonitor private (
+    protected final val watchList: Map[
+      String,
+      InterpreterMonitor.ConditionalWatch
+    ],
+    protected final val records: Map[String, InterpreterMonitor.MonitorRecord],
+    protected final val debInfo: Map[
+      PlacedIR.Name,
+      InterpreterMonitor.DebugInfo
+    ]
+) extends InterpreterMonitor {
+  final val flavor = PlacedIR
+  final def toBigInt(v: PlacedIR.Constant): BigInt = BigInt(v.toInt)
+}
+
+object PlacedIRInterpreterMonitor extends InterpreterMonitorCompanion {
+  val flavor = PlacedIR
+  import flavor._
+
+  def toBigInt(v: PlacedIR.Constant): BigInt = BigInt(v.toInt)
+
+  def apply(program: DefProgram)(implicit
+      ctx: AssemblyContext
+  ): PlacedIRInterpreterMonitor =
+    apply(program, Seq(InterpreterMonitor.WatchAll))
+
+  def apply(
+      program: DefProgram,
+      toWatch: Seq[InterpreterMonitor.InterpreterWatch]
+  )(implicit
+      ctx: AssemblyContext
+  ): PlacedIRInterpreterMonitor = {
+    val BuildIngredients(watchList, records, debInfo) =
+      collectIngredients(program, toWatch)
+    new PlacedIRInterpreterMonitor(
+      watchList,
+      records,
+      debInfo
+    )
+  }
+
+}
+
