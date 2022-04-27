@@ -523,3 +523,11 @@ reduces to
 ```
 SEQ x3, x0, c0;
 ```
+### P3
+Implement CSE for AddCarry!
+
+# Memory access bound checking
+Yosys has a pass memory_memx to handle out-of-bound memory accesses according
+to the Verilog standard, either use that or do our own checks....
+
+

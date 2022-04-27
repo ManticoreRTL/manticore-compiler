@@ -12,7 +12,7 @@ module Main(input wire clock);
 
 	// assign ored = $signed(y) | $signed(x);
 
-	localparam NUM_CYCLES = 500;
+	localparam NUM_CYCLES = 1 << 25;
 	localparam RESET_CYCLES = 10;
 	wire resetn;
 	reg [31:0] cycle_counter = 0;
@@ -32,6 +32,8 @@ module Main(input wire clock);
 	reg  [31:0] mem_rdata;
 
 	picorv32 #(
+		.TWO_CYCLE_ALU(1),
+		.TWO_CYCLE_COMPARE(1)
 	) dut (
 		.clk         (clock        ),
 		.resetn      (resetn     ),
@@ -107,12 +109,12 @@ endmodule
 
 
 
-// module loop(input wire clock);
+// module Main(input wire clock);
 
 // 	genvar i;
 
 // 	for (i = 0; i < (48 * 4); i = i + 1) begin
-// 		loop_inner dut(clock);
+// 		Main_inner dut(clock);
 // 	end
 
 // endmodule

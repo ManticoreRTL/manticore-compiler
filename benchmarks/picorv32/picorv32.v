@@ -1205,7 +1205,7 @@ module picorv32 #(
 	reg [regindex_bits-1:0] latched_rd;
 
 	reg [31:0] current_pc;
-	assign next_pc = latched_store && latched_branch ? reg_out & ~1 : reg_next_pc;
+
 
 	reg [3:0] pcpi_timeout_counter;
 	reg pcpi_timeout;
@@ -1285,8 +1285,9 @@ module picorv32 #(
 	end
 
 	reg clear_prefetched_high_word_q;
-	always @(posedge clk) clear_prefetched_high_word_q <= clear_prefetched_high_word;
-
+	always @(posedge clk) begin
+		clear_prefetched_high_word_q <= clear_prefetched_high_word;
+	end
 	always @* begin
 		clear_prefetched_high_word = clear_prefetched_high_word_q;
 		if (!prefetched_high_word)
@@ -1300,6 +1301,8 @@ module picorv32 #(
 	reg [31:0] cpuregs_rs1;
 	reg [31:0] cpuregs_rs2;
 	reg [regindex_bits-1:0] decoded_rs;
+
+	assign next_pc = latched_store && latched_branch ? reg_out & ~1 : reg_next_pc;
 
 	always @* begin
 		cpuregs_write = 0;
