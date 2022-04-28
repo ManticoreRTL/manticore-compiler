@@ -1,13 +1,13 @@
 package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.assembly.levels.AssemblyTransformer
-import manticore.compiler.assembly.levels.CommonSubexpressionElimination
+import manticore.compiler.assembly.levels.CommonSubExpressionElimination
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.ManticoreAssemblyIR
 
-object PlacedIRCommonSubexpressionElimination
+object PlacedIRCommonSubExpressionElimination
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram]
-    with CommonSubexpressionElimination {
+    with CommonSubExpressionElimination {
 
   override val flavor = PlacedIR
   import flavor._

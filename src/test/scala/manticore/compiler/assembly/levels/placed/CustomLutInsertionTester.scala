@@ -34,7 +34,7 @@ class CustomLutInsertionTester extends UnitFixtureTest {
       ManticorePasses.middleend followedBy
       UnconstrainedToPlacedTransform followedBy
       PlacedIRConstantFolding followedBy
-      PlacedIRCommonSubexpressionElimination followedBy
+      PlacedIRCommonSubExpressionElimination followedBy
       ManticorePasses.ExtractParallelism
 
     // val benchmarkName = "swizzle"

@@ -113,7 +113,13 @@ trait RemoveAliases extends Flavored {
                 }
               case Mov(rd, rs, _) if !keep.contains(rd) =>
                 newAliases += rd -> rs
+              case JumpTable(target, results, blocks, dslot, annons) =>
+                blocks.foreach { case JumpCase(lbl, blk) =>
+                  newAliases ++= findBodyAliases(blk, consts)
+                }
+                newAliases ++= findBodyAliases(dslot, consts)
               // Handle aliases in MUX, LOADs, STOREs, ...
+
               case _ =>
             }
 
@@ -288,6 +294,35 @@ trait RemoveAliases extends Flavored {
             ci = replaceName(ci)
           )
         case i @ (_: SetCarry | _: ClearCarry) => i
+        case i @ ParMux(rd, choices, default, _) =>
+          i.copy(
+            choices = choices.map { case ParMuxCase(a, b) =>
+              ParMuxCase(replaceName(a), replaceName(b))
+            },
+            default = replaceName(default)
+          )
+        case i @ Lookup(rd, index, base, _) =>
+          i.copy(
+            index = replaceName(index),
+            base = replaceName(base)
+          )
+        case i @ JumpTable(target, results, blocks, dslot, _) =>
+          i.copy(
+            results = results.map { case Phi(rd, rss) =>
+              Phi(rd, rss.map { case (lbl, rs) => (lbl, replaceName(rs)) })
+            },
+            blocks = blocks.map { case JumpCase(lbl, blk) =>
+              JumpCase(
+                lbl,
+                blk.map(
+                  replaceAliases(_, aliases).asInstanceOf[DataInstruction]
+                )
+              )
+            },
+            dslot = dslot.map {
+              replaceAliases(_, aliases).asInstanceOf[DataInstruction]
+            }
+          )
         case _: Recv => ctx.logger.fail("can not handle RECV")
 
       }).setPos(instr.pos)

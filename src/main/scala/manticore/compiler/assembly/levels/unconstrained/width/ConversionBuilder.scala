@@ -67,7 +67,10 @@ trait ConversionBuilder extends Flavored {
         .copy(
           registers =
             (m_wires.values ++ m_constants.values ++ const_carries ++ m_carries).toSeq.distinct,
-          body = preamble ++ instructions
+          body = preamble ++ instructions,
+          labels = proc.labels.map { lgrp =>
+            lgrp.copy(memory = getConversion(lgrp.memory).parts.head)
+          }
         )
         .setPos(proc.pos)
     }
@@ -90,6 +93,10 @@ trait ConversionBuilder extends Flavored {
       */
     def mkConstant(value: Int): Name = {
       require(value < (1 << 16), "constants should fit in 16 bits")
+      if (value < 0) {
+
+        require(value > 0, "Can not make negative constant!")
+      }
       m_constants
         .getOrElseUpdate(
           value,

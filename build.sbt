@@ -11,7 +11,7 @@ val jvmHeapMemOptions = Seq(
 
 val chiselVersion = "3.5.1"
 
-// lazy val root = (project in file(".")).aggregate(compiler)
+
 lazy val compiler = (project in file(".")).settings(
   name := "manticore-compiler",
   scalacOptions ++= Seq(

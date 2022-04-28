@@ -54,6 +54,11 @@ trait AssemblyTokens {
     override def toString = s"identifier $chars"
   }
 
+  sealed abstract class Formatter(val chars: String) extends Token {
+    override def toString: String = s"formatter $chars"
+  }
+  case object HexFormatter extends Formatter("0x")
+  case object BinFormatter extends Formatter("0b")
 
   /** The class of non-negative numeric literals which can be decimal, binary or hex */
   sealed abstract class NumericLit(chars: String) extends Token {
@@ -75,6 +80,7 @@ trait AssemblyTokens {
   case class AnnotationLiteral(chars: String) extends Token {
     override def toString = s"@${chars.toUpperCase}"
   }
+
 
   def errorToken(msg: String): Token = ErrorToken(msg)
 }

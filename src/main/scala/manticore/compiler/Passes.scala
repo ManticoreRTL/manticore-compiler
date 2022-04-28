@@ -19,14 +19,13 @@ import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.compiler.assembly.levels.placed.SendInsertionTransform
 import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
 import manticore.compiler.assembly.levels.placed.RegisterAllocationTransform
-import manticore.compiler.assembly.levels.placed.PlacedIRPrinter
 import manticore.compiler.assembly.levels.AssemblyPrinter
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.ExpectIdInsertion
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
-import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubexpressionElimination
+import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElimination
 
 object ManticorePasses {
 
@@ -39,7 +38,8 @@ object ManticorePasses {
     UnconstrainedMakeDebugSymbols followedBy
     UnconstrainedOrderInstructions followedBy
     UnconstrainedRemoveAliases followedBy
-    UnconstrainedDeadCodeElimination
+    UnconstrainedDeadCodeElimination followedBy
+    UnconstrainedRenameVariables
 
   val middleend =
     WidthConversion.transformation followedBy
@@ -49,17 +49,16 @@ object ManticorePasses {
   def BackendInterpreter(cond: Boolean = true) =
     AtomicInterpreter.guard(cond)
 
-  val ExtractParallelism =
+  val ExtractParallelism = // do not call DCE in the middle
     ProcessSplittingTransform followedBy
       PlacedIROrderInstructions followedBy
-      PlacedIRDeadCodeElimination followedBy
       ProcessMergingTransform followedBy
       PlacedIROrderInstructions followedBy
-      PlacedIRDeadCodeElimination followedBy
       RoundRobinPlacerTransform
   val BackendLowerEnd =
       LocalMemoryAllocation followedBy
       SendInsertionTransform followedBy
+      PlacedIRDeadCodeElimination followedBy
       ListSchedulerTransform followedBy
       PredicateInsertionTransform followedBy
       GlobalPacketSchedulerTransform followedBy
@@ -69,7 +68,7 @@ object ManticorePasses {
   def backend =
     UnconstrainedToPlacedTransform followedBy
     PlacedIRConstantFolding followedBy
-    PlacedIRCommonSubexpressionElimination followedBy
+    PlacedIRCommonSubExpressionElimination followedBy
     ExtractParallelism followedBy
     BackendLowerEnd
 

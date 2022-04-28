@@ -31,8 +31,7 @@ import scala.util.Success
 import manticore.compiler.assembly.annotations.Trap
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 
-/**
-  * Changes IR flavor to PlacedIR
+/** Changes IR flavor to PlacedIR
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
@@ -326,7 +325,14 @@ object UnconstrainedToPlacedTransform
       T.AddC(rd, co, rs1, rs2, ci, annons)
     case S.SetCarry(rd, annons)   => T.SetCarry(rd, annons)
     case S.ClearCarry(rd, annons) => T.ClearCarry(rd, annons)
-    case S.Nop                    => T.Nop
+    case S.ParMux(rd, choices, default, annons) =>
+      T.ParMux(
+        rd,
+        choices.map { case S.ParMuxCase(c, rs) => T.ParMuxCase(c, rs) },
+        default,
+        annons
+      )
+    case S.Nop => T.Nop
 
   }).setPos(inst.pos)
 

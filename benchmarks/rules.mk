@@ -6,7 +6,7 @@ THREADS = 0
 
 VERILATOR = verilator
 VERILATOR_FLAGS += -cc --exe --build -Os -x-assign 0
-VERILATOR_FLAGS += -Wno-WIDTH --trace
+VERILATOR_FLAGS += -Wno-WIDTH
 VERILATOR_FLAGS += --assert
 
 VERILATOR_FLAGS += --top-module Main

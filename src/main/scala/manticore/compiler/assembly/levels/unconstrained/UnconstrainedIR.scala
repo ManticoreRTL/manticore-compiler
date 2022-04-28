@@ -41,4 +41,6 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
   type Name = String
   type ProcessId = String
   type ExceptionId = String
+
+  type Label = String
 }

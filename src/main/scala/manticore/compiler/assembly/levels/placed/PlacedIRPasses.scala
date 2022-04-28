@@ -5,6 +5,7 @@ import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.OrderInstructions
 import manticore.compiler.assembly.levels.CloseSequentialCycles
+import manticore.compiler.assembly.ManticoreAssemblyIR
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
@@ -15,7 +16,9 @@ object PlacedIRDeadCodeElimination
   override def transform(
       source: DefProgram,
       context: AssemblyContext
-  ): DefProgram = do_transform(source, context)
+  ): DefProgram = source
+    .copy(processes = source.processes.map { doDce(_)(context) })
+    .setPos(source.pos)
 }
 
 object PlacedIROrderInstructions

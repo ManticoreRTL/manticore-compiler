@@ -6,137 +6,167 @@ import manticore.compiler.assembly.BinaryOperator
 import scala.collection.immutable.ListMap
 import manticore.compiler.assembly
 
-
-
-
 case class ProcessStatistic(
     name: String,
     instructions: Seq[(String, Int)],
     length: Int,
-    registers: Seq[(String, Int)]
+    registers: Seq[(String, Int)],
+    vcycle: Int = 0
 )
 
+trait CanCollectProgramStatistics extends Flavored {
 
+  object ProgramStatistics {
+    import flavor._
 
-trait ProgramStatCounter extends Flavored {
+    case class InstructionStat(
+        count: Seq[(String, Int)],
+        vcycle: Int
+    )
+    import flavor._
+    def mkInstStats(
+        proc: DefProcess
+    )(implicit ctx: AssemblyContext): InstructionStat = {
 
-  import flavor._
-  private def mkInstStats(
-      proc: DefProcess
-  )(implicit ctx: AssemblyContext): Seq[(String, Int)] = {
-
-    var inst_count: ListMap[String, Int] = ListMap[String, Int](
-      "CUST" -> 0,
-      "LLD" -> 0,
-      "LST" -> 0,
-      "GLD" -> 0,
-      "GST" -> 0,
-      "SET" -> 0,
-      "SEND" -> 0,
-      "RECV" -> 0,
-      "EXPECT" -> 0,
-      "MUX" -> 0,
-      "NOP" -> 0,
-      "ADDCARRY" -> 0,
-      "CLEARCARRY" -> 0,
-      "SETCARRY" -> 0,
-      "PADZERO" -> 0,
-      "MOV" -> 0,
-      "PREDICATE" -> 0
-    ) ++ Seq
-      .tabulate(BinaryOperator.maxId) { i => BinaryOperator(i) }
-      .filter { k =>
-        k != BinaryOperator.MUX && k != BinaryOperator.ADDC // do not double
-      // count these two operators
-      }
-      .map { k => (k.toString() -> 0) }
-
-    def incr(name: String): Unit = {
-      inst_count = inst_count.updated(name, inst_count(name) + 1)
-    }
-
-    import BinaryOperator._
-    proc.body.foreach {
-      case _: CustomInstruction => incr("CUST")
-      case BinaryArithmetic(op, _, _, _, _) =>
-        op match {
-          case ADD  => incr("ADD")
-          case SUB  => incr("SUB")
-          case MUL  => incr("MUL")
-          case AND  => incr("AND")
-          case OR   => incr("OR")
-          case XOR  => incr("XOR")
-          case SLL  => incr("SLL")
-          case SRL  => incr("SRL")
-          case SRA  => incr("SRA")
-          case SEQ  => incr("SEQ")
-          case SLTS => incr("SLTS")
-          case _    => ctx.logger.error(s"invalid operator ${op}!")
+      var inst_count: ListMap[String, Int] = ListMap[String, Int](
+        "CUST" -> 0,
+        "LLD" -> 0,
+        "LST" -> 0,
+        "GLD" -> 0,
+        "GST" -> 0,
+        "SET" -> 0,
+        "SEND" -> 0,
+        "RECV" -> 0,
+        "EXPECT" -> 0,
+        "MUX" -> 0,
+        "NOP" -> 0,
+        "ADDCARRY" -> 0,
+        "CLEARCARRY" -> 0,
+        "SETCARRY" -> 0,
+        "PADZERO" -> 0,
+        "MOV" -> 0,
+        "PREDICATE" -> 0,
+        "PARMUX" -> 0,
+        "LOOKUP" -> 0,
+        "SWITCH" -> 0
+      ) ++ Seq
+        .tabulate(BinaryOperator.maxId) { i => BinaryOperator(i) }
+        .filter { k =>
+          k != BinaryOperator.MUX && k != BinaryOperator.ADDC // do not double
+        // count these two operators
         }
-      case _: GlobalLoad  => incr("GLD")
-      case _: GlobalStore => incr("GST")
-      case _: LocalLoad   => incr("LLD")
-      case _: LocalStore  => incr("LST")
-      case _: Expect      => incr("EXPECT")
-      case _: Predicate   => incr("PREDICATE")
-      case _: AddC        => incr("ADDCARRY")
-      case _: ClearCarry  => incr("CLEARCARRY")
-      case _: SetCarry    => incr("SETCARRY")
-      case _: Mov         => incr("MOV")
-      case _: PadZero     => incr("PADZERO")
-      case _: Mux         => incr("MUX")
-      case _: Send        => incr("SEND")
-      case _: Recv        => incr("RECV")
-      case _: SetValue    => incr("SET")
-      case Nop            => incr("NOP")
+        .map { k => (k.toString() -> 0) }
+
+      def incr(name: String): Int = {
+        inst_count = inst_count.updated(name, inst_count(name) + 1)
+        1
+      }
+      var vcycle = 0
+
+      import BinaryOperator._
+      def count(inst: Instruction): Int = inst match {
+        case _: CustomInstruction => incr("CUST")
+        case BinaryArithmetic(op, _, _, _, _) =>
+          op match {
+            case ADD  => incr("ADD")
+            case SUB  => incr("SUB")
+            case MUL  => incr("MUL")
+            case AND  => incr("AND")
+            case OR   => incr("OR")
+            case XOR  => incr("XOR")
+            case SLL  => incr("SLL")
+            case SRL  => incr("SRL")
+            case SRA  => incr("SRA")
+            case SEQ  => incr("SEQ")
+            case SLTS => incr("SLTS")
+            case _ =>
+              ctx.logger.error(s"invalid operator ${op}!")
+              0
+          }
+        case _: GlobalLoad  => incr("GLD")
+        case _: GlobalStore => incr("GST")
+        case _: LocalLoad   => incr("LLD")
+        case _: LocalStore  => incr("LST")
+        case _: Expect      => incr("EXPECT")
+        case _: Predicate   => incr("PREDICATE")
+        case _: AddC        => incr("ADDCARRY")
+        case _: ClearCarry  => incr("CLEARCARRY")
+        case _: SetCarry    => incr("SETCARRY")
+        case _: Mov         => incr("MOV")
+        case _: PadZero     => incr("PADZERO")
+        case _: Mux         => incr("MUX")
+        case _: Send        => incr("SEND")
+        case _: Recv        => incr("RECV")
+        case _: SetValue    => incr("SET")
+        case _: ParMux      => incr("PARMUX")
+        case _: Lookup      => incr("LOOKUP")
+        case JumpTable(_, _, blocks, dslot, _) =>
+          var numInsts = 0
+          // numInsts += incr("SWITCH")
+          val blockInsts = blocks.map { case JumpCase(_, blk) =>
+            blk.map { count }.sum
+          }
+          numInsts += blockInsts.sum
+          vcycle += 1 + blockInsts.max
+          val dslotInsts = dslot.foldLeft(0) { case (acc, inst) =>
+            acc + count(inst)
+          }
+          vcycle += dslotInsts
+          numInsts + dslotInsts
+        case Nop => incr("NOP")
+      }
+
+      vcycle += proc.body.length
+      proc.body.foreach { count }
+
+      InstructionStat(inst_count.toSeq, vcycle)
     }
-    inst_count.toSeq
-  }
 
-  protected def mkRegStats(
-      proc: DefProcess
-  )(implicit ctx: AssemblyContext): Seq[(String, Int)] = {
+    def mkRegStats(
+        proc: DefProcess
+    )(implicit ctx: AssemblyContext): Seq[(String, Int)] = {
 
-    var counts = ListMap[VariableType, Int](
-      ConstType -> 0,
-      WireType -> 0,
-      InputType -> 0,
-      OutputType -> 0,
-      MemoryType -> 0,
-      CarryType -> 0,
-      RegType -> 0
-    )
+      var counts = ListMap[VariableType, Int](
+        ConstType -> 0,
+        WireType -> 0,
+        InputType -> 0,
+        OutputType -> 0,
+        MemoryType -> 0,
+        CarryType -> 0,
+        RegType -> 0
+      )
 
-    proc.registers.foreach { r =>
-      counts =
-        counts.updated(r.variable.varType, counts(r.variable.varType) + 1)
+      proc.registers.foreach { r =>
+        counts =
+          counts.updated(r.variable.varType, counts(r.variable.varType) + 1)
+      }
+
+      counts.map { case (k, v) => k.typeName.tail -> v }.toSeq
     }
 
-    counts.map { case (k, v) => k.typeName.tail -> v }.toSeq
+    def mkProcessStats(
+        proc: DefProcess
+    )(implicit ctx: AssemblyContext): ProcessStatistic = {
+      val instStat = mkInstStats(proc)
+      ProcessStatistic(
+        name = proc.id.toString(),
+        length = proc.body.length,
+        instructions = instStat.count,
+        registers = mkRegStats(proc),
+        vcycle = instStat.vcycle
+      )
+    }
+
+    def mkProgramStats(
+        prog: DefProgram
+    )(implicit ctx: AssemblyContext): Seq[ProcessStatistic] =
+      prog.processes.map(mkProcessStats)
   }
-
-  protected def mkProcessStats(
-      proc: DefProcess
-  )(implicit ctx: AssemblyContext): ProcessStatistic = {
-    ProcessStatistic(
-      name = proc.id.toString(),
-      length = proc.body.length,
-      instructions = mkInstStats(proc),
-      registers = mkRegStats(proc)
-    )
-  }
-
-  protected def mkProgramStats(
-      prog: DefProgram
-  )(implicit ctx: AssemblyContext): Seq[ProcessStatistic] =
-    prog.processes.map(mkProcessStats)
-
 }
 
 trait StatisticCollector {
 
-  /**
-    * Helper function used to run a timed sequence of code
+  /** Helper function used to run a timed sequence of code
     *
     * @param action
     * @return
@@ -149,31 +179,33 @@ trait StatisticCollector {
     (result, elapsed_ms)
   }
 
-  /**
-    * Create a dynamic scope for stat collection. Used by the transformation
-    * class which sets the scope so that passes implemented using AssemblyTransformer
-    * can correctly record statistics
+  /** Create a dynamic scope for stat collection. Used by the transformation
+    * class which sets the scope so that passes implemented using
+    * AssemblyTransformer can correctly record statistics
     * @param func
     * @param id
     * @return
     */
 
-  def scope[R](transformationClosure: => R)(implicit id: TransformationID): (R, Double)
+  def scope[R](transformationClosure: => R)(implicit
+      id: TransformationID
+  ): (R, Double)
 
-  /**
-    * Record the runtime of a a labeled event. This is useful if you wish to
+  /** Record the runtime of a a labeled event. This is useful if you wish to
     * include some custom runtime information in the statistics
     *
-    * @param label name of the action
-    * @param milliseconds runtime in milliseconds, you can use the [[timed]]
-    * method to get the time
+    * @param label
+    *   name of the action
+    * @param milliseconds
+    *   runtime in milliseconds, you can use the [[timed]] method to get the
+    *   time
     */
   def recordRunTime(label: String, milliseconds: Double): Unit
 
-  /**
-    * Run an action and record its runtime
+  /** Run an action and record its runtime
     *
-    * @param label name of the action
+    * @param label
+    *   name of the action
     * @param action
     * @return
     */
@@ -183,15 +215,13 @@ trait StatisticCollector {
     r
   }
 
-  /**
-    * Record program statistics
+  /** Record program statistics
     *
     * @param prog
     */
   def record(prog: Seq[ProcessStatistic]): Unit
 
-  /**
-    * Record a key-value pair. The accepted type of value depends on the
+  /** Record a key-value pair. The accepted type of value depends on the
     * implementation of this trait
     * @param name
     * @param value
@@ -199,8 +229,7 @@ trait StatisticCollector {
   def record(name: String, value: Any): Unit
   def record(nv: (String, Any)): Unit = record(nv._1, nv._2)
 
-  /**
-    * Record a key value pair conditionally
+  /** Record a key value pair conditionally
     *
     * @param cond
     * @param name
@@ -209,8 +238,7 @@ trait StatisticCollector {
   def recordWhen(cond: Boolean)(name: String, value: => Any): Unit =
     if (cond) record(name, value)
 
-  /**
-    * Serialize the statistics as a YAML
+  /** Serialize the statistics as a YAML
     *
     * @return
     */
@@ -223,9 +251,7 @@ object StatisticCollector {
 
   def apply(): StatisticCollector = new StatisticCollectorImpl()
 
-  /**
-    * Basic implementation for a statistic collector
-    *
+  /** Basic implementation for a statistic collector
     */
   class StatisticCollectorImpl extends StatisticCollector {
 
@@ -270,8 +296,9 @@ object StatisticCollector {
 
     private val transStatBuilder =
       scala.collection.mutable.ArrayBuffer.empty[TransformationStatBuilder]
-    private var currentTrans = TransformationStatBuilder(id = "<INV>", runtime = 0.0)
-
+    private var currentTrans =
+      TransformationStatBuilder(id = "<INV>", runtime = 0.0)
+    private var open = false
     override def recordRunTime(
         label: String,
         milliseconds: Double
@@ -284,11 +311,11 @@ object StatisticCollector {
     }
 
     override def record(prog: Seq[ProcessStatistic]): Unit = {
-      val slowest = prog.maxBy { p => p.length }
+      val slowest = prog.maxBy { p => p.vcycle }
       currentTrans = currentTrans.copy(
         nProcesses = Some(prog.length),
         program = prog,
-        vcycle = Some(slowest.length),
+        vcycle = Some(slowest.vcycle),
         slowest = Some(slowest.name)
       )
     }
@@ -306,9 +333,12 @@ object StatisticCollector {
     override def scope[R](
         func: => R
     )(implicit id: TransformationID): (R, Double) = {
+      require(!open, "Can not have nested scopes yet!")
       currentTrans = TransformationStatBuilder(id = id.toString(), runtime = 0)
+      open = true
       val (res, runtime) = timed(func)
       transStatBuilder += currentTrans.copy(runtime = runtime)
+      open = false
       (res, runtime)
     }
 
@@ -319,7 +349,6 @@ object StatisticCollector {
       tabs(0) { s"transformations: " }
 
       transStatBuilder.foreach { stat =>
-
         tabs(1) {
           s"- ${stat.id}:"
         }
@@ -343,6 +372,7 @@ object StatisticCollector {
           stat.program.foreach { p =>
             tabs(3) { s"- ${p.name}: " }
             tabs(4) { s"length: ${p.length}" }
+            tabs(4) { s"vcycle: ${p.vcycle}" }
             tabs(4) { s"instructions:" }
             p.instructions.foreach { case (k, v) => tabs(5) { s"${k}: ${v} " } }
             tabs(4) { s"registers:" }

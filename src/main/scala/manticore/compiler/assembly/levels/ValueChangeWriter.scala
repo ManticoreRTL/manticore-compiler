@@ -44,16 +44,7 @@ abstract class ValueChangeWriterBase extends ValueChangeWriter {
       case _ => false
     }
   }
-  private val sym_groups = {
-    val groups = program.processes.flatMap { _.registers }.collect {
-      case r: DefReg if hasUserDebugSymbol(r) => r
-    } groupBy { r => getDebugSymbol(r).get.getSymbol() } map {
-      case (sym, regs) =>
-        sym -> regs.sortBy { r =>
-          getDebugSymbol(r).get.getIndex().getOrElse(0)
-        }
-    }
-  }
+
   trait ChangeRecord {
 
     def write(value: BigInt, index: Int): Boolean
@@ -64,7 +55,7 @@ abstract class ValueChangeWriterBase extends ValueChangeWriter {
   }
   object ChangeRecord {
 
-    private class Impl(
+    private final class Impl(
         private val content: Array[BigInt],
         private var updated: Boolean,
         private val part_width: Array[Int],

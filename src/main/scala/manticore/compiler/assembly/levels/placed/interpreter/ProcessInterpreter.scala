@@ -239,6 +239,17 @@ trait ProcessInterpreter extends InterpreterBase {
         case None    => // do nothing
       }
 
+    case ParMux(rd, choices, default, annons) =>
+      val valid_choices = choices.collect { case ParMuxCase(cond, rs) if read(cond) == UInt16(1) => cond -> read(rs) }
+      if (valid_choices.length > 1) {
+        ctx.logger.error(s"Multiple valid choices ${valid_choices.map(_._1).mkString(" and ") }", instruction)
+      } else if (valid_choices.length == 1) {
+        val rd_val = valid_choices.head._2
+        write(rd, rd_val)
+      } else {
+        val rd_val = read(default)
+        write(rd, rd_val)
+      }
     case Nop => // nothing
 
     case _: GlobalStore | _: GlobalLoad | _: SetValue =>

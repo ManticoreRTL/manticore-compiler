@@ -30,10 +30,10 @@ int main(int argc, char **argv, char **env) {
     printf("TIMEOUT not specified!\n");
     std::exit(-1);
   }
-  Verilated::traceEverOn(true);
-  VerilatedVcdC *tfp = new VerilatedVcdC;
-  top->trace(tfp, 99); // Trace 99 levels of hierarchy
-  tfp->open("trace.vcd");
+  // Verilated::traceEverOn(true);
+  // VerilatedVcdC *tfp = new VerilatedVcdC;
+  // top->trace(tfp, 99); // Trace 99 levels of hierarchy
+  // tfp->open("trace.vcd");
 
   unsigned int time_out = std::stoi(argv[1]) << 1;
   printf("Timeout cycles = %u\n", time_out >> 1);
@@ -45,7 +45,7 @@ int main(int argc, char **argv, char **env) {
     time ++;
     top->clock = !top->clock;
     top->eval();
-    tfp->dump(time);
+    // tfp->dump(time);
 
 
   }
@@ -55,7 +55,7 @@ int main(int argc, char **argv, char **env) {
   printf("Finished after %d cycles in %.3f seconds\n", time >> 1, static_cast<float>(duration.count()) / 1000.);
   // Final model cleanup
   top->final();
-  tfp->close();
+  // tfp->close();
 
   return 0;
 }

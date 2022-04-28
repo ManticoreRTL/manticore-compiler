@@ -19,13 +19,13 @@ import manticore.compiler.assembly.annotations.Memblock
 import scala.util.Success
 import scala.util.Failure
 import manticore.compiler.assembly.levels.CloseSequentialCycles
-import manticore.compiler.assembly.levels.InputOutputPairs
+import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
 
 /** Generic dependence graph builder, to use it, mix this trait with your
   * transformation
   * @param flavor
   */
-trait DependenceGraphBuilder extends InputOutputPairs {
+trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
 
   val flavor: ManticoreAssemblyIR
   object DependenceAnalysis {
@@ -82,7 +82,31 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case Recv(rd, rs, source_id, annons) =>
           // purely synthetic instruction, should be regarded as NOP
           Seq.empty
-
+        case ParMux(rd, choices, default, annons) =>
+          choices.flatMap { case ParMuxCase(cond, ch) =>
+            Seq(cond, ch)
+          } :+ default
+        case Lookup(rd, index, base, annons) =>
+          Seq(base, index)
+        case JumpTable(target, phis, blocks, dslot, _) =>
+          assert(dslot.isEmpty, "dslot should only be used after scheduling!")
+          val defs = blocks.flatMap { case JumpCase(_, blk) =>
+            blk.flatMap(regDef)
+          } ++ dslot.flatMap { regDef }
+          val allUses =
+            target +:
+              (blocks.flatMap { case JumpCase(_, body) =>
+                body.flatMap(regUses)
+              } ++
+                phis.flatMap { case Phi(_, rss) => rss.map(_._2) })
+          // a use in a JumpTable is considered a value that is defined outside
+          // of the JumpTable blocks but used inside, so we need to find all
+          // possible uses, including ones defined internally and then subtract
+          // all the definitions in the internal blocks.
+          // We include the values used in the Phis nodes in the allUses because
+          // a Phi node can directly use an externally defined value (e.g., if
+          // a case block is empty).
+          (allUses.toSet -- defs.toSet).toSeq
       }
     }
 
@@ -115,7 +139,11 @@ trait DependenceGraphBuilder extends InputOutputPairs {
         case ClearCarry(rd, _)                  => Seq(rd)
         case SetCarry(rd, _)                    => Seq(rd)
         case _: Recv                            => Nil
-
+        case ParMux(rd, _, _, _)                => Seq(rd)
+        case JumpTable(_, results, _, dslot, _)     =>
+          assert(dslot.isEmpty, "dslot should only be used after scheduling!")
+          results.map(_.rd)
+        case Lookup(rd, _, _, _)                => Seq(rd)
       }
     }
 
@@ -258,6 +286,39 @@ trait DependenceGraphBuilder extends InputOutputPairs {
 
       Map.empty[Name, Set[DefReg]]
 
+    }
+
+    /** Collect all the referenced name in the given block of instructions (use
+      * or def)
+      *
+      * @param block
+      * @param ctx
+      * @return
+      */
+    def referencedNames(
+        block: Iterable[Instruction]
+    )(implicit ctx: AssemblyContext): Set[Name] = {
+
+      val namesToKeep = scala.collection.mutable.Set.empty[Name]
+
+      block.foreach { inst =>
+        namesToKeep ++= regDef(inst)
+        namesToKeep ++= regUses(inst)
+        inst match {
+          // handle jump tables differently, note that redDef on JumpTable
+          // only returns the value defined by Phi and no the ones inside since
+          // any value defined inside, unless used in the Phi operands should not
+          // reach outside
+          case JumpTable(target, results, blocks, dslot, annons) =>
+            blocks.foreach { case JumpCase(_, blk) =>
+              blk.foreach { i => namesToKeep ++= regDef(i) }
+            }
+            dslot.foreach { i => namesToKeep ++= regDef(i) }
+          case _ =>
+        }
+      }
+
+      namesToKeep.toSet
     }
   }
 

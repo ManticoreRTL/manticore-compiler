@@ -19,16 +19,41 @@ import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.CloseSequentialCycles
 import manticore.compiler.assembly.levels.BreakSequentialCycles
 import manticore.compiler.assembly.levels.CarryType
-
+import manticore.compiler.assembly.levels.JumpTableConstruction
+import manticore.compiler.assembly.levels.ParMuxDeconstruction
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
     with AssemblyChecker[UnconstrainedIR.DefProgram] {
   val flavor = UnconstrainedIR
+  import flavor._
   override def check(
-      source: UnconstrainedIR.DefProgram,
+      program: DefProgram,
       context: AssemblyContext
-  ): Unit = do_check(source, context)
+  ): Unit = {
+
+    program.processes.foreach { case process =>
+      NameCheck.checkNames(process) { case (name, inst) =>
+        context.logger.error(s"name ${name} is not defined!", inst)
+      }
+      NameCheck.checkLabels(process) { case (label, inst) =>
+        context.logger.error(s"label ${label} is not defined!", inst)
+      }
+      NameCheck.checkSSA(process) { case NameCheck.NonSSA(rd, assigns) =>
+        context.logger.error(
+          s"${rd} is assigned ${assigns.length} times:\n${assigns.mkString("\n")}"
+        )
+      }
+
+    }
+    NameCheck.checkSends(program)(
+      badDest = inst => context.logger.error("invalid destination", inst),
+      selfDest = inst => context.logger.error("self SEND is not allowed", inst),
+      badRegister =
+        inst => context.logger.error("Bad destination register", inst)
+    )
+
+  }
 
 }
 
@@ -93,44 +118,123 @@ object UnconstrainedDeadCodeElimination
   override def transform(
       source: DefProgram,
       context: AssemblyContext
-  ): DefProgram = do_transform(source, context)
+  ): DefProgram = {
+    source
+      .copy(processes = source.processes.map { doDce(_)(context) })
+      .setPos(source.pos)
+  }
 }
 
-
 object UnconstrainedCloseSequentialCycles
-      extends CloseSequentialCycles
-      with AssemblyTransformer[
-        UnconstrainedIR.DefProgram,
-        UnconstrainedIR.DefProgram
-      ] {
+    extends CloseSequentialCycles
+    with AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
 
-    val flavor = UnconstrainedIR
+  val flavor = UnconstrainedIR
 
-    import flavor._
+  import flavor._
 
-    override def transform(
-        source: DefProgram,
-        context: AssemblyContext
-    ): DefProgram = do_transform(source)(context)
+  override def transform(
+      source: DefProgram,
+      context: AssemblyContext
+  ): DefProgram = do_transform(source)(context)
+
+}
+
+object UnconstrainedBreakSequentialCycles
+    extends BreakSequentialCycles
+    with AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
+
+  val flavor = UnconstrainedIR
+
+  import flavor._
+
+  override def transform(
+      source: DefProgram,
+      context: AssemblyContext
+  ): DefProgram = do_transform(source)(context)
+
+}
+
+object UnconstrainedPrinter
+    extends AssemblyPrinter[UnconstrainedIR.DefProgram] {}
+
+object UnconstrainedJumpTableConstruction
+    extends JumpTableConstruction
+    with AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
+
+  val flavor = UnconstrainedIR
+
+  import flavor._
+
+  override def uniqueLabel(ctx: AssemblyContext): Label =
+    s"L${ctx.uniqueNumber()}"
+
+  override def mkMemory(width: Int)(implicit ctx: AssemblyContext) = DefReg(
+    LogicVariable(
+      s"%m${ctx.uniqueNumber()}",
+      width,
+      MemoryType
+    ),
+    None
+  )
+
+  override def mkWire(width: Int)(implicit ctx: AssemblyContext) = DefReg(
+    LogicVariable(
+      s"%w${ctx.uniqueNumber()}",
+      width,
+      WireType
+    )
+  )
+
+  override def indexSequence(to: Int) = Seq.tabulate(to) { i => BigInt(i) }
+
+  override val Zero = BigInt(0)
+
+  override def mkConstant(width: Int, value: Constant)(implicit
+      ctx: AssemblyContext
+  ) = DefReg(
+    LogicVariable(s"%c${ctx.uniqueNumber()}", width, ConstType),
+    Some(value)
+  )
+  override def transform(
+      source: DefProgram,
+      context: AssemblyContext
+  ): DefProgram = do_transform(source)(context)
+
+}
+
+object UnconstrainedIRParMuxDeconstructionTransform
+    extends ParMuxDeconstruction
+    with AssemblyTransformer[
+      UnconstrainedIR.DefProgram,
+      UnconstrainedIR.DefProgram
+    ] {
+  val flavor = UnconstrainedIR
+  import flavor._
+
+  def mkWire(orig: DefReg)(implicit ctx: AssemblyContext): DefReg =
+    orig.copy(
+      variable = orig.variable.withName(s"%w${ctx.uniqueNumber()}")
+    )
+
+  override def transform(
+      program: DefProgram,
+      context: AssemblyContext
+  ): DefProgram = {
+
+    program.copy(processes = program.processes.map { proc =>
+      do_transform(proc)(context)
+    })
 
   }
 
-   object UnconstrainedBreakSequentialCycles
-      extends BreakSequentialCycles
-      with AssemblyTransformer[
-        UnconstrainedIR.DefProgram,
-        UnconstrainedIR.DefProgram
-      ] {
-
-    val flavor = UnconstrainedIR
-
-    import flavor._
-
-    override def transform(
-        source: DefProgram,
-        context: AssemblyContext
-    ): DefProgram = do_transform(source)(context)
-
-  }
-
-  object UnconstrainedPrinter extends AssemblyPrinter[UnconstrainedIR.DefProgram] {}
+}

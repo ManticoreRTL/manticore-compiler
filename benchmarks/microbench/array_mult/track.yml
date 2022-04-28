@@ -1,0 +1,6 @@
+wires:
+  - Main/dut/X
+  - Main/dut/Y
+  - Main/dut/P
+  - Main/dut/start
+  - Main/dut/done

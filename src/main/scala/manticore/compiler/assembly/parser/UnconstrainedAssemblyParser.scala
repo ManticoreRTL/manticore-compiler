@@ -25,6 +25,7 @@ import manticore.compiler.assembly.annotations.IntValue
 import manticore.compiler.assembly.annotations.StringValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.levels.HasTransformationID
+import manticore.compiler.assembly.annotations.Reg
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -39,10 +40,10 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
       | identChar ~ rep(identChar | digit | '.') ^^ { case first ~ rest =>
         processIdent(first :: rest mkString "")
       }
-      | '0' ~ 'x' ~ digit ~ rep(digit) ^^ { case '0' ~ 'x' ~ first ~ rest =>
+      | '0' ~ 'x' ~ digit ~ rep(digit) ^^ { case _ ~ _ ~ first ~ rest =>
         HexLiteral(first :: rest mkString "")
       }
-      | '0' ~ 'b' ~ digit ~ rep(digit) ^^ { case '0' ~ 'b' ~ first ~ rest =>
+      | '0' ~ 'b' ~ digit ~ rep(digit) ^^ { case _ ~ _ ~ first ~ rest =>
         BinLiteral(first :: rest mkString "")
       }
       | digit ~ rep(digit) ^^ { case first ~ rest =>
@@ -160,7 +161,8 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     "PREDICATE",
     "NOP",
     "PADZERO",
-    "MOV"
+    "MOV",
+    "PARMUX"
   )
   lexical.reserved ++= Seq("LD", "ST") //short hand for LLD and LST
   // defs
@@ -170,7 +172,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   // register parameters
   // lexical.reserved += ("$INIT", "$TYPE", "$WIDTH", "$SLICE")
-  lexical.delimiters ++= Seq(",", "[", "]", ";", ":", "(", ")", "=")
+  lexical.delimiters ++= Seq(",", "[", "]", ";", ":", "(", ")", "=", "?")
 
   // def annotLiteral: Parser[String] =
   //   elem("annontation", _.isInstanceOf[AnnotationLiteral]) ^^ {
@@ -205,21 +207,78 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def annotations: Parser[Seq[AssemblyAnnotation]] = rep(single_annon)
 
-  def def_reg: Parser[DefReg] =
-    (annotations ~ (RegTypes
-      .map(keyword(_))
-      .reduce(_ | _)) ~ ident ~ const_value ~
-      opt(const_value) <~ opt(";")) ^^ { case (a ~ t ~ name ~ s ~ v) =>
-      val tt = t.chars match {
-        case (".wire")   => WireType
-        case (".reg")    => RegType
-        case (".input")  => InputType
-        case (".output") => OutputType
-        case (".mem")    => MemoryType
-        case (".const")  => ConstType
-      }
-      DefReg(LogicVariable(name.chars, s.toInt, tt), v, a)
+  def def_const: Parser[DefReg] =
+    (annotations ~ keyword(".const") ~ ident ~ const_value ~ const_value <~ opt(
+      ";"
+    )) ^^ { case a ~ _ ~ name ~ w ~ v =>
+      DefReg(LogicVariable(name.chars, w.toInt, ConstType), Some(v), a)
     }
+  def def_wire: Parser[DefReg] =
+    (annotations ~ keyword(".wire") ~ ident ~ const_value ~ opt(
+      const_value
+    ) <~ opt(";")) ^^ { case a ~ _ ~ name ~ w ~ v =>
+      DefReg(LogicVariable(name.chars, w.toInt, WireType), v, a)
+    }
+  def def_input: Parser[DefReg] =
+    (annotations ~ keyword(".input") ~ ident ~ const_value ~ opt(
+      const_value
+    ) <~ opt(";")) ^^ { case a ~ _ ~ name ~ w ~ v =>
+      DefReg(LogicVariable(name.chars, w.toInt, InputType), v, a)
+    }
+  def def_output: Parser[DefReg] =
+    (annotations ~ keyword(".output") ~ ident ~ const_value <~ opt(";")) ^^ {
+      case a ~ _ ~ name ~ w =>
+        DefReg(LogicVariable(name.chars, w.toInt, OutputType), None, a)
+    }
+  def def_mem: Parser[DefReg] =
+    (annotations ~ keyword(".mem") ~ ident ~ const_value <~ opt(";")) ^^ {
+      case a ~ _ ~ name ~ w =>
+        DefReg(LogicVariable(name.chars, w.toInt, MemoryType), None, a)
+    }
+
+  def def_pair_input: Parser[(Token, Option[Constant])] =
+    (keyword(".input") ~ positioned(ident) ~ opt(const_value)) ^^ {
+      case _ ~ name ~ default_value => (name, default_value)
+    }
+  def def_pair_output: Parser[Token] =
+    (keyword(".output") ~ positioned(ident)) ^^ { case _ ~ name =>
+      name
+    }
+
+  def def_pair: Parser[Seq[DefReg]] =
+    (annotations ~ keyword(
+      ".reg"
+    ) ~ ident ~ const_value ~ def_pair_input ~ def_pair_output) ^^ {
+      case a ~ _ ~ nameId ~ width ~ inp ~ outp =>
+        Seq(
+          DefReg(
+            LogicVariable(inp._1.chars, width.toInt, InputType),
+            inp._2,
+            Reg(
+              Map(
+                AssemblyAnnotationFields.Id.name -> StringValue(nameId.chars),
+                AssemblyAnnotationFields.Type.name -> Reg.Current
+              )
+            ) +: a
+          ).setPos(inp._1.pos),
+          DefReg(
+            LogicVariable(outp.chars, width.toInt, OutputType),
+            None,
+            Seq(
+              Reg(
+                Map(
+                  AssemblyAnnotationFields.Id.name -> StringValue(nameId.chars),
+                  AssemblyAnnotationFields.Type.name -> Reg.Next
+                )
+              )
+            )
+          ).setPos(outp.pos)
+        )
+    }
+  def def_reg: Parser[Seq[DefReg]] =
+    (positioned(def_const | def_wire | def_input | def_output | def_mem) ^^ {
+      case d => Seq(d)
+    }) | def_pair
 
   def func_single_value: Parser[Seq[BigInt]] = const_value ^^ { x => Seq(x) }
   def func_list_value: Parser[Seq[BigInt]] =
@@ -258,51 +317,45 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       "GST"
     ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]" ~ opt(
       "," ~> ident
-    )) ^^ {
-      case (a ~ Keyword(
-            "GST"
-          ) ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _ ~ p) =>
-        GlobalStore(
-          rs.chars,
-          (rh.chars, rm.chars, rl.chars),
-          p.map(_.chars),
-          a
-        )
+    )) ^^ { case (a ~ _ ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _ ~ p) =>
+      GlobalStore(
+        rs.chars,
+        (rh.chars, rm.chars, rl.chars),
+        p.map(_.chars),
+        a
+      )
     }
 
   def gload_inst: Parser[GlobalLoad] =
     (annotations ~ keyword(
       "GLD"
     ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]") ^^ {
-      case (a ~ Keyword(
-            "GLD"
-          ) ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _) =>
+      case (a ~ _ ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _) =>
         GlobalLoad(rs.chars, (rh.chars, rm.chars, rl.chars), a)
     }
   def set_inst: Parser[SetValue] =
     (annotations ~ keyword("SET") ~ ident ~ "," ~ const_value) ^^ {
-      case (a ~ Keyword("SET") ~ rd ~ _ ~ value) =>
+      case (a ~ _ ~ rd ~ _ ~ value) =>
         SetValue(rd.chars, value, a)
     }
   def send_inst: Parser[Send] =
     (annotations ~ keyword(
       "SEND"
     ) ~ ident ~ "," ~ ("[" ~> ident <~ "]") ~ "," ~ ident) ^^ {
-      case (a ~ Keyword("SEND") ~ rd ~ _ ~ dest_id ~ _ ~ rs) =>
+      case (a ~ _ ~ rd ~ _ ~ dest_id ~ _ ~ rs) =>
         Send(rd.chars, rs.chars, dest_id.chars, a)
     }
   def expect_inst: Parser[Expect] =
     (annotations ~ keyword(
       "EXPECT"
     ) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> stringLit <~ "]")) ^^ {
-      case (a ~ Keyword("EXPECT") ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
+      case (a ~ _ ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
         Expect(ref.chars, got.chars, ex_id.chars, a)
     }
 
   def pred_inst: Parser[Predicate] =
-    (annotations ~ keyword("PREDICATE") ~ ident) ^^ {
-      case (a ~ Keyword("PREDICATE") ~ rs) =>
-        Predicate(rs.chars, a)
+    (annotations ~ keyword("PREDICATE") ~ ident) ^^ { case (a ~ _ ~ rs) =>
+      Predicate(rs.chars, a)
     }
 
   def mux_inst: Parser[Mux] =
@@ -313,6 +366,20 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         Mux(rd.chars, sel.chars, rs1.chars, rs2.chars, a)
     } // only a pseudo instruction, should be translated to a binary mux later
 
+  def parmux_case: Parser[ParMuxCase] = (ident ~ "?" ~ ident) ^^ {
+    case (cond ~ _ ~ choice) => ParMuxCase(cond.chars, choice.chars)
+  }
+  def parmux_inst: Parser[ParMux] =
+    (annotations ~ keyword("PARMUX") ~ ident ~ "," ~ rep1sep(parmux_case, ",") ~
+      "," ~ ident) ^^ {
+      case (a ~ _ ~ rd ~ _ ~ (cases: Seq[ParMuxCase]) ~ _ ~ defcase) =>
+        ParMux(
+          rd.chars,
+          cases,
+          defcase.chars,
+          a
+        )
+    }
   def mov_inst: Parser[Mov] =
     (annotations ~ keyword("MOV") ~ ident ~ "," ~ ident) ^^ {
       case (a ~ _ ~ rd ~ _ ~ rs) => Mov(rd.chars, rs.chars, a)
@@ -327,15 +394,16 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   }
 
   def instruction: Parser[Instruction] = positioned(
-    arith_inst | lload_inst | lstore_inst | mux_inst | nop_inst
+    arith_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
       | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
-  def regs: Parser[Seq[DefReg]] = rep(positioned(def_reg))
+  def regs: Parser[Seq[Seq[DefReg]]] = rep(def_reg)
+
   def process: Parser[DefProcess] =
     (annotations ~ keyword(".proc") ~ ident ~ ":" ~ regs ~ body) ^^ {
-      case (a ~ Keyword(".proc") ~ id ~ _ ~ rs ~ insts) =>
-        DefProcess(id.chars, rs, Seq.empty, insts, a)
+      case (a ~ _ ~ id ~ _ ~ rs ~ insts) =>
+        DefProcess(id.chars, rs.flatten, Seq.empty, insts, Seq(), a)
     }
 
   def program: Parser[DefProgram] =

@@ -18,12 +18,10 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-    - name: Set up SKDMAN
+    - name: Build external dependencies
       run: |
-        curl -s "https://get.sdkman.io" | bash
-        source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sdk install sbt
-        which sbt
+        chmod u+x build_dependencies.sh
+        ./build_dependencies.sh
     - name: Clone manticore chisel project
       uses: actions/checkout@v2
       with:
@@ -41,4 +39,3 @@ jobs:
         source "$HOME/.sdkman/bin/sdkman-init.sh"
         sbt 'testOnly -- -m manticore.compiler.assembly.levels'
         sbt 'testOnly -- -m manticore.compiler.assembly.levels.unconstrained'
-

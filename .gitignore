@@ -2,6 +2,9 @@
 .bloop
 .metals
 .vscode
+.idea
+.manticore
+or-tools
 project
 target
 dumps
@@ -9,5 +12,5 @@ dump_dir
 test_dump_dir
 operands
 test_run_dir
-.manticore
 runtime
+lib

@@ -1,0 +1,5 @@
+wires:
+  - Main/dut/ctrl
+  - Main/dut/op1
+  - Main/dut/op2
+  - Main/dut/result

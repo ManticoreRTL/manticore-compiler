@@ -283,10 +283,7 @@ object PlacedIR extends ManticoreAssemblyIR {
         // Note that we reverse the lut outputs as we want the MSB on the left and
         // the LSB on the right (common LUT equation representation in truth tables).
         val truthTableStr = lutOutputs.reverse.mkString
-
-        // Scala's BigInt does not have a constructor that accepts a radix, so we
-        // call java's BigInteger and wrap it with scala's BigInt.
-        BigInt(new BigInteger(truthTableStr, 2))
+        BigInt(truthTableStr, 2)
       }
 
       equations
@@ -311,6 +308,7 @@ object PlacedIR extends ManticoreAssemblyIR {
   type Constant = UInt16
   type ExceptionId = ExceptionIdImpl
 
+  type Label = Symbol
 }
 
 object LatencyAnalysis {

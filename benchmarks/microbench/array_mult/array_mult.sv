@@ -45,7 +45,7 @@ module Main (
 );
 
 
-  localparam W = 4;
+  localparam W = 8;
   localparam TEST_SIZE = 1000;
 
   logic [    W - 1 : 0] x_rom        [0 : TEST_SIZE - 1];

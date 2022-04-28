@@ -362,20 +362,31 @@ object ProcessSplittingTransform
           leaf_instructions
         }
     }
+
+    def createProcess(block: Iterable[Instruction], index: Int): DefProcess = {
+
+      val referenced = DependenceAnalysis.referencedNames(block)
+      val defRegs = proc.registers.filter { r => referenced.contains(r.variable.name) }
+      val defLabels = proc.labels.filter { lgrp => referenced.contains(lgrp.memory) }
+
+      proc.copy(
+        body = block.toSeq,
+        registers = defRegs,
+        labels = defLabels,
+        id = ProcessIdImpl(s"${proc.id}_${index}", proc.id.x, proc.id.y + index)
+      ).setPos(proc.pos)
+
+    }
     // create new processes
     val result = timed("constructing merged processes") {
       process_bodies.zipWithIndex.map { case (b, ix: Int) =>
-        proc
-          .copy(
-            body = b.toSeq,
-            id = ProcessIdImpl(s"${proc.id}_${ix}", proc.id.x, proc.id.y + ix)
-          )
-          .setPos(proc.pos)
+        createProcess(b, ix)
       }
-
     }
-    val longest_process = result.maxBy {_.body.length}
-    ctx.logger.info(s"Longest process has is ${longest_process.id} with ${longest_process.body.length} instructions")
+    val longest_process = result.maxBy { _.body.length }
+    ctx.logger.info(
+      s"Longest process has is ${longest_process.id} with ${longest_process.body.length} instructions"
+    )
     // done
     result
   }
@@ -386,7 +397,6 @@ object ProcessSplittingTransform
     val splitted = source.processes.flatMap { p =>
       extractIndependentInstructionSequences(p)(context)
     }
-
 
     source
       .copy(processes = splitted)

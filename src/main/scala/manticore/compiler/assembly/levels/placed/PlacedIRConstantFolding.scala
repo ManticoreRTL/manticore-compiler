@@ -19,15 +19,22 @@ object PlacedIRConstantFolding
     extends ConstantFolding
     with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
+
+
+
+
   val flavor = PlacedIR
   import BinaryOperator._
   import flavor._
 
-  override val ConstOne: UInt16 = UInt16(1)
 
-  override val ConstZero: UInt16 = UInt16(0)
+  type ConcreteConstant = UInt16
 
-  private def truncate(v: UInt16): Int = {
+  // PlacedIR uses UInt16 with its width being trivially 16, so Constant = ConcreteConstant
+  override def asConcrete(v: UInt16)(w: => Int) = v
+
+
+  private def shftAmount(v: UInt16): Int = {
     v.toInt & 0xf
   }
   override val binOpEvaluator: PartialFunction[
@@ -46,9 +53,9 @@ object PlacedIRConstantFolding
     case (XOR, Right(c1), Right(c2)) => Right(c1 ^ c2)
     case (SEQ, Right(c1), Right(c2)) =>
       Right(if (c1 == c2) UInt16(1) else UInt16(0))
-    case (SLL, Right(c1), Right(c2)) => Right(c1 << truncate(c2))
-    case (SRL, Right(c1), Right(c2)) => Right(c1 >> truncate(c2))
-    case (SRA, Right(c1), Right(c2)) => Right(c1 >>> truncate(c2))
+    case (SLL, Right(c1), Right(c2)) => Right(c1 << shftAmount(c2))
+    case (SRL, Right(c1), Right(c2)) => Right(c1 >> shftAmount(c2))
+    case (SRA, Right(c1), Right(c2)) => Right(c1 >>> shftAmount(c2))
     case (SLTS, Right(c1), Right(c2)) =>
       val rs1_sign = (c1 >> 15) == UInt16(1)
       val rs2_sign = (c2 >> 15) == UInt16(1)
@@ -79,13 +86,17 @@ object PlacedIRConstantFolding
         }
       }
     // evaluate if only one of the operands is constant
-    case (ADD, Right(ConstZero), Left(n2))      => Left(n2)
-    case (ADD, Left(n1), Right(ConstZero))      => Left(n1)
-    case (SUB, Left(n1), Right(ConstZero))      => Left(n1)
+    case (ADD, Right(UInt16(0)), Left(n2))      => Left(n2)
+    case (ADD, Left(n1), Right(UInt16(0)))      => Left(n1)
+
+    case (SUB, Left(n1), Right(UInt16(0)))      => Left(n1)
+
     case (AND, Left(n1), Right(UInt16(0xffff))) => Left(n1)
     case (AND, Right(UInt16(0xffff)), Left(n2)) => Left(n2)
-    case (OR | XOR, Left(n1), Right(ConstZero)) => Left(n1)
-    case (OR | XOR, Right(ConstZero), Left(n2)) => Left(n2)
+
+
+    case (OR | XOR, Left(n1), Right(UInt16(0))) => Left(n1)
+    case (OR | XOR, Right(UInt16(0)), Left(n2)) => Left(n2)
 
   }
 
@@ -106,7 +117,7 @@ object PlacedIRConstantFolding
   override def freshConst(v: UInt16)(implicit
       ctx: AssemblyContext
   ): DefReg = {
-    val name = s"c%${ctx.uniqueNumber()}"
+    val name = s"%c${ctx.uniqueNumber()}"
     DefReg(
       ValueVariable(
         name,
