@@ -1,12 +1,12 @@
 @PROGRAM [name = "\Main"]
 .prog:
   .proc \Main:
-    @MEMINIT [ file = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/levels/placed/swizzle.masm.in_rom.data", count = 50, width = 8]
+    @MEMINIT [ file = "swizzle.masm.in_rom.data", count = 50, width = 8]
     @SOURCEINFO [file = "swizzle.sv:34.25-34.31"]
     @DEBUGSYMBOL [ symbol = "\in_rom"]
     @MEMBLOCK [ block = "\in_rom", width = 8, capacity = 50 ]
     .mem \in_rom 6
-    @MEMINIT [ file = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/levels/placed/swizzle.masm.out_rom.data", count = 50, width = 8]
+    @MEMINIT [ file = "swizzle.masm.out_rom.data", count = 50, width = 8]
     @SOURCEINFO [file = "swizzle.sv:35.25-35.32"]
     @DEBUGSYMBOL [ symbol = "\out_rom"]
     @MEMBLOCK [ block = "\out_rom", width = 8, capacity = 50 ]

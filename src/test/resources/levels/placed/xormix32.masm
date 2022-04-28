@@ -1,7 +1,7 @@
 @PROGRAM [name = "\xormix32_tb"]
 .prog:
   .proc \xormix32_tb:
-    @MEMINIT [ file = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/levels/placed/xormix32.masm.ref_result.data", count = 100, width = 128]
+    @MEMINIT [ file = "xormix32.masm.ref_result.data", count = 100, width = 128]
     @SOURCEINFO [file = "xormix_32.v:183.15-183.25"]
     @DEBUGSYMBOL [ symbol = "\ref_result"]
     @MEMBLOCK [ block = "\ref_result", width = 128, capacity = 100 ]

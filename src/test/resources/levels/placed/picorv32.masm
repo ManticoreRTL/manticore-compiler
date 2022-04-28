@@ -1,12 +1,12 @@
 @PROGRAM [name = "\Main"]
 .prog:
   .proc \Main:
-    @MEMINIT [ file = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/levels/placed/picorv32.masm.dut.cpuregs.data", count = 32, width = 32]
+    @MEMINIT [ file = "picorv32.masm.dut.cpuregs.data", count = 32, width = 32]
     @SOURCEINFO [file = "loop.v:35.4-46.3|picorv32.v:203.13-203.20"]
     @DEBUGSYMBOL [ symbol = "dut.cpuregs"]
     @MEMBLOCK [ block = "\dut.cpuregs", width = 32, capacity = 32 ]
     .mem \dut.cpuregs 5
-    @MEMINIT [ file = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/levels/placed/picorv32.masm.memory.data", count = 256, width = 32]
+    @MEMINIT [ file = "picorv32.masm.memory.data", count = 256, width = 32]
     @SOURCEINFO [file = "loop.v:48.13-48.19"]
     @DEBUGSYMBOL [ symbol = "\memory"]
     @MEMBLOCK [ block = "\memory", width = 32, capacity = 256 ]

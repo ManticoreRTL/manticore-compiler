@@ -9,7 +9,7 @@
     @DEBUGSYMBOL [ symbol = "dut.regs.mem"]
     @MEMBLOCK [ block = "\dut.regs.mem", width = 32, capacity = 32 ]
     .mem \dut.regs.mem 5
-    @MEMINIT [ file = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/levels/placed/mips32.masm.sum_inst_mem.data", count = 256, width = 32]
+    @MEMINIT [ file = "mips32.masm.sum_inst_mem.data", count = 256, width = 32]
     @SOURCEINFO [file = "mips32.sv:511.15-511.23"]
     @DEBUGSYMBOL [ symbol = "\inst_mem"]
     @MEMBLOCK [ block = "\inst_mem", width = 32, capacity = 256 ]

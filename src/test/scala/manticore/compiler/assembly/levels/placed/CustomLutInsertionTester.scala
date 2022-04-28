@@ -7,10 +7,13 @@ import manticore.compiler.assembly.parser.AssemblyParser
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.ManticorePasses
-import java.nio.file.Paths
-import java.nio.file.Files
+import java.nio.file.{Paths, Files, Path}
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.ManticorePasses
+import manticore.compiler.assembly.utils.Mips32Circuit
+import manticore.compiler.assembly.utils.PicoRv32Circuit
+import manticore.compiler.assembly.utils.Swizzle
+import manticore.compiler.assembly.utils.Xormix32
 
 class CustomLutInsertionTester extends UnitFixtureTest {
 
@@ -18,55 +21,65 @@ class CustomLutInsertionTester extends UnitFixtureTest {
 
   behavior of "custom lut insertion transform"
 
-  it should "correctly identify LUTs" in { f =>
-    val ctx = AssemblyContext(
-      dump_all = true,
-      dump_dir = Some(f.test_dir.toFile()),
-      debug_message = true,
-      max_custom_instructions = Int.MaxValue,
-      max_custom_instruction_inputs = 6,
-      max_dimx = 1,
-      max_dimy = 1,
-      log_file = Some(f.test_dir.resolve("output.log").toFile())
-    )
+  val sources = Seq(
+    // Mips32Circuit,
+    PicoRv32Circuit,
+    // Swizzle,
+    // Xormix32,
+  )
 
-    val lowerCompiler = ManticorePasses.frontend followedBy
-      ManticorePasses.middleend followedBy
-      UnconstrainedToPlacedTransform followedBy
-      PlacedIRConstantFolding followedBy
-      PlacedIRCommonSubExpressionElimination followedBy
-      ManticorePasses.ExtractParallelism
+  val dims = Seq(
+    (1, 1),
+    (4, 4),
+  )
 
-    // val benchmarkName = "swizzle"
-    // val benchmarkName = "xormix32"
-    val benchmarkName = "mips32"
-    // val benchmarkName = "picorv32"
+  val numLutInputs = Seq(
+    2,
+    4,
+    6,
+  )
 
-    // Lower the input file.
-    val inputStr = scala.io.Source.fromResource(s"levels/placed/${benchmarkName}.masm").getLines().mkString("\n")
-    val inputLoweredProg = lowerCompiler(AssemblyParser(inputStr, ctx), ctx)._1
+  val lowerCompiler = ManticorePasses.frontend followedBy
+    ManticorePasses.middleend followedBy
+    UnconstrainedToPlacedTransform followedBy
+    PlacedIRConstantFolding followedBy
+    PlacedIRCommonSubExpressionElimination followedBy
+    ManticorePasses.ExtractParallelism
 
-    // Write the lowered file so we can look at the
-    val inputLoweredPath = f.test_dir.resolve(s"${benchmarkName}_lowered.masm")
-    Files.writeString(inputLoweredPath, inputLoweredProg.serialized)
+  sources.foreach { source =>
+    dims.foreach { case (dimx, dimy) =>
+      numLutInputs.foreach { numCustomInstrInputs =>
 
-    val inputLoweredWithLutsPath = f.test_dir.resolve(s"${benchmarkName}_lowered_luts.masm")
-    val withLutsProg = CustomLutInsertion(inputLoweredProg, ctx)._1
-    Files.writeString(inputLoweredWithLutsPath, withLutsProg.serialized)
+        it should s"reduce virtual cycle lengths for (${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT)" in { f =>
 
-    val inputLoweredWithLutsDcePath = f.test_dir.resolve(s"${benchmarkName}_lowered_luts_dce.masm")
-    val withLutsDceProg = PlacedIRDeadCodeElimination(withLutsProg, ctx)._1
-    Files.writeString(inputLoweredWithLutsDcePath, withLutsDceProg.serialized)
+          val ctx = AssemblyContext(
+            dump_all = false,
+            dump_dir = Some(f.test_dir.toFile()),
+            debug_message = true,
+            max_custom_instructions = 32,
+            max_custom_instruction_inputs = numCustomInstrInputs,
+            max_dimx = dimx,
+            max_dimy = dimy,
+            log_file = Some(f.test_dir.resolve("output.log").toFile())
+          )
 
-    def computeVirtualCycle(prog: DefProgram): Int = {
-      prog.processes.map(proc => proc.body.length).max
+          val progOrig = AssemblyParser(source(f), ctx)
+          val progLowered = lowerCompiler(progOrig, ctx)._1
+          val progWithLuts = CustomLutInsertion(progLowered, ctx)._1
+          val progWithLutsDce = PlacedIRDeadCodeElimination(progWithLuts, ctx)._1
+
+          def computeVirtualCycle(prog: DefProgram): Int = {
+            prog.processes.map(proc => proc.body.length).max
+          }
+
+          val vCyclesBefore = computeVirtualCycle(progLowered)
+          val vCyclesAfter = computeVirtualCycle(progWithLutsDce)
+
+          println(s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, vCycle ${vCyclesBefore} -> ${vCyclesAfter}")
+          assert(vCyclesBefore > vCyclesAfter)
+        }
+
+      }
     }
-
-    val vCyclesBefore = computeVirtualCycle(inputLoweredProg)
-    val vCyclesAfter = computeVirtualCycle(withLutsDceProg)
-    println(s"vCycle ${vCyclesBefore} -> ${vCyclesAfter}")
-
-    // inputLowered shouldBe gotOutput
   }
-
 }
