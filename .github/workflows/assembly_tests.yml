@@ -37,5 +37,5 @@ jobs:
     - name: Run basic tests
       run: |
         source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sbt 'testOnly -- -m manticore.compiler.assembly.levels'
-        sbt 'testOnly -- -m manticore.compiler.assembly.levels.unconstrained'
+        sbt -J-Xmx8192M 'testOnly -- -m manticore.compiler.assembly.levels'
+        sbt -J-Xmx8192M 'testOnly -- -m manticore.compiler.assembly.levels.unconstrained'
