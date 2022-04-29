@@ -3,7 +3,6 @@ package manticore.compiler.assembly.levels.unconstrained
 import manticore.compiler.assembly.levels.AssemblyNameChecker
 import manticore.compiler.assembly.levels.AssemblyPrinter
 import manticore.compiler.assembly.levels.OrderInstructions
-import manticore.compiler.assembly.levels.RemoveAliases
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.AssemblyContext
@@ -93,20 +92,8 @@ object UnconstrainedOrderInstructions
       context: AssemblyContext
   ): DefProgram = do_transform(source, context)
 }
-object UnconstrainedRemoveAliases
-    extends RemoveAliases
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
-  val flavor = UnconstrainedIR
-  val Zero = BigInt(0)
-  import flavor._
-  override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = do_transform(source, context)
-}
+
+
 object UnconstrainedDeadCodeElimination
     extends DeadCodeElimination
     with AssemblyTransformer[
