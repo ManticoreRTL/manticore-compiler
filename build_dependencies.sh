@@ -31,6 +31,6 @@ pushd or-tools
 mkdir -p build
 pushd build
 cmake .. -DBUILD_JAVA=ON -DSKIP_GPG=ON -G "Ninja"
-cmake --build . --target java_deploy
+cmake --build .
 popd # build
 popd # or-tools
