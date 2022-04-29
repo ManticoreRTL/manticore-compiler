@@ -35,6 +35,7 @@ lazy val compiler = (project in file(".")).settings(
     "net.java.dev.jna" % "jna" % "5.10.0" % Test,
     "org.jgrapht" % "jgrapht-io" % "1.5.1", // graphs
     "org.jgrapht" % "jgrapht-core" % "1.5.1", // for importing/exporting graphs
+    "com.google.ortools" % "ortools-java" % "9.3.10497"
   ),
   javaOptions ++= jvmHeapMemOptions,
 
