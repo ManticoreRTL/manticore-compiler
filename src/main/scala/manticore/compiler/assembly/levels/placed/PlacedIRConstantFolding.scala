@@ -30,6 +30,9 @@ object PlacedIRConstantFolding
 
   type ConcreteConstant = UInt16
 
+  override def isFalse(v: UInt16): Boolean = v == UInt16(0)
+  override def isTrue(v: UInt16): Boolean = v == UInt16(1)
+  
   // PlacedIR uses UInt16 with its width being trivially 16, so Constant = ConcreteConstant
   override def asConcrete(v: UInt16)(w: => Int) = v
 

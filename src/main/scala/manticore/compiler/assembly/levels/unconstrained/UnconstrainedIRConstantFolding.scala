@@ -21,6 +21,8 @@ object UnconstrainedIRConstantFolding
 
   type ConcreteConstant = UIntWide
 
+  override def isTrue(v: UIntWide): Boolean = v == UIntWide(1)
+  override def isFalse(v: UIntWide): Boolean = v == UIntWide(0)
   def asConcrete(const: Constant)(width: => Int): ConcreteConstant =
     UIntWide(const, width)
 

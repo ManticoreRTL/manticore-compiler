@@ -36,17 +36,20 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
     // even if the [[that]] is larger
     UIntWide.clipped(this.v - that.v, maxW(that))
   }
+
+  // Since v is guaranteed to be non-negative, we don't need to care about the
+  // other operands, width. We do trivially zero extend the smaller one, and
+  // return the wider width as the final width
   def |(that: UIntWide): UIntWide = {
-      require(this.width == that.width, "Can not perform non-aligned |")
+
       UIntWide.clipped(this.v | that.v, maxW(that))
   }
   def &(that: UIntWide): UIntWide = {
-      require(this.width == that.width, "Can not perform non-aligned &")
+
       UIntWide.clipped(this.v & that.v, maxW(that))
   }
   def ^(that: UIntWide): UIntWide = {
-      require(this.width == that.width, "Can not perform non-aligned ^")
-      UIntWide.clipped(this.v ^ that.v, maxW(that))
+    UIntWide.clipped(this.v ^ that.v, maxW(that))
   }
 
   // The following functions compare literals to literals, without considering
@@ -149,13 +152,52 @@ object UIntWide {
 
 
   def apply(v: BigInt): UIntWide = {
-    require(v > 0, s"${v} is negative!")
+    require(v >= 0, s"${v} is negative!")
     if (v == 0) {
       apply(v, 1)
     } else {
       apply(v, v.bitLength)
     }
   }
+
+
+}
+
+trait TrueFalse {
+
+  type Constant
+  val False: Constant
+  val True: Constant
+  def isFalse(x: Constant): Boolean = x == 0
+  def isTrue(x: Constant): Boolean = x == 1
+
+  def isFalseObj(x: Constant): Boolean = x == False
+  def isTrueObj(x: Constant): Boolean = x == True
+}
+
+
+object Tester extends App {
+
+  object ForUIntWide extends TrueFalse {
+    type Constant = UIntWide
+    val False = UIntWide(0)
+    val True = UIntWide(1)
+
+
+  }
+
+  object ForUInt16 extends TrueFalse {
+    type Constant = UInt16
+    val False = UInt16(0)
+    val True = UInt16(1)
+
+  }
+
+  println(ForUInt16.isFalse(UInt16(0)))
+  println(ForUInt16.isFalseObj(UInt16(0)))
+
+  println(ForUIntWide.isFalse(UIntWide(0)))
+  println(ForUIntWide.isFalseObj(UIntWide(0)))
 
 
 }

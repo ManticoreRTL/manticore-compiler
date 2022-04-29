@@ -14,18 +14,21 @@ import manticore.compiler.assembly.utils.Mips32Circuit
 import manticore.compiler.assembly.utils.PicoRv32Circuit
 import manticore.compiler.assembly.utils.Swizzle
 import manticore.compiler.assembly.utils.Xormix32
+import manticore.compiler.UnitTestMatchers
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.assembly.levels.placed.interpreter.PlacedIRInterpreterMonitor
 
-class CustomLutInsertionTester extends UnitFixtureTest {
+class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
   import manticore.compiler.assembly.levels.placed.PlacedIR._
 
   behavior of "custom lut insertion transform"
 
   val sources = Seq(
-    // Mips32Circuit,
+    Mips32Circuit,
     PicoRv32Circuit,
     // Swizzle,
-    // Xormix32,
+    Xormix32,
   )
 
   val dims = Seq(
@@ -52,6 +55,7 @@ class CustomLutInsertionTester extends UnitFixtureTest {
 
         it should s"reduce virtual cycle lengths for (${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT)" in { f =>
 
+
           val ctx = AssemblyContext(
             dump_all = false,
             dump_dir = Some(f.test_dir.toFile()),
@@ -60,13 +64,16 @@ class CustomLutInsertionTester extends UnitFixtureTest {
             max_custom_instruction_inputs = numCustomInstrInputs,
             max_dimx = dimx,
             max_dimy = dimy,
+            max_cycles = 200,
             log_file = Some(f.test_dir.resolve("output.log").toFile())
           )
 
           val progOrig = AssemblyParser(source(f), ctx)
           val progLowered = lowerCompiler(progOrig, ctx)._1
           val progWithLuts = CustomLutInsertion(progLowered, ctx)._1
-          val progWithLutsDce = PlacedIRDeadCodeElimination(progWithLuts, ctx)._1
+          // Since processes might be split, we need to insert Send instructions
+          // for correctness.
+          val progWithLutsDce = (SendInsertionTransform followedBy PlacedIRDeadCodeElimination)(progWithLuts, ctx)._1
 
           def computeVirtualCycle(prog: DefProgram): Int = {
             prog.processes.map(proc => proc.body.length).max
@@ -76,7 +83,13 @@ class CustomLutInsertionTester extends UnitFixtureTest {
           val vCyclesAfter = computeVirtualCycle(progWithLutsDce)
 
           println(s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, vCycle ${vCyclesBefore} -> ${vCyclesAfter}")
+
           assert(vCyclesBefore > vCyclesAfter)
+          // This is supposed to change, but since we are not scheduling the code
+          // sequential cycles are open and InputType registers never get updated
+          // unless we close them.
+          (PlacedIRCloseSequentialCycles followedBy AtomicInterpreter)(progWithLutsDce, ctx)
+
         }
 
       }

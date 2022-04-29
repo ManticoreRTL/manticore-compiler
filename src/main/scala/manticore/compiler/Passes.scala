@@ -37,13 +37,13 @@ object ManticorePasses {
   val frontend = UnconstrainedNameChecker followedBy
     UnconstrainedMakeDebugSymbols followedBy
     UnconstrainedOrderInstructions followedBy
-    UnconstrainedRemoveAliases followedBy
+    UnconstrainedIRConstantFolding followedBy
     UnconstrainedDeadCodeElimination followedBy
     UnconstrainedRenameVariables
 
   val middleend =
     WidthConversion.transformation followedBy
-      UnconstrainedRemoveAliases followedBy
+      UnconstrainedIRConstantFolding followedBy
       UnconstrainedDeadCodeElimination
 
   def BackendInterpreter(cond: Boolean = true) =

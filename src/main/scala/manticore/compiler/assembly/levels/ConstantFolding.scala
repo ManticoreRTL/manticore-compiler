@@ -36,18 +36,14 @@ trait ConstantFolding
   // a concrete constant should have bit-width information embedded in it
   // that may be required in constant evaluation
   type ConcreteConstant
-  def asConcrete(const: Constant)(width: => Int): ConcreteConstant
 
   /** Constant zero and one, override them with their corresponding values in
     * the given flavor
-    *
-    * @return
     */
-  // val ConstOne: Constant
-  // val ConstZero: Constant
+  def isTrue(v: ConcreteConstant): Boolean
+  def isFalse(v: ConcreteConstant): Boolean
+  def asConcrete(const: Constant)(width: => Int): ConcreteConstant
 
-  // def isTrue(v: ConcreteConstant): Boolean
-  // def isFalse(v: ConcreteConstant): Boolean
   /** A partial function to either fully or partially evaluate binary operators.
     *
     * The partial function should only be defined for input combinations that
@@ -205,7 +201,7 @@ trait ConstantFolding
             case (Right(v1), Right(v2), Right(vci)) =>
               val (rd_val, co_val) = addCarryEvaluator(v1, v2, vci)
               builder.bindConst(rd, rd_val).bindConst(co, co_val)
-            case (Right(c0), Right(c1), Left(ci_subst)) if c0 == 0 && c1 == 0 =>
+            case (Right(c0), Right(c1), Left(ci_subst)) if isFalse(c0) && isTrue(c1) =>
               builder.bindName(co, ci_subst)
             case _ => builder.keep(i)
           }
@@ -240,26 +236,31 @@ trait ConstantFolding
             val rtrue_value = builder.computedValue(rtrue)
             val rfalse_value = builder.computedValue(rfalse)
             sel_value match {
-              case Right(c1) if (c1 == 1) =>
-                rtrue_value match {
-                  case Right(ctrue) => builder.bindConst(rd, ctrue)
-                  case Left(atrue)  => builder.bindName(rd, atrue)
-                }
-              case Right(c0) if (c0 == 0) =>
-                rfalse_value match {
-                  case Right(cfalse) => builder.bindConst(rd, cfalse)
-                  case Left(afalse)  => builder.bindName(rd, afalse)
-                }
-              case Right(invalid_const) =>
+              case Right(c)  =>
+                if (isTrue(c)) {
+                  rtrue_value match {
+                    case Right(ctrue) => builder.bindConst(rd, ctrue)
+                    case Left(atrue)  => builder.bindName(rd, atrue)
+                  }
+                } else if (isFalse(c)) {
+
+                  rfalse_value match {
+                    case Right(cfalse) => builder.bindConst(rd, cfalse)
+                    case Left(afalse)  => builder.bindName(rd, afalse)
+                  }
+
+                } else {
                 ctx.logger.error(
-                  s"Mux condition should be either zero or one but it is ${invalid_const}",
+                  s"Mux condition should be either zero or one but it is ${c}",
                   i
                 )
                 builder.keep(i)
+                }
+
               case Left(s) =>
                 (rfalse_value, rtrue_value) match {
                   case (Right(c0), Right(c1))
-                      if ((c0 == 0) && (c1 == 1) &&
+                      if (isFalse(c0) && isTrue(c1) &&
                       builder.widthLookup(
                         rfalse
                       ) == builder.widthLookup(
@@ -321,7 +322,7 @@ trait ConstantFolding
                 (builder.computedValue(cond), builder.computedValue(choice))
               }
             val found_true_case = computed_cases
-              .collectFirst { case (Right(c1), rs_val) if c1 == 1 =>
+              .collectFirst { case (Right(c1), rs_val) if isTrue(c1) =>
                 rs_val
               }
 
@@ -329,7 +330,7 @@ trait ConstantFolding
               case None => // maybe all conditions are zero!
                 if (
                   computed_cases.forall {
-                    case (Right(c0), _) if c0 == 0 => true
+                    case (Right(c0), _) if isFalse(c0) => true
                     case _                     => false
                   }
                 ) {
