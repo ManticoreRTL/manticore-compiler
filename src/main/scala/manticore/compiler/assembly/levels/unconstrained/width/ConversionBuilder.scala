@@ -287,7 +287,7 @@ trait ConversionBuilder extends Flavored {
               .copy(
                 variable = cvar,
                 value = cval,
-                annons = other_annons ++ reg_annon :+ dbgsym
+                annons = other_annons ++ reg_annon :+ dbgsym.withCount(uint16_vars.length)
               )
               .setPos(orig_def.pos)
 
