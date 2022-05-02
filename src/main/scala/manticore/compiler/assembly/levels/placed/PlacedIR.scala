@@ -308,7 +308,7 @@ object PlacedIR extends ManticoreAssemblyIR {
   type Constant = UInt16
   type ExceptionId = ExceptionIdImpl
 
-  type Label = Symbol
+  type Label = String
 }
 
 object LatencyAnalysis {

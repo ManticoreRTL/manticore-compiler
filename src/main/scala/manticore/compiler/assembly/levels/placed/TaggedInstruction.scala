@@ -12,7 +12,6 @@ case class TaggedInstruction(
 
   def has(t: TaggedInstruction.ExecutionTag): Boolean = tags.contains(t)
 
-
 }
 
 object TaggedInstruction {
@@ -89,10 +88,19 @@ object TaggedInstruction {
     def caseBodyTagger(
         jcase: JumpCase,
         phis: Map[(Label, Name), Name]
-    ): IndexedSeq[TaggedInstruction] =
-      jcase.block match {
+    ): IndexedSeq[TaggedInstruction] = {
+
+      def phiSources(inst: Instruction): Seq[PhiSource] =
+        DependenceAnalysis.regDef(inst).collect {
+          case n if phis.contains((jcase.label, n)) =>
+            PhiSource(phis((jcase.label, n)), n)
+        }
+      val indexed = jcase.block match {
         case (jtarget: Instruction) :: rest =>
-          val first = TaggedInstruction(jtarget, JumpTarget(jcase.label))
+          val first = TaggedInstruction(
+            jtarget,
+            phiSources(jtarget) :+ JumpTarget(jcase.label)
+          )
             .withTagIf(jtarget.isInstanceOf[BreakCase], DelayedExecution)
           rest.foldLeft(
             IndexedSeq(
@@ -108,12 +116,7 @@ object TaggedInstruction {
               }
               ls :+ TaggedInstruction(i, DelayedExecution)
             case (ls, i) =>
-              val phiSources = DependenceAnalysis.regDef(i).collect {
-                case n if phis.contains((jcase.label, n)) =>
-                  PhiSource(phis((jcase.label, n)), n)
-              }
-
-              ls :+ TaggedInstruction(i, phiSources).withTagIf(
+              ls :+ TaggedInstruction(i, phiSources(i)).withTagIf(
                 (ls.last has BorrowedExecution) || (ls.last has DelayedExecution),
                 BorrowedExecution
               )
@@ -124,6 +127,8 @@ object TaggedInstruction {
           )
           IndexedSeq.empty[TaggedInstruction]
       }
+      indexed
+    }
     block.foldLeft(resBuilder) {
       case (
             builder,

@@ -6,11 +6,11 @@ import manticore.compiler.assembly.DependenceGraphBuilder
 import manticore.compiler.assembly.levels.AssemblyNameChecker
 import manticore.compiler.assembly.levels.WireType
 
-/**
-  * Transforms every [[JumpTable]] in the program to a "normal form". See
+/** Transforms every [[JumpTable]] in the program to a "normal form". See
   * [[normalize]] for details.
   *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object JumpTableNormalizationTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram]
@@ -58,14 +58,17 @@ object JumpTableNormalizationTransform
     * @param ctx
     * @return
     */
-  private def normalize(jtb: JumpTable, aliasOf: Name => Name)(implicit
+  private def normalize(jtb: JumpTable, aliasOf: (Label, Name) => Name)(implicit
       ctx: AssemblyContext
   ): JumpTable = {
 
     def patchBreakCases(jump: JumpTable): JumpTable = {
       if (!JumpTableProperties.jumpTableHasBreakCase(jump)) {
         val blocksWithBreak = jump.blocks.map { case JumpCase(lbl, blk) =>
-          JumpCase(lbl, blk.filter { _.isInstanceOf[BreakCase] } :+ BreakCase())
+          JumpCase(
+            lbl,
+            blk.filter { _.isInstanceOf[BreakCase] == false } :+ BreakCase()
+          )
         }
         jump
           .copy(
@@ -98,24 +101,29 @@ object JumpTableNormalizationTransform
           val definedOutSide = phiContributors(jCase.label).filter {
             !isDefineInCaseBody(_)
           }
-          val aliases = definedOutSide.map { origName =>
-            origName -> aliasOf(origName)
+          val aliases = definedOutSide.distinct.map { origName =>
+            origName -> aliasOf(jCase.label, origName)
           }
           aliases
 
         }
-        val aliases = jump.blocks.map { getAliases }
-        val blocksWithAliasing = (jump.blocks zip aliases) map {
-          case (jCase, aliasing) =>
-            jCase.copy(block = jCase.block ++ aliasing.map {
+        val aliases = jump.blocks.map { case jCase @ JumpCase(lbl, _) =>
+          lbl -> getAliases(jCase)
+        }.toMap
+        val blocksWithAliasing =
+          jump.blocks.map { jCase =>
+            jCase.copy(block = jCase.block ++ aliases(jCase.label).map {
               case (origN, newN) => Mov(newN, origN)
             })
-        }
-        val renameMap = aliases.flatten.toMap
+          }
+
+        def phiRename(label: Label, rs: Name): Name =
+          aliases(label).collectFirst { case (orig, als) if orig == rs => als}.getOrElse(rs)
+
         val newPhis = jump.results.map { case Phi(rd, rsx) =>
           Phi(
             rd,
-            rsx.map { case (lbl, rs) => (lbl, renameMap.getOrElse(rs, rs)) }
+            rsx.map { case (lbl, rs) => (lbl, phiRename(lbl, rs)) }
           )
         }
         jump.copy(
@@ -159,28 +167,35 @@ object JumpTableNormalizationTransform
       process
     } else {
 
-      val subst = scala.collection.mutable.Map.empty[Name, Name]
-      def mkAlias(original: Name): Name = subst.get(original) match {
-        case None =>
-          val newName = s"%w${ctx.uniqueNumber()}"
-          subst += original -> newName
-          newName
-        case Some(alias) => alias
-      }
+      val scopedSubst = scala.collection.mutable.Map.empty[(Label, Name), Name]
+      def mkAlias(label: Label, original: Name): Name =
+        scopedSubst.get((label, original)) match {
+          case None =>
+            val newName = s"%w${ctx.uniqueNumber()}"
+            scopedSubst += (label, original) -> newName
+            newName
+          case Some(alias) => alias
+        }
       val newBody = process.body.map {
         case jtb: JumpTable => normalize(jtb, mkAlias)
         case i              => i
       }
-      val newRegs = process.registers.collect {
-        case r if subst.contains(r.variable.name) =>
-          DefReg(
-            ValueVariable(subst(r.variable.name), -1, WireType),
-            None
-          ).setPos(r.pos)
+      val flatSubst = scopedSubst.map { case ((lbl, orig) -> alias) =>
+        orig -> alias
+      }
+      def hasAlias(orig: Name): Boolean = flatSubst.exists { orig == _._1 }
+      val newRegs = process.registers.flatMap { r =>
+        flatSubst.collect {
+          case (orig, alias) if orig == r.variable.name =>
+            DefReg(
+              ValueVariable(alias, -1, WireType),
+              None
+            ).setPos(r.pos)
+        }.toSeq :+ r
       }
       process.copy(
         body = newBody,
-        registers = process.registers ++ newRegs
+        registers = newRegs
       )
     }
 

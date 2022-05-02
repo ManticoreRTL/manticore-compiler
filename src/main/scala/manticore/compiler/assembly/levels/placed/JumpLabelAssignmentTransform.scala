@@ -13,7 +13,7 @@ import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.UInt16
 
 /**
-  * Assign resolve named labels to concrete "PC" values and fixup any [[BreakCase]]
+  * Assign/resolve named labels to concrete "PC" values and fixup any [[BreakCase]]
   * target
   *
   * @author Mahyar Emami <mahyar.emami@epfl.ch>

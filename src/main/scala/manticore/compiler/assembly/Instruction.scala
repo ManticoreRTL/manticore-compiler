@@ -127,7 +127,7 @@ trait ManticoreAssemblyIR {
             s"\t\t\t${index} -> ${label}"
           }
           .mkString("\n") + (if (default.nonEmpty)
-                               s"\t\t\t _ -> ${default.get}"
+                               s"\n\t\t\t _ -> ${default.get}"
                              else "")
 
   }

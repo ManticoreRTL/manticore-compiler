@@ -23,6 +23,11 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRParMuxDec
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.Transformation
+import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
+import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
+import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
+import manticore.compiler.assembly.levels.placed.TaggedInstruction
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 
 class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
@@ -63,27 +68,29 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(100),
-      debug_message = true
+      debug_message = true,
+      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
     )
 
+    def frontend(optimize: Boolean, useJump: Boolean) =
+      UnconstrainedNameChecker followedBy
+        UnconstrainedMakeDebugSymbols followedBy
+        UnconstrainedRenameVariables followedBy
+        UnconstrainedOrderInstructions followedBy
+        Transformation.predicated(optimize)(Optimizations) followedBy
+        Transformation.predicated(useJump)(
+          UnconstrainedJumpTableConstruction
+        ) followedBy
+        UnconstrainedIRParMuxDeconstructionTransform followedBy
+        WidthConversion.transformation followedBy
+        Transformation.predicated(optimize)(Optimizations) followedBy
+        UnconstrainedCloseSequentialCycles followedBy
+        UnconstrainedInterpreter
     def doTest(optimize: Boolean, useJump: Boolean, fixture: FixtureParam) = {
       val ctx = AluTestCommons.context(fixture)
       val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
 
-      def compiler =
-        UnconstrainedNameChecker followedBy
-          UnconstrainedMakeDebugSymbols followedBy
-          UnconstrainedRenameVariables followedBy
-          UnconstrainedOrderInstructions followedBy
-          Transformation.predicated(optimize)(Optimizations) followedBy
-          Transformation.predicated(useJump)(
-            UnconstrainedJumpTableConstruction
-          ) followedBy
-          UnconstrainedIRParMuxDeconstructionTransform followedBy
-          WidthConversion.transformation followedBy
-          Transformation.predicated(optimize)(Optimizations) followedBy
-          UnconstrainedCloseSequentialCycles followedBy
-          UnconstrainedInterpreter
+      def compiler = frontend(optimize, useJump)
 
       val (transformed, _) = compiler(program, ctx)
       val hasJumpTable = transformed.processes.head.body.exists {
@@ -112,6 +119,20 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
   }
   "ALU" should "work correctly with an optimal JumpTable" in { fixture =>
     AluTestCommons.doTest(true, true, fixture)
+  }
+  "ALU" should "work correctly with an optimal JumpTable in PlacedIR" in {
+    fixture =>
+      val ctx = AluTestCommons.context(fixture)
+      val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
+
+      val compiler =
+        AluTestCommons.frontend(optimize = true, useJump = true) followedBy
+          UnconstrainedToPlacedTransform followedBy JumpTableNormalizationTransform followedBy
+          JumpLabelAssignmentTransform
+      val (transformed, _) = compiler(program, ctx)
+      val instMemory = TaggedInstruction.indexedTaggedBlock(transformed.processes.head)(ctx)
+      AtomicInterpreter(transformed, ctx)
+
   }
 
 }

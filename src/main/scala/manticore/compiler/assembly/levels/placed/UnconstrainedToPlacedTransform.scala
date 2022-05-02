@@ -31,7 +31,7 @@ import scala.util.Success
 import manticore.compiler.assembly.annotations.Trap
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 
-/** Changes IR flavor to PlacedIR
+/** Changes UnconstrainedIR flavor to PlacedIR
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
@@ -91,6 +91,7 @@ object UnconstrainedToPlacedTransform
         T.DefProcess(
           registers = ps.flatMap(_.registers),
           body = ps.flatMap(_.body),
+          labels = ps.flatMap(_.labels),
           functions = ps.flatMap(_.functions),
           id = T.ProcessIdImpl(s"p_${x}_${y}", x, y),
           annons = ps.flatMap(_.annons)
@@ -133,14 +134,22 @@ object UnconstrainedToPlacedTransform
       )
     }
 
-    T.DefProcess(
+    val res = T.DefProcess(
       id = proc_map(proc.id),
       registers = proc.registers.map(convert),
       // UnconstrainedIR does not have any custom functions, so there is nothing to lower.
       functions = Seq.empty,
       body = proc.body.map(convert(_, proc_map)),
+      labels = proc.labels.map { lblgrp =>
+        T.DefLabelGroup(
+          lblgrp.memory,
+          lblgrp.indexer.map { case (v, l) => (UInt16(v.toInt), l) },
+          lblgrp.default
+        )
+      },
       annons = proc.annons
     ).setPos(proc.pos)
+    res
   }
 
   /** Unchecked conversion of DefReg
@@ -332,7 +341,16 @@ object UnconstrainedToPlacedTransform
         default,
         annons
       )
-    case S.Nop => T.Nop
+    case S.Nop                             => T.Nop
+    case S.BreakCase(target, annons)       => T.BreakCase(target, annons)
+    case S.Lookup(rd, index, base, annons) => T.Lookup(rd, index, base, annons)
+    case S.JumpTable(target, results, blocks, dslot, annons) =>
+      val tPhis = results.map { case S.Phi(rd, rss) => T.Phi(rd, rss) }
+      val tBlocks = blocks.map { case S.JumpCase(lbl, blk) =>
+        T.JumpCase(lbl, blk.map(convert(_, proc_map)))
+      }
+      val tDslot = dslot.map(convert(_, proc_map))
+      T.JumpTable(target, tPhis, tBlocks, tDslot, annons)
 
   }).setPos(inst.pos)
 

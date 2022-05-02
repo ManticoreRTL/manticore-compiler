@@ -12,6 +12,8 @@ import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
+import manticore.compiler.assembly.levels.placed.TaggedInstruction
+import manticore.compiler.assembly.levels.placed.TaggedInstruction.PhiSource
 
 /** Basic interpreter for placed programs. The program needs to have Send and
   * Recv instructions but does not check for NoC contention and does not require
@@ -241,10 +243,18 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     private val caught_traps =
       scala.collection.mutable.Queue.empty[InterpretationTrap]
 
-    private var cycle = 0
-    private val instructions =
-      proc.body.toArray // convert to array for faster indexing...
-    private val vcycle_length = instructions.length
+    val instructionMemory = TaggedInstruction.indexedTaggedBlock(proc)
+    private var pc: Int = 0
+    private var jumpPc: Option[Int] = None
+
+
+    override def updatePc(v: Int): Unit = {
+      jumpPc = Some(v)
+    }
+    // private val instructions =
+    //   proc.body.toArray // convert to array for faster indexing...
+
+    private val maxPc = instructionMemory.length
     override def read(rs: Name): UInt16 = register_file.read(rs)
 
     override def lload(address: UInt16): UInt16 = local_memory(address.toInt)
@@ -302,14 +312,54 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       caught_traps.dequeueAll(_ => true)
 
     override def step(): Unit = {
-      if (cycle < vcycle_length) {
-        interpret(instructions(cycle))
-        cycle += 1
+
+      def handlePhi(tInst: TaggedInstruction): Unit = {
+        if (register_file.isInstanceOf[NamedRegisterFile]) {
+          tInst.tags.foreach {
+            case PhiSource(rd, rs) =>
+              write(rd, read(rs)) // propagate
+            case _ => // do nothing
+          }
+        } else {
+          // do nothing, the register allocation should implicitly handle Phis
+        }
+      }
+      if (pc < maxPc) {
+        val taggedInst = instructionMemory(pc)
+        jumpPc match {
+          case Some(target) => // there is no pending jump
+            val isBorrowedExecution = taggedInst.tags.exists { t =>
+              t == TaggedInstruction.BorrowedExecution
+            }
+            if (isBorrowedExecution) {
+              interpret(taggedInst.instruction)
+              handlePhi(taggedInst)
+            } else {
+              // done with the borrowed execution need to actually jump!
+              pc = target
+              val jumpTargetInst = instructionMemory(pc)
+              val isJumpTarget = taggedInst.tags.exists { t =>
+                t.isInstanceOf[
+                  TaggedInstruction.JumpTarget
+                ] || t == TaggedInstruction.BreakTarget
+              }
+              assert(isJumpTarget, "Expected a tagged jumped target!")
+              jumpPc = None // don't do it after interpret because that may
+              // change jumpPc to a new value (i.e., if we have a jump after another jump)
+              interpret(jumpTargetInst.instruction)
+              handlePhi(jumpTargetInst)
+            }
+          case None =>
+            interpret(taggedInst.instruction)
+            handlePhi(taggedInst)
+        }
+        pc += 1
       }
     }
 
     override def roll(): Unit = {
-      cycle = 0
+      pc = 0
+      jumpPc = None
       while (inbox.nonEmpty) {
         val msg = inbox.dequeue()
         val entry = (msg.target_register, msg.source_id)
@@ -320,7 +370,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
         } else {
           // something is up
           ctx.logger.warn(
-            s"@${cycle} did not expect message, writing to " +
+            s"@${pc} did not expect message, writing to " +
               s"${msg.target_id}:${msg.target_register} value of ${msg.value} from process ${msg.source_id}"
           )
           trap(InternalTrap)
@@ -356,7 +406,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       p.id -> new AtomicProcessInterpreter(p, vcd)(ctx)
     }.toMap
 
-    val vcycle_length = program.processes.map { _.body.length }.max
+    val vcycle_length = cores.map { _._2.instructionMemory.length }.max
 
     override def interpretVirtualCycle(): Seq[InterpretationTrap] = {
 
