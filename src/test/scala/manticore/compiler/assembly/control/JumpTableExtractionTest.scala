@@ -28,6 +28,9 @@ import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
 import manticore.compiler.assembly.levels.placed.TaggedInstruction
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.assembly.utils.XorShift128
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRInterpreterMonitor
+import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
 
 class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
@@ -83,14 +86,15 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
         ) followedBy
         UnconstrainedIRParMuxDeconstructionTransform followedBy
         WidthConversion.transformation followedBy
-        Transformation.predicated(optimize)(Optimizations) followedBy
-        UnconstrainedCloseSequentialCycles followedBy
-        UnconstrainedInterpreter
+        Transformation.predicated(optimize)(Optimizations)
+
     def doTest(optimize: Boolean, useJump: Boolean, fixture: FixtureParam) = {
       val ctx = AluTestCommons.context(fixture)
       val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
 
-      def compiler = frontend(optimize, useJump)
+      def compiler = frontend(optimize, useJump) followedBy
+        UnconstrainedCloseSequentialCycles followedBy
+        UnconstrainedInterpreter
 
       val (transformed, _) = compiler(program, ctx)
       val hasJumpTable = transformed.processes.head.body.exists {
@@ -128,10 +132,103 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       val compiler =
         AluTestCommons.frontend(optimize = true, useJump = true) followedBy
           UnconstrainedToPlacedTransform followedBy JumpTableNormalizationTransform followedBy
-          JumpLabelAssignmentTransform
+          JumpLabelAssignmentTransform followedBy PlacedIRCloseSequentialCycles
       val (transformed, _) = compiler(program, ctx)
-      val instMemory = TaggedInstruction.indexedTaggedBlock(transformed.processes.head)(ctx)
+      val instMemory =
+        TaggedInstruction.indexedTaggedBlock(transformed.processes.head)(ctx)
       AtomicInterpreter(transformed, ctx)
+
+  }
+
+  "JumpTableExtraction" should "should construct a jump table" in {
+    fixture =>
+      val randGen = XorShift128("randGen0")
+
+      val source = s"""
+        .prog:
+            .proc p0:
+            ${randGen.registers}
+            @TRACK[name = "result"]
+            .reg result 32 .input rescurr 0 .output resnext
+
+            .wire l12 32
+            .wire l13 32
+            .wire l14 32
+            .wire l15 32
+
+            .wire sel 3
+
+            .wire c12 1
+            .wire c13 1
+            .wire c14 1
+
+
+            .const eleven 32 11
+            .const eight  32 8
+            .const nineteen 32 19
+            .const twentyNine 32 29
+
+            .const const1 3 1
+            .const const2 3 2
+            .const const3 3 3
+
+            ${randGen.code}
+
+
+            SRL sel, ${randGen.randNext}, twentyNine;
+
+            SEQ c12, sel, const1;
+            SEQ c13, sel, const2;
+            SEQ c14, sel, const3;
+
+            ADD l12, ${randGen.randNext}, eleven;
+            SRL l13, ${randGen.randNext}, eight;
+            SUB l14, ${randGen.randNext}, eleven;
+            MOV l15, ${randGen.randNext};
+
+            PARMUX resnext, c12 ? l12, c13 ? l13, c14 ? l14, l15;
+
+      """
+      val ctx = AluTestCommons.context(fixture)
+
+      val parsed = AssemblyParser(source, ctx)
+
+      val compiler = AluTestCommons.frontend(
+        true,
+        true
+      ) followedBy UnconstrainedCloseSequentialCycles
+
+      val converted = compiler(parsed, ctx)._1
+      val monitor = UnconstrainedIRInterpreterMonitor(converted)(ctx)
+
+      val interp = UnconstrainedInterpreter.instance(
+        program = converted,
+        monitor = Some(monitor),
+        vcdDump = None
+      )(ctx)
+
+      def nextExpected(): Int = {
+
+        val currRnd = randGen.nextRef()
+        val sel = currRnd >>> 29
+
+        val res = sel match {
+          case 1 => currRnd + 11
+          case 2 => currRnd >>> 8
+          case 3 => currRnd - 11
+          case _ => currRnd
+        }
+
+        res
+      }
+
+      for (cycle <- 0 to 10000) {
+        interp.runVirtualCycle()
+        interp.getException() shouldBe None
+        val ref = nextExpected()
+        val got = monitor.read("resnext").toInt
+        withClue(s"Got ${got} but expected ${ref}") { got should equal(ref) }
+      }
 
   }
 

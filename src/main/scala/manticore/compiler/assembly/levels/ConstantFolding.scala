@@ -16,7 +16,8 @@ trait ConstantFolding
     extends Flavored
     with CanRename
     with CanCollectProgramStatistics
-    with DependenceGraphBuilder {
+    with DependenceGraphBuilder
+    with CanCollectInputOutputPairs {
 
   import flavor._
 
@@ -434,8 +435,13 @@ trait ConstantFolding
 
     // now we need to remove any unused DefRegs
 
+    val inputOutputPairs = InputOutputPairs.createInputOutputPairs(process)
     val referenced = DependenceAnalysis.referencedNames(finalInstructions)
-    def shouldKeepDef(r: DefReg) = referenced(r.variable.name)
+    def isIo(r: DefReg): Boolean =
+      r.variable.varType == InputType || r.variable.varType == OutputType
+    // keep a def if it was referenced or it is an actual register, note that
+    // this pass can not remove registers, that is the job of the DCE
+    def shouldKeepDef(r: DefReg) = referenced(r.variable.name) || isIo(r)
 
     val nonConstOriginalNames = process.registers.filter { r =>
       r.variable.varType != ConstType
