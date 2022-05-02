@@ -346,3 +346,7 @@ object LatencyAnalysis {
 
 
 object PlacedIRPrinter extends AssemblyPrinter[PlacedIR.DefProgram] {}
+
+object PlacedIRDependencyDependenceGraphBuilder extends DependenceGraphBuilder {
+    val flavor = PlacedIR
+}

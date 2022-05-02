@@ -13,7 +13,6 @@ import manticore.compiler.UnitTestMatchers
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedNameChecker
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedMakeDebugSymbols
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedOrderInstructions
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRemoveAliases
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVariables
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion

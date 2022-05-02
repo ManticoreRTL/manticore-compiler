@@ -8,6 +8,7 @@ import scalax.collection.Graph
 import scalax.collection.GraphEdge
 import scalax.collection.edge.LDiEdge
 import javax.xml.crypto.Data
+import manticore.compiler.assembly.annotations.Memblock
 /**
   * Construct JumpTables from ParMux instructions where it is beneficial
   *
@@ -335,6 +336,8 @@ trait JumpTableConstruction extends DependenceGraphBuilder {
       }
     }
 
+    // Note that the default case is always prepended to the other cases,
+    // this is the reverse of the usual Verilog/C switch statement syntax
     tryCreateTableLookup() match {
       case l @ FastLookup(index, defs, body, labelGroup) =>
         JumpTableConstructible(

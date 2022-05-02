@@ -66,12 +66,11 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
       case jtb @ JumpTable(_, phis, blocks, delaySlot, _) =>
         phis.map { case Phi(rd, _) => rd -> jtb } ++
           delaySlot.flatMap {
-            inst: DataInstruction => // note the explicit type annotation, if we decide
-              // to have nested JumpTables this will fail (intentionally)
+            inst =>
               DependenceAnalysis.regDef(inst).map { _ -> inst }
           } ++
           blocks.flatMap { case JumpCase(_, blocks) =>
-            blocks.flatMap { inst: DataInstruction =>
+            blocks.flatMap { inst =>
               DependenceAnalysis.regDef(inst).map { _ -> inst }
             }
           }
@@ -366,10 +365,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
           // dceBlock will not transform any instruction to another kind
           // so since blk is all DataInstruction, then the result would
           // dynamically be the same
-          def dceDataBlock(blk: Seq[DataInstruction]): Seq[DataInstruction] =
-            dceBlock(blk) { scopedTrack }.map {
-              _.asInstanceOf[DataInstruction]
-            }
+          def dceDataBlock(blk: Seq[Instruction]): Seq[Instruction] =
+            dceBlock(blk) { scopedTrack }
           val reducedBlocks = caseBlocks.map { case JumpCase(lbl, blk) =>
             JumpCase(
               lbl,

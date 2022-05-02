@@ -193,7 +193,7 @@ object UnconstrainedInterpreter
       val monitor: Option[UnconstrainedIRInterpreterMonitor]
   )(implicit
       val ctx: AssemblyContext
-  ) extends  InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter]{
+  ) extends InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter]{
 
     private def handleMemoryAccess(base: Name, instruction: Instruction)(
         handler: (BlockRam, Option[Int]) => Unit
@@ -701,9 +701,10 @@ object UnconstrainedInterpreter
                 }
             }
         }
-      case _: Recv =>
+      case i @(_: Recv | _: BreakCase) =>
         ctx.logger.error("Illegal instruction", instruction)
         state.exception_occurred = Some(InterpretationFailure)
+
     }
 
     sealed trait StepStatus

@@ -86,9 +86,9 @@ trait RenameTransformation extends Flavored {
       }
       val outerRenamer = new CreateNewRdDefIfDirty
 
-      def renameDataInstruction(
-          inst: DataInstruction
-      ) = {
+      def renameInstruction(
+          inst: Instruction
+      ): Instruction = {
         val renamed = inst match {
           case i @ BinaryArithmetic(_, rd, rs1, rs2, _) =>
             /** we need to perform copy twice in order to enforce the order in
@@ -142,57 +142,55 @@ trait RenameTransformation extends Flavored {
             i.copy(carry = outerRenamer(rd))
           case i @ SetCarry(rd, _) =>
             i.copy(carry = outerRenamer(rd))
+          case i @ Expect(ref, got, _, _) =>
+            i.copy(ref = subst(ref), got = subst(got))
+          case i @ Nop => i
+          case i: SynchronizationInstruction =>
+            ctx.logger.error("Can not rename instruction", i)
+            i
+          case i @ ParMux(rd, choices, default, _) =>
+            i.copy(
+              default = subst(default),
+              choices = choices map { case ParMuxCase(a, b) =>
+                ParMuxCase(subst(a), subst(b))
+              }
+            ).copy(rd = outerRenamer(rd))
+
+          case i @ Lookup(rd, index, base, _) =>
+            i.copy(index = subst(index), base = subst(base))
+              .copy(rd = outerRenamer(rd))
+
+          case i @ JumpTable(rs, results, blocks, dslot, _) =>
+            assert(
+              results.forall { case Phi(rd, rss) =>
+                rss.forall { case (_, rs) => rs != rd }
+              },
+              "Phis are not in SSA form!"
+            )
+
+            i.copy(
+              target = subst(rs),
+              blocks = blocks.map { case JumpCase(lbl, body) =>
+                JumpCase(lbl, body.map(renameInstruction))
+              },
+              dslot = dslot.map(renameInstruction)
+            ).copy(
+              results = results.map { case Phi(rd, rss) =>
+                Phi(
+                  subst(
+                    rd
+                  ), // no need to call outerRenamer because we assume the
+                  // phi is already in SSA form, i.e., non of the operands have the
+                  // same name as rd
+                  rss.map { case (lbl, rs) => (lbl, subst(rs)) }
+                )
+              }
+            )
+          case i: BreakCase => i
         }
         renamed.setPos(inst.pos)
       }
-      def renameInstruction(inst: Instruction): Instruction = inst match {
-        case i: DataInstruction =>
-          renameDataInstruction(i)
-        case i @ Expect(ref, got, _, _) =>
-          i.copy(ref = subst(ref), got = subst(got)).setPos(i.pos)
-        case i @ Nop => i
-        case i: SynchronizationInstruction =>
-          ctx.logger.error("Can not rename instruction", i)
-          i
-        case i @ ParMux(rd, choices, default, _) =>
-          i.copy(
-            default = subst(default),
-            choices = choices map { case ParMuxCase(a, b) =>
-              ParMuxCase(subst(a), subst(b))
-            }
-          ).copy(rd = outerRenamer(rd))
-            .setPos(i.pos)
-        case i @ Lookup(rd, index, base, _) =>
-          i.copy(index = subst(index), base = subst(base))
-            .copy(rd = outerRenamer(rd))
-            .setPos(i.pos)
-        case i @ JumpTable(rs, results, blocks, dslot, _) =>
-          assert(
-            results.forall { case Phi(rd, rss) =>
-              rss.forall { case (_, rs) => rs != rd }
-            },
-            "Phis are not in SSA form!"
-          )
-
-          i.copy(
-            target = subst(rs),
-            blocks = blocks.map { case JumpCase(lbl, body) =>
-              JumpCase(lbl, body.map(renameDataInstruction))
-            },
-            dslot = dslot.map(renameDataInstruction)
-          ).copy(
-            results = results.map { case Phi(rd, rss) =>
-              Phi(
-                subst(rd), // no need to call outerRenamer because we assume the
-                // phi is already in SSA form, i.e., non of the operands have the
-                // same name as rd
-                rss.map { case (lbl, rs) => (lbl, subst(rs)) }
-              )
-            }
-          ).setPos(i.pos)
-
-        // case _: ControlInstruction =>
-      }
+      
 
       proc.body.foreach { inst =>
         val new_inst: Instruction = renameInstruction(inst)

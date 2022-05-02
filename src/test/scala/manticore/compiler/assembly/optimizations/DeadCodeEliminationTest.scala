@@ -154,6 +154,7 @@ class DeadCodeEliminationTest extends UnitFixtureTest with UnitTestMatchers{
       Range(0, 1000).foreach { _ =>
         interp.runVirtualCycle()
         monitor.read("x0curr").toInt shouldBe reference.next()
+
         interp.getException() shouldBe None
       }
 

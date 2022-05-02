@@ -142,6 +142,8 @@ trait AssemblyNameChecker extends Flavored {
               } else {
                 acc :+ ((carry -> inst))
               }
+            case i: BreakCase => // nothing to check
+              acc
           }
 
         }
@@ -235,8 +237,9 @@ trait AssemblyNameChecker extends Flavored {
             case Recv(rd, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
             case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect |
-                _: GlobalStore) =>
+                _: GlobalStore | _: BreakCase) =>
               assigns
+
           }
         }
       checkSSA(
