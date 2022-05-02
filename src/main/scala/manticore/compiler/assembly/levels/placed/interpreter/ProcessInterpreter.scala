@@ -10,7 +10,8 @@ import manticore.compiler.assembly.BinaryOperator
 trait ProcessInterpreter extends InterpreterBase {
 
 //   type Message <: HasTargetId
-  val proc: DefProcess
+  // val proc: DefProcess
+  implicit val ctx: AssemblyContext
 
   type Message <: MessageBase
 

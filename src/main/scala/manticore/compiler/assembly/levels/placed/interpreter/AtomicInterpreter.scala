@@ -36,95 +36,10 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     def read(name: Name): UInt16
   }
 
-  /// A virtually unbounded register file
-  final class NamedRegisterFile(
-      proc: DefProcess,
-      val vcd: Option[PlacedValueChangeWriter]
-  )(implicit val ctx: AssemblyContext)
-      extends RegisterFile {
-
-    private val register_file =
-      scala.collection.mutable.Map.empty[Name, UInt16] ++ proc.registers.map {
-        r =>
-          if (r.variable.varType == ConstType && r.value.isEmpty) {
-            ctx.logger.error(s"constant value is not defined", r)
-          }
-          r.variable.name -> r.value.getOrElse(UInt16(0))
-      }
-    override def write(rd: Name, value: UInt16): Unit = {
-      register_file(rd) = value
-      vcd.foreach(_.update(rd, value))
-    }
-    override def read(rs: Name): UInt16 = register_file(rs)
-
-  }
-
-  // a bounded size register file
-  final class PhysicalRegisterFile(
-      proc: DefProcess,
-      val vcd: Option[PlacedValueChangeWriter]
-  )(implicit val ctx: AssemblyContext)
-      extends RegisterFile {
-
-    private val register_file = Array.fill(ctx.max_registers) { UInt16(0) }
-    private val carry_register_file = Array.fill(ctx.max_carries) { UInt16(0) }
-
-    private val name_to_ids = proc.registers.map { r: DefReg =>
-      val reg_id = r.variable.id
-      val max_id =
-        if (r.variable.varType == CarryType) ctx.max_carries
-        else ctx.max_registers
-
-      if (reg_id < 0 || reg_id >= max_id) {
-        ctx.logger.error(s"register not properly allocated!", r)
-        r.variable.name -> (0, register_file)
-      } else {
-        if (r.variable.varType == ConstType && r.value.isEmpty) {
-          ctx.logger.warn(s"constant is not defined!", r)
-        }
-        // set the initial value if there is one
-        if (
-          r.variable.varType == InputType ||
-          r.variable.varType == ConstType ||
-          r.variable.varType == MemoryType
-        ) {
-          r.value match {
-            case Some(x) => register_file(reg_id) = x
-            case None    => // nothing to do
-          }
-        } else if (r.value.nonEmpty) {
-          ctx.logger.warn("Did not expect initial value", r)
-        }
-
-        if (r.variable.varType == CarryType) {
-          r.variable.name -> (reg_id, carry_register_file)
-        } else {
-          r.variable.name -> (reg_id, register_file)
-        }
-      }
-    }.toMap
-
-    override def write(rd: Name, value: UInt16): Unit = {
-      //look up the index
-      val (index, container) = name_to_ids(rd)
-      container(index) = value
-      vcd match {
-        case Some(handle) => handle.update(rd, value)
-        case None         => // do nothing
-      }
-
-    }
-
-    override def read(rs: Name): UInt16 = {
-      val (index, container) = name_to_ids(rs)
-      container(index)
-    }
-
-  }
-
   final class AtomicProcessInterpreter(
-      val proc: DefProcess,
-      val vcd: Option[PlacedValueChangeWriter]
+      proc: DefProcess,
+      vcd: Option[PlacedValueChangeWriter],
+      monitor: Option[PlacedIRInterpreterMonitor]
   )(implicit
       val ctx: AssemblyContext
   ) extends ProcessInterpreter {
@@ -136,13 +51,30 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     type Message = AtomicMessage
 
     private val register_file = {
+
+      def badAlloc(r: DefReg): Unit =
+        ctx.logger.error("Bad register allocation!", r)
+      def undefinedConstant(r: DefReg): Unit =
+        ctx.logger.error("Constant not defined!", r)
+      def badInit(r: DefReg): Unit =
+        ctx.logger.warn("Did not expect initial value!", r)
       // check whether the registers are allocated
       if (proc.registers.exists(r => r.variable.id == -1)) {
         ctx.logger.info("using an unbounded register file")
-        new NamedRegisterFile(proc, vcd)
+        new NamedRegisterFile(proc, vcd, monitor)(undefinedConstant)
       } else {
         ctx.logger.info("using a bounded register file")
-        new PhysicalRegisterFile(proc, vcd)
+        new PhysicalRegisterFile(
+          proc,
+          vcd,
+          monitor,
+          ctx.max_registers,
+          ctx.max_carries
+        )(
+          undefinedConstant,
+          badAlloc,
+          badInit
+        )
       }
 
     }
@@ -246,7 +178,6 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     val instructionMemory = TaggedInstruction.indexedTaggedBlock(proc)
     private var pc: Int = 0
     private var jumpPc: Option[Int] = None
-
 
     override def updatePc(v: Int): Unit = {
       jumpPc = Some(v)
@@ -391,11 +322,12 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
   }
 
   final class AtomicProgramInterpreter(
-      val program: DefProgram,
-      val vcd: Option[PlacedValueChangeWriter],
-      val expected_cycles: Option[Int]
+      program: DefProgram,
+      vcd: Option[PlacedValueChangeWriter],
+      monitor: Option[PlacedIRInterpreterMonitor],
+      expected_cycles: Option[Int]
   )(implicit
-      val ctx: AssemblyContext
+      ctx: AssemblyContext
   ) extends ProgramInterpreter {
 
     override implicit val phase_id: TransformationID = TransformationID(
@@ -403,7 +335,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
     )
 
     val cores = program.processes.map { p =>
-      p.id -> new AtomicProcessInterpreter(p, vcd)(ctx)
+      p.id -> new AtomicProcessInterpreter(p, vcd, monitor)(ctx)
     }.toMap
 
     val vcycle_length = cores.map { _._2.instructionMemory.length }.max
@@ -481,19 +413,20 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
 
   }
 
-  def mkInterpreter(
-      prog: DefProgram,
+  def instance(
+      program: DefProgram,
       vcd: Option[PlacedValueChangeWriter] = None,
-      expected_cycles: Option[Int] = None
+      monitor: Option[PlacedIRInterpreterMonitor] = None,
+      expectedCycles: Option[Int] = None
   )(implicit ctx: AssemblyContext): AtomicProgramInterpreter =
-    new AtomicProgramInterpreter(prog, vcd, expected_cycles)
+    new AtomicProgramInterpreter(program, vcd, monitor, expectedCycles)
 
   override def check(source: DefProgram, context: AssemblyContext): Unit = {
 
     val vcd = context.dump_dir.map(_ =>
       PlacedValueChangeWriter(source, "atomic_trace.vcd")(context)
     )
-    val interp = mkInterpreter(source, vcd, context.expected_cycles)(context)
+    val interp = instance(source, vcd, None, context.expected_cycles)(context)
 
     interp.interpretCompletion()
 

@@ -6,7 +6,6 @@ import manticore.compiler.AssemblyContext
 
 trait ProgramInterpreter extends InterpreterBase {
 
-  val program: DefProgram
 
   // interpret a single virtual cycle
   def interpretVirtualCycle(): Seq[InterpretationTrap]

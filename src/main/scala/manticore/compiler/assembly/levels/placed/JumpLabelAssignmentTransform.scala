@@ -12,11 +12,11 @@ import scala.collection.immutable
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.UInt16
 
-/**
-  * Assign/resolve named labels to concrete "PC" values and fixup any [[BreakCase]]
-  * target
+/** Assign/resolve named labels to concrete "PC" values and fixup any
+  * [[BreakCase]] target
   *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object JumpLabelAssignmentTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
@@ -76,12 +76,21 @@ object JumpLabelAssignmentTransform
     ): Seq[Instruction] = {
       body match {
         case (head: JumpTable) :: next =>
-          assert(targets.nonEmpty, "Not enough break targets!")
-          consumeBreakTarget(
-            next,
-            targets.tail,
-            newBody :+ setBreakTargets(head, targets.head)
-          )
+          if (targets.nonEmpty) {
+            consumeBreakTarget(
+              next,
+              targets.tail,
+              newBody :+ setBreakTargets(head, 0)
+            )
+          } else {
+            ctx.logger.error("JumpTable can not be last instruction in a process", head)
+            assert(next == Nil)
+            // the last instruction in a taggedBlock is a JumpTable, so we need
+            // to jump to the beginning, but we can no jump backwards. So this is
+            // an error, basically we should make sure that there is at least
+            // one instruction after the last JumpTable, which could be a Nop.
+            newBody
+          }
         case head :: next =>
           consumeBreakTarget(next, targets, newBody :+ head)
         case Nil => newBody

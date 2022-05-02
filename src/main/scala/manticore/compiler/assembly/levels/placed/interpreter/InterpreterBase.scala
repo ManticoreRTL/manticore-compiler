@@ -14,7 +14,8 @@ import manticore.compiler.assembly.levels.InterpreterMonitorCompanion
 
 trait InterpreterBase {
   implicit val phase_id: TransformationID
-  implicit val ctx: AssemblyContext
+
+  // implicit val ctx: AssemblyContext
 }
 
 /// base trait for a message between the machine interpreter and a process interpreter
