@@ -13,7 +13,8 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.MemoryType
-import javax.xml.crypto.Data
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVariables
+import scala.collection.mutable.ArrayBuffer
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -218,6 +219,10 @@ object WidthConversionCore
     uint16_array.length != 1
   ) {
     ctx.logger.error(msg, inst)
+  }
+
+  def sliceCoversOneWord(instr: Slice): Boolean = {
+    ((instr.offset % 16) + instr.length) <= 16
   }
 
   /** Convert binary arithmetic operations
@@ -2047,6 +2052,32 @@ object WidthConversionCore
         i.copy(rd = rd16, rs = rs16).setPos(i.pos)
       }
 
+    case i @ Slice(rd, rs, offset, length, _) =>
+      // We are guaranteed that the offset and length fall entirely within ONE 16-bit word
+      // at this stage as we had previously transformed all multi-16-bit slices into an
+      // unconstrained SRL.
+      // As a sanity check we fail if the `slice` we see does not satisfy this
+      // criteria.
+      if (!sliceCoversOneWord(i)) {
+        ctx.logger.error("Slice instruction only applies to intervals that fit in one 16-bit word!")
+      }
+
+      val rs_uint16_array = builder.getConversion(rs).parts
+      val rd_uint16_array = builder.getConversion(rd).parts
+      // Must hold given the test above.
+      assert(rd_uint16_array.length == 1)
+
+      val wordIdx = offset / 16
+
+      Seq(
+        Slice(
+          rd_uint16_array(0),
+          rs_uint16_array(wordIdx),
+          offset % 16,
+          length
+        ).setPos(i.pos)
+      )
+
     case i @ ParMux(rd, choices, default, _) =>
       val rd_uint16_array = builder.getConversion(rd).parts
       val case_conds: Seq[Name] = choices.map { case ParMuxCase(cond, _) =>
@@ -2127,7 +2158,7 @@ object WidthConversionCore
             )
           case None => // do nothing
         }
-        convert(any_inst).collect { case i: DataInstruction =>
+        converted.collect { case i: DataInstruction =>
           i
         }
       }
@@ -2152,14 +2183,41 @@ object WidthConversionCore
 
   }
 
+  def replaceWordCrossingSlices(
+    proc: DefProcess
+  )(
+    implicit ctx: AssemblyContext
+  ): DefProcess = {
+
+    val newConsts = ArrayBuffer.empty[DefReg]
+
+    val newBody = proc.body.map { i => i match {
+      case s @ Slice(rd, rs, offset, length, annons) if !sliceCoversOneWord(s) =>
+        // We transform the slice into an unconstrained SRL with a narrower output.
+        // The width conversion core can later take care of transforming the SRL into
+        // multiple SRL / SLL / OR instructions.
+        val shiftAmountName = UnconstrainedRenameVariables.mkFreshName("slice_srl_const", ConstType)
+        val shiftAmountVar = DefReg(
+          LogicVariable(shiftAmountName, 16, ConstType),
+          Some(BigInt(offset))
+        )
+        newConsts += shiftAmountVar
+        BinaryArithmetic(BinaryOperator.SRL, rd, rs, shiftAmountName, annons)
+
+      case _ => i
+    }}
+
+    proc.copy(
+      registers = proc.registers ++ newConsts,
+      body = newBody
+    )
+  }
+
   def convert(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
-
-    implicit val builder = new Builder(proc)
-
-    val insts: Seq[Instruction] = proc.body.flatMap { convert(_) }
-
+    val procWithoutMultiwordSlices = replaceWordCrossingSlices(proc)
+    implicit val builder = new Builder(procWithoutMultiwordSlices)
+    val insts: Seq[Instruction] = procWithoutMultiwordSlices.body.flatMap { instr => convert(instr) }
     builder.buildFrom(insts)
-
   }
   override def transform(
       source: DefProgram,

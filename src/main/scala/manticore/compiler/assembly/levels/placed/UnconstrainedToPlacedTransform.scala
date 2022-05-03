@@ -323,7 +323,10 @@ object UnconstrainedToPlacedTransform
       T.Predicate(rs, annons)
     case S.Mux(rd, sel, rs1, rs2, annons) =>
       T.Mux(rd, sel, rs1, rs2, annons)
-    case S.Mov(rd, rs, annons) => T.Mov(rd, rs, annons)
+    case S.Mov(rd, rs, annons) =>
+      T.Mov(rd, rs, annons)
+    case S.Slice(rd, rs, offset, length, annons) =>
+      T.Slice(rd, rs, offset, length, annons)
     case S.PadZero(rd, rs, width, annons) =>
       ctx.logger.error("Unsupported instruction", inst)
       T.PadZero(rd, rs, UInt16(16), annons)
@@ -393,55 +396,57 @@ object UnconstrainedToPlacedTransform
       asm: S.DefProgram
   )(implicit ctx: AssemblyContext): Boolean = {
 
-    asm.processes
-      .map { p =>
-        p.registers
-          .map { r =>
-            // ensure every register is 16 bits
-            if (!(r.variable.width == 16 || r.variable.width == 1)) {
-              ctx.logger.error(
-                s"expected  16-bit register in process ${p.id}",
-                r
-              )
-              false
-            } else {
-              r.value match {
-                case Some(x) => // ensure initial values are 16 bits
-                  s"register ${r.serialized} has an illegal initial value"
-                  x < (1 << 16)
-                case _ => true
-              }
-            }
-          }
-          .forall(_ == true) &&
-        p.body
-          .map { i =>
-            i match {
-              case S.LocalLoad(_, _, offset, _) =>
-                if (offset >= (1 << 16)) {
-                  ctx.logger.error(s"invalid offset in ${i.serialized}")
-                  false
-                } else true
-              case S.LocalStore(_, _, offset, _, _) =>
-                if (offset >= (1 << 16)) {
-                  ctx.logger.error(s"invalid offset in ${i.serialized}")
-                  false
-                } else true
-              case S.SetValue(_, value, _) =>
-                if (value >= (1 << 16)) {
-                  ctx.logger.error(
-                    s"invalid immediate value in ${i.serialized}"
-                  )
-                  false
-                } else true
+    def processIsConvertible(p: S.DefProcess): Boolean = {
+      val regsConvertible = p.registers
+        .map { r =>
+          // ensure every register is 16 bits
+          if (!(r.variable.width == 16 || r.variable.width == 1)) {
+            ctx.logger.error(
+              s"expected  16-bit register in process ${p.id}",
+              r
+            )
+            false
+          } else {
+            r.value match {
+              case Some(x) => // ensure initial values are 16 bits
+                s"register ${r.serialized} has an illegal initial value"
+                x < (1 << 16)
               case _ => true
             }
-
           }
-          .forall(_ == true)
-      }
-      .forall(_ == true)
+        }
+        .forall(_ == true)
 
+      val bodyConvertible = p.body
+        .map { i =>
+          i match {
+            case S.LocalLoad(_, _, offset, _) =>
+              if (offset >= (1 << 16)) {
+                ctx.logger.error(s"invalid offset in ${i.serialized}")
+                false
+              } else true
+            case S.LocalStore(_, _, offset, _, _) =>
+              if (offset >= (1 << 16)) {
+                ctx.logger.error(s"invalid offset in ${i.serialized}")
+                false
+              } else true
+            case S.SetValue(_, value, _) =>
+              if (value >= (1 << 16)) {
+                ctx.logger.error(
+                  s"invalid immediate value in ${i.serialized}"
+                )
+                false
+              } else true
+            case _ => true
+          }
+        }
+        .forall(_ == true)
+
+        regsConvertible && bodyConvertible
+    }
+
+    val programConvertible = asm.processes.map(p => processIsConvertible(p)).forall(_ == true)
+    programConvertible
   }
 
 }

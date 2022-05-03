@@ -28,6 +28,7 @@ trait ConversionBuilder extends Flavored {
   val flavor = UnconstrainedIR
   import flavor._
 
+  // The mask is that of the most significant word.
   protected case class ConvertedWire(parts: Seq[Name], mask: Option[Name])
 
   protected class Builder(private val proc: DefProcess)(implicit

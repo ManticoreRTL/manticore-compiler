@@ -17,6 +17,7 @@ import manticore.compiler.assembly.utils.Xormix32
 import manticore.compiler.UnitTestMatchers
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.interpreter.PlacedIRInterpreterMonitor
+import manticore.compiler.assembly.utils.XorReduce
 
 class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
@@ -27,7 +28,8 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
   val sources = Seq(
     Mips32Circuit,
     PicoRv32Circuit,
-    // Swizzle,
+    Swizzle,
+    XorReduce,
     Xormix32,
   )
 
@@ -38,7 +40,9 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
   val numLutInputs = Seq(
     2,
+    3,
     4,
+    5,
     6,
   )
 
@@ -55,9 +59,8 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
         it should s"reduce virtual cycle lengths for (${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT)" in { f =>
 
-
           val ctx = AssemblyContext(
-            dump_all = false,
+            dump_all = true,
             dump_dir = Some(f.test_dir.toFile()),
             debug_message = true,
             max_custom_instructions = 32,
@@ -79,12 +82,20 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
             prog.processes.map(proc => proc.body.length).max
           }
 
+          def computePercentDelta(before: Int, after: Int): String = {
+            val delta = (after - before).toDouble
+            val absPercentDelta = (math.abs(delta) / before) * 100
+            val sign = if (delta > 0) "+" else "-"
+            s"${sign} %.2f %%".format(absPercentDelta)
+          }
+
           val vCyclesBefore = computeVirtualCycle(progLowered)
           val vCyclesAfter = computeVirtualCycle(progWithLutsDce)
+          val percentDeltaStr = computePercentDelta(vCyclesBefore, vCyclesAfter)
 
-          println(s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, vCycle ${vCyclesBefore} -> ${vCyclesAfter}")
+          println(s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, vCycle ${vCyclesBefore} -> ${vCyclesAfter} (${percentDeltaStr})")
 
-          assert(vCyclesBefore > vCyclesAfter)
+          assert(vCyclesBefore >= vCyclesAfter)
           // This is supposed to change, but since we are not scheduling the code
           // sequential cycles are open and InputType registers never get updated
           // unless we close them.

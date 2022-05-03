@@ -71,6 +71,15 @@ object UnconstrainedRenameVariables
   val flavor = UnconstrainedIR
   import flavor._
 
+  def mkFreshName(
+    original: String,
+    tpe: VariableType
+  )(
+    implicit ctx: AssemblyContext
+  ) = {
+    mkName(ctx.uniqueNumber(), original, tpe)
+  }
+
   override def mkName(id: Long, original: String, tpe: VariableType): String =
     tpe match {
       case WireType   => s"%w${id}"

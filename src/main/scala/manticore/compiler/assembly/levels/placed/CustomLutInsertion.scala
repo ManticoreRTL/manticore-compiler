@@ -65,11 +65,12 @@ object CustomLutInsertion
 
   def dumpGraph[V](
     g: Graph[V, DefaultEdge],
-    vColorMap: Map[V, Color] = Map.empty[V, Color]
+    vColorMap: Map[V, Color] = Map.empty[V, Color],
+    vToInstrMap: Map[V, Instruction] = Map.empty[V, Instruction]
   ): String = {
     val vertexIdProvider = new Function[V, String] {
       def apply(v: V): String = {
-        val vStr = v.toString
+        val vStr = vToInstrMap.getOrElse(v, v.toString)
 
         // Note the use of quotes around the serialized name so it is a legal graphviz identifier (as
         // characters such as "." are not allowed in identifiers).
@@ -545,7 +546,7 @@ object CustomLutInsertion
           }
         }.toMap
 
-      dumpGraph(dependenceGraph, colorMap)
+      dumpGraph(dependenceGraph, colorMap, nameToInstrMap)
     }
 
     // Compute a custom function for every cone found.
