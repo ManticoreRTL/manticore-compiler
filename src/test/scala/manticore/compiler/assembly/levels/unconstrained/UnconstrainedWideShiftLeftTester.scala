@@ -39,8 +39,8 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width_rd}]
     .mem res_ref_ptr ${addr_width}
     .const const_ptr_inc ${addr_width} 1
-    .reg sh_amount 16 0
-    .reg done 1 0
+    .wire sh_amount 16 0
+    .wire done 1 0
 
     .const const_0 16 0
     .const const_1 16 1

@@ -49,12 +49,12 @@ class UnconstrainedWideAddTester extends UnconstrainedWideTest {
             ${rd_mb}
             .mem rd_ptr ${addr_width}
 
-            .reg counter 16 0
+            .wire counter 16 0
             .const const_0 16 0
             .const const_1 16 1
             .const const_ptr_inc ${addr_width} 1
             .const const_max 16 ${count}
-            .reg   done  1 0
+            .wire   done  1 0
 
             .wire rs1_v ${width}
             .wire rs2_v ${width}
