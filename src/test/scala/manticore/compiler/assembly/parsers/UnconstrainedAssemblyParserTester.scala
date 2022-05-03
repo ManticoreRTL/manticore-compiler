@@ -15,7 +15,6 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
   behavior of "Unconstrained assembly parser"
   import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR._
   import manticore.compiler.assembly.levels.{
-    RegType,
     WireType,
     InputType,
     MemoryType,
@@ -25,8 +24,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
 
   val regs = (
     """.const $zero 32 0;
-      |.reg %x 32;
-      |.reg %%xi 32 0x321;
+      |.wire %x 32;
+      |.wire %%xi 32 0x321;
       |.wire y  8 ;
       |@TRACK [name = "top/inst/yi"]
       |.wire yi 16 0b011001010101010  ;
@@ -38,8 +37,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
       |""".stripMargin,
     Seq(
       DefReg(LogicVariable("$zero", 32, ConstType), Some(BigInt(0))),
-      DefReg(LogicVariable("%x", 32, RegType), None),
-      DefReg(LogicVariable("%%xi", 32, RegType), Some(BigInt(0x321))),
+      DefReg(LogicVariable("%x", 32, WireType), None),
+      DefReg(LogicVariable("%%xi", 32, WireType), Some(BigInt(0x321))),
       DefReg(LogicVariable("y", 8, WireType), None),
       DefReg(
         LogicVariable("yi", 16, WireType),
