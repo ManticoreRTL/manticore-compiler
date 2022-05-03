@@ -79,6 +79,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         case AddC(rd, co, rs1, rs2, ci, annons) =>
           Seq(rs1, rs2, ci)
         case Mov(rd, rs, _)                  => Seq(rs)
+        case Slice(rd, rs, _, _, _) => Seq(rs)
         case Recv(rd, rs, source_id, annons) =>
           // purely synthetic instruction, should be regarded as NOP
           Seq.empty
@@ -136,6 +137,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         case PadZero(rd, rs, width, annons)                          => Seq(rd)
         case AddC(rd, co, rs1, rs2, ci, annons) => Seq(rd, co)
         case Mov(rd, _, _)                      => Seq(rd)
+        case Slice(rd, _, _, _, _)              => Seq(rd)
         case ClearCarry(rd, _)                  => Seq(rd)
         case SetCarry(rd, _)                    => Seq(rd)
         case _: Recv                            => Nil

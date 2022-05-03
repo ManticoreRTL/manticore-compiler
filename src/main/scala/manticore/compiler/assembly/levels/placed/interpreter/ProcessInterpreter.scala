@@ -250,6 +250,14 @@ trait ProcessInterpreter extends InterpreterBase {
         val rd_val = read(default)
         write(rd, rd_val)
       }
+
+    case Slice(rd, rs, offset, length, _) =>
+      val rs_val = read(rs)
+      val rs_shifted = rs_val >> offset
+      val mask = UInt16((1 << length) - 1)
+      val rd_val = rs_shifted & mask
+      write(rd, rd_val)
+
     case Nop => // nothing
 
     case _: GlobalStore | _: GlobalLoad | _: SetValue =>

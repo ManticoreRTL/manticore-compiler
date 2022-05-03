@@ -48,7 +48,8 @@ trait CanCollectProgramStatistics extends Flavored {
         "PREDICATE" -> 0,
         "PARMUX" -> 0,
         "LOOKUP" -> 0,
-        "SWITCH" -> 0
+        "SWITCH" -> 0,
+        "SLICE" -> 0,
       ) ++ Seq
         .tabulate(BinaryOperator.maxId) { i => BinaryOperator(i) }
         .filter { k =>
@@ -100,6 +101,8 @@ trait CanCollectProgramStatistics extends Flavored {
         case _: SetValue    => incr("SET")
         case _: ParMux      => incr("PARMUX")
         case _: Lookup      => incr("LOOKUP")
+        case _: Slice       => incr("SLICE")
+        case Nop            => incr("NOP")
         case JumpTable(_, _, blocks, dslot, _) =>
           var numInsts = 0
           // numInsts += incr("SWITCH")
@@ -113,7 +116,6 @@ trait CanCollectProgramStatistics extends Flavored {
           }
           vcycle += dslotInsts
           numInsts + dslotInsts
-        case Nop => incr("NOP")
       }
 
       vcycle += proc.body.length

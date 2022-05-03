@@ -142,6 +142,9 @@ trait RenameTransformation extends Flavored {
             i.copy(carry = outerRenamer(rd))
           case i @ SetCarry(rd, _) =>
             i.copy(carry = outerRenamer(rd))
+          case i @ Slice(rd, rs, _, _, _) =>
+            i.copy(rs = subst(rs))
+             .copy(rd = outerRenamer(rd))
         }
         renamed.setPos(inst.pos)
       }

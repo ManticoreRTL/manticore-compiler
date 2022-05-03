@@ -177,7 +177,8 @@ trait ConstantFolding
       inst match {
         case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore |
             _: GlobalStore | _: PadZero | _: SetCarry | _: ClearCarry |
-            _: Predicate | _: PadZero | _: Lookup) =>
+            _: Predicate | _: PadZero | _: Lookup | _: Slice) =>
+          // TODO (skashani): Slice can be optimized and we'll come back to it.
           builder.keep(i)
         case Nop => builder
         // don't keep
@@ -390,7 +391,6 @@ trait ConstantFolding
     val isUnopt = process.registers.collect {
       case r if hasTrack(r) || r.variable.varType == OutputType =>
         r.variable.name
-
     }.toSet
     val constants = process.registers.collect {
       case r if r.variable.varType == ConstType => r

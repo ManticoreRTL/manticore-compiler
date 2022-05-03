@@ -162,7 +162,8 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     "NOP",
     "PADZERO",
     "MOV",
-    "PARMUX"
+    "PARMUX",
+    "SLICE"
   )
   lexical.reserved ++= Seq("LD", "ST") //short hand for LLD and LST
   // defs
@@ -384,6 +385,12 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     (annotations ~ keyword("MOV") ~ ident ~ "," ~ ident) ^^ {
       case (a ~ _ ~ rd ~ _ ~ rs) => Mov(rd.chars, rs.chars, a)
     }
+
+  def slice_inst: Parser[Slice] =
+    (annotations ~ keyword("SLICE") ~ ident ~ "," ~ ident ~ "," ~ const_value ~ "," ~ const_value) ^^ {
+      case (a ~ _ ~ rd ~ _ ~ rs ~ _ ~ offset ~ _ ~ length) => Slice(rd.chars, rs.chars, offset.toInt, length.toInt)
+    }
+
   def nop_inst: Parser[Instruction] = (keyword("NOP")) ^^ { _ => Nop }
 
   def padzero_inst: Parser[Instruction] = (annotations ~ keyword(
@@ -395,7 +402,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def instruction: Parser[Instruction] = positioned(
     arith_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
-      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst
+      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst | slice_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[Seq[DefReg]]] = rep(def_reg)

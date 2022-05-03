@@ -142,6 +142,10 @@ trait AssemblyNameChecker extends Flavored {
               } else {
                 acc :+ ((carry -> inst))
               }
+            case Slice(rd, rs, offset, length, annons) =>
+              acc ++ Seq(rd, rs).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
           }
 
         }
@@ -237,6 +241,8 @@ trait AssemblyNameChecker extends Flavored {
             case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect |
                 _: GlobalStore) =>
               assigns
+            case Slice(rd, rs, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
           }
         }
       checkSSA(

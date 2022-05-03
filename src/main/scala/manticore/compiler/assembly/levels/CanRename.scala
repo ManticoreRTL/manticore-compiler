@@ -90,6 +90,11 @@ trait CanRename extends Flavored {
             rd = renaming(rd),
             rs = renaming(rs)
           )
+        case i @ Slice(rd, rs, _, _, _) =>
+          i.copy(
+            rd = renaming(rd),
+            rs = renaming(rs)
+          )
         case i @ Recv(rd, rs, source_id, _) =>
           ctx.logger.error("Can not rename instruction", i)
           i

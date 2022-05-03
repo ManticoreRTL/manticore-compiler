@@ -594,6 +594,7 @@ object UnconstrainedInterpreter
 
       case Predicate(rs, annons) =>
         ctx.logger.error(s"Can not handle predicate yet!", instruction)
+
       case Mux(rd, sel, rfalse, rtrue, annons) =>
         val sel_val = state.register_file(sel)
         val rtrue_val = state.register_file(rtrue)
@@ -606,6 +607,13 @@ object UnconstrainedInterpreter
           ctx.logger.error(s"Select has illegal value ${sel_val}", instruction)
           BigInt(0)
         }
+        update(rd, rd_val)
+
+      case Slice(rd, rs, offset, length, _) =>
+        val rs_val = state.register_file(rs)
+        val rs_shifted = rs_val >> offset
+        val mask = (1 << length) - 1
+        val rd_val = rs_shifted & mask
         update(rd, rd_val)
 
       case Nop =>
