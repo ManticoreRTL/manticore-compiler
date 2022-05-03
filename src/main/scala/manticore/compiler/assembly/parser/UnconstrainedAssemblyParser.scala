@@ -248,7 +248,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def def_pair: Parser[Seq[DefReg]] =
     (annotations ~ keyword(
       ".reg"
-    ) ~ ident ~ const_value ~ def_pair_input ~ def_pair_output) ^^ {
+    ) ~ ident ~ const_value ~ def_pair_input ~ def_pair_output <~ opt(";")) ^^ {
       case a ~ _ ~ nameId ~ width ~ inp ~ outp =>
         Seq(
           DefReg(
