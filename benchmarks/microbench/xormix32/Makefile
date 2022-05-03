@@ -71,7 +71,7 @@ verilate: $(wildcard *.sv)
 	obj_dir/Vxormix32_tb
 
 clean mostlyclean distclean maintainer-clean::
-	-rm -rf obj_dir logs *.log *.dmp *.vpd coverage.dat core
+	-rm -rf obj_dir logs *.log *.dmp *.vpd *.vcd coverage.dat core *.masm*
 
 thyrio: $(wildcard *.sv)
 	@echo "Generating MASM"

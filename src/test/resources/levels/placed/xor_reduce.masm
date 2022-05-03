@@ -1,0 +1,368 @@
+@PROGRAM [name = "\Main"]
+.prog:
+  .proc \Main:
+    @MEMINIT [ file = "xor_reduce.masm.in_rom.data", count = 50, width = 36]
+    @SOURCEINFO [file = "Main.sv:26.25-26.31"]
+    @DEBUGSYMBOL [ symbol = "\in_rom"]
+    @MEMBLOCK [ block = "\in_rom", width = 36, capacity = 50 ]
+    .mem \in_rom 6
+    @MEMINIT [ file = "xor_reduce.masm.out_rom.data", count = 50, width = 1]
+    @SOURCEINFO [file = "Main.sv:27.25-27.32"]
+    @DEBUGSYMBOL [ symbol = "\out_rom"]
+    @MEMBLOCK [ block = "\out_rom", width = 1, capacity = 50 ]
+    .mem \out_rom 6
+    .wire w_$emit_masm_py_207_$tmp 16
+    .wire w_$emit_masm_py_207_$tmp_1 32
+    .wire w_$emit_masm_py_207_$tmp_10 1
+    .wire w_$emit_masm_py_207_$tmp_11 1
+    .wire w_$emit_masm_py_207_$tmp_12 1
+    .wire w_$emit_masm_py_207_$tmp_13 1
+    .wire w_$emit_masm_py_207_$tmp_14 1
+    .wire w_$emit_masm_py_207_$tmp_15 1
+    .wire w_$emit_masm_py_207_$tmp_16 1
+    .wire w_$emit_masm_py_207_$tmp_17 1
+    .wire w_$emit_masm_py_207_$tmp_18 1
+    .wire w_$emit_masm_py_207_$tmp_19 1
+    .wire w_$emit_masm_py_207_$tmp_2 32
+    .wire w_$emit_masm_py_207_$tmp_20 1
+    .wire w_$emit_masm_py_207_$tmp_21 1
+    .wire w_$emit_masm_py_207_$tmp_22 1
+    .wire w_$emit_masm_py_207_$tmp_23 1
+    .wire w_$emit_masm_py_207_$tmp_24 1
+    .wire w_$emit_masm_py_207_$tmp_25 1
+    .wire w_$emit_masm_py_207_$tmp_26 1
+    .wire w_$emit_masm_py_207_$tmp_27 1
+    .wire w_$emit_masm_py_207_$tmp_28 1
+    .wire w_$emit_masm_py_207_$tmp_29 1
+    .wire w_$emit_masm_py_207_$tmp_3 1
+    .wire w_$emit_masm_py_207_$tmp_30 1
+    .wire w_$emit_masm_py_207_$tmp_31 1
+    .wire w_$emit_masm_py_207_$tmp_32 1
+    .wire w_$emit_masm_py_207_$tmp_33 1
+    .wire w_$emit_masm_py_207_$tmp_34 1
+    .wire w_$emit_masm_py_207_$tmp_35 1
+    .wire w_$emit_masm_py_207_$tmp_36 1
+    .wire w_$emit_masm_py_207_$tmp_37 1
+    .wire w_$emit_masm_py_207_$tmp_38 1
+    .wire w_$emit_masm_py_207_$tmp_39 1
+    .wire w_$emit_masm_py_207_$tmp_4 1
+    .wire w_$emit_masm_py_207_$tmp_40 1
+    .wire w_$emit_masm_py_207_$tmp_41 1
+    .wire w_$emit_masm_py_207_$tmp_42 1
+    .wire w_$emit_masm_py_207_$tmp_5 1
+    .wire w_$emit_masm_py_207_$tmp_6 1
+    .wire w_$emit_masm_py_207_$tmp_7 1
+    .wire w_$emit_masm_py_207_$tmp_8 1
+    .wire w_$emit_masm_py_207_$tmp_9 1
+    @REG [id = "$procdff$60", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_320_$procdff$60_curr 1 1
+    @REG [id = "$procdff$61", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_320_$procdff$61_curr 1 1
+    @REG [id = "$procdff$62", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_320_$procdff$62_curr 16 0
+    @REG [id = "$procdff$60", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_333_$procdff$60_next 1
+    @REG [id = "$procdff$61", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_333_$procdff$61_next 1
+    @REG [id = "$procdff$62", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_333_$procdff$62_next 16
+    .wire w_$emit_masm_py_561_$slice_out_ 16
+    .wire w_$emit_masm_py_561_$slice_out__1 1
+    .wire w_$emit_masm_py_561_$slice_out__10 1
+    .wire w_$emit_masm_py_561_$slice_out__11 1
+    .wire w_$emit_masm_py_561_$slice_out__12 1
+    .wire w_$emit_masm_py_561_$slice_out__13 1
+    .wire w_$emit_masm_py_561_$slice_out__14 1
+    .wire w_$emit_masm_py_561_$slice_out__15 1
+    .wire w_$emit_masm_py_561_$slice_out__16 1
+    .wire w_$emit_masm_py_561_$slice_out__17 1
+    .wire w_$emit_masm_py_561_$slice_out__18 1
+    .wire w_$emit_masm_py_561_$slice_out__19 1
+    .wire w_$emit_masm_py_561_$slice_out__2 1
+    .wire w_$emit_masm_py_561_$slice_out__20 1
+    .wire w_$emit_masm_py_561_$slice_out__21 1
+    .wire w_$emit_masm_py_561_$slice_out__22 1
+    .wire w_$emit_masm_py_561_$slice_out__23 1
+    .wire w_$emit_masm_py_561_$slice_out__24 1
+    .wire w_$emit_masm_py_561_$slice_out__25 1
+    .wire w_$emit_masm_py_561_$slice_out__26 1
+    .wire w_$emit_masm_py_561_$slice_out__27 1
+    .wire w_$emit_masm_py_561_$slice_out__28 1
+    .wire w_$emit_masm_py_561_$slice_out__29 1
+    .wire w_$emit_masm_py_561_$slice_out__3 1
+    .wire w_$emit_masm_py_561_$slice_out__30 1
+    .wire w_$emit_masm_py_561_$slice_out__31 1
+    .wire w_$emit_masm_py_561_$slice_out__32 1
+    .wire w_$emit_masm_py_561_$slice_out__33 1
+    .wire w_$emit_masm_py_561_$slice_out__34 1
+    .wire w_$emit_masm_py_561_$slice_out__35 1
+    .wire w_$emit_masm_py_561_$slice_out__36 1
+    .wire w_$emit_masm_py_561_$slice_out__4 1
+    .wire w_$emit_masm_py_561_$slice_out__5 1
+    .wire w_$emit_masm_py_561_$slice_out__6 1
+    .wire w_$emit_masm_py_561_$slice_out__7 1
+    .wire w_$emit_masm_py_561_$slice_out__8 1
+    .wire w_$emit_masm_py_561_$slice_out__9 1
+    .wire w_$emit_masm_py_683_$const_out_ 32
+    .wire w_$emit_masm_py_683_$const_out__1 32
+    .wire w_$emit_masm_py_683_$const_out__2 1
+    .wire w_$emit_masm_py_683_$const_out__3 1
+    .wire w_$emit_masm_py_683_$const_out__4 1
+    .wire w_$emit_masm_py_683_$const_out__5 1
+    @SOURCEINFO [file = "Main.sv:59.9-59.33"]
+    .wire w_\_10_ 1
+    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
+    .wire w_\_11_ 1
+    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
+    .wire w_\_1_ 1
+    @SOURCEINFO [file = "Main.sv:48.16-48.27"]
+    .wire w_\_6_ 32
+    @SOURCEINFO [file = "Main.sv:20.16-20.21"]
+    @DEBUGSYMBOL [ symbol = "\clock"]
+    .input pi_\clock 1
+    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_expect.2"]
+    .wire po_\cond_out_$masm_expect_2 1
+    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_stop.5"]
+    .wire po_\cond_out_$masm_stop_5 1
+    @SOURCEINFO [file = "Main.sv:33.25-33.32"]
+    @DEBUGSYMBOL [ symbol = "\counter"]
+    .wire w_\counter 16 0
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:2.25-2.27"]
+    @DEBUGSYMBOL [ symbol = "dut.IN"]
+    .wire w_\dut_IN 36
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:3.25-3.28"]
+    @DEBUGSYMBOL [ symbol = "dut.OUT"]
+    .wire w_\dut_OUT 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
+    .wire w_\dut__10_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
+    .wire w_\dut__11_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
+    .wire w_\dut__12_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
+    .wire w_\dut__13_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
+    .wire w_\dut__14_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
+    .wire w_\dut__15_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
+    .wire w_\dut__16_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
+    .wire w_\dut__17_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
+    .wire w_\dut__18_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
+    .wire w_\dut__19_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.58"]
+    .wire w_\dut__1_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
+    .wire w_\dut__20_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
+    .wire w_\dut__21_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
+    .wire w_\dut__22_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
+    .wire w_\dut__23_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
+    .wire w_\dut__24_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
+    .wire w_\dut__25_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
+    .wire w_\dut__26_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
+    .wire w_\dut__27_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
+    .wire w_\dut__28_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
+    .wire w_\dut__29_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.49"]
+    .wire w_\dut__2_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
+    .wire w_\dut__30_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
+    .wire w_\dut__31_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
+    .wire w_\dut__32_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
+    .wire w_\dut__33_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
+    .wire w_\dut__34_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.40"]
+    .wire w_\dut__3_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.31"]
+    .wire w_\dut__4_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
+    .wire w_\dut__5_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
+    .wire w_\dut__6_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
+    .wire w_\dut__7_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
+    .wire w_\dut__8_ 1
+    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
+    .wire w_\dut__9_ 1
+    @SOURCEINFO [file = "Main.sv:31.25-31.41"]
+    @DEBUGSYMBOL [ symbol = "\out_val_expected"]
+    .wire w_\out_val_expected 1
+    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_expect.0"]
+    .wire w_\reg_cond_$masm_expect_0 1 1
+    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
+    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_stop.3"]
+    .wire w_\reg_cond_$masm_stop_3 1 1
+    .const c_0 1 0b1
+    .const c_1 1 0b1
+    .const c_2 32 0b00000000000000000000000000000001
+    .const c_3 32 0b00000000000000000000000000110001
+    .const c_4 1 0b0
+    .const c_5 1 0b0
+    .const c_6 1 0b0
+    .const c_7 1 0b0
+    .wire w_0 32
+    .const c_8 1 0b0
+    .wire w_1 16
+    .wire w_2 16
+    MOV w_$emit_masm_py_207_$tmp, w_$emit_masm_py_561_$slice_out_;
+    MOV w_$emit_masm_py_207_$tmp_1, w_$emit_masm_py_683_$const_out_;
+    MOV w_$emit_masm_py_207_$tmp_2, w_$emit_masm_py_683_$const_out__1;
+    MOV w_$emit_masm_py_207_$tmp_3, w_$emit_masm_py_683_$const_out__2;
+    MOV w_$emit_masm_py_207_$tmp_4, w_$emit_masm_py_683_$const_out__3;
+    MOV w_$emit_masm_py_207_$tmp_5, w_$emit_masm_py_683_$const_out__4;
+    MOV w_$emit_masm_py_207_$tmp_6, w_$emit_masm_py_683_$const_out__5;
+    MOV w_$emit_masm_py_207_$tmp_7, w_$emit_masm_py_561_$slice_out__1;
+    MOV w_$emit_masm_py_207_$tmp_8, w_$emit_masm_py_561_$slice_out__2;
+    MOV w_$emit_masm_py_207_$tmp_9, w_$emit_masm_py_561_$slice_out__3;
+    MOV w_$emit_masm_py_207_$tmp_10, w_$emit_masm_py_561_$slice_out__4;
+    MOV w_$emit_masm_py_207_$tmp_11, w_$emit_masm_py_561_$slice_out__5;
+    MOV w_$emit_masm_py_207_$tmp_12, w_$emit_masm_py_561_$slice_out__6;
+    MOV w_$emit_masm_py_207_$tmp_13, w_$emit_masm_py_561_$slice_out__7;
+    MOV w_$emit_masm_py_207_$tmp_14, w_$emit_masm_py_561_$slice_out__8;
+    MOV w_$emit_masm_py_207_$tmp_15, w_$emit_masm_py_561_$slice_out__9;
+    MOV w_$emit_masm_py_207_$tmp_16, w_$emit_masm_py_561_$slice_out__10;
+    MOV w_$emit_masm_py_207_$tmp_17, w_$emit_masm_py_561_$slice_out__11;
+    MOV w_$emit_masm_py_207_$tmp_18, w_$emit_masm_py_561_$slice_out__12;
+    MOV w_$emit_masm_py_207_$tmp_19, w_$emit_masm_py_561_$slice_out__13;
+    MOV w_$emit_masm_py_207_$tmp_20, w_$emit_masm_py_561_$slice_out__14;
+    MOV w_$emit_masm_py_207_$tmp_21, w_$emit_masm_py_561_$slice_out__15;
+    MOV w_$emit_masm_py_207_$tmp_22, w_$emit_masm_py_561_$slice_out__16;
+    MOV w_$emit_masm_py_207_$tmp_23, w_$emit_masm_py_561_$slice_out__17;
+    MOV w_$emit_masm_py_207_$tmp_24, w_$emit_masm_py_561_$slice_out__18;
+    MOV w_$emit_masm_py_207_$tmp_25, w_$emit_masm_py_561_$slice_out__19;
+    MOV w_$emit_masm_py_207_$tmp_26, w_$emit_masm_py_561_$slice_out__20;
+    MOV w_$emit_masm_py_207_$tmp_27, w_$emit_masm_py_561_$slice_out__21;
+    MOV w_$emit_masm_py_207_$tmp_28, w_$emit_masm_py_561_$slice_out__22;
+    MOV w_$emit_masm_py_207_$tmp_29, w_$emit_masm_py_561_$slice_out__23;
+    MOV w_$emit_masm_py_207_$tmp_30, w_$emit_masm_py_561_$slice_out__24;
+    MOV w_$emit_masm_py_207_$tmp_31, w_$emit_masm_py_561_$slice_out__25;
+    MOV w_$emit_masm_py_207_$tmp_32, w_$emit_masm_py_561_$slice_out__26;
+    MOV w_$emit_masm_py_207_$tmp_33, w_$emit_masm_py_561_$slice_out__27;
+    MOV w_$emit_masm_py_207_$tmp_34, w_$emit_masm_py_561_$slice_out__28;
+    MOV w_$emit_masm_py_207_$tmp_35, w_$emit_masm_py_561_$slice_out__29;
+    MOV w_$emit_masm_py_207_$tmp_36, w_$emit_masm_py_561_$slice_out__30;
+    MOV w_$emit_masm_py_207_$tmp_37, w_$emit_masm_py_561_$slice_out__31;
+    MOV w_$emit_masm_py_207_$tmp_38, w_$emit_masm_py_561_$slice_out__32;
+    MOV w_$emit_masm_py_207_$tmp_39, w_$emit_masm_py_561_$slice_out__33;
+    MOV w_$emit_masm_py_207_$tmp_40, w_$emit_masm_py_561_$slice_out__34;
+    MOV w_$emit_masm_py_207_$tmp_41, w_$emit_masm_py_561_$slice_out__35;
+    MOV w_$emit_masm_py_207_$tmp_42, w_$emit_masm_py_561_$slice_out__36;
+    MOV w_\reg_cond_$masm_expect_0, pi_$emit_masm_py_320_$procdff$60_curr;
+    MOV po_$emit_masm_py_333_$procdff$60_next, w_\_1_;
+    MOV w_\reg_cond_$masm_stop_3, pi_$emit_masm_py_320_$procdff$61_curr;
+    MOV po_$emit_masm_py_333_$procdff$61_next, w_\_11_;
+    MOV w_\counter, pi_$emit_masm_py_320_$procdff$62_curr;
+    MOV po_$emit_masm_py_333_$procdff$62_next, w_$emit_masm_py_207_$tmp;
+    @TRAP [type = "\fail", file="Main.sv:56.5-56.17"]
+    EXPECT w_\reg_cond_$masm_expect_0, c_0, ["invalid result"];
+    @TRAP [type = "\stop", file="Main.sv:63.7-63.17"]
+    EXPECT w_\reg_cond_$masm_stop_3, c_1, [""];
+    SLICE w_$emit_masm_py_561_$slice_out_, w_\_6_, 0, 16;
+    SLICE w_$emit_masm_py_561_$slice_out__1, w_\dut_IN, 4, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__10, w_\dut_IN, 30, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__11, w_\dut_IN, 31, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__12, w_\dut_IN, 29, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__13, w_\dut_IN, 28, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__14, w_\dut_IN, 27, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__15, w_\dut_IN, 26, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__16, w_\dut_IN, 24, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__17, w_\dut_IN, 25, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__18, w_\dut_IN, 23, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__19, w_\dut_IN, 22, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__2, w_\dut_IN, 3, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__20, w_\dut_IN, 21, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__21, w_\dut_IN, 20, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__22, w_\dut_IN, 18, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__23, w_\dut_IN, 19, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__24, w_\dut_IN, 17, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__25, w_\dut_IN, 16, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__26, w_\dut_IN, 15, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__27, w_\dut_IN, 14, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__28, w_\dut_IN, 12, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__29, w_\dut_IN, 13, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__3, w_\dut_IN, 2, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__30, w_\dut_IN, 11, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__31, w_\dut_IN, 10, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__32, w_\dut_IN, 9, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__33, w_\dut_IN, 8, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__34, w_\dut_IN, 6, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__35, w_\dut_IN, 7, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__36, w_\dut_IN, 5, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__4, w_\dut_IN, 0, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__5, w_\dut_IN, 1, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__6, w_\dut_IN, 35, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__7, w_\dut_IN, 34, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__8, w_\dut_IN, 33, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__9, w_\dut_IN, 32, 1;
+    MOV w_$emit_masm_py_683_$const_out_, c_2;
+    MOV w_$emit_masm_py_683_$const_out__1, c_3;
+    MOV w_$emit_masm_py_683_$const_out__2, c_4;
+    MOV w_$emit_masm_py_683_$const_out__3, c_5;
+    MOV w_$emit_masm_py_683_$const_out__4, c_6;
+    MOV w_$emit_masm_py_683_$const_out__5, c_7;
+    ADD w_\_6_, w_\counter, w_$emit_masm_py_207_$tmp_1;
+    SEQ w_\_1_, w_\dut_OUT, w_\out_val_expected;
+    PADZERO w_0, w_\counter, 32;
+    SEQ w_\_10_, w_0, w_$emit_masm_py_207_$tmp_2;
+    SEQ w_\_11_, w_\_10_, c_8;
+    ADD w_1, \in_rom, w_\counter;
+    @MEMBLOCK [ block = "\in_rom", width = 36, capacity = 50 ]
+    LD w_\dut_IN, w_1[0];
+    ADD w_2, \out_rom, w_\counter;
+    @MEMBLOCK [ block = "\out_rom", width = 1, capacity = 50 ]
+    LD w_\out_val_expected, w_2[0];
+    XOR w_\dut_OUT, w_\dut__1_, w_\dut__9_;
+    XOR w_\dut__1_, w_\dut__2_, w_\dut__14_;
+    XOR w_\dut__2_, w_\dut__3_, w_\dut__19_;
+    XOR w_\dut__3_, w_\dut__4_, w_\dut__24_;
+    XOR w_\dut__4_, w_\dut__34_, w_\dut__29_;
+    XOR w_\dut__5_, w_\dut__6_, w_$emit_masm_py_207_$tmp_7;
+    XOR w_\dut__6_, w_\dut__7_, w_$emit_masm_py_207_$tmp_8;
+    XOR w_\dut__7_, w_\dut__8_, w_$emit_masm_py_207_$tmp_9;
+    XOR w_\dut__8_, w_$emit_masm_py_207_$tmp_10, w_$emit_masm_py_207_$tmp_11;
+    XOR w_\dut__9_, w_\dut__10_, w_$emit_masm_py_207_$tmp_12;
+    XOR w_\dut__10_, w_\dut__11_, w_$emit_masm_py_207_$tmp_13;
+    XOR w_\dut__11_, w_\dut__12_, w_$emit_masm_py_207_$tmp_14;
+    XOR w_\dut__12_, w_\dut__13_, w_$emit_masm_py_207_$tmp_15;
+    XOR w_\dut__13_, w_$emit_masm_py_207_$tmp_16, w_$emit_masm_py_207_$tmp_17;
+    XOR w_\dut__14_, w_\dut__15_, w_$emit_masm_py_207_$tmp_18;
+    XOR w_\dut__15_, w_\dut__16_, w_$emit_masm_py_207_$tmp_19;
+    XOR w_\dut__16_, w_\dut__17_, w_$emit_masm_py_207_$tmp_20;
+    XOR w_\dut__17_, w_\dut__18_, w_$emit_masm_py_207_$tmp_21;
+    XOR w_\dut__18_, w_$emit_masm_py_207_$tmp_22, w_$emit_masm_py_207_$tmp_23;
+    XOR w_\dut__19_, w_\dut__20_, w_$emit_masm_py_207_$tmp_24;
+    XOR w_\dut__20_, w_\dut__21_, w_$emit_masm_py_207_$tmp_25;
+    XOR w_\dut__21_, w_\dut__22_, w_$emit_masm_py_207_$tmp_26;
+    XOR w_\dut__22_, w_\dut__23_, w_$emit_masm_py_207_$tmp_27;
+    XOR w_\dut__23_, w_$emit_masm_py_207_$tmp_28, w_$emit_masm_py_207_$tmp_29;
+    XOR w_\dut__24_, w_\dut__25_, w_$emit_masm_py_207_$tmp_30;
+    XOR w_\dut__25_, w_\dut__26_, w_$emit_masm_py_207_$tmp_31;
+    XOR w_\dut__26_, w_\dut__27_, w_$emit_masm_py_207_$tmp_32;
+    XOR w_\dut__27_, w_\dut__28_, w_$emit_masm_py_207_$tmp_33;
+    XOR w_\dut__28_, w_$emit_masm_py_207_$tmp_34, w_$emit_masm_py_207_$tmp_35;
+    XOR w_\dut__29_, w_\dut__30_, w_$emit_masm_py_207_$tmp_36;
+    XOR w_\dut__30_, w_\dut__31_, w_$emit_masm_py_207_$tmp_37;
+    XOR w_\dut__31_, w_\dut__32_, w_$emit_masm_py_207_$tmp_38;
+    XOR w_\dut__32_, w_\dut__33_, w_$emit_masm_py_207_$tmp_39;
+    XOR w_\dut__33_, w_$emit_masm_py_207_$tmp_40, w_$emit_masm_py_207_$tmp_41;
+    XOR w_\dut__34_, w_\dut__5_, w_$emit_masm_py_207_$tmp_42;

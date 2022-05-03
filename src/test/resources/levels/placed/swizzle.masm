@@ -2,100 +2,74 @@
 .prog:
   .proc \Main:
     @MEMINIT [ file = "swizzle.masm.in_rom.data", count = 50, width = 8]
-    @SOURCEINFO [file = "swizzle.sv:34.25-34.31"]
+    @SOURCEINFO [file = "swizzle.sv:29.25-29.31"]
     @DEBUGSYMBOL [ symbol = "\in_rom"]
     @MEMBLOCK [ block = "\in_rom", width = 8, capacity = 50 ]
     .mem \in_rom 6
     @MEMINIT [ file = "swizzle.masm.out_rom.data", count = 50, width = 8]
-    @SOURCEINFO [file = "swizzle.sv:35.25-35.32"]
+    @SOURCEINFO [file = "swizzle.sv:30.25-30.32"]
     @DEBUGSYMBOL [ symbol = "\out_rom"]
     @MEMBLOCK [ block = "\out_rom", width = 8, capacity = 50 ]
     .mem \out_rom 6
-    .wire w_$emit_masm_py_209_$tmp 8
-    .wire w_$emit_masm_py_209_$tmp_1 16
-    .wire w_$emit_masm_py_209_$tmp_10 1
-    .wire w_$emit_masm_py_209_$tmp_11 1
-    .wire w_$emit_masm_py_209_$tmp_12 1
-    .wire w_$emit_masm_py_209_$tmp_2 16
-    .wire w_$emit_masm_py_209_$tmp_3 32
-    .wire w_$emit_masm_py_209_$tmp_4 32
-    .wire w_$emit_masm_py_209_$tmp_5 32
-    .wire w_$emit_masm_py_209_$tmp_6 32
-    .wire w_$emit_masm_py_209_$tmp_7 1
-    .wire w_$emit_masm_py_209_$tmp_8 1
-    .wire w_$emit_masm_py_209_$tmp_9 1
-    @REG [id = "$flatten\dut.$procdff$38", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_316_$flatten\dut_$procdff$38_curr 8
-    @REG [id = "$procdff$34", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_316_$procdff$34_curr 1 1
-    @REG [id = "$procdff$35", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_316_$procdff$35_curr 1 1
-    @REG [id = "$procdff$36", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_316_$procdff$36_curr 16 0
-    @REG [id = "$procdff$37", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_316_$procdff$37_curr 16 0
-    @REG [id = "$flatten\dut.$procdff$38", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_329_$flatten\dut_$procdff$38_next 8
-    @REG [id = "$procdff$34", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_329_$procdff$34_next 1
-    @REG [id = "$procdff$35", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_329_$procdff$35_next 1
-    @REG [id = "$procdff$36", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_329_$procdff$36_next 16
-    @REG [id = "$procdff$37", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_329_$procdff$37_next 16
-    .wire w_$emit_masm_py_429_$concat_out_ 2
-    .wire w_$emit_masm_py_429_$concat_out__1 3
-    .wire w_$emit_masm_py_429_$concat_out__2 4
-    .wire w_$emit_masm_py_429_$concat_out__3 5
-    .wire w_$emit_masm_py_429_$concat_out__4 6
-    .wire w_$emit_masm_py_429_$concat_out__5 7
-    .wire w_$emit_masm_py_429_$concat_out__6 8
-    .wire w_$emit_masm_py_550_$slice_out_ 16
-    .wire w_$emit_masm_py_550_$slice_out__1 16
-    .wire w_$emit_masm_py_550_$slice_out__2 1
-    .wire w_$emit_masm_py_550_$slice_out__3 1
-    .wire w_$emit_masm_py_550_$slice_out__4 1
-    .wire w_$emit_masm_py_550_$slice_out__5 1
-    .wire w_$emit_masm_py_550_$slice_out__6 1
-    .wire w_$emit_masm_py_550_$slice_out__7 1
-    .wire w_$emit_masm_py_550_$slice_out__8 1
-    .wire w_$emit_masm_py_550_$slice_out__9 1
-    .wire w_$emit_masm_py_662_$const_out_ 32
-    .wire w_$emit_masm_py_662_$const_out__1 32
-    .wire w_$emit_masm_py_662_$const_out__2 32
-    .wire w_$emit_masm_py_662_$const_out__3 32
-    .wire w_$emit_masm_py_662_$const_out__4 1
-    .wire w_$emit_masm_py_662_$const_out__5 1
-    .wire w_$emit_masm_py_662_$const_out__6 1
-    .wire w_$emit_masm_py_662_$const_out__7 1
-    .wire w_$emit_masm_py_662_$const_out__8 1
-    .wire w_$emit_masm_py_662_$const_out__9 1
-    .wire w_$emit_masm_py_863_$replicate_out_ 1
-    .wire w_$emit_masm_py_863_$replicate_out__1 1
-    .wire w_$emit_masm_py_863_$replicate_out__2 1
-    .wire w_$emit_masm_py_863_$replicate_out__3 1
-    .wire w_$emit_masm_py_863_$replicate_out__4 1
-    .wire w_$emit_masm_py_863_$replicate_out__5 1
-    .wire w_$emit_masm_py_863_$replicate_out__6 1
-    .wire w_$emit_masm_py_863_$replicate_out__7 1
-    @SOURCEINFO [file = "swizzle.sv:50.3-73.6"]
-    .wire w_\_0_ 16
+    .wire w_$emit_masm_py_207_$tmp 16
+    .wire w_$emit_masm_py_207_$tmp_1 32
+    .wire w_$emit_masm_py_207_$tmp_2 8
+    .wire w_$emit_masm_py_207_$tmp_3 32
+    .wire w_$emit_masm_py_207_$tmp_4 1
+    .wire w_$emit_masm_py_207_$tmp_5 1
+    .wire w_$emit_masm_py_207_$tmp_6 1
+    .wire w_$emit_masm_py_207_$tmp_7 1
+    @REG [id = "$procdff$25", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_320_$procdff$25_curr 1 1
+    @REG [id = "$procdff$26", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_320_$procdff$26_curr 1 1
+    @REG [id = "$procdff$27", type = "\REG_CURR"]
+    .input pi_$emit_masm_py_320_$procdff$27_curr 16 0
+    @REG [id = "$procdff$25", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_333_$procdff$25_next 1
+    @REG [id = "$procdff$26", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_333_$procdff$26_next 1
+    @REG [id = "$procdff$27", type = "\REG_NEXT"]
+    .output po_$emit_masm_py_333_$procdff$27_next 16
+    .wire w_$emit_masm_py_430_$concat_out_ 2
+    .wire w_$emit_masm_py_430_$concat_out__1 3
+    .wire w_$emit_masm_py_430_$concat_out__2 4
+    .wire w_$emit_masm_py_430_$concat_out__3 5
+    .wire w_$emit_masm_py_430_$concat_out__4 6
+    .wire w_$emit_masm_py_430_$concat_out__5 7
+    .wire w_$emit_masm_py_430_$concat_out__6 8
+    .wire w_$emit_masm_py_561_$slice_out_ 16
+    .wire w_$emit_masm_py_561_$slice_out__1 1
+    .wire w_$emit_masm_py_561_$slice_out__2 1
+    .wire w_$emit_masm_py_561_$slice_out__3 1
+    .wire w_$emit_masm_py_561_$slice_out__4 1
+    .wire w_$emit_masm_py_561_$slice_out__5 1
+    .wire w_$emit_masm_py_561_$slice_out__6 1
+    .wire w_$emit_masm_py_561_$slice_out__7 1
+    .wire w_$emit_masm_py_561_$slice_out__8 1
+    .wire w_$emit_masm_py_683_$const_out_ 32
+    .wire w_$emit_masm_py_683_$const_out__1 32
+    .wire w_$emit_masm_py_683_$const_out__2 1
+    .wire w_$emit_masm_py_683_$const_out__3 1
+    .wire w_$emit_masm_py_683_$const_out__4 1
+    .wire w_$emit_masm_py_683_$const_out__5 1
+    .wire w_$emit_masm_py_895_$replicate_out_ 1
+    .wire w_$emit_masm_py_895_$replicate_out__1 1
+    .wire w_$emit_masm_py_895_$replicate_out__2 1
+    .wire w_$emit_masm_py_895_$replicate_out__3 1
+    .wire w_$emit_masm_py_895_$replicate_out__4 1
+    .wire w_$emit_masm_py_895_$replicate_out__5 1
+    .wire w_$emit_masm_py_895_$replicate_out__6 1
+    .wire w_$emit_masm_py_895_$replicate_out__7 1
     @SOURCEINFO [file = "swizzle.sv:0.0-0.0"]
-    .wire w_\_10_ 1
-    @SOURCEINFO [file = "swizzle.sv:63.18-63.46"]
     .wire w_\_11_ 1
     @SOURCEINFO [file = "swizzle.sv:0.0-0.0"]
-    .wire w_\_14_ 1
-    @SOURCEINFO [file = "swizzle.sv:51.9-51.33"]
-    .wire w_\_16_ 1
-    @SOURCEINFO [file = "swizzle.sv:63.29-63.36"]
-    .wire w_\_18_ 8
-    @SOURCEINFO [file = "swizzle.sv:52.19-52.31"]
-    .wire w_\_8_ 32
-    @SOURCEINFO [file = "swizzle.sv:55.17-55.29"]
-    .wire w_\_9_ 32
-    @SOURCEINFO [file = "swizzle.sv:28.16-28.21"]
+    .wire w_\_1_ 1
+    @SOURCEINFO [file = "swizzle.sv:53.16-53.27"]
+    .wire w_\_6_ 32
+    @SOURCEINFO [file = "swizzle.sv:0.0-0.0"]
+    .wire w_\_7_ 1
+    @SOURCEINFO [file = "swizzle.sv:23.16-23.21"]
     @DEBUGSYMBOL [ symbol = "\clock"]
     .input pi_\clock 1
     @SOURCEINFO [file = "swizzle.sv:0.0-0.0"]
@@ -104,18 +78,15 @@
     @SOURCEINFO [file = "swizzle.sv:0.0-0.0"]
     @DEBUGSYMBOL [ symbol = "\cond_out.$masm_stop.5"]
     .wire po_\cond_out_$masm_stop_5 1
-    @SOURCEINFO [file = "swizzle.sv:44.5-48.4|swizzle.sv:5.32-5.34"]
+    @SOURCEINFO [file = "swizzle.sv:36.25-36.32"]
+    @DEBUGSYMBOL [ symbol = "\counter"]
+    .wire w_\counter 16 0
+    @SOURCEINFO [file = "swizzle.sv:47.5-50.4|swizzle.sv:4.32-4.34"]
     @DEBUGSYMBOL [ symbol = "dut.IN"]
     .wire w_\dut_IN 8
-    @SOURCEINFO [file = "swizzle.sv:44.5-48.4|swizzle.sv:6.33-6.36"]
-    @DEBUGSYMBOL [ symbol = "dut.OUT"]
-    .wire w_\dut_OUT 8
-    @SOURCEINFO [file = "swizzle.sv:40.25-40.33"]
-    @DEBUGSYMBOL [ symbol = "\icounter"]
-    .wire w_\icounter 16 0
-    @SOURCEINFO [file = "swizzle.sv:41.25-41.33"]
-    @DEBUGSYMBOL [ symbol = "\ocounter"]
-    .wire w_\ocounter 16 0
+    @SOURCEINFO [file = "swizzle.sv:34.25-34.41"]
+    @DEBUGSYMBOL [ symbol = "\out_val_expected"]
+    .wire w_\out_val_expected 8
     @SOURCEINFO [file = "swizzle.sv:0.0-0.0"]
     @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_expect.0"]
     .wire w_\reg_cond_$masm_expect_0 1 1
@@ -150,153 +121,111 @@
     .wire w_19 8
     .wire w_20 8
     .const c_6 3 0b111
-    .const c_7 6 0b000000
-    .const c_8 6 0b000000
-    .const c_9 4 0b0111
-    .const c_10 4 0b0110
-    .const c_11 4 0b0101
-    .const c_12 4 0b0100
-    .const c_13 4 0b0011
-    .const c_14 4 0b0010
-    .const c_15 4 0b0001
-    .const c_16 4 0b0000
-    .const c_17 1 0b1
+    .const c_7 1 0b1
+    .const c_8 1 0b1
+    .const c_9 32 0b00000000000000000000000000000001
+    .const c_10 32 0b00000000000000000000000000110001
+    .const c_11 1 0b0
+    .const c_12 1 0b0
+    .const c_13 1 0b0
+    .const c_14 1 0b0
+    .const c_15 1 0b0
+    .const c_16 1 0b1
+    .const c_17 1 0b0
     .const c_18 1 0b1
-    .const c_19 32 0b00000000000000000000000000000001
-    .const c_20 32 0b00000000000000000000000000000001
-    .const c_21 32 0b00000000000000000000000000110001
-    .const c_22 32 0b00000000000000000000000000110001
+    .const c_19 1 0b0
+    .const c_20 1 0b1
+    .const c_21 1 0b0
+    .const c_22 1 0b1
     .const c_23 1 0b0
-    .const c_24 1 0b0
+    .const c_24 1 0b1
     .const c_25 1 0b0
-    .const c_26 1 0b0
+    .const c_26 1 0b1
     .const c_27 1 0b0
-    .const c_28 1 0b0
+    .const c_28 1 0b1
     .const c_29 1 0b0
     .const c_30 1 0b1
-    .const c_31 1 0b0
-    .const c_32 1 0b1
-    .const c_33 1 0b0
-    .const c_34 1 0b1
-    .const c_35 1 0b0
-    .const c_36 1 0b1
-    .const c_37 1 0b0
-    .const c_38 1 0b1
-    .const c_39 1 0b0
-    .const c_40 1 0b1
-    .const c_41 1 0b0
-    .const c_42 1 0b1
-    .const c_43 1 0b0
-    .const c_44 1 0b1
     .wire w_21 32
-    .const c_45 1 0b0
-    .const c_46 16 0b0000000000000000
-    .wire w_22 33
-    .wire w_23 33
-    .wire w_24 33
-    .wire w_25 16
-    .wire w_26 16
-    .wire w_27 16
-    MOV w_$emit_masm_py_209_$tmp, w_$emit_masm_py_429_$concat_out__6;
-    MOV w_$emit_masm_py_209_$tmp_1, w_$emit_masm_py_550_$slice_out_;
-    MOV w_$emit_masm_py_209_$tmp_2, w_$emit_masm_py_550_$slice_out__1;
-    MOV w_$emit_masm_py_209_$tmp_3, w_$emit_masm_py_662_$const_out_;
-    MOV w_$emit_masm_py_209_$tmp_4, w_$emit_masm_py_662_$const_out__1;
-    MOV w_$emit_masm_py_209_$tmp_5, w_$emit_masm_py_662_$const_out__2;
-    MOV w_$emit_masm_py_209_$tmp_6, w_$emit_masm_py_662_$const_out__3;
-    MOV w_$emit_masm_py_209_$tmp_7, w_$emit_masm_py_662_$const_out__4;
-    MOV w_$emit_masm_py_209_$tmp_8, w_$emit_masm_py_662_$const_out__5;
-    MOV w_$emit_masm_py_209_$tmp_9, w_$emit_masm_py_662_$const_out__6;
-    MOV w_$emit_masm_py_209_$tmp_10, w_$emit_masm_py_662_$const_out__7;
-    MOV w_$emit_masm_py_209_$tmp_11, w_$emit_masm_py_662_$const_out__8;
-    MOV w_$emit_masm_py_209_$tmp_12, w_$emit_masm_py_662_$const_out__9;
-    MOV w_\dut_OUT, pi_$emit_masm_py_316_$flatten\dut_$procdff$38_curr;
-    MOV po_$emit_masm_py_329_$flatten\dut_$procdff$38_next, w_$emit_masm_py_209_$tmp;
-    MOV w_\reg_cond_$masm_expect_0, pi_$emit_masm_py_316_$procdff$34_curr;
-    MOV po_$emit_masm_py_329_$procdff$34_next, w_\_11_;
-    MOV w_\reg_cond_$masm_stop_3, pi_$emit_masm_py_316_$procdff$35_curr;
-    MOV po_$emit_masm_py_329_$procdff$35_next, w_\_14_;
-    MOV w_\icounter, pi_$emit_masm_py_316_$procdff$36_curr;
-    MOV po_$emit_masm_py_329_$procdff$36_next, w_\_0_;
-    MOV w_\ocounter, pi_$emit_masm_py_316_$procdff$37_curr;
-    MOV po_$emit_masm_py_329_$procdff$37_next, w_$emit_masm_py_209_$tmp_1;
-    PADZERO w_0, w_$emit_masm_py_863_$replicate_out_, 2;
-    PADZERO w_1, w_$emit_masm_py_863_$replicate_out__1, 2;
+    .const c_31 1 0b0
+    .wire w_22 16
+    .wire w_23 16
+    MOV w_$emit_masm_py_207_$tmp, w_$emit_masm_py_561_$slice_out_;
+    MOV w_$emit_masm_py_207_$tmp_1, w_$emit_masm_py_683_$const_out_;
+    MOV w_$emit_masm_py_207_$tmp_2, w_$emit_masm_py_430_$concat_out__6;
+    MOV w_$emit_masm_py_207_$tmp_3, w_$emit_masm_py_683_$const_out__1;
+    MOV w_$emit_masm_py_207_$tmp_4, w_$emit_masm_py_683_$const_out__2;
+    MOV w_$emit_masm_py_207_$tmp_5, w_$emit_masm_py_683_$const_out__3;
+    MOV w_$emit_masm_py_207_$tmp_6, w_$emit_masm_py_683_$const_out__4;
+    MOV w_$emit_masm_py_207_$tmp_7, w_$emit_masm_py_683_$const_out__5;
+    MOV w_\reg_cond_$masm_expect_0, pi_$emit_masm_py_320_$procdff$25_curr;
+    MOV po_$emit_masm_py_333_$procdff$25_next, w_\_1_;
+    MOV w_\reg_cond_$masm_stop_3, pi_$emit_masm_py_320_$procdff$26_curr;
+    MOV po_$emit_masm_py_333_$procdff$26_next, w_\_11_;
+    MOV w_\counter, pi_$emit_masm_py_320_$procdff$27_curr;
+    MOV po_$emit_masm_py_333_$procdff$27_next, w_$emit_masm_py_207_$tmp;
+    PADZERO w_0, w_$emit_masm_py_895_$replicate_out_, 2;
+    PADZERO w_1, w_$emit_masm_py_895_$replicate_out__1, 2;
     SLL w_2, w_1, c_0;
-    OR w_$emit_masm_py_429_$concat_out_, w_2, w_0;
-    PADZERO w_3, w_$emit_masm_py_429_$concat_out_, 3;
-    PADZERO w_4, w_$emit_masm_py_863_$replicate_out__2, 3;
+    OR w_$emit_masm_py_430_$concat_out_, w_2, w_0;
+    PADZERO w_3, w_$emit_masm_py_430_$concat_out_, 3;
+    PADZERO w_4, w_$emit_masm_py_895_$replicate_out__2, 3;
     SLL w_5, w_4, c_1;
-    OR w_$emit_masm_py_429_$concat_out__1, w_5, w_3;
-    PADZERO w_6, w_$emit_masm_py_429_$concat_out__1, 4;
-    PADZERO w_7, w_$emit_masm_py_863_$replicate_out__3, 4;
+    OR w_$emit_masm_py_430_$concat_out__1, w_5, w_3;
+    PADZERO w_6, w_$emit_masm_py_430_$concat_out__1, 4;
+    PADZERO w_7, w_$emit_masm_py_895_$replicate_out__3, 4;
     SLL w_8, w_7, c_2;
-    OR w_$emit_masm_py_429_$concat_out__2, w_8, w_6;
-    PADZERO w_9, w_$emit_masm_py_429_$concat_out__2, 5;
-    PADZERO w_10, w_$emit_masm_py_863_$replicate_out__4, 5;
+    OR w_$emit_masm_py_430_$concat_out__2, w_8, w_6;
+    PADZERO w_9, w_$emit_masm_py_430_$concat_out__2, 5;
+    PADZERO w_10, w_$emit_masm_py_895_$replicate_out__4, 5;
     SLL w_11, w_10, c_3;
-    OR w_$emit_masm_py_429_$concat_out__3, w_11, w_9;
-    PADZERO w_12, w_$emit_masm_py_429_$concat_out__3, 6;
-    PADZERO w_13, w_$emit_masm_py_863_$replicate_out__5, 6;
+    OR w_$emit_masm_py_430_$concat_out__3, w_11, w_9;
+    PADZERO w_12, w_$emit_masm_py_430_$concat_out__3, 6;
+    PADZERO w_13, w_$emit_masm_py_895_$replicate_out__5, 6;
     SLL w_14, w_13, c_4;
-    OR w_$emit_masm_py_429_$concat_out__4, w_14, w_12;
-    PADZERO w_15, w_$emit_masm_py_429_$concat_out__4, 7;
-    PADZERO w_16, w_$emit_masm_py_863_$replicate_out__6, 7;
+    OR w_$emit_masm_py_430_$concat_out__4, w_14, w_12;
+    PADZERO w_15, w_$emit_masm_py_430_$concat_out__4, 7;
+    PADZERO w_16, w_$emit_masm_py_895_$replicate_out__6, 7;
     SLL w_17, w_16, c_5;
-    OR w_$emit_masm_py_429_$concat_out__5, w_17, w_15;
-    PADZERO w_18, w_$emit_masm_py_429_$concat_out__5, 8;
-    PADZERO w_19, w_$emit_masm_py_863_$replicate_out__7, 8;
+    OR w_$emit_masm_py_430_$concat_out__5, w_17, w_15;
+    PADZERO w_18, w_$emit_masm_py_430_$concat_out__5, 8;
+    PADZERO w_19, w_$emit_masm_py_895_$replicate_out__7, 8;
     SLL w_20, w_19, c_6;
-    OR w_$emit_masm_py_429_$concat_out__6, w_20, w_18;
-    SRL w_$emit_masm_py_550_$slice_out_, w_\_9_, c_7;
-    SRL w_$emit_masm_py_550_$slice_out__1, w_\_8_, c_8;
-    SRL w_$emit_masm_py_550_$slice_out__2, w_\dut_IN, c_9;
-    SRL w_$emit_masm_py_550_$slice_out__3, w_\dut_IN, c_10;
-    SRL w_$emit_masm_py_550_$slice_out__4, w_\dut_IN, c_11;
-    SRL w_$emit_masm_py_550_$slice_out__5, w_\dut_IN, c_12;
-    SRL w_$emit_masm_py_550_$slice_out__6, w_\dut_IN, c_13;
-    SRL w_$emit_masm_py_550_$slice_out__7, w_\dut_IN, c_14;
-    SRL w_$emit_masm_py_550_$slice_out__8, w_\dut_IN, c_15;
-    SRL w_$emit_masm_py_550_$slice_out__9, w_\dut_IN, c_16;
-    @TRAP [type = "\fail", file="swizzle.sv:63.5-63.17"]
-    EXPECT w_\reg_cond_$masm_expect_0, c_17, ["invalid result"];
-    @TRAP [type = "\stop", file="swizzle.sv:70.7-70.17"]
-    EXPECT w_\reg_cond_$masm_stop_3, c_18, [""];
-    MOV w_$emit_masm_py_662_$const_out_, c_19;
-    MOV w_$emit_masm_py_662_$const_out__1, c_20;
-    MOV w_$emit_masm_py_662_$const_out__2, c_21;
-    MOV w_$emit_masm_py_662_$const_out__3, c_22;
-    MOV w_$emit_masm_py_662_$const_out__4, c_23;
-    MOV w_$emit_masm_py_662_$const_out__5, c_24;
-    MOV w_$emit_masm_py_662_$const_out__6, c_25;
-    MOV w_$emit_masm_py_662_$const_out__7, c_26;
-    MOV w_$emit_masm_py_662_$const_out__8, c_27;
-    MOV w_$emit_masm_py_662_$const_out__9, c_28;
-    MUX w_$emit_masm_py_863_$replicate_out_, w_$emit_masm_py_550_$slice_out__2, c_29, c_30;
-    MUX w_$emit_masm_py_863_$replicate_out__1, w_$emit_masm_py_550_$slice_out__3, c_31, c_32;
-    MUX w_$emit_masm_py_863_$replicate_out__2, w_$emit_masm_py_550_$slice_out__4, c_33, c_34;
-    MUX w_$emit_masm_py_863_$replicate_out__3, w_$emit_masm_py_550_$slice_out__5, c_35, c_36;
-    MUX w_$emit_masm_py_863_$replicate_out__4, w_$emit_masm_py_550_$slice_out__6, c_37, c_38;
-    MUX w_$emit_masm_py_863_$replicate_out__5, w_$emit_masm_py_550_$slice_out__7, c_39, c_40;
-    MUX w_$emit_masm_py_863_$replicate_out__6, w_$emit_masm_py_550_$slice_out__8, c_41, c_42;
-    MUX w_$emit_masm_py_863_$replicate_out__7, w_$emit_masm_py_550_$slice_out__9, c_43, c_44;
-    MUX w_\_0_, w_\_16_, w_\icounter, w_$emit_masm_py_209_$tmp_2;
-    ADD w_\_8_, w_\icounter, w_$emit_masm_py_209_$tmp_3;
-    ADD w_\_9_, w_\ocounter, w_$emit_masm_py_209_$tmp_4;
-    SEQ w_\_11_, w_\dut_OUT, w_\_18_;
-    PADZERO w_21, w_\ocounter, 32;
-    SEQ w_\_10_, w_21, w_$emit_masm_py_209_$tmp_5;
-    SEQ w_\_14_, w_\_10_, c_45;
-    PADZERO w_23, w_\icounter, 33;
-    PADZERO w_24, w_$emit_masm_py_209_$tmp_6, 33;
-    SUB w_22, w_23, w_24;
-    SLTS w_\_16_, w_22, c_46;
-    ADD w_25, \in_rom, w_\icounter;
+    OR w_$emit_masm_py_430_$concat_out__6, w_20, w_18;
+    @TRAP [type = "\fail", file="swizzle.sv:61.5-61.17"]
+    EXPECT w_\reg_cond_$masm_expect_0, c_7, ["invalid result"];
+    @TRAP [type = "\stop", file="swizzle.sv:68.7-68.17"]
+    EXPECT w_\reg_cond_$masm_stop_3, c_8, [""];
+    SLICE w_$emit_masm_py_561_$slice_out_, w_\_6_, 0, 16;
+    SLICE w_$emit_masm_py_561_$slice_out__1, w_\dut_IN, 7, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__2, w_\dut_IN, 6, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__3, w_\dut_IN, 5, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__4, w_\dut_IN, 4, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__5, w_\dut_IN, 3, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__6, w_\dut_IN, 2, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__7, w_\dut_IN, 1, 1;
+    SLICE w_$emit_masm_py_561_$slice_out__8, w_\dut_IN, 0, 1;
+    MOV w_$emit_masm_py_683_$const_out_, c_9;
+    MOV w_$emit_masm_py_683_$const_out__1, c_10;
+    MOV w_$emit_masm_py_683_$const_out__2, c_11;
+    MOV w_$emit_masm_py_683_$const_out__3, c_12;
+    MOV w_$emit_masm_py_683_$const_out__4, c_13;
+    MOV w_$emit_masm_py_683_$const_out__5, c_14;
+    MUX w_$emit_masm_py_895_$replicate_out_, w_$emit_masm_py_561_$slice_out__1, c_15, c_16;
+    MUX w_$emit_masm_py_895_$replicate_out__1, w_$emit_masm_py_561_$slice_out__2, c_17, c_18;
+    MUX w_$emit_masm_py_895_$replicate_out__2, w_$emit_masm_py_561_$slice_out__3, c_19, c_20;
+    MUX w_$emit_masm_py_895_$replicate_out__3, w_$emit_masm_py_561_$slice_out__4, c_21, c_22;
+    MUX w_$emit_masm_py_895_$replicate_out__4, w_$emit_masm_py_561_$slice_out__5, c_23, c_24;
+    MUX w_$emit_masm_py_895_$replicate_out__5, w_$emit_masm_py_561_$slice_out__6, c_25, c_26;
+    MUX w_$emit_masm_py_895_$replicate_out__6, w_$emit_masm_py_561_$slice_out__7, c_27, c_28;
+    MUX w_$emit_masm_py_895_$replicate_out__7, w_$emit_masm_py_561_$slice_out__8, c_29, c_30;
+    ADD w_\_6_, w_\counter, w_$emit_masm_py_207_$tmp_1;
+    SEQ w_\_1_, w_$emit_masm_py_207_$tmp_2, w_\out_val_expected;
+    PADZERO w_21, w_\counter, 32;
+    SEQ w_\_7_, w_21, w_$emit_masm_py_207_$tmp_3;
+    SEQ w_\_11_, w_\_7_, c_31;
+    ADD w_22, \in_rom, w_\counter;
     @MEMBLOCK [ block = "\in_rom", width = 8, capacity = 50 ]
-    LD w_\dut_IN, w_25[0];
-    ADD w_26, \out_rom, w_\ocounter;
+    LD w_\dut_IN, w_22[0];
+    ADD w_23, \out_rom, w_\counter;
     @MEMBLOCK [ block = "\out_rom", width = 8, capacity = 50 ]
-    LD w_\_18_, w_26[0];
-    ADD w_27, \out_rom, w_\icounter;
-    @MEMBLOCK [ block = "\out_rom", width = 8, capacity = 50 ]
-    LD w_\dut_OUT, w_27[0];
+    LD w_\out_val_expected, w_23[0];

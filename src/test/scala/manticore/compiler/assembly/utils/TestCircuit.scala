@@ -76,3 +76,12 @@ object Xormix32 extends TestCircuit {
     "xormix32.masm.ref_result.data"
   )
 }
+
+object XorReduce extends TestCircuit {
+  override protected def prefixPath: String = "levels/placed"
+  override protected def masmFile: String = "xor_reduce.masm"
+  override protected def memInitFiles: Seq[String] = Seq(
+    "xor_reduce.masm.in_rom.data",
+    "xor_reduce.masm.out_rom.data"
+  )
+}
