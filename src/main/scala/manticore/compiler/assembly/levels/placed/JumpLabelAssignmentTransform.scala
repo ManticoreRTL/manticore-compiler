@@ -80,7 +80,7 @@ object JumpLabelAssignmentTransform
             consumeBreakTarget(
               next,
               targets.tail,
-              newBody :+ setBreakTargets(head, 0)
+              newBody :+ setBreakTargets(head, targets.head)
             )
           } else {
             ctx.logger.error("JumpTable can not be last instruction in a process", head)

@@ -6,6 +6,9 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.OrderInstructions
 import manticore.compiler.assembly.levels.CloseSequentialCycles
 import manticore.compiler.assembly.ManticoreAssemblyIR
+import manticore.compiler.assembly.levels.CanRenameToDebugSymbols
+import manticore.compiler.assembly.annotations.DebugSymbol
+import manticore.compiler.assembly.levels.UInt16
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
@@ -43,4 +46,17 @@ object PlacedIRCloseSequentialCycles
       source: DefProgram,
       context: AssemblyContext
   ): DefProgram = do_transform(source)(context)
+}
+
+object PlacedIRDebugSymbolRenamer extends CanRenameToDebugSymbols {
+
+  val flavor = PlacedIR
+  import flavor._
+
+  def debugSymToName(dbg: DebugSymbol): Name =
+    dbg.getSymbol() + (dbg.getIndex() match {
+      case Some(index) => s"[$index]"
+      case None        => ""
+    })
+  def constantName(v: UInt16, w: Int): Name = s"$$$v"
 }

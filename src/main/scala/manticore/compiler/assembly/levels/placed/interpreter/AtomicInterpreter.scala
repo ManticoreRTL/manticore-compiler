@@ -267,6 +267,11 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
               handlePhi(taggedInst)
             } else {
               // done with the borrowed execution need to actually jump!
+              if (target < pc) {
+                ctx.logger.error(
+                  s"Can not jump to ${target} when pc is ${pc}. Only forward jumping is semantically correct."
+                )
+              }
               pc = target
               val jumpTargetInst = instructionMemory(pc)
               val isJumpTarget = taggedInst.tags.exists { t =>

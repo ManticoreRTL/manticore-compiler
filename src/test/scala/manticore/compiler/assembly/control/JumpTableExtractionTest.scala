@@ -31,15 +31,45 @@ import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.utils.XorShift128
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRInterpreterMonitor
 import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
+import manticore.compiler.assembly.levels.placed.interpreter.PlacedIRInterpreterMonitor
+import manticore.compiler.assembly.levels.InterpreterMonitor
+import manticore.compiler.assembly.levels.placed.PlacedIRDebugSymbolRenamer
 
 class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
   behavior of "JumpTable extraction"
 
-  val Optimizations = UnconstrainedIRConstantFolding followedBy
-    UnconstrainedIRCommonSubExpressionElimination followedBy
-    UnconstrainedDeadCodeElimination
+  object Commons {
+    val Optimizations = UnconstrainedIRConstantFolding followedBy
+      UnconstrainedIRCommonSubExpressionElimination followedBy
+      UnconstrainedDeadCodeElimination
+    def context(fixture: FixtureParam) = AssemblyContext(
+      output_dir = Some(fixture.test_dir.resolve("out").toFile()),
+      dump_all = true,
+      dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
+      expected_cycles = Some(100),
+      debug_message = true,
+      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+    )
 
+    def frontend(optimize: Boolean, useJump: Boolean) =
+      UnconstrainedNameChecker followedBy
+        UnconstrainedMakeDebugSymbols followedBy
+        UnconstrainedRenameVariables followedBy
+        UnconstrainedOrderInstructions followedBy
+        Transformation.predicated(optimize)(Optimizations) followedBy
+        Transformation.predicated(useJump)(
+          UnconstrainedJumpTableConstruction
+        ) followedBy
+        UnconstrainedIRParMuxDeconstructionTransform followedBy
+        WidthConversion.transformation followedBy
+        Transformation.predicated(optimize)(Optimizations)
+    def backend =
+      UnconstrainedToPlacedTransform followedBy
+        PlacedIRCloseSequentialCycles followedBy
+        JumpTableNormalizationTransform followedBy
+        JumpLabelAssignmentTransform
+  }
   object AluTestCommons {
     def getAluSource(fixture: FixtureParam) = {
       val fnames = Seq(
@@ -66,33 +96,12 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
         .mkString("\n")
       source
     }
-    def context(fixture: FixtureParam) = AssemblyContext(
-      output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      dump_all = true,
-      dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-      expected_cycles = Some(100),
-      debug_message = true,
-      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
-    )
-
-    def frontend(optimize: Boolean, useJump: Boolean) =
-      UnconstrainedNameChecker followedBy
-        UnconstrainedMakeDebugSymbols followedBy
-        UnconstrainedRenameVariables followedBy
-        UnconstrainedOrderInstructions followedBy
-        Transformation.predicated(optimize)(Optimizations) followedBy
-        Transformation.predicated(useJump)(
-          UnconstrainedJumpTableConstruction
-        ) followedBy
-        UnconstrainedIRParMuxDeconstructionTransform followedBy
-        WidthConversion.transformation followedBy
-        Transformation.predicated(optimize)(Optimizations)
 
     def doTest(optimize: Boolean, useJump: Boolean, fixture: FixtureParam) = {
-      val ctx = AluTestCommons.context(fixture)
+      val ctx = Commons.context(fixture)
       val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
 
-      def compiler = frontend(optimize, useJump) followedBy
+      def compiler = Commons.frontend(optimize, useJump) followedBy
         UnconstrainedCloseSequentialCycles followedBy
         UnconstrainedInterpreter
 
@@ -126,11 +135,11 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
   }
   "ALU" should "work correctly with an optimal JumpTable in PlacedIR" in {
     fixture =>
-      val ctx = AluTestCommons.context(fixture)
+      val ctx = Commons.context(fixture)
       val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
 
       val compiler =
-        AluTestCommons.frontend(optimize = true, useJump = true) followedBy
+        Commons.frontend(optimize = true, useJump = true) followedBy
           UnconstrainedToPlacedTransform followedBy JumpTableNormalizationTransform followedBy
           JumpLabelAssignmentTransform followedBy PlacedIRCloseSequentialCycles
       val (transformed, _) = compiler(program, ctx)
@@ -140,11 +149,10 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
   }
 
-  "JumpTableExtraction" should "should construct a jump table" in {
-    fixture =>
-      val randGen = XorShift128("randGen0")
+  "JumpTableExtraction" should "should construct a jump table" in { fixture =>
+    val randGen = XorShift128("randGen0")
 
-      val source = s"""
+    val source = s"""
         .prog:
             .proc p0:
             ${randGen.registers}
@@ -189,46 +197,55 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
             PARMUX resnext, c12 ? l12, c13 ? l13, c14 ? l14, l15;
 
       """
-      val ctx = AluTestCommons.context(fixture)
+    val ctx = Commons.context(fixture)
 
-      val parsed = AssemblyParser(source, ctx)
+    val parsed = AssemblyParser(source, ctx)
 
-      val compiler = AluTestCommons.frontend(
-        true,
-        true
-      ) followedBy UnconstrainedCloseSequentialCycles
+    val compiler = Commons.frontend(
+      true,
+      true
+    ) followedBy Commons.backend
 
-      val converted = compiler(parsed, ctx)._1
-      val monitor = UnconstrainedIRInterpreterMonitor(converted)(ctx)
+    val converted = compiler(parsed, ctx)._1
 
-      val interp = UnconstrainedInterpreter.instance(
-        program = converted,
-        monitor = Some(monitor),
-        vcdDump = None
-      )(ctx)
 
-      def nextExpected(): Int = {
+    val monitor = PlacedIRInterpreterMonitor(
+      converted
+    )(ctx)
+    // println(s"Watching ${monitor.keys}")
+    fixture.dump(
+      "human_readable.masm",
+      PlacedIRDebugSymbolRenamer.makeHumanReadable(converted)(ctx).serialized
+    )
+    val interp = AtomicInterpreter.instance(
+      program = converted,
+      monitor = Some(monitor)
+    )(ctx)
 
-        val currRnd = randGen.nextRef()
-        val sel = currRnd >>> 29
+    def nextExpected(): Int = {
 
-        val res = sel match {
-          case 1 => currRnd + 11
-          case 2 => currRnd >>> 8
-          case 3 => currRnd - 11
-          case _ => currRnd
-        }
+      val currRnd = randGen.nextRef()
+      val sel = currRnd >>> 29
 
-        res
+      val res = sel match {
+        case 1 => currRnd + 11
+        case 2 => currRnd >>> 8
+        case 3 => currRnd - 11
+        case _ => currRnd
       }
 
-      for (cycle <- 0 to 10000) {
-        interp.runVirtualCycle()
-        interp.getException() shouldBe None
-        val ref = nextExpected()
-        val got = monitor.read("resnext").toInt
-        withClue(s"Got ${got} but expected ${ref}") { got should equal(ref) }
+      res
+    }
+
+    for (cycle <- 0 to 10000) {
+      interp.interpretVirtualCycle() shouldBe Nil
+      val ref = nextExpected()
+      val got = monitor.read("resnext").toInt
+      withClue("random generator mismatch") {
+        monitor.read(randGen.randNext).toInt shouldEqual randGen.currRef()
       }
+      withClue(s"Result mismatch:  ") { got shouldEqual ref }
+    }
 
   }
 
