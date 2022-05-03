@@ -122,10 +122,12 @@ trait ManticoreAssemblyIR {
       with HasSerialized {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\t.labelgroup ${memory}\n" +
-        indexer.map { case (index, label) =>
-          s"\t\t\t${index} -> ${label}"
-         }.mkString ("\n") + (if (default.nonEmpty)
-                               s"\t\t\t _ -> ${default.get}"
+        indexer
+          .map { case (index, label) =>
+            s"\t\t\t${index} -> ${label}"
+          }
+          .mkString("\n") + (if (default.nonEmpty)
+                               s"\n\t\t\t _ -> ${default.get}"
                              else "")
 
   }
@@ -176,7 +178,6 @@ trait ManticoreAssemblyIR {
   sealed trait PrivilegedInstruction extends Instruction
   sealed trait SynchronizationInstruction extends Instruction
 
-
   /** A parallel multiplexer
     *
     * @param rd
@@ -200,7 +201,7 @@ trait ManticoreAssemblyIR {
 
   }
 
-  case class JumpCase(label: Label, block: Seq[DataInstruction])
+  case class JumpCase(label: Label, block: Seq[Instruction])
   // a Phi node for selecting results and convergence points, does not really
   // belong to the instruction type hierarchy since right now Phi nodes are
   // strictly used within JumpTable nodes so there is no reason to treat them
@@ -228,7 +229,7 @@ trait ManticoreAssemblyIR {
       target: Name,
       results: Seq[Phi],
       blocks: Seq[JumpCase],
-      dslot: Seq[DataInstruction] = Seq(),
+      dslot: Seq[Instruction] = Seq(),
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends ControlInstruction {
 
@@ -274,6 +275,11 @@ trait ManticoreAssemblyIR {
       .toString()
       .toUpperCase()}\t${rd}, ${rs1}, ${rs2}"
 
+  }
+
+  case class BreakCase(target: Int = -1, annons: Seq[AssemblyAnnotation] = Seq())
+      extends ControlInstruction {
+    override def toString: String = s"BREAK ${target}"
   }
 
   // Custom instruction

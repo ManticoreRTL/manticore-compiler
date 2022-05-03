@@ -10,7 +10,8 @@ import manticore.compiler.assembly.BinaryOperator
 trait ProcessInterpreter extends InterpreterBase {
 
 //   type Message <: HasTargetId
-  val proc: DefProcess
+  // val proc: DefProcess
+  implicit val ctx: AssemblyContext
 
   type Message <: MessageBase
 
@@ -19,6 +20,9 @@ trait ProcessInterpreter extends InterpreterBase {
   def write(rd: Name, value: UInt16): Unit
   // read a register
   def read(rs: Name): UInt16
+
+  def updatePc(pc: Int): Unit
+
   // local load/store
   def lload(address: UInt16): UInt16
   def lstore(address: UInt16, value: UInt16): Unit
@@ -137,7 +141,7 @@ trait ProcessInterpreter extends InterpreterBase {
   }
 
   def interpret(instruction: Instruction): Unit = instruction match {
-    case i: BinaryArithmetic => interpret(i)
+    case i: BinaryArithmetic  => interpret(i)
     case i: CustomInstruction => interpret(i)
     case LocalLoad(rd, base, offset, _) =>
       val base_val = read(base)
@@ -240,9 +244,14 @@ trait ProcessInterpreter extends InterpreterBase {
       }
 
     case ParMux(rd, choices, default, annons) =>
-      val valid_choices = choices.collect { case ParMuxCase(cond, rs) if read(cond) == UInt16(1) => cond -> read(rs) }
+      val valid_choices = choices.collect {
+        case ParMuxCase(cond, rs) if read(cond) == UInt16(1) => cond -> read(rs)
+      }
       if (valid_choices.length > 1) {
-        ctx.logger.error(s"Multiple valid choices ${valid_choices.map(_._1).mkString(" and ") }", instruction)
+        ctx.logger.error(
+          s"Multiple valid choices ${valid_choices.map(_._1).mkString(" and ")}",
+          instruction
+        )
       } else if (valid_choices.length == 1) {
         val rd_val = valid_choices.head._2
         write(rd, rd_val)
@@ -258,6 +267,13 @@ trait ProcessInterpreter extends InterpreterBase {
       val rd_val = rs_shifted & mask
       write(rd, rd_val)
 
+    case Lookup(rd, index, base, _) =>
+      val address = read(index) + read(base)
+      val rd_val = lload(address)
+      write(rd, rd_val)
+    case JumpTable(target, _, _, _, _) =>
+      updatePc(read(target).toInt)
+    case BreakCase(target, _) => updatePc(target)
     case Nop => // nothing
 
     case _: GlobalStore | _: GlobalLoad | _: SetValue =>

@@ -118,9 +118,9 @@ trait CanRename extends Flavored {
             base = renaming(base)
           )
         case jtb @ JumpTable(target, phis, blocks, dslot, _) =>
-          def renameBlock(block: Seq[DataInstruction]): Seq[DataInstruction] = {
+          def renameBlock(block: Seq[Instruction]): Seq[Instruction] = {
             block.map { inst =>
-              asRenamed(inst)(renaming).asInstanceOf[DataInstruction]
+              asRenamed(inst)(renaming)
             }
           }
           jtb.copy(
@@ -136,6 +136,7 @@ trait CanRename extends Flavored {
               JumpCase(lbl, renameBlock(blk))
             }
           )
+        case brk @ BreakCase(_, _) =>  brk
       }
       renamed_inst.setPos(inst.pos)
     }

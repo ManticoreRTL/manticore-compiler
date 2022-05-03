@@ -15,7 +15,6 @@ import scala.annotation.implicitNotFound
   *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
 
-
 /** The base of any interpreter monitor
   */
 trait InterpreterMonitor extends Flavored {
@@ -183,30 +182,41 @@ trait InterpreterMonitorCompanion extends Flavored {
       .collect { case (Some(x: DebugSymbol), r) => x -> r }
       .groupBy(_._1.getSymbol())
 
-    val debInfo = scala.collection.mutable.Map.empty[Name, InterpreterMonitor.DebugInfo]
+    val debInfo =
+      scala.collection.mutable.Map.empty[Name, InterpreterMonitor.DebugInfo]
     val records = scala.collection.mutable.Map
       .empty[String, InterpreterMonitor.MonitorRecord]
 
     def append(debsym: String, regs: Seq[(DebugSymbol, DefReg)]): Unit = {
+
       val indexSortedRegs = regs
         .sortBy { case (dbg, r) => dbg.getIndex().getOrElse(0) }
       val (firstDbg, firstReg) = indexSortedRegs.head
-      val totalWidth = indexSortedRegs.map(_._2.variable.width).sum
-      assert(
-        totalWidth == firstDbg.getWidth().getOrElse(totalWidth),
-        "Invalid debug symbol?"
-      )
-      val rec = new InterpreterMonitor.MonitorRecord(totalWidth)
-      records += (debsym -> rec)
-      indexSortedRegs.foldLeft(0) { case (offset, (dbg, r)) =>
-        debInfo += (r.variable.name -> InterpreterMonitor.DebugInfo(
-          dbg,
-          offset,
-          r.variable.width
-        ))
-        // set the initial value
-        rec.update(r.value.map(toBigInt).getOrElse(0), offset, r.variable.width)
-        offset + r.variable.width
+
+      if (regs.length != firstDbg.getCount().getOrElse(1)) {
+        ctx.logger.warn(
+          s"Can not monitor ${debsym} because debug symbol is incomplete. Disabling optimizations may help keep the debug symbol integrity."
+        )
+        // we probably do not have all the words if defTotalWidth
+
+      } else {
+        val debWidth = firstDbg.getWidth().get
+        val rec = new InterpreterMonitor.MonitorRecord(debWidth)
+        records += (debsym -> rec)
+        indexSortedRegs.foldLeft(0) { case (offset, (dbg, r)) =>
+          debInfo += (r.variable.name -> InterpreterMonitor.DebugInfo(
+            dbg,
+            offset,
+            r.variable.width
+          ))
+          // set the initial value
+          rec.update(
+            r.value.map(toBigInt).getOrElse(0),
+            offset,
+            r.variable.width
+          )
+          offset + r.variable.width
+        }
       }
 
     }

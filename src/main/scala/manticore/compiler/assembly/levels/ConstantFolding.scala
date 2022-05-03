@@ -16,7 +16,8 @@ trait ConstantFolding
     extends Flavored
     with CanRename
     with CanCollectProgramStatistics
-    with DependenceGraphBuilder {
+    with DependenceGraphBuilder
+    with CanCollectInputOutputPairs {
 
   import flavor._
 
@@ -202,7 +203,8 @@ trait ConstantFolding
             case (Right(v1), Right(v2), Right(vci)) =>
               val (rd_val, co_val) = addCarryEvaluator(v1, v2, vci)
               builder.bindConst(rd, rd_val).bindConst(co, co_val)
-            case (Right(c0), Right(c1), Left(ci_subst)) if isFalse(c0) && isTrue(c1) =>
+            case (Right(c0), Right(c1), Left(ci_subst))
+                if isFalse(c0) && isTrue(c1) =>
               builder.bindName(co, ci_subst)
             case _ => builder.keep(i)
           }
@@ -237,7 +239,7 @@ trait ConstantFolding
             val rtrue_value = builder.computedValue(rtrue)
             val rfalse_value = builder.computedValue(rfalse)
             sel_value match {
-              case Right(c)  =>
+              case Right(c) =>
                 if (isTrue(c)) {
                   rtrue_value match {
                     case Right(ctrue) => builder.bindConst(rd, ctrue)
@@ -251,23 +253,23 @@ trait ConstantFolding
                   }
 
                 } else {
-                ctx.logger.error(
-                  s"Mux condition should be either zero or one but it is ${c}",
-                  i
-                )
-                builder.keep(i)
+                  ctx.logger.error(
+                    s"Mux condition should be either zero or one but it is ${c}",
+                    i
+                  )
+                  builder.keep(i)
                 }
 
               case Left(s) =>
                 (rfalse_value, rtrue_value) match {
                   case (Right(c0), Right(c1))
                       if (isFalse(c0) && isTrue(c1) &&
-                      builder.widthLookup(
-                        rfalse
-                      ) == builder.widthLookup(
-                        sel
-                      ) && builder
-                        .widthLookup(rtrue) == builder.widthLookup(sel)) =>
+                        builder.widthLookup(
+                          rfalse
+                        ) == builder.widthLookup(
+                          sel
+                        ) && builder
+                          .widthLookup(rtrue) == builder.widthLookup(sel)) =>
                     /*
                        a weird pattern that I've seen in the code is
 
@@ -323,8 +325,9 @@ trait ConstantFolding
                 (builder.computedValue(cond), builder.computedValue(choice))
               }
             val found_true_case = computed_cases
-              .collectFirst { case (Right(c1), rs_val) if isTrue(c1) =>
-                rs_val
+              .collectFirst {
+                case (Right(c1), rs_val) if isTrue(c1) =>
+                  rs_val
               }
 
             found_true_case match {
@@ -332,7 +335,7 @@ trait ConstantFolding
                 if (
                   computed_cases.forall {
                     case (Right(c0), _) if isFalse(c0) => true
-                    case _                     => false
+                    case _                             => false
                   }
                 ) {
                   // use the default case
@@ -349,6 +352,7 @@ trait ConstantFolding
               case Some(Left(dyn_val))    => builder.bindName(rd, dyn_val)
             }
           }
+        case brk: BreakCase => builder.keep(brk)
         case jtb @ JumpTable(_, _, blocks, dslot, _) =>
           case class CaseBuilder(
               prev: ConstantFoldingBuilder,
@@ -431,8 +435,13 @@ trait ConstantFolding
 
     // now we need to remove any unused DefRegs
 
+    val inputOutputPairs = InputOutputPairs.createInputOutputPairs(process)
     val referenced = DependenceAnalysis.referencedNames(finalInstructions)
-    def shouldKeepDef(r: DefReg) = referenced(r.variable.name)
+    def isIo(r: DefReg): Boolean =
+      r.variable.varType == InputType || r.variable.varType == OutputType
+    // keep a def if it was referenced or it is an actual register, note that
+    // this pass can not remove registers, that is the job of the DCE
+    def shouldKeepDef(r: DefReg) = referenced(r.variable.name) || isIo(r)
 
     val nonConstOriginalNames = process.registers.filter { r =>
       r.variable.varType != ConstType

@@ -25,12 +25,12 @@ sdk install sbt
 ################################################################################
 # Build or-tools ###############################################################
 ################################################################################
-export JAVA_HOME=/usr/lib/jvm/default-java
-git clone https://github.com/google/or-tools
-pushd or-tools
-mkdir -p build
-pushd build
-cmake .. -DBUILD_JAVA=ON -DSKIP_GPG=ON -G "Ninja"
-cmake --build .
-popd # build
-popd # or-tools
+# export JAVA_HOME=/usr/lib/jvm/default-java
+# git clone https://github.com/google/or-tools
+# pushd or-tools
+# mkdir -p build
+# pushd build
+# cmake .. -DBUILD_JAVA=ON -DSKIP_GPG=ON -G "Ninja"
+# cmake --build .
+# popd # build
+# popd # or-tools

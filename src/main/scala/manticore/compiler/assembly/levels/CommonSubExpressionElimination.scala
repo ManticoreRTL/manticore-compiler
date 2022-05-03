@@ -171,8 +171,11 @@ trait CommonSubExpressionElimination
 
     val referenced = DependenceAnalysis.referencedNames(finalInstructions)
 
+    def isIo(r: DefReg): Boolean =
+      r.variable.varType == InputType || r.variable.varType == OutputType
+
     val newDefs: Seq[DefReg] = process.registers.filter { r =>
-      referenced(r.variable.name)
+      referenced(r.variable.name) || isIo(r)
     }
 
     // val newLabesl = process.labels // should not change, cse does not touch memories

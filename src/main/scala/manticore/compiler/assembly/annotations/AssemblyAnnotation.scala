@@ -41,6 +41,7 @@ object AssemblyAnnotationFields {
   object Type extends FieldName("type") with BindsToString
   object Generated extends FieldName("generated") with BindsToBoolean
 
+
   def parse(name: String): Option[FieldName] = name match {
     case Symbol.name   => Some(Symbol)
     case Width.name    => Some(Width)

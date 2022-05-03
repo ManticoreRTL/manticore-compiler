@@ -3,8 +3,8 @@ package manticore.compiler.assembly.levels
 /** OrderInstructions.scala
   *
   * @author
-  *   Sahand Kashani <sahand.kashani@epfl.ch>
-  *   Mahyar Emami   <mahyar.emami@epfl.ch>
+  *   Sahand Kashani <sahand.kashani@epfl.ch> Mahyar Emami
+  *   <mahyar.emami@epfl.ch>
   */
 
 import manticore.compiler.assembly.DependenceGraphBuilder
@@ -12,6 +12,8 @@ import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import scala.collection.mutable.ArrayBuffer
 import manticore.compiler.assembly.ManticoreAssemblyIR
+import scalax.collection.edge.LDiEdge
+import scalax.collection.Graph
 
 /** This transform sorts instructions based on their depenencies.
   */
@@ -24,8 +26,8 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
 
   def orderInstructions(
       proc: DefProcess
-  )(
-    implicit ctx: AssemblyContext
+  )(implicit
+      ctx: AssemblyContext
   ): DefProcess = {
 
     // The value of the label doesn't matter for topological sorting.
@@ -38,6 +40,57 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
       ctx.logger.error(
         "Dependence graph is not acyclic, can not order instruction!"
       )
+
+      ctx.logger.dumpArtifact(s"cyclic_dependence_graph_${phase_id}.dot") {
+        import scalax.collection.io.dot._
+        import scalax.collection.io.dot.implicits._
+        val dotRoot = DotRootGraph(
+          directed = true,
+          id = Some("List scheduling dependence graph")
+        )
+        val nodeIndex = dependence_graph.nodes.map(_.toOuter).zipWithIndex.toMap
+        def edgeTransform(
+            iedge: Graph[Instruction, LDiEdge]#EdgeT
+        ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
+          case LDiEdge(source, target, _) =>
+            Some(
+              (
+                dotRoot,
+                DotEdgeStmt(
+                  nodeIndex(source.toOuter).toString,
+                  nodeIndex(target.toOuter).toString
+                )
+              )
+            )
+          case t @ _ =>
+            ctx.logger.error(
+              s"An edge in the dependence could not be serialized! ${t}"
+            )
+            None
+        }
+        def nodeTransformer(
+            inode: Graph[Instruction, LDiEdge]#NodeT
+        ): Option[(DotGraph, DotNodeStmt)] =
+          Some(
+            (
+              dotRoot,
+              DotNodeStmt(
+                NodeId(nodeIndex(inode.toOuter)),
+                List(DotAttr("label", inode.toOuter.toString.trim.take(64)))
+              )
+            )
+          )
+
+        val dotExport: String = dependence_graph.toDot(
+          dotRoot = dotRoot,
+          edgeTransformer = edgeTransform,
+          cNodeTransformer = Some(nodeTransformer), // connected nodes
+          iNodeTransformer = Some(nodeTransformer) // isolated nodes
+        )
+        dotExport
+
+      }
+
       proc
     } else {
 
@@ -93,7 +146,7 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
     implicit val ctx = context
 
     val out = DefProgram(
-      processes = asm.processes.map(orderInstructions),
+      processes = asm.processes.map(orderInstructions)
     )
 
     out

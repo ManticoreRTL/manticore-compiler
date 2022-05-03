@@ -10,14 +10,7 @@ import manticore.compiler.integration.thyrio.Python3
 import java.nio.file.StandardCopyOption
 import java.nio.file.Path
 import java.nio.file.Files
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedNameChecker
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedMakeDebugSymbols
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedOrderInstructions
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRemoveAliases
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedCloseSequentialCycles
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedInterpreter
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedBreakSequentialCycles
+
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.parser.AssemblyParser
 

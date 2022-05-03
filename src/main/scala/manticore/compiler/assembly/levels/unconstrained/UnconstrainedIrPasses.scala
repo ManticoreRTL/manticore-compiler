@@ -20,6 +20,11 @@ import manticore.compiler.assembly.levels.BreakSequentialCycles
 import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.JumpTableConstruction
 import manticore.compiler.assembly.levels.ParMuxDeconstruction
+import manticore.compiler.assembly.annotations.Memblock
+import manticore.compiler.assembly.annotations.AssemblyAnnotation
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
+import manticore.compiler.assembly.annotations.StringValue
+import manticore.compiler.assembly.annotations.IntValue
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
@@ -165,14 +170,26 @@ object UnconstrainedJumpTableConstruction
   override def uniqueLabel(ctx: AssemblyContext): Label =
     s"L${ctx.uniqueNumber()}"
 
-  override def mkMemory(width: Int)(implicit ctx: AssemblyContext) = DefReg(
-    LogicVariable(
-      s"%m${ctx.uniqueNumber()}",
-      width,
-      MemoryType
-    ),
-    None
-  )
+  override def mkMemory(width: Int)(implicit ctx: AssemblyContext) =  {
+    val name = s"%m${ctx.uniqueNumber()}"
+    DefReg(
+      LogicVariable(
+        name,
+        width,
+        MemoryType
+      ),
+      None,
+      Seq(
+        Memblock(
+          Map(
+            AssemblyAnnotationFields.Block.name -> StringValue(name),
+            AssemblyAnnotationFields.Capacity.name -> IntValue(1 << width),
+            AssemblyAnnotationFields.Width.name -> IntValue(width),
+          )
+        )
+      )
+    )
+  }
 
   override def mkWire(width: Int)(implicit ctx: AssemblyContext) = DefReg(
     LogicVariable(

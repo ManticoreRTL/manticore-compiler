@@ -108,6 +108,8 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           // a Phi node can directly use an externally defined value (e.g., if
           // a case block is empty).
           (allUses.toSet -- defs.toSet).toSeq
+        case i: BreakCase =>
+          Seq.empty
       }
     }
 
@@ -122,30 +124,31 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         inst: Instruction
     ): Seq[Name] = {
       inst match {
-        case BinaryArithmetic(operator, rd, rs1, rs2, annons)        => Seq(rd)
-        case CustomInstruction(func, rd, rsx, annons)                => Seq(rd)
-        case LocalLoad(rd, base, offset, annons)                     => Seq(rd)
-        case LocalStore(rs, base, offset, p, annons)                 => Nil
-        case GlobalLoad(rd, base, annons)                            => Seq(rd)
-        case GlobalStore(rs, base, pred, annons)                     => Nil
-        case Send(rd, rs, dest_id, annons)                           => Nil
-        case SetValue(rd, value, annons)                             => Seq(rd)
-        case Mux(rd, sel, rs1, rs2, annons)                          => Seq(rd)
-        case Expect(ref, got, error_id, annons)                      => Nil
-        case Predicate(rs, annons)                                   => Nil
-        case Nop                                                     => Nil
-        case PadZero(rd, rs, width, annons)                          => Seq(rd)
-        case AddC(rd, co, rs1, rs2, ci, annons) => Seq(rd, co)
-        case Mov(rd, _, _)                      => Seq(rd)
-        case Slice(rd, _, _, _, _)              => Seq(rd)
-        case ClearCarry(rd, _)                  => Seq(rd)
-        case SetCarry(rd, _)                    => Seq(rd)
-        case _: Recv                            => Nil
-        case ParMux(rd, _, _, _)                => Seq(rd)
-        case JumpTable(_, results, _, dslot, _)     =>
+        case BinaryArithmetic(operator, rd, rs1, rs2, annons) => Seq(rd)
+        case CustomInstruction(func, rd, rsx, annons)         => Seq(rd)
+        case LocalLoad(rd, base, offset, annons)              => Seq(rd)
+        case LocalStore(rs, base, offset, p, annons)          => Nil
+        case GlobalLoad(rd, base, annons)                     => Seq(rd)
+        case GlobalStore(rs, base, pred, annons)              => Nil
+        case Send(rd, rs, dest_id, annons)                    => Nil
+        case SetValue(rd, value, annons)                      => Seq(rd)
+        case Mux(rd, sel, rs1, rs2, annons)                   => Seq(rd)
+        case Expect(ref, got, error_id, annons)               => Nil
+        case Predicate(rs, annons)                            => Nil
+        case Nop                                              => Nil
+        case PadZero(rd, rs, width, annons)                   => Seq(rd)
+        case AddC(rd, co, rs1, rs2, ci, annons)               => Seq(rd, co)
+        case Mov(rd, _, _)                                    => Seq(rd)
+        case Slice(rd, _, _, _, _)                            => Seq(rd)
+        case ClearCarry(rd, _)                                => Seq(rd)
+        case SetCarry(rd, _)                                  => Seq(rd)
+        case _: Recv                                          => Nil
+        case ParMux(rd, _, _, _)                              => Seq(rd)
+        case JumpTable(_, results, _, dslot, _) =>
           assert(dslot.isEmpty, "dslot should only be used after scheduling!")
           results.map(_.rd)
-        case Lookup(rd, _, _, _)                => Seq(rd)
+        case Lookup(rd, _, _, _) => Seq(rd)
+        case _: BreakCase        => Seq.empty
       }
     }
 
