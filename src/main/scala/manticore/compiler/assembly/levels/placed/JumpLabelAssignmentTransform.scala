@@ -4,7 +4,6 @@ import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.DependenceGraphBuilder
 import manticore.compiler.assembly.ManticoreAssemblyIR
-import com.sourcegraph.semanticdb_javac.Result
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
