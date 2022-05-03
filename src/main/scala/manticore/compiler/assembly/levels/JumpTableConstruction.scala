@@ -253,7 +253,8 @@ trait JumpTableConstruction
           default = None
         )
         val addedInstructions = instr.length + numInstrInSlowestCase
-        val removedInstructions = instructionsToRemove.size
+        val muxTreeInstructions = pmux.choices.length
+        val removedInstructions = instructionsToRemove.size + muxTreeInstructions
         ctx.logger.debug(
           s"Converting pmux to jump table will add ${addedInstructions} instructions and remove ${removedInstructions}",
           pmux
