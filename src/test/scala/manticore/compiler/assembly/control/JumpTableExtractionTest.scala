@@ -149,10 +149,11 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
   }
 
-  "JumpTableExtraction" should "should construct a jump table" in { fixture =>
-    val randGen = XorShift128("randGen0")
+  "JumpTable" should "should work with AtomicInterpreter and PlacedIRInterpreterMonitor" in {
+    fixture =>
+      val randGen = XorShift128("randGen0")
 
-    val source = s"""
+      val source = s"""
         .prog:
             .proc p0:
             ${randGen.registers}
@@ -170,7 +171,6 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
             .wire c13 1
             .wire c14 1
 
-
             .const eleven 32 11
             .const eight  32 8
             .const nineteen 32 19
@@ -181,7 +181,6 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
             .const const3 3 3
 
             ${randGen.code}
-
 
             SRL sel, ${randGen.randNext}, twentyNine;
 
@@ -197,56 +196,186 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
             PARMUX resnext, c12 ? l12, c13 ? l13, c14 ? l14, l15;
 
       """
-    val ctx = Commons.context(fixture)
+      val ctx = Commons.context(fixture)
 
-    val parsed = AssemblyParser(source, ctx)
+      val parsed = AssemblyParser(source, ctx)
 
-    val compiler = Commons.frontend(
-      true,
-      true
-    ) followedBy Commons.backend
+      val compiler = Commons.frontend(
+        true,
+        true
+      ) followedBy Commons.backend
 
-    val converted = compiler(parsed, ctx)._1
+      val converted = compiler(parsed, ctx)._1
 
+      val monitor = PlacedIRInterpreterMonitor(
+        converted
+      )(ctx)
+      // println(s"Watching ${monitor.keys}")
+      fixture.dump(
+        "human_readable.masm",
+        PlacedIRDebugSymbolRenamer.makeHumanReadable(converted)(ctx).serialized
+      )
+      val interp = AtomicInterpreter.instance(
+        program = converted,
+        monitor = Some(monitor)
+      )(ctx)
 
-    val monitor = PlacedIRInterpreterMonitor(
-      converted
-    )(ctx)
-    // println(s"Watching ${monitor.keys}")
-    fixture.dump(
-      "human_readable.masm",
-      PlacedIRDebugSymbolRenamer.makeHumanReadable(converted)(ctx).serialized
-    )
-    val interp = AtomicInterpreter.instance(
-      program = converted,
-      monitor = Some(monitor)
-    )(ctx)
+      def nextExpected(): Int = {
 
-    def nextExpected(): Int = {
+        val currRnd = randGen.nextRef()
+        val sel = currRnd >>> 29
 
-      val currRnd = randGen.nextRef()
-      val sel = currRnd >>> 29
+        val res = sel match {
+          case 1 => currRnd + 11
+          case 2 => currRnd >>> 8
+          case 3 => currRnd - 11
+          case _ => currRnd
+        }
 
-      val res = sel match {
-        case 1 => currRnd + 11
-        case 2 => currRnd >>> 8
-        case 3 => currRnd - 11
-        case _ => currRnd
+        res
       }
 
-      res
-    }
-
-    for (cycle <- 0 to 10000) {
-      interp.interpretVirtualCycle() shouldBe Nil
-      val ref = nextExpected()
-      val got = monitor.read("resnext").toInt
-      withClue("random generator mismatch") {
-        monitor.read(randGen.randNext).toInt shouldEqual randGen.currRef()
+      for (cycle <- 0 to 10000) {
+        interp.interpretVirtualCycle() shouldBe Nil
+        val ref = nextExpected()
+        val got = monitor.read("resnext").toInt
+        withClue("random generator mismatch") {
+          monitor.read(randGen.randNext).toInt shouldEqual randGen.currRef()
+        }
+        withClue(s"Result mismatch:  ") { got shouldEqual ref }
       }
-      withClue(s"Result mismatch:  ") { got shouldEqual ref }
-    }
 
   }
 
+  "JumpTableConstruction" should "not construct a JumpTable when ParMux inputs have other users" in {
+    fixture =>
+      val rand0 = XorShift128(name = "rand0", seed = 88708797)
+      val rand1 = XorShift128(name = "rand1", seed = 12776512)
+      val rand2 = XorShift128(name = "rand2", seed = 57384123)
+      val rand3 = XorShift128(name = "rand3", seed = 98016642)
+      val rand4 = XorShift128(name = "rand4", seed = 7886834)
+
+      val source = s"""
+    .prog:
+      .proc p0:
+
+        ${rand0.registers}
+        ${rand1.registers}
+        ${rand2.registers}
+        ${rand3.registers}
+        ${rand4.registers}
+
+
+
+
+
+        .wire const0 5 0
+
+        .wire false 1 1
+
+        .wire slice8 8
+        .wire isEven 1
+        .wire isOdd 1
+
+        .const one8 8 1
+        .const two8 8 2
+        .const three8 8 3
+        .const four8 8 4
+
+        .wire c1 1
+        .wire cc1 1
+        .wire c2 1
+        .wire cc2 1
+        .wire c3 1
+        .wire cc3 1
+        .wire c4 1
+        .wire cc4 1
+
+        @TRACK[name = "RES"]
+        .reg RES 32 .input rcurr .output rnext
+
+        ${rand0.code}
+        ${rand1.code}
+        ${rand2.code}
+        ${rand3.code}
+        ${rand4.code}
+
+        SRL slice8, ${rand0.randNext}, const0; // slice (7, 0) of rand0.randNext
+        SRL isOdd, ${rand1.randNext}, const0; // slice(0, 0) of rand0.randNext
+        XOR isEven, isOdd, false;
+
+        SEQ cc1, slice8, one8;
+        AND c1, isEven, cc1;
+
+        SEQ cc2, slice8, two8;
+        AND c2, isOdd, cc2;
+
+
+        SEQ cc3, slice8, three8;
+        AND c3, isOdd, cc3;
+
+        // This parmux can not be converted to a jump table because its inputs
+        // are directly used to generate the values of rand#.randCurr (after closing seq cycles)
+        PARMUX rnext, c1 ? ${rand2.randNext}, c2 ? ${rand3.randNext}, c3 ? ${rand4.randNext}, ${rand0.randNext};
+
+
+    """
+
+      def nextRef(): Int = {
+
+        val rand0Ref = rand0.nextRef()
+        val rand1Ref = rand1.nextRef()
+        val rand2Ref = rand2.nextRef()
+        val rand3Ref = rand3.nextRef()
+        val rand4Ref = rand4.nextRef()
+        val slice8 = 0xff & rand0Ref
+        val isEven = (0x01 & rand1Ref) == 0
+        val isOdd = !isEven
+        if (slice8 == 1 && isEven) {
+          rand2Ref
+        } else if (slice8 == 2 && isOdd) {
+          rand3Ref
+        } else if (slice8 == 3 && isOdd) {
+          rand4Ref
+        } else {
+          rand0Ref
+        }
+      }
+
+      val compiler = Commons.frontend(true, true) followedBy Commons.backend
+
+      val ctx = Commons.context(fixture)
+
+      val parsed = AssemblyParser(source, ctx)
+      val compiled = compiler(parsed, ctx)._1
+
+      val monitor = PlacedIRInterpreterMonitor(
+        compiled
+      )(ctx)
+      // println(s"Watching ${monitor.keys}")
+      fixture.dump(
+        "human_readable.masm",
+        PlacedIRDebugSymbolRenamer.makeHumanReadable(compiled)(ctx).serialized
+      )
+      val interp = AtomicInterpreter.instance(
+        program = compiled,
+        monitor = Some(monitor)
+      )(ctx)
+
+      for (cycle <- 0 to 10000) {
+        interp.interpretVirtualCycle() shouldBe Nil
+
+        val ref = nextRef()
+        val got = monitor.read("rnext").toInt
+        withClue("random generator mismatch") {
+          monitor.read(rand0.randNext).toInt shouldEqual rand0.currRef()
+          monitor.read(rand1.randNext).toInt shouldEqual rand1.currRef()
+          monitor.read(rand2.randNext).toInt shouldEqual rand2.currRef()
+          monitor.read(rand3.randNext).toInt shouldEqual rand3.currRef()
+          monitor.read(rand4.randNext).toInt shouldEqual rand4.currRef()
+        }
+        withClue(s"Result mismatch:  ") { got shouldEqual ref }
+      }
+
+  }
 }

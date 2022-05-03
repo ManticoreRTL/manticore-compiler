@@ -1,6 +1,8 @@
 package manticore.compiler.assembly.levels
 
 import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
+
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator
 
@@ -9,12 +11,15 @@ import scalax.collection.GraphEdge
 import scalax.collection.edge.LDiEdge
 import javax.xml.crypto.Data
 import manticore.compiler.assembly.annotations.Memblock
-/**
-  * Construct JumpTables from ParMux instructions where it is beneficial
+
+/** Construct JumpTables from ParMux instructions where it is beneficial
   *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-trait JumpTableConstruction extends DependenceGraphBuilder {
+trait JumpTableConstruction
+    extends DependenceGraphBuilder
+    with CanCollectInputOutputPairs {
 
   import flavor._
 
@@ -393,7 +398,44 @@ trait JumpTableConstruction extends DependenceGraphBuilder {
     * @param ctx
     * @return
     */
+
   private def do_transform(
+      process: DefProcess
+  )(implicit ctx: AssemblyContext): DefProcess = {
+
+    // we need to close cycles to prevent output write to be sucked into
+    // the jump table bodies. This is because when the cycle is implicit, an
+    // output may falsely only have a single user, being a parmux, whereas in
+    // reality there is always another user as well.
+
+    val inputOutputPairs = InputOutputPairs
+      .createInputOutputPairs(process)
+      .map { case (curr, next) => curr.variable.name -> next.variable.name }
+      .toMap
+
+    val withMovs = process.body ++
+      inputOutputPairs.map { case (curr, next) => Mov(curr, next) }
+
+    val withJumpTable = constructJumpTable(
+      process.copy(body = withMovs).setPos(process.pos)
+    )
+
+    def isOutputMov(mov: Mov) =
+      inputOutputPairs.get(mov.rd) match {
+        case None     => false
+        case Some(rs) => rs == mov.rs
+      }
+
+    val withoutMovs = withJumpTable.body.filter {
+      case mov: Mov => !isOutputMov(mov)
+      case _        => true
+    }
+
+    withJumpTable.copy(
+      body = withoutMovs
+    ).setPos(process.pos)
+  }
+  private def constructJumpTable(
       proc: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
 
