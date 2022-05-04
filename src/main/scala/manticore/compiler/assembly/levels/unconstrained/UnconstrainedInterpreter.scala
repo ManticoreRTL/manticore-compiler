@@ -749,12 +749,13 @@ object UnconstrainedInterpreter
       }
     }
 
-    def runVirtualCycle(): Unit = {
+    def runVirtualCycle(): Option[InterpretationTrap] = {
       step() match {
-        case StepVCycleContinue => if (getException().isEmpty) runVirtualCycle()
+        case StepVCycleContinue => if (getException().isEmpty) runVirtualCycle() else getException()
         case StepVCycleFinish   => // clear out the label bindings (not really
           // needed but may help catch some errors!)
           state.label_bindings.clear()
+          getException()
       }
     }
     def runCompletion(): Unit = {

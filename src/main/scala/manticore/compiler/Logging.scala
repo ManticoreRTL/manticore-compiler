@@ -140,7 +140,7 @@ object Logger {
         msg: => String,
         node: N
     )(implicit phase_id: HasLoggerId): Unit = {
-      message(s"[${RED}error${RESET}]${msg}", node)
+      message(s"[${RED}error${RESET}] ${msg}", node)
       error_count += 1
     }
     def error(msg: => String)(implicit phase_id: HasLoggerId): Unit = {

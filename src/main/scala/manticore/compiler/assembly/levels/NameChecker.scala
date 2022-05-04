@@ -22,6 +22,26 @@ trait AssemblyNameChecker extends Flavored {
 
   object NameCheck {
 
+    /** Collect names that have been defined in multiple DefRegs
+     * @param process
+     * @return
+     */
+    def collectDefRegsWithSameName(
+        process: DefProcess
+    ): Seq[(DefReg, DefReg)] = {
+
+      val firstDef = scala.collection.mutable.Map.empty[Name, DefReg]
+
+      process.registers.foldLeft(Seq.empty[(DefReg, DefReg)]) { case (res, r) =>
+        if (firstDef.contains(r.variable.name)) {
+          res :+ (r -> firstDef(r.variable.name))
+        } else {
+          firstDef += r.variable.name -> r
+          res
+        }
+      }
+    }
+
     /** Collect any undefined registers in the process
       *
       * @param process
@@ -256,6 +276,18 @@ trait AssemblyNameChecker extends Flavored {
       }
     }
 
+    /**
+      * Check all DefRegs have unique names
+      *
+      * @param process
+      * @param notifier
+      */
+    def checkUniqueDefReg(
+      process: DefProcess
+    )(notifier: (DefReg, DefReg) => Unit): Unit = {
+      val multipleDefs = collectDefRegsWithSameName(process)
+      multipleDefs.foreach { case (secondDef, firstDef) => notifier(secondDef, firstDef) }
+    }
     /** Check all register names have a DefReg
       *
       * @param process
@@ -330,7 +362,6 @@ trait AssemblyNameChecker extends Flavored {
           }
       }
     }
-
 
   }
 }

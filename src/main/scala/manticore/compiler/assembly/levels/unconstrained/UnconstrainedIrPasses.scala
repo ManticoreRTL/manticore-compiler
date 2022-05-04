@@ -25,6 +25,8 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotation
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.annotations.StringValue
 import manticore.compiler.assembly.annotations.IntValue
+import manticore.compiler.assembly.levels.CanRenameToDebugSymbols
+import manticore.compiler.assembly.annotations.DebugSymbol
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
@@ -37,6 +39,12 @@ object UnconstrainedNameChecker
   ): Unit = {
 
     program.processes.foreach { case process =>
+      NameCheck.checkUniqueDefReg(process) { case (sec, fst) =>
+        context.logger.error(
+          s"name ${sec.variable.name} defined multiple times, first in ${fst.serialized}.",
+          sec
+        )
+      }
       NameCheck.checkNames(process) { case (name, inst) =>
         context.logger.error(s"name ${name} is not defined!", inst)
       }
@@ -72,10 +80,10 @@ object UnconstrainedRenameVariables
   import flavor._
 
   def mkFreshName(
-    original: String,
-    tpe: VariableType
-  )(
-    implicit ctx: AssemblyContext
+      original: String,
+      tpe: VariableType
+  )(implicit
+      ctx: AssemblyContext
   ) = {
     mkName(ctx.uniqueNumber(), original, tpe)
   }
@@ -254,4 +262,17 @@ object UnconstrainedIRParMuxDeconstructionTransform
 
   }
 
+}
+
+object UnconstrainedIRDebugSymbolRenamer extends CanRenameToDebugSymbols {
+
+  val flavor = UnconstrainedIR
+  import flavor._
+
+  def debugSymToName(dbg: DebugSymbol): Name =
+    dbg.getSymbol() + (dbg.getIndex() match {
+      case Some(index) => s"[$index]"
+      case None        => ""
+    })
+  def constantName(v: BigInt, w: Int): Name = s"$$${w}d$v"
 }
