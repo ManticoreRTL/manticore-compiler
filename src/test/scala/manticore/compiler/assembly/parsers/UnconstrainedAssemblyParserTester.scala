@@ -15,7 +15,6 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
   behavior of "Unconstrained assembly parser"
   import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR._
   import manticore.compiler.assembly.levels.{
-    RegType,
     WireType,
     InputType,
     MemoryType,
@@ -24,22 +23,22 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
   }
 
   val regs = (
-    """.const $zero 32 0;
-      |.reg %x 32;
-      |.reg %%xi 32 0x321;
-      |.wire y  8 ;
+    """.const $zero 32 0
+      |.wire %x 32
+      |.wire %%xi 32 0x321
+      |.wire y  8
       |@TRACK [name = "top/inst/yi"]
-      |.wire yi 16 0b011001010101010  ;
-      |.mem  m  64 ;
-      |.mem  mi  64 312312312;
-      |.input i 9;
+      |.wire yi 16 0b011001010101010
+      |.mem  m  64
+      |.mem  mi  64
+      |.input i 9
       |@TRACK [name="top/o"]
-      |.output o 12;
+      |.output o 12
       |""".stripMargin,
     Seq(
       DefReg(LogicVariable("$zero", 32, ConstType), Some(BigInt(0))),
-      DefReg(LogicVariable("%x", 32, RegType), None),
-      DefReg(LogicVariable("%%xi", 32, RegType), Some(BigInt(0x321))),
+      DefReg(LogicVariable("%x", 32, WireType), None),
+      DefReg(LogicVariable("%%xi", 32, WireType), Some(BigInt(0x321))),
       DefReg(LogicVariable("y", 8, WireType), None),
       DefReg(
         LogicVariable("yi", 16, WireType),
@@ -49,7 +48,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         )
       ),
       DefReg(LogicVariable("m", 64, MemoryType), None),
-      DefReg(LogicVariable("mi", 64, MemoryType), Some(312312312)),
+      DefReg(LogicVariable("mi", 64, MemoryType), None),
       DefReg(LogicVariable("i", 9, InputType), None),
       DefReg(
         LogicVariable("o", 12, OutputType),
@@ -94,6 +93,7 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
                      |  .proc pid:
                      |    ${regs._1}
                      |""".stripMargin
+
     val ast = AssemblyParser(program, ctx)
 
     println(ast.serialized)

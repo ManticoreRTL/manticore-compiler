@@ -32,9 +32,9 @@ class UnconstrainedWideLocalStoreTester extends UnconstrainedWideTest {
     ${init_vals.zipWithIndex map { case (x, ix) =>
       s".const mvalue_${ix} ${width} ${x}"
     } mkString "\n"}
-    .reg index ${addr_bits} 0x0
-    .reg mwdata ${width}
-    .reg mrdata ${width}
+    .wire index ${addr_bits} 0x0
+    .wire mwdata ${width}
+    .wire mrdata ${width}
     .const const_1 ${addr_bits} 1
     .const const_0 ${addr_bits} 0
     ADD index, block_base_ptr, const_0;

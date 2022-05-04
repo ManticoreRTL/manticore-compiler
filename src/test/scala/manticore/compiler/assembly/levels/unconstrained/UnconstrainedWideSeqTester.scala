@@ -40,7 +40,7 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
             ${rd_mb}
             .mem rd_ptr ${addr_width}
 
-            .reg counter 16 0
+            .wire counter 16 0
             .const const_1 16 1
             .const const_0 16 0
             .const const_1_wide ${width} 1

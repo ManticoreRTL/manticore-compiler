@@ -107,7 +107,6 @@ object UnconstrainedOrderInstructions
   ): DefProgram = do_transform(source, context)
 }
 
-
 object UnconstrainedDeadCodeElimination
     extends DeadCodeElimination
     with AssemblyTransformer[
@@ -179,7 +178,7 @@ object UnconstrainedJumpTableConstruction
   override def uniqueLabel(ctx: AssemblyContext): Label =
     s"L${ctx.uniqueNumber()}"
 
-  override def mkMemory(width: Int)(implicit ctx: AssemblyContext) =  {
+  override def mkMemory(width: Int)(implicit ctx: AssemblyContext) = {
     val name = s"%m${ctx.uniqueNumber()}"
     DefReg(
       LogicVariable(
@@ -193,7 +192,7 @@ object UnconstrainedJumpTableConstruction
           Map(
             AssemblyAnnotationFields.Block.name -> StringValue(name),
             AssemblyAnnotationFields.Capacity.name -> IntValue(1 << width),
-            AssemblyAnnotationFields.Width.name -> IntValue(width),
+            AssemblyAnnotationFields.Width.name -> IntValue(width)
           )
         )
       )
@@ -235,9 +234,14 @@ object UnconstrainedIRParMuxDeconstructionTransform
   import flavor._
 
   def mkWire(orig: DefReg)(implicit ctx: AssemblyContext): DefReg =
-    orig.copy(
-      variable = orig.variable.withName(s"%w${ctx.uniqueNumber()}")
-    )
+    DefReg(
+      variable = LogicVariable(
+        s"%w${ctx.uniqueNumber()}",
+        orig.variable.width,
+        WireType
+      ),
+      None
+    ).setPos(orig.pos)
 
   override def transform(
       program: DefProgram,
