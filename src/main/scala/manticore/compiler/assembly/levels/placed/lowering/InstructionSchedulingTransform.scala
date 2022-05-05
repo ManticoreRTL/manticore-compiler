@@ -14,7 +14,7 @@ import scalax.collection.mutable.GraphBuilder
 import scalax.collection.config.CoreConfig
 import manticore.compiler.assembly.levels.placed.TaggedInstruction
 
-object InstructionScheduling
+private[lowering] object InstructionScheduling
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
   import PlacedIR._
 
@@ -23,7 +23,7 @@ object InstructionScheduling
     program.copy(
       processes = program.processes.map(transform(_)(context))
     )
-    
+
   }
 
   def transform(
@@ -43,7 +43,6 @@ object InstructionScheduling
     val finalSchedule = createProcessSchedule(
       process.copy(body = withScheduledJumpTables).setPos(process.pos)
     )
-
 
     finalSchedule
   }

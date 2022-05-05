@@ -148,7 +148,7 @@ object GlobalPacketSchedulerTransform
         // wrap the sends in a helper class that has the manhattan distance
         // precomputed
         val sends_wrapped = scala.collection.mutable.Queue.empty[SendWrapper]
-        // IMPORTANT: Go through the instructions IN ORDER find the
+        // IMPORTANT: Go through the instructions IN ORDER and find the
         // instructions that define the values used in Send instruction.
         // The cycle at which the other instruction is scheduled plus the
         // pipeline latency indicates the earliest time that Send can be
@@ -366,7 +366,7 @@ object GlobalPacketSchedulerTransform
         }
 
         if (full_sched.last.isInstanceOf[Recv]) {
-          // in case the last instruction is a RECV, put a NOP to ensure the
+          // in case the last instruction is a RECV, put  a NOP to ensure the
           // RECV gets translated to an instruction. Note that if there are
           // multiple RECV, this is not necessary. So this can be optimized
           full_sched enqueue Nop

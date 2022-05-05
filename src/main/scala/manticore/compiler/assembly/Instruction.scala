@@ -8,7 +8,6 @@ import manticore.compiler.assembly.levels.HasVariableType
 import manticore.compiler.assembly.annotations.AssemblyAnnotation
 import manticore.compiler.assembly.annotations.AnnotationValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.FieldName
-import javax.xml.crypto.Data
 
 /** Base classes for the various IR flavors.
   * @author
