@@ -42,7 +42,7 @@ object PredicateInsertionTransform
           (schedulePredicate(p), store.copy(predicate = None))
         case store @ GlobalStore(_, _, Some(p), _) =>
           (schedulePredicate(p), store.copy(predicate = None))
-        case other @ _ => (None, other)
+        case other @ _ => (active_predicate, other)
       }
       new_schedule.enqueue(to_sched.setPos(inst.pos))
       p

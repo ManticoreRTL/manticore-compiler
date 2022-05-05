@@ -19,7 +19,7 @@ import scalax.collection.GraphTraversal
 import manticore.compiler.assembly.levels.CloseSequentialCycles
 import manticore.compiler.assembly.ManticoreAssemblyIR
 
-/** List scheduler transformation, the output of this transformation is a
+/** List scheduler transformation. The output of this transformation is a
   * program with locally scheduled processes. If the input program has Nops,
   * they will be all ignored.
   *
@@ -81,9 +81,12 @@ object ListSchedulerTransform
       DependenceAnalysis.build[Label](proc, labelingFunc)(ctx)
 
     // instructions require to close sequential cycles
-    val output_input_pairs = InputOutputPairs.createInputOutputPairs(proc)(ctx).map {
-      case (curr, next) => next.variable.name -> curr.variable.name
-    }.toMap
+    val output_input_pairs = InputOutputPairs
+      .createInputOutputPairs(proc)(ctx)
+      .map { case (curr, next) =>
+        next.variable.name -> curr.variable.name
+      }
+      .toMap
 
     val move_instructions = output_input_pairs.map { case (next, curr) =>
       curr -> Mov(curr, next)
@@ -268,13 +271,9 @@ object ListSchedulerTransform
     val sends = proc.body.collect { case x: Send => x }
     dependence_graph --= sends
 
-
-
     val schedule = scala.collection.mutable.Queue[Instruction]()
 
     case class ReadyNode(n: Node, dist: Int)
-
-
 
     // Prioritize ReadyNodes by their distance to sink, i.e., the ones
     // that have a longer distance have a higher priority

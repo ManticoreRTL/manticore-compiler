@@ -140,7 +140,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
               mvar @ MemoryVariable(
                 _,
                 _,
-                MemoryBlock(_, _, _, initial_content)
+                MemoryBlock(_, _, _, _, initial_content)
               ),
               offset_opt,
               _

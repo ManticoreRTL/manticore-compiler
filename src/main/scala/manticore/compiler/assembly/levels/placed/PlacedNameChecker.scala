@@ -14,6 +14,12 @@ object PlacedNameChecker
   ): Unit = {
 
     program.processes.foreach { case process =>
+      NameCheck.checkUniqueDefReg(process) { case (sec, fst) =>
+        context.logger.error(
+          s"name ${sec.variable.name} is defined multiple times, first in ${fst.serialized}",
+          sec
+        )
+      }
       NameCheck.checkNames(process) { case (name, inst) =>
         context.logger.error(s"name ${name} is not defined!", inst)
       }

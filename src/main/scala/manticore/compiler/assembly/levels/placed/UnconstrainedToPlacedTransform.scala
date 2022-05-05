@@ -179,11 +179,8 @@ object UnconstrainedToPlacedTransform
           ctx.logger.fail(s"failed transformation")
         }
 
-        val mblock = T.MemoryBlock(
-          block_id = mblock_annon_opt.get.getBlock(),
-          capacity = mblock_annon_opt.get.getCapacity(),
-          width = mblock_annon_opt.get.getWidth()
-        )
+        val mblock = T.MemoryBlock.fromAnnotation(mblock_annon_opt.get)
+
         val initial_content: Seq[UInt16] = r.annons.collectFirst {
           case i: MemInit =>
             i

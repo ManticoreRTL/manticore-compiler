@@ -8,6 +8,7 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVaria
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedOrderInstructions
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRConstantFolding
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.parser.AssemblyParser
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRInterpreterMonitor
@@ -15,6 +16,7 @@ import manticore.compiler.UnitTestMatchers
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedCloseSequentialCycles
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedInterpreter
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRDebugSymbolRenamer
+
 
 class ConstantFoldingTest extends UnitFixtureTest with UnitTestMatchers {
 
@@ -94,9 +96,10 @@ class ConstantFoldingTest extends UnitFixtureTest with UnitTestMatchers {
     // println(UnconstrainedIRDebugSymbolRenamer.makeHumanReadable(compiled).serialized)
 
     withClue("Only a single mux should be present after folding:") {
-      compiled.processes.head.body.count(inst =>
-        inst.isInstanceOf[UnconstrainedIR.Mux]
-      ) shouldBe 1
+      compiled.processes.head.body.count {
+        case _: UnconstrainedIR.Mux => true
+        case _ => false
+      } shouldBe 1
     }
 
     val interp = UnconstrainedInterpreter.instance(

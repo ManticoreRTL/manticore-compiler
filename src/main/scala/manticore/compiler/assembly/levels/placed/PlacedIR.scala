@@ -8,6 +8,8 @@ import manticore.compiler.assembly.DependenceGraphBuilder
 import manticore.compiler.assembly.annotations.{Memblock => MemblockAnnotation}
 import manticore.compiler.assembly.levels.AssemblyPrinter
 import java.math.BigInteger
+import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
+
 /** IR level with placed processes and allocated registers.
   *
   * @author
@@ -56,6 +58,7 @@ object PlacedIR extends ManticoreAssemblyIR {
       block_id: Name,
       capacity: Int,
       width: Int,
+      index: Option[Int] = None,
       initial_content: Seq[UInt16] = Seq.empty[UInt16]
   ) {
     def capacityInShorts(): Int = {
@@ -66,7 +69,7 @@ object PlacedIR extends ManticoreAssemblyIR {
   }
   object MemoryBlock {
     def fromAnnotation(a: MemblockAnnotation) =
-      MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth())
+      MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth(), a.getIndex())
   }
 
   case class ProcessIdImpl(id: String, x: Int, y: Int) {
@@ -83,8 +86,8 @@ object PlacedIR extends ManticoreAssemblyIR {
   }
 
   final class CustomFunctionImpl private (
-    val arity: Int,
-    val expr: CustomFunctionImpl.ExprTree,
+      val arity: Int,
+      val expr: CustomFunctionImpl.ExprTree
   ) extends HasSerialized {
 
     import CustomFunctionImpl._
@@ -148,16 +151,21 @@ object PlacedIR extends ManticoreAssemblyIR {
         case XorExpr(op1, op2)    => evaluate(op1) ^ evaluate(op2)
         case IdExpr(AtomConst(v)) => v
         case IdExpr(_: AtomArg) =>
-          throw new IllegalArgumentException("Tree does not evaluate to constant! Cannot determine final value.")
+          throw new IllegalArgumentException(
+            "Tree does not evaluate to constant! Cannot determine final value."
+          )
       }
     }
 
     // Substitute (some or all) [[AtomArg]]s in the expression tree with constants.
     def substitute(tree: ExprTree)(subst: Map[AtomArg, AtomConst]): ExprTree = {
       tree match {
-        case AndExpr(op1, op2)        => AndExpr(substitute(op1)(subst), substitute(op2)(subst))
-        case OrExpr(op1, op2)         => OrExpr(substitute(op1)(subst), substitute(op2)(subst))
-        case XorExpr(op1, op2)        => XorExpr(substitute(op1)(subst), substitute(op2)(subst))
+        case AndExpr(op1, op2) =>
+          AndExpr(substitute(op1)(subst), substitute(op2)(subst))
+        case OrExpr(op1, op2) =>
+          OrExpr(substitute(op1)(subst), substitute(op2)(subst))
+        case XorExpr(op1, op2) =>
+          XorExpr(substitute(op1)(subst), substitute(op2)(subst))
         case IdExpr(a: AtomArg)       => IdExpr(subst(a))
         case e @ IdExpr(_: AtomConst) => e
       }
@@ -214,8 +222,8 @@ object PlacedIR extends ManticoreAssemblyIR {
       //
       // ...
       def lutVectorInputCombinations(
-        count: Int,
-        bitpos: Int
+          count: Int,
+          bitpos: Int
       ): Seq[Seq[UInt16]] = {
         def binStr(x: Int, width: Int): String = {
           // Scala's toBinaryString does not emit leading 0s. We therefore interpret
@@ -257,7 +265,8 @@ object PlacedIR extends ManticoreAssemblyIR {
       // a homogenous sequence of bits).
       val equations = Range(0, 16).map { bitpos =>
         // There are 2^arity lutVectorInputCombinations of inputs for a LUT.
-        val inputCombinations: Seq[Seq[UInt16]] = lutVectorInputCombinations(arity, bitpos)
+        val inputCombinations: Seq[Seq[UInt16]] =
+          lutVectorInputCombinations(arity, bitpos)
 
         // For every combination of inputs to the LUT, substitute the input in the
         // expression tree and evaluate it. This yields the truth table value for
@@ -315,10 +324,19 @@ object LatencyAnalysis {
 
   import PlacedIR._
   def latency(inst: Instruction): Int = inst match {
-    case _: Predicate    => 0
-    case _: Expect       => 0
-    case Nop             => 0
-    case _               => maxLatency()
+    case _: Predicate                          => 0
+    case _: Expect                             => 0
+    case Nop                                   => 0
+    case JumpTable(_, _, blocks, delaySlot, _) =>
+      // this is a heuristic by all means!
+      val delaySlotLatency = maxLatency() + delaySlot.foldLeft(0) {
+        _ + latency(_)
+      }
+      blocks.foldLeft(delaySlotLatency) { case (ltncy, JumpCase(_, blk)) =>
+        blk.foldLeft(ltncy) { _ + latency(_) }
+      }
+
+    case _ => maxLatency()
   }
 
   def xHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =
@@ -328,7 +346,7 @@ object LatencyAnalysis {
     if (source.y > target.y) dim._2 - source.y + target.y
     else target.y - source.y
 
-  def xyHops(source: ProcessId, target: ProcessId, dim:(Int, Int)) = {
+  def xyHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) = {
     (xHops(source, target, dim), yHops(source, target, dim))
   }
   def maxLatency(): Int = 3
@@ -344,9 +362,13 @@ object LatencyAnalysis {
   }
 }
 
-
 object PlacedIRPrinter extends AssemblyPrinter[PlacedIR.DefProgram] {}
 
 object PlacedIRDependencyDependenceGraphBuilder extends DependenceGraphBuilder {
-    val flavor = PlacedIR
+  val flavor = PlacedIR
+}
+
+object PlacedIRInputOutputCollector extends CanCollectInputOutputPairs {
+  val flavor = PlacedIR
+
 }

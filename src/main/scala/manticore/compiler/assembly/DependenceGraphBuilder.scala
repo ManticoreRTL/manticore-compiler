@@ -79,7 +79,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         case AddC(rd, co, rs1, rs2, ci, annons) =>
           Seq(rs1, rs2, ci)
         case Mov(rd, rs, _)                  => Seq(rs)
-        case Slice(rd, rs, _, _, _) => Seq(rs)
+        case Slice(rd, rs, _, _, _)          => Seq(rs)
         case Recv(rd, rs, source_id, annons) =>
           // purely synthetic instruction, should be regarded as NOP
           Seq.empty
@@ -246,6 +246,14 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       name_def_map.toMap
     }
 
+    def definingInstruction(
+        block: Seq[Instruction]
+    )(implicit ctx: AssemblyContext): Map[Name, Instruction] = {
+      block.flatMap { inst =>
+        regDef(inst) map { _ -> inst }
+      }.toMap
+    }
+
     def extractBlock(
         n: Instruction
     )(implicit ctx: AssemblyContext): Option[UMemBlock] = {
@@ -275,23 +283,23 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
     // a unique memory block
     case class UMemBlock(block: String, index: Option[Int])
 
-    /** Create a mapping from load/store base registers to the set of registers
-      * that constitute the base of the memory
-      *
-      * @param proc
-      * @param def_instructions
-      * @return
-      */
-    def memoryBlocks(
-        proc: DefProcess,
-        def_instructions: Map[Name, Instruction]
-    )(implicit
-        ctx: AssemblyContext
-    ): Map[Name, Set[DefReg]] = {
+    // /** Create a mapping from load/store base registers to the set of registers
+    //   * that constitute the base of the memory
+    //   *
+    //   * @param proc
+    //   * @param def_instructions
+    //   * @return
+    //   */
+    // def memoryBlocks(
+    //     proc: DefProcess,
+    //     def_instructions: Map[Name, Instruction]
+    // )(implicit
+    //     ctx: AssemblyContext
+    // ): Map[Name, Set[DefReg]] = {
 
-      Map.empty[Name, Set[DefReg]]
+    //   Map.empty[Name, Set[DefReg]]
 
-    }
+    // }
 
     /** Collect all the referenced name in the given block of instructions (use
       * or def)
