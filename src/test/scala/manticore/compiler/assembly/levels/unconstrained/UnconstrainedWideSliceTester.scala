@@ -53,9 +53,9 @@ class UnconstrainedWideSliceTester extends UnitFixtureTest with UnitTestMatchers
             ${randGen3.code}
 
             // Concatenate the 3 32-bit random numbers together to form a wide number.
-            PADZERO rand_padded_1, ${randGen1.randCurr}, 96;
-            PADZERO rand_padded_2, ${randGen2.randCurr}, 96;
-            PADZERO rand_padded_3, ${randGen3.randCurr}, 96;
+            PADZERO rand_padded_1, ${randGen1.randNext}, 96;
+            PADZERO rand_padded_2, ${randGen2.randNext}, 96;
+            PADZERO rand_padded_3, ${randGen3.randNext}, 96;
             SLL rand_padded_2_shifted, rand_padded_2, c_thirty_two;
             SLL rand_padded_3_shifted, rand_padded_3, c_sixty_four;
             OR rand_padded_23, rand_padded_2_shifted, rand_padded_3_shifted;
@@ -104,25 +104,38 @@ class UnconstrainedWideSliceTester extends UnitFixtureTest with UnitTestMatchers
       withClue("No exception should occur during execution:") {
         interp.runVirtualCycle() shouldBe None
       }
-      withClue("Correct results are expected:") {
 
-        val randGen1Value = BigInt(randGen1.currRef())
-        val randGen2Value = BigInt(randGen2.currRef())
-        val randGen3Value = BigInt(randGen3.currRef())
-        val rand = (randGen3Value << 64) | (randGen2Value << 32) | randGen1Value
+      // Generate the next random number. Future calls to currRef() will yield
+      // the generated number.
+      randGen1.nextRef()
+      randGen2.nextRef()
+      randGen3.nextRef()
 
-        val narrowExpected = (rand >> 1) & BigInt("1f", 16)
-        val wideExpected = (rand >> 9) & BigInt("1ffffffffffff", 16)
+      // println(s"randGen1 = ${randGen1.currRef()}")
+      // println(s"randGen2 = ${randGen2.currRef()}")
+      // println(s"randGen3 = ${randGen3.currRef()}")
 
+      // MUST mask the generated random number as it could be negative. Our
+      // machine only supports positive numbers and SLL in the test program above.
+      // However, Scala's BigInt library represents large numbers as a negative
+      // sign followed by a large number. Shifting such a number left preserves
+      // the negative sign. We want a two's complement number and masking the
+      // number achieves this.
+      val randGen1Value = BigInt(randGen1.currRef()) & ((BigInt(1) << 32) - 1)
+      val randGen2Value = BigInt(randGen2.currRef()) & ((BigInt(1) << 32) - 1)
+      val randGen3Value = BigInt(randGen3.currRef()) & ((BigInt(1) << 32) - 1)
+      val rand = (randGen3Value << 64) | (randGen2Value << 32) | randGen1Value
+
+      withClue("Correct results are expected for the narrow slice contained within a single word:") {
+        val narrowExpected = (rand >> 1) & ((BigInt(1) << 5) - 1)
         val narrowReceived = monitor.read("narrowCurr")
-        val wideReceived = monitor.read("wideCurr")
-
         narrowReceived shouldBe narrowExpected
-        wideReceived shouldBe wideExpected
+      }
 
-        randGen1.nextRef()
-        randGen2.nextRef()
-        randGen3.nextRef()
+      withClue("Correct results are expected for the wide slice that spans multiple words:") {
+        val wideExpected = (rand >> 9) & ((BigInt(1) << 49) - 1)
+        val wideReceived = monitor.read("wideCurr")
+        wideReceived shouldBe wideExpected
       }
     }
 
