@@ -21,8 +21,6 @@ trait ConstantFolding
 
   import flavor._
 
-  val otherFlavor = flavor
-
   def do_transform(
       prog: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
@@ -79,6 +77,15 @@ trait ConstantFolding
       ci: ConcreteConstant
   )(implicit ctx: AssemblyContext): (ConcreteConstant, ConcreteConstant)
 
+  /**
+    * A total function that fully evaluates a slice of a constant.
+    */
+  def sliceEvaluator(
+    const: ConcreteConstant,
+    offset: Int,
+    length: Int
+  ): ConcreteConstant
+
   /** returns a fresh constant (unique name), the value [[v]] given to the
     * function is unique too but can not be used to create the unique name
     *
@@ -98,7 +105,6 @@ trait ConstantFolding
   ) {
 
     def widthLookup(n: Name): Int = getReg(n).variable.width
-    // def widthLookup(c: Constant): Int =
     /** bind the name n to name m (i.e., n will no longer be used)
       *
       * @param n
@@ -178,11 +184,11 @@ trait ConstantFolding
       inst match {
         case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore |
             _: GlobalStore | _: PadZero | _: SetCarry | _: ClearCarry |
-            _: Predicate | _: PadZero | _: Lookup | _: Slice) =>
-          // TODO (skashani): Slice can be optimized and we'll come back to it.
+            _: Predicate | _: PadZero | _: Lookup) =>
           builder.keep(i)
-        case Nop => builder
-        // don't keep
+        case Nop =>
+          // don't keep
+          builder
         case i @ (_: Send | _: Recv | _: CustomInstruction) =>
           ctx.logger.error("Unexpected instruction!", i)
           builder.keep(i)
@@ -210,6 +216,26 @@ trait ConstantFolding
           }
         case SetValue(rd, value, annons) =>
           builder.bindConst(rd, asConcrete(value) { builder.widthLookup(rd) })
+
+        case i @ Slice(rd, rs, offset, length, annons) =>
+          val rs_val = builder.computedValue(rs)
+          rs_val match {
+            case Left(name) =>
+              val rsWidth = builder.widthLookup(name)
+              val isFullWidthSlice = (offset == 0) && (rsWidth == length)
+              if (isFullWidthSlice) {
+                // We are slicing the full width of another name. The slice operation
+                // is therefore redundanat and we remove it.
+                builder.bindName(rd, rs)
+              } else {
+                // Can not simplify
+                builder.keep(i)
+              }
+            case Right(const) =>
+              val res = sliceEvaluator(const, offset, length)
+              builder.bindConst(rd, res)
+          }
+
         case i @ Mov(rd, rs, annons) =>
           if (builder.isUnopt(rd)) {
             // can not get rid of the rd alias
@@ -380,7 +406,6 @@ trait ConstantFolding
           )
 
           newBuilder.keepAll(currentBuilder.keptInstructions).keep(foldedTable)
-
       }
     }
   }
