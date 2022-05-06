@@ -611,8 +611,12 @@ object UnconstrainedInterpreter
 
       case Slice(rd, rs, offset, length, _) =>
         val rs_val = state.register_file(rs)
+        // The manticore only supports positive numbers.
+        assert(rs_val >= 0)
         val rs_shifted = rs_val >> offset
-        val mask = (1 << length) - 1
+        // Must use a BigInt for the mask otherwise it may
+        // not hold in an Int.
+        val mask = (BigInt(1) << length) - 1
         val rd_val = rs_shifted & mask
         update(rd, rd_val)
 
