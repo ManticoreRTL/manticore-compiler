@@ -329,7 +329,7 @@ object LatencyAnalysis {
     case Nop                                   => 0
     case JumpTable(_, _, blocks, delaySlot, _) =>
       // this is a heuristic by all means!
-      val delaySlotLatency = maxLatency() + delaySlot.foldLeft(0) {
+      val delaySlotLatency = maxLatency() + delaySlot.foldLeft(1) {
         _ + latency(_)
       }
       blocks.foldLeft(delaySlotLatency) { case (ltncy, JumpCase(_, blk)) =>

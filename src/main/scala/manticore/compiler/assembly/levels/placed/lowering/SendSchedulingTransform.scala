@@ -171,6 +171,7 @@ private[lowering] object SendSchedulingTransform
     }
 
     val wrappedSends = process.body
+      .filter { !_.isInstanceOf[Send] }
       .foldLeft(SendQueueBuilder()) {
 
         case (builder, jtb @ JumpTable(_, results, blocks, dslot, _)) =>
@@ -470,7 +471,6 @@ private[lowering] object SendSchedulingTransform
 
     }
 
-
     if (cycle + LatencyAnalysis.maxLatency() >= context.max_instructions) {
       context.logger.error(
         s"" +
@@ -504,7 +504,7 @@ private[lowering] object SendSchedulingTransform
       createCompleteSchedule(
         wProc.proc,
         wProc.scheduled.toSeq,
-        recvQueue(wProc.proc.id).toSeq
+        recvQueue(wProc.proc.id).dequeueAll.toSeq
       )(context)
     }
 

@@ -364,10 +364,15 @@ private[lowering] object InstructionScheduling
 
     }
 
+    val caseLength = scheduledBlocks.maxBy(_.block.length).block.length
+
+    val paddedBlocks = scheduledBlocks.map { case JumpCase(lbl, blk) =>
+      JumpCase(lbl, Seq.fill(caseLength - blk.length) { Nop } ++ blk)
+    }
     jtb
       .copy(
         dslot = Seq.fill(jumpDelaySlotSize) { Nop },
-        blocks = scheduledBlocks
+        blocks = paddedBlocks
       )
       .setPos(jtb.pos)
 
