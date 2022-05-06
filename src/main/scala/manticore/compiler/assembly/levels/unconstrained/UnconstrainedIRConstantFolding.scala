@@ -104,6 +104,17 @@ object UnconstrainedIRConstantFolding
     (rd, UIntWide(ciB, 1))
   }
 
+  def sliceEvaluator(
+    const: ConcreteConstant,
+    offset: Int,
+    length: Int
+  ): ConcreteConstant = {
+    val shifted = (const >> offset).toBigInt
+    val mask = ((BigInt(1) << length) - 1)
+    val res = shifted & mask
+    UIntWide(res, length)
+  }
+
   def freshConst(v: UIntWide)(implicit ctx: AssemblyContext): DefReg = {
     val name = s"%c${ctx.uniqueNumber()}"
     DefReg(

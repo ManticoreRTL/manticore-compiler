@@ -22,16 +22,6 @@ class ConstantFoldingTest extends UnitFixtureTest with UnitTestMatchers {
 
   behavior of "ConstantFolding"
 
-  private object Commons {
-
-    def frontend =
-      UnconstrainedNameChecker followedBy
-        UnconstrainedMakeDebugSymbols followedBy
-        UnconstrainedRenameVariables followedBy
-        UnconstrainedOrderInstructions followedBy
-        UnconstrainedIRConstantFolding
-    // WidthConversion.transformation
-  }
   "CF" should "remove redundant MUXes in UnconstrainedIR" in { fixture =>
     val randGen1 = XorShift128("rand1", 1231239)
     val randGen2 = XorShift128("rand2", 78086551)
