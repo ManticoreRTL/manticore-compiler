@@ -77,32 +77,32 @@ class UnconstrainedWideSliceTester extends UnitFixtureTest with UnitTestMatchers
     def frontend =
       ManticorePasses.frontend followedBy
       ManticorePasses.middleend followedBy
-      UnconstrainedToPlacedTransform followedBy
-      PlacedIRCloseSequentialCycles
+      UnconstrainedCloseSequentialCycles
 
     val parsed = AssemblyParser(text, ctx)
     val compiled = frontend(parsed, ctx)._1
 
     fixture.dump(
       s"human.masm",
-      PlacedIRDebugSymbolRenamer.makeHumanReadable(compiled).serialized
-      )
+      UnconstrainedIRDebugSymbolRenamer.makeHumanReadable(compiled).serialized
+    )
 
     withClue("Only the narrow slice in the original program should translate to a lowered slice:") {
       compiled.processes.head.body.count {
-        case _: PlacedIR.Slice => true
+        case _: UnconstrainedIR.Slice => true
         case _ => false
       } shouldBe 1
     }
 
-    val monitor = PlacedIRInterpreterMonitor(compiled)
-    val interp = AtomicInterpreter.instance(
+    val monitor = UnconstrainedIRInterpreterMonitor(compiled)
+    val interp = UnconstrainedInterpreter.instance(
       program = compiled,
       monitor = Some(monitor),
+      vcdDump = None
     )
     for (i <- 0 until 10000) {
       withClue("No exception should occur during execution:") {
-        interp.interpretVirtualCycle() shouldBe Seq.empty
+        interp.runVirtualCycle() shouldBe None
       }
       withClue("Correct results are expected:") {
 
