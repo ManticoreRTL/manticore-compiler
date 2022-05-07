@@ -1,11 +1,14 @@
 package manticore.compiler.assembly.utils
 
+import manticore.compiler.assembly.levels.UInt16
+import Chisel.UInt
+
 class XorShift128 private (prefix: String, seed: Int) {
 
   def randCurr: String = s"%${prefix}x0curr"
   def randNext: String = s"%${prefix}x0next"
 
-  val x = Array[Int](
+  private val x = Array[Int](
     123456789,
     362436069,
     521288629,
@@ -26,7 +29,6 @@ class XorShift128 private (prefix: String, seed: Int) {
     x(0) = t ^ s ^ (s >>> 19)
     x(0)
   }
-
 
   val registers = s"""
 
@@ -76,9 +78,66 @@ class XorShift128 private (prefix: String, seed: Int) {
 
   """
 
-
 }
 
 object XorShift128 {
-    def apply(name: String, seed: Int = 1650957049): XorShift128 = new XorShift128(name, seed)
+  def apply(name: String, seed: Int = 1650957049): XorShift128 =
+    new XorShift128(name, seed)
+}
+
+class XorShift16 private (prefix: String, seed: UInt16) {
+
+  def randCurr: String = s"%${prefix}x0curr"
+  def randNext: String = s"%${prefix}x0next"
+
+  private var x: UInt16 = seed
+
+  def currRef(): UInt16 = x
+  def nextRef(): UInt16 = {
+    x = x ^ (x << 7)
+    x = x ^ (x >> 9)
+    x = x ^ (x << 8)
+    x
+  }
+
+  val registers = s"""
+
+    .reg %${prefix}X0 16 .input ${randCurr} ${x} .output ${randNext}
+
+    .const %${prefix}seven 16 7
+    .const %${prefix}eight 16 8
+    .const %${prefix}nine  16 9
+
+
+    .wire %${prefix}l1 16
+    .wire %${prefix}l2 16
+    .wire %${prefix}l3 16
+    .wire %${prefix}l4 16
+    .wire %${prefix}l5 16
+    .wire %${prefix}l6 16
+    .wire %${prefix}l7 16
+    .wire %${prefix}l8 16
+    .wire %${prefix}l9 16
+    .wire %${prefix}l10 16
+    .wire %${prefix}l11 16
+
+
+  """
+
+  val code = s"""
+
+    SLL %${prefix}l1, ${randCurr}, %${prefix}seven;
+    XOR %${prefix}l2, %${prefix}l1, ${randCurr};
+    SRL %${prefix}l3, %${prefix}l2, %${prefix}nine;
+    XOR %${prefix}l4, %${prefix}l3, %${prefix}l2;
+    SLL %${prefix}l5, %${prefix}l4, %${prefix}eight;
+    XOR ${randNext}, %${prefix}l5, %${prefix}l4;
+
+  """
+}
+
+object XorShift16 {
+
+   def apply(name: String, seed: UInt16 = UInt16(1509)): XorShift16 =
+    new XorShift16(name, seed)
 }

@@ -7,10 +7,12 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator
 
 import scalax.collection.Graph
+import scalax.collection.mutable.{Graph => MutableGraph}
 import scalax.collection.GraphEdge
 import scalax.collection.edge.LDiEdge
 import javax.xml.crypto.Data
 import manticore.compiler.assembly.annotations.Memblock
+import manticore.compiler.assembly.annotations.Track
 
 /** Construct JumpTables from ParMux instructions where it is beneficial
   *
@@ -47,12 +49,14 @@ trait JumpTableConstruction
       deadInstrs: Set[Instruction]
   ) extends JumpTableBuildRecipe
   case object JumpTableEmpty extends JumpTableBuildRecipe
+
   def mkJumpTable(
       pmux: ParMux,
       dataDependenceGraph: Graph[Instruction, LDiEdge],
       definingInstructions: Map[Name, Instruction],
       constants: Map[Name, Constant],
-      registers: Map[Name, DefReg]
+      registers: Map[Name, DefReg],
+      postDominators: PostDominators
   )(implicit ctx: AssemblyContext): JumpTableBuildRecipe = {
     import scala.collection.mutable.ArrayBuffer
     import scala.collection.mutable.Queue
@@ -73,74 +77,65 @@ trait JumpTableConstruction
     ) extends TableLookupLogic
 
     case object CanNotLookup extends TableLookupLogic
+
     val instructionsToRemove =
       scala.collection.mutable.Set.empty[Instruction]
 
-    /** Performs a backward BFS to find all the instruction that can be put
-      * together in one case block of a jump table. The given name should be Nth
+    def globallyScoped(rd: Name): Boolean = {
+      val rDef = registers(rd)
+      val isTracked = rDef.annons.exists {
+        case _: Track => true
+        case _        => false
+      }
+      val isState = rDef.variable.varType == OutputType
+      isTracked || isState
+    }
+
+    /** Performs a backward DFS to find all the instruction that can be put
+      * together in one case block of a jump table. The given node should be Nth
       * choice of a ParMux. The returned list has the instruction required to
       * compute the value of each case in reverse order
-      * @param rs
+      * @param node
       * @return
       */
-    def doBfs(
-        rs: Name
-    ): ArrayBuffer[DataInstruction] = {
 
-      definingInstructions.get(rs) match {
-        case Some(inst) =>
-          // should be in the graph, no need to check for its existence
-          val instNode = dataDependenceGraph.get(inst)
-          val subgraph = ArrayBuffer.empty[DataInstruction]
-          def isParMux(i: Instruction): Boolean =
-            i.isInstanceOf[ParMux] || i.isInstanceOf[JumpTable]
-          inst match {
-            case dinst: DataInstruction if instNode.outDegree == 1 =>
-              // To move an instruction inside the case body, we make sure
-              // its result is not used by any instruction that is outside
-              // of the current case body. Since we are doing a bfs, we can check
-              // this by ensuring all the successors are in the subgraph obtained
-              // by the reverse bfs
-              subgraph += dinst
-              val toVisit = Queue.empty[dataDependenceGraph.NodeT]
-              toVisit ++= instNode.diPredecessors
-              while (toVisit.nonEmpty) {
-                val node = toVisit.dequeue()
-                val hasExternalSucc = node.diSuccessors.exists { succ =>
-                  !subgraph.contains(succ.toOuter)
-                }
-                node.toOuter match {
-                  case ndinst: DataInstruction if !hasExternalSucc =>
-                    subgraph += ndinst
-                    toVisit ++= node.diPredecessors
-                  case _ => // nothing to do
-                }
-              }
-            case _ =>
-            // we can optionally create a Mov instruction that assigns
-            // rs to a fresh register and then modify the Phi accordingly,
-            // but this isn't useful work, so we keep the branch essentially
-            // empty!
-            // Note that doing the following would break SSAness and should
-            // be avoided!
-            // subgraph += Mov(pmux.rd, rs)
-          }
+    def traverse(
+        node: dataDependenceGraph.NodeT
+    )(implicit postDominated: PostDominatorOf): Seq[Instruction] = {
 
-          subgraph
-        case None => // rs is a constant
-          ArrayBuffer.empty[DataInstruction]
-        // ArrayBuffer[DataInstruction](Mov(pmux.rd, rs))
+      val inst = node.toOuter
+      val isLocal =
+        DependenceAnalysis.regDef(inst).forall(globallyScoped(_) == false)
+      val isNotParMux =
+        !inst.isInstanceOf[ParMux] && !inst.isInstanceOf[JumpTable]
+      if (isLocal && isNotParMux && postDominated(inst)) {
+        // by appending the inst to the result of recursion the returned
+        // sequence of instruction maintains DFS order (prepending reverts it)
+        node.diPredecessors.toSeq.flatMap(traverse(_)) :+ inst
+      } else {
+        // this node is a dead-end, there is no point in continuing the search
+        // because either
+        // 1. the node computes a value that is supposed to be globally available
+        // and thus can not be placed in a case body
+        // 2. is a parmux or a jump table, therefore can not be inside another
+        // jump table
+        // 3. is not post-dominated by the instruction that directly defines
+        // a value connected to one of the parmux cases, so any predecessors
+        // of it are also not post-dominated by the parmux (i.e., they are
+        // used to compute something else as-well)
+        Seq.empty
       }
     }
 
-    def createCaseBody(rs: Name): Seq[DataInstruction] = {
-      val usedInstructions = doBfs(rs)
-      // the usedInstructions is in the reverse order, i.e., the last
-      // instruction that computes the final result is the first in the
-      // sequence, furthermore, this instruction does not write to pmux.rd,
-      // but rather tho the given rs
-      usedInstructions.reverse.toSeq
-    }
+    def createCaseBody(rs: Name): Seq[Instruction] =
+      definingInstructions.get(rs) match {
+        case None => Seq.empty // case body is empty
+        case Some(defInst) =>
+          val node = dataDependenceGraph get defInst
+          val postDominated = postDominators.of(defInst)
+          traverse(node)(postDominated)
+      }
+
     // collect the instructions required to compute the default case
     val defaultCaseBody = createCaseBody(pmux.default)
     // collect the instructions required to compute each case
@@ -254,7 +249,8 @@ trait JumpTableConstruction
         )
         val addedInstructions = instr.length + numInstrInSlowestCase
         val muxTreeInstructions = pmux.choices.length
-        val removedInstructions = instructionsToRemove.size + muxTreeInstructions
+        val removedInstructions =
+          instructionsToRemove.size + muxTreeInstructions
         ctx.logger.debug(
           s"Converting pmux to jump table will add ${addedInstructions} instructions and remove ${removedInstructions}",
           pmux
@@ -404,37 +400,10 @@ trait JumpTableConstruction
       process: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
 
-    // we need to close cycles to prevent output write to be sucked into
-    // the jump table bodies. This is because when the cycle is implicit, an
-    // output may falsely only have a single user, being a parmux, whereas in
-    // reality there is always another user as well.
+    val withJumpTable = constructJumpTable(process)
 
-    val inputOutputPairs = InputOutputPairs
-      .createInputOutputPairs(process)
-      .map { case (curr, next) => curr.variable.name -> next.variable.name }
-      .toMap
+    withJumpTable
 
-    val withMovs = process.body ++
-      inputOutputPairs.map { case (curr, next) => Mov(curr, next) }
-
-    val withJumpTable = constructJumpTable(
-      process.copy(body = withMovs).setPos(process.pos)
-    )
-
-    def isOutputMov(mov: Mov) =
-      inputOutputPairs.get(mov.rd) match {
-        case None     => false
-        case Some(rs) => rs == mov.rs
-      }
-
-    val withoutMovs = withJumpTable.body.filter {
-      case mov: Mov => !isOutputMov(mov)
-      case _        => true
-    }
-
-    withJumpTable.copy(
-      body = withoutMovs
-    ).setPos(process.pos)
   }
   private def constructJumpTable(
       proc: DefProcess
@@ -443,6 +412,8 @@ trait JumpTableConstruction
     import scalax.collection.mutable.{Graph => MutableGraph}
     val dataDependenceGraph =
       DependenceAnalysis.build(process = proc, label = (_, _) => None)
+
+    val postDominators = computePostDominators(proc)
 
     // We start by creating a dependence graph that only contains paths that
     // lead to ParMux instructions
@@ -462,7 +433,8 @@ trait JumpTableConstruction
         dataDependenceGraph,
         definingInstructions,
         constants,
-        registers
+        registers,
+        postDominators
       )
     }
 
@@ -506,6 +478,141 @@ trait JumpTableConstruction
       registers = newRegs,
       labels = labels
     )
+  }
+
+  private trait PostDominators {
+    // create an object that can be used to check where some other
+    // instruction is post dominate by instruction
+    // e.g., PostDominator.of(inst1).postDominates(inst2) returns true if
+    // is inst1 post dominates inst2
+    def of(instruction: Instruction): PostDominatorOf
+  }
+
+  private trait PostDominatorOf {
+    // checks wether otherInstruction is post dominated by some instruction
+    def postDominated(otherInstruction: Instruction): Boolean
+    def apply(otherInstruction: Instruction): Boolean = postDominated(
+      otherInstruction
+    )
+  }
+
+  /**
+    * Compute the post dominators for all the instruction in the process
+    * (does not look inside jump tables if any)
+    *
+    * @param process
+    * @param ctx
+    * @return
+    */
+  private def computePostDominators(
+      process: DefProcess
+  )(implicit ctx: AssemblyContext): PostDominators = {
+
+    abstract sealed trait Vertex {
+      def index: Int
+    }
+    case object EntryV extends Vertex {
+      def index = 0
+    }
+    case object ExitV extends Vertex {
+      def index = 1
+    }
+    case class InstrV(instr: Instruction, index: Int) extends Vertex
+
+    val definingInstructions =
+      DependenceAnalysis.definingInstruction(process.body)
+    val statePairs = InputOutputPairs.createInputOutputPairs(process)
+    val reverseDataflowGraph = MutableGraph.empty[Vertex, GraphEdge.DiEdge]
+
+    val indexOf = process.body.zipWithIndex.toMap andThen { _ + 2 }
+
+    for (instr <- process.body) {
+
+      reverseDataflowGraph += InstrV(instr, indexOf(instr))
+
+      for (use <- DependenceAnalysis.regUses(instr)) {
+        for (defInst <- definingInstructions.get(use)) {
+          reverseDataflowGraph += GraphEdge.DiEdge(
+            InstrV(instr, indexOf(instr)) -> InstrV(
+              defInst,
+              indexOf(defInst)
+            )
+          )
+        }
+      }
+    }
+
+    val bottomInstrs = reverseDataflowGraph.nodes.collect {
+      case n if n.inDegree == 0 => n.toOuter
+    }
+
+    for (iVertex <- bottomInstrs) {
+
+      reverseDataflowGraph += GraphEdge.DiEdge(EntryV, iVertex)
+
+    }
+
+    val topInstrs = reverseDataflowGraph.nodes.collect {
+      case n if n.outDegree == 0 => n.toOuter
+    }
+
+    for (iVertex <- topInstrs) {
+
+      reverseDataflowGraph += GraphEdge.DiEdge(iVertex, ExitV)
+
+    }
+
+    import scala.collection.immutable.BitSet
+
+    val numNodes = process.body.length + 2 // +2 for EntryV and ExitV
+
+    val universalSet = BitSet.fromSpecific(Range(0, numNodes))
+    // initialize all the dominators to the universal set
+    // initialize the post dominator sets, each node i is a post dominator of itself
+    val postDominators = Array.fill(process.body.length + 2) { universalSet }
+    // the entry node should be initialized to itself though
+    postDominators(EntryV.index) = BitSet(EntryV.index)
+
+    val visited =
+      scala.collection.mutable.Set.empty[Graph[Vertex, GraphEdge.DiEdge]#NodeT]
+
+    def dfsLikeTraversal(node: Graph[Vertex, GraphEdge.DiEdge]#NodeT): Unit = {
+
+      if (!visited(node)) {
+        visited += node
+      }
+
+      // compute the intersection of the post dominators of the predecessors
+      val predIntersect = node.diPredecessors.foldLeft(universalSet) {
+        case (intersect, pred) => intersect & postDominators(pred.toOuter.index)
+      }
+      // update the using
+      // pdom(n) = {n} union (intersect over predecessor p of n pdom(p))
+      postDominators(node.toOuter.index) =
+        BitSet(node.toOuter.index) | predIntersect
+
+      for (pred <- node.diPredecessors) {
+        dfsLikeTraversal(pred)
+      }
+    }
+
+    dfsLikeTraversal(reverseDataflowGraph get EntryV)
+
+    val postDom = new PostDominators {
+      override def of(instruction: Instruction): PostDominatorOf = {
+        val pDominatorIndex = indexOf(instruction)
+        new PostDominatorOf {
+          override def postDominated(otherInstruction: Instruction): Boolean = {
+            val otherIndex = indexOf(otherInstruction)
+            postDominators(otherIndex).contains(pDominatorIndex)
+          }
+        }
+
+      }
+
+    }
+    postDom
+
   }
 
 }
