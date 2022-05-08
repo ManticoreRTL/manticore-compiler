@@ -131,7 +131,7 @@ private[lowering] object ProgramSchedulingTransform
         for (dependentNode <- nodeJustCommitted.diSuccessors) {
           // add any successor that only depend on the node that
           // is being committed
-          if (dependentNode.inDegree == 0) {
+          if (dependentNode.inDegree == 1) {
             core.scheduleContext.readyList += dependentNode
           }
         }
@@ -144,7 +144,7 @@ private[lowering] object ProgramSchedulingTransform
         case Some(newActive) =>
           // make the node active
           val commitCycle =
-            LatencyAnalysis.latency(newActive.toOuter) + core.currentCycle
+            LatencyAnalysis.latency(newActive.toOuter) + core.currentCycle + 1
           core.scheduleContext.activeList += (newActive -> commitCycle)
         case None => // nothing to add to the active list
       }
@@ -156,8 +156,8 @@ private[lowering] object ProgramSchedulingTransform
         case Some(jtb: JumpTable) =>
           core.scheduleContext.schedule += jtb
           core.currentCycle += numCyclesInJumpTable(jtb)
-        case Some(send: Instruction) =>
-          core.scheduleContext.schedule += send
+        case Some(inst: Instruction) =>
+          core.scheduleContext.schedule += inst
           core.currentCycle += 1
       }
       // finally, send back any "seemingly" ready node (which is certainly of type Send)
@@ -423,7 +423,7 @@ private[lowering] object ProgramSchedulingTransform
     val activeList =
       scala.collection.mutable.Map.empty[DependenceGraph#NodeT, Int]
 
-    def finished(): Boolean = graph.nonEmpty
+    def finished(): Boolean = graph.isEmpty
 
   }
 
@@ -662,67 +662,56 @@ private[lowering] object ProgramSchedulingTransform
       dependenceGraph: DependenceGraph
   )(sendPenalty: ProcessId => Int) = {
 
-    val sinks = dependenceGraph.nodes.filter { _.outDegree == 0 }
-    val sinks2 = 1
+    val sources = dependenceGraph.nodes.filter { _.inDegree == 0 }
+
     val distance =
-      scala.collection.mutable.Map.empty[DependenceGraph#NodeT, Int] ++
-        sinks.map { inner =>
-          // set the sink node distances. Nodes that have no further users
-          // are likely to have lower priority since they can scheduled later.
-          // There are two exceptions:
-          // 1. Expect nodes have the highest priority since we want to schedule
-          // them before anything else happens. This is not a "must" but is a good
-          // idea because it will make exceptions less imprecise. However, it is
-          // crucial to order ExpectStop after ExpectFail since we do not want to
-          // mask failure. Note that this is also not a must, since a user Verilog
-          // code may perhaps wrongfully place an assert after $stop or $finish
-          // but right now we can not have those things.
-          // 2. Send nodes may have a very high priority if their target is far
-          // the function setPenalty should consider a penalty for Send instructions
-          // based on their target process.
-          val dist = inner.toOuter match {
-            case expect: Expect =>
-              // we want to make sure assertions fire before anything else
-              // happens in a virtual cycle, so we give them the highest priority
-              // possible
-              expect.error_id.kind match {
-                case ExpectFail =>
-                  Int.MaxValue // highest possible priority
-                case ExpectStop => (Int.MaxValue - 1) // second highest
-              }
-            case send: Send =>
-              // we penalize the send latency by a user defined function,
-              // this penalty will most likely be the manhattan distance plus
-              // some added latency for the SET instruction in the destination
-              LatencyAnalysis.latency(send) + sendPenalty(send.dest_id)
-            case inst => LatencyAnalysis.latency(inst)
+      scala.collection.mutable.Map.empty[DependenceGraph#NodeT, Int]
 
+    def compute(node: dependenceGraph.NodeT): Int = {
+      val dist = node.toOuter match {
+        case expect: Expect =>
+          // we want to make sure assertions fire before anything else
+          // happens in a virtual cycle, so we give them the highest priority
+          // possible
+          expect.error_id.kind match {
+            case ExpectFail =>
+              Int.MaxValue // highest possible priority
+            case ExpectStop => (Int.MaxValue - 1) // second highest
           }
-          inner -> dist
-        }
+        case send: Send =>
+          // we penalize the send latency by a user defined function,
+          // this penalty will most likely be the manhattan distance plus
+          // some added latency for the SET instruction in the destination
+          LatencyAnalysis.latency(send) + sendPenalty(send.dest_id)
+        case inst => LatencyAnalysis.latency(inst)
 
-    val toVisit =
-      scala.collection.mutable.Queue
-        .empty[DependenceGraph#NodeT] ++ sinks.flatMap { inner =>
-        inner.diPredecessors
       }
-    // do a bfs
+      dist
+    }
+    def traverse(node: dependenceGraph.NodeT): Int = {
 
-    while (toVisit.nonEmpty) {
+      if (!distance.contains(node)) {
 
-      val currentNode = toVisit.dequeue()
+        if (node.outDegree == 0) {
+          val dist = compute(node)
+          distance += (node -> dist)
+          dist
+        } else {
+          // recursively traverse the graph and get the distance to sink nodes
+          val succDist = node.diSuccessors.toSeq.map { traverse }.max
+          val thisDist = compute(node)
+          val dist = succDist + thisDist
+          distance += (node -> dist)
+          dist
+        }
+      } else {
+        distance(node)
+      }
 
-      val dist = currentNode.diSuccessors.map { distance }.max
+    }
 
-      distance += (currentNode -> dist)
-
-      assert(
-        currentNode.diPredecessors.forall(n => !distance.contains(n)),
-        "graph is cyclic"
-      )
-
-      toVisit ++= currentNode.diPredecessors
-
+    for (sourceNode <- sources) {
+      traverse(sourceNode)
     }
 
     Ordering.by { distance }

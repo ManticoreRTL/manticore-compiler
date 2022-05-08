@@ -26,6 +26,7 @@ import manticore.compiler.assembly.annotations.StringValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.annotations.Reg
+import manticore.compiler.HasLoggerId
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -421,15 +422,16 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
           a
         )
     }
-  def apply(input: String): DefProgram = {
+  def apply(input: String, ctx: AssemblyContext): DefProgram = {
 
+    implicit val loggerId = new HasLoggerId { val id = "AssemblyParser" }
     val tokens: lexical.Scanner = new lexical.Scanner(input)
     phrase(positioned(program))(tokens) match {
       case Success(result, _) => result
       case failure: NoSuccess =>
-        println(s"Failed parsing at ${failure.next.pos}: ${failure.msg}")
+        ctx.logger.error(s"Failed parsing at ${failure.next.pos}: ${failure.msg}")
         // println(failure.msg)
-        scala.sys.error("Parsing failed")
+        ctx.logger.fail("Parsing failed")
     }
   }
 
@@ -442,7 +444,7 @@ object AssemblyParser extends HasTransformationID {
       context: AssemblyContext
   ): UnconstrainedIR.DefProgram = {
     context.logger.info("Parsing from string input")
-    UnconstrainedAssemblyParser(source)
+    UnconstrainedAssemblyParser(source, context)
   }
 
   def apply(
@@ -450,7 +452,7 @@ object AssemblyParser extends HasTransformationID {
       context: AssemblyContext
   ): UnconstrainedIR.DefProgram = {
     context.logger.info("Parsing from file input")
-    UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""))
+    UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""), context)
   }
 
 }
