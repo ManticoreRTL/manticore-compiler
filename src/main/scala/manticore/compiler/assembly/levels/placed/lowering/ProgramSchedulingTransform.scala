@@ -452,6 +452,57 @@ private[lowering] object ProgramSchedulingTransform
         recvEv.cycle
       })
   }
+  def createDotDependenceGraph(
+      graph: Graph[Instruction, GraphEdge.DiEdge]
+  )(implicit ctx: AssemblyContext): String = {
+    import scalax.collection.io.dot._
+    import scalax.collection.io.dot.implicits._
+    val dotRoot = DotRootGraph(
+      directed = true,
+      id = Some("List scheduling dependence graph")
+    )
+    val nodeIndex = graph.nodes.map(_.toOuter).zipWithIndex.toMap
+    def edgeTransform(
+        iedge: Graph[Instruction, GraphEdge.DiEdge]#EdgeT
+    ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
+      case GraphEdge.DiEdge(source, target) =>
+        Some(
+          (
+            dotRoot,
+            DotEdgeStmt(
+              nodeIndex(source.toOuter).toString,
+              nodeIndex(target.toOuter).toString
+            )
+          )
+        )
+      case t @ _ =>
+        ctx.logger.error(
+          s"An edge in the dependence could not be serialized! ${t}"
+        )
+        None
+    }
+    def nodeTransformer(
+        inode: Graph[Instruction, GraphEdge.DiEdge]#NodeT
+    ): Option[(DotGraph, DotNodeStmt)] =
+      Some(
+        (
+          dotRoot,
+          DotNodeStmt(
+            NodeId(nodeIndex(inode.toOuter)),
+            List(DotAttr("label", inode.toOuter.toString.trim.take(64)))
+          )
+        )
+      )
+
+    val dotExport: String = graph.toDot(
+      dotRoot = dotRoot,
+      edgeTransformer = edgeTransform,
+      cNodeTransformer = Some(nodeTransformer), // connected nodes
+      iNodeTransformer = Some(nodeTransformer) // isolated nodes
+    )
+    dotExport
+  }
+
   private def createProcessor(
       process: DefProcess
   )(implicit ctx: AssemblyContext): Processor = {
@@ -461,6 +512,10 @@ private[lowering] object ProgramSchedulingTransform
       ctx.stats.recordRunTime("building process dependence graph") {
         createDependenceGraph(process.body, definingInstruction)
       }
+
+    ctx.logger.dumpArtifact(s"scheduler_${phase_id}_${process.id}.dot") {
+      createDotDependenceGraph(dependenceGraph)
+    }
 
     val priorities = ctx.stats.recordRunTime("estimating priorities") {
       estimatePriority(dependenceGraph) { targetId =>
@@ -478,6 +533,14 @@ private[lowering] object ProgramSchedulingTransform
     processor
   }
 
+  /** Prepare the process for scheduling
+    *
+    * To schedule a process we remove the state updates and pre schedule the
+    * jump tables.
+    * @param jtb
+    * @param ctx
+    * @return
+    */
   private def prepareProcessForScheduling(process: DefProcess)(implicit
       ctx: AssemblyContext
   ): DefProcess = {
@@ -568,8 +631,8 @@ private[lowering] object ProgramSchedulingTransform
       // create register-to-register RAW dependencies
       for (use <- DependenceAnalysis.regUses(instruction)) {
         for (defInst <- definingInstruction.get(use)) {
-          val latency =
-            dependenceGraph += GraphEdge.DiEdge(defInst -> instruction)
+
+          dependenceGraph += GraphEdge.DiEdge(defInst -> instruction)
         }
       }
       // create load-to-store dependencies, i.e., make stores dependent on load
@@ -591,6 +654,7 @@ private[lowering] object ProgramSchedulingTransform
       }
     }
 
+    assert(dependenceGraph.isAcyclic)
     dependenceGraph
   }
 
@@ -599,6 +663,7 @@ private[lowering] object ProgramSchedulingTransform
   )(sendPenalty: ProcessId => Int) = {
 
     val sinks = dependenceGraph.nodes.filter { _.outDegree == 0 }
+    val sinks2 = 1
     val distance =
       scala.collection.mutable.Map.empty[DependenceGraph#NodeT, Int] ++
         sinks.map { inner =>
@@ -642,6 +707,7 @@ private[lowering] object ProgramSchedulingTransform
         inner.diPredecessors
       }
     // do a bfs
+
     while (toVisit.nonEmpty) {
 
       val currentNode = toVisit.dequeue()

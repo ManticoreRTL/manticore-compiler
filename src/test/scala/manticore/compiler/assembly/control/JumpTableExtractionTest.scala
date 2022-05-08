@@ -49,8 +49,8 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(100),
-      debug_message = true
-      // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      debug_message = true,
+      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
     )
 
     def frontend(optimize: Boolean, useJump: Boolean) =
@@ -60,7 +60,8 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
         UnconstrainedOrderInstructions followedBy
         Transformation.predicated(optimize)(Optimizations) followedBy
         Transformation.predicated(useJump)(
-          UnconstrainedJumpTableConstruction
+          UnconstrainedJumpTableConstruction followedBy
+            UnconstrainedNameChecker
         ) followedBy
         UnconstrainedIRParMuxDeconstructionTransform followedBy
         WidthConversion.transformation followedBy
@@ -480,7 +481,6 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
         }
         .mkString(", ")}, defaultWire2;
 
-
     """
 
       fixture.dump(
@@ -542,6 +542,159 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
               case Some(value) =>
                 monitor.read("rnext1").toInt shouldEqual value
             }
+          }
+        }
+
+      }
+
+  }
+
+  "JumpTableConstruction" should "include any post-dominated instruction" in {
+    fixture =>
+      //              +-----------------+    +-----------------+
+      //              |                 |    |                 |
+      //              |  ADD x1, x0, 1  |<---+  ADD x0, rand, 1|
+      //              |                 |    |                 |
+      //              +--------+--------+    +---------+-------+
+      //                       |                       |
+      //              +--------v--------+    +---------v-------+
+      //              |                 |    |                 |
+      //              | SUB x2, x1, 1   +----> SUB x3, x2, x0  |
+      //              |                 |    |                 |
+      //              +-------------+---+    +--+--------------+
+      //                            |           |
+      //                         +--v-----------v--+
+      //                         |                 |
+      //                         |  ADD x4, x2, x3 |
+      //                         |                 |
+      //                         +---------+-------+
+      //                                   |
+      //                                   |
+      //                                   v
+      //                             parmux operand
+      //
+      //
+      // Given the above program, a valid jump table construction should
+      // include all the instructions inside a jump case. Note that if the jump
+      // table construction uses a BFS-like algorithm to detect whether a node
+      // is used only in the computation of the parmux operand it may mistakenly
+      // just include either:
+      // 1. [x4, x3, x2, x1] if the bfs does x4 then x3
+      // 2. [x4, x2, x1] if the bfs does x4 and then x2
+      // However, an algorithm that uses post-dominators to collect instruction
+      // will not make the same mistake. Of course, the latter is more computationally
+      // expensive since to compute dominators, we have to compute all paths in the
+      // reverse data-dependence/flow graph.
+      //
+      //
+      //
+
+      val randGen = XorShift128("rand")
+
+      val text = s"""
+      .prog: .proc p0:
+
+      ${randGen.registers}
+      .const one32 32 1
+      .const two32 32 2
+      .const zero32 32 0
+      .const true  1 1
+      .const false 1 0
+      .wire cond1  1
+      .wire cond2  1
+      .wire rbit  1
+      .wire x0 32
+      .wire x1 32
+      .wire x2 32
+      .wire x3 32
+      .wire x4 32
+      @TRACK [name = "X5"]
+      .wire x5 32
+      .wire x6 32
+      @TRACK [name = "result"]
+      .wire result 32
+      @TRACK [name = "dummy"]
+      .wire dummy 32
+
+
+      ${randGen.code}
+      ADD x0, ${randGen.randNext}, one32;
+      ADD x1, x0, one32;
+      SUB x2, x1, one32; // x2 = x0 = ${randGen.randNext} + 1
+      SUB x3, x2, x0; // x3 = 0
+      ADD x4, x2, x3;
+
+
+      SRL rbit, ${randGen.randNext}, zero32;
+
+      SEQ cond1, rbit, true;
+      SEQ cond2, rbit, false;
+
+
+      ADD x5, ${randGen.randNext}, two32;
+      SUB x6, x5, two32; // x6 = ${randGen.randNext}
+
+
+      PARMUX result, cond1 ? x4, cond2 ? x6, ${randGen.randNext};
+
+      ADD dummy, result, one32;
+
+
+    """
+
+      val compiler = Commons.frontend(true, true) followedBy Commons.backend
+
+      val ctx = Commons.context(fixture)
+
+      val parsed = AssemblyParser(text, ctx)
+      val compiled = compiler(parsed, ctx)._1
+
+      val hasJumpTable = compiled.processes.head.body.exists(inst =>
+        inst.isInstanceOf[PlacedIR.JumpTable]
+      )
+      val hasBigJumpCase = compiled.processes.head.body
+        .collect { case jtb: PlacedIR.JumpTable =>
+          jtb.blocks.map(_.block.length)
+        }.flatten.exists(_ >= 13) // we expect at least 13 instructions to be in
+        // jump case corresponding to the chain shown above
+
+      withClue("Should have a jump table") {
+        hasJumpTable shouldBe true
+      }
+
+      withClue("Should have large jump case") {
+        hasBigJumpCase shouldBe true
+      }
+
+
+
+      val monitor = PlacedIRInterpreterMonitor(
+        compiled
+      )(ctx)
+      // println(s"Watching ${monitor.keys}")
+      fixture.dump(
+        "human_readable.masm",
+        PlacedIRDebugSymbolRenamer.makeHumanReadable(compiled)(ctx).serialized
+      )
+
+      val interp = AtomicInterpreter.instance(
+        program = compiled,
+        monitor = Some(monitor)
+      )(ctx)
+
+
+      for (cycle <- 0 until 10000) {
+        interp.interpretVirtualCycle() shouldBe Nil
+
+        randGen.nextRef()
+
+        def isOdd(x: Int): Boolean = (0x01 & x) == 1
+        withClue(s"@$cycle  result mismatch: ") {
+
+          if (isOdd(randGen.currRef())) {
+            monitor.read("result").toInt shouldEqual (randGen.currRef() + 1)
+          } else {
+            monitor.read("result").toInt shouldEqual randGen.currRef()
           }
         }
 

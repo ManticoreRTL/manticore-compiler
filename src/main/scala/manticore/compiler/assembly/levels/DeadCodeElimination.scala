@@ -4,7 +4,6 @@ package manticore.compiler.assembly.levels
   *
   * @author
   * Sahand Kashani <sahand.kashani@epfl.ch>
-  *
   * Mahyar Emami <mahyar.emami@epfl.ch>
   */
 
@@ -65,9 +64,8 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
     block.flatMap {
       case jtb @ JumpTable(_, phis, blocks, delaySlot, _) =>
         phis.map { case Phi(rd, _) => rd -> jtb } ++
-          delaySlot.flatMap {
-            inst =>
-              DependenceAnalysis.regDef(inst).map { _ -> inst }
+          delaySlot.flatMap { inst =>
+            DependenceAnalysis.regDef(inst).map { _ -> inst }
           } ++
           blocks.flatMap { case JumpCase(_, blocks) =>
             blocks.flatMap { inst =>
@@ -328,8 +326,10 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
         aliveBlock.map {
           case jtb @ JumpTable(_, results, _, _, _) =>
             val filteredPhis = results.filter { case Phi(rd, _) =>
-              depGraph.get(jtb).diSuccessors.exists { succ =>
-                DependenceAnalysis.regUses(succ).contains(rd)
+              globallyTrackedSet(rd) || depGraph.get(jtb).diSuccessors.exists {
+                succ =>
+                  DependenceAnalysis.regUses(succ).contains(rd)
+
               }
             }
             // note that by construction we should have at least one Phi that

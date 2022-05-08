@@ -56,7 +56,7 @@ trait JumpTableConstruction
       definingInstructions: Map[Name, Instruction],
       constants: Map[Name, Constant],
       registers: Map[Name, DefReg],
-      postDominators: PostDominators
+      postDomRelation: PostDominanceRelation
   )(implicit ctx: AssemblyContext): JumpTableBuildRecipe = {
     import scala.collection.mutable.ArrayBuffer
     import scala.collection.mutable.Queue
@@ -93,38 +93,52 @@ trait JumpTableConstruction
 
     /** Performs a backward DFS to find all the instruction that can be put
       * together in one case block of a jump table. The given node should be Nth
-      * choice of a ParMux. The returned list has the instruction required to
-      * compute the value of each case in reverse order
+      * choice of a ParMux.The returned sequence can be readily used to construct
+      * the case body (is ordered)
       * @param node
       * @return
       */
 
     def traverse(
-        node: dataDependenceGraph.NodeT
-    )(implicit postDominated: PostDominatorOf): Seq[Instruction] = {
+        sinkNode: dataDependenceGraph.NodeT
+    )(implicit postDominated: Instruction => Boolean): Seq[Instruction] = {
 
-      val inst = node.toOuter
-      val isLocal =
-        DependenceAnalysis.regDef(inst).forall(globallyScoped(_) == false)
-      val isNotParMux =
-        !inst.isInstanceOf[ParMux] && !inst.isInstanceOf[JumpTable]
-      if (isLocal && isNotParMux && postDominated(inst)) {
-        // by appending the inst to the result of recursion the returned
-        // sequence of instruction maintains DFS order (prepending reverts it)
-        node.diPredecessors.toSeq.flatMap(traverse(_)) :+ inst
-      } else {
-        // this node is a dead-end, there is no point in continuing the search
-        // because either
-        // 1. the node computes a value that is supposed to be globally available
-        // and thus can not be placed in a case body
-        // 2. is a parmux or a jump table, therefore can not be inside another
-        // jump table
-        // 3. is not post-dominated by the instruction that directly defines
-        // a value connected to one of the parmux cases, so any predecessors
-        // of it are also not post-dominated by the parmux (i.e., they are
-        // used to compute something else as-well)
-        Seq.empty
+      val resultStack = scala.collection.mutable.Stack.empty[Instruction]
+
+      val visited =
+        scala.collection.mutable.Set.empty[dataDependenceGraph.NodeT]
+
+      def doDfs(currentNode: dataDependenceGraph.NodeT): Unit = {
+
+        if (!visited(currentNode)) {
+          val inst = currentNode.toOuter
+          val isLocal =
+            DependenceAnalysis.regDef(inst).forall(globallyScoped(_) == false)
+          val isNotParMux =
+            !inst.isInstanceOf[ParMux] && !inst.isInstanceOf[JumpTable]
+          if (isLocal && isNotParMux && postDominated(inst)) {
+            visited += currentNode
+            for(predecessor <- currentNode.diPredecessors) {
+              doDfs(predecessor)
+            }
+            resultStack push inst
+          } // else {
+          // this node is a dead-end, there is no point in continuing the search
+          // because either
+          // 1. the node computes a value that is supposed to be globally available
+          // and thus can not be placed in a case body
+          // 2. is a parmux or a jump table, therefore can not be inside another
+          // jump table
+          // 3. is not post-dominated by the instruction that directly defines
+          // a value connected to one of the parmux cases, so any predecessors
+          // of it are also not post-dominated by the parmux (i.e., they are
+          // used to compute something else as-well)
+          // }
+
+        }
       }
+      doDfs(sinkNode)
+      resultStack.popAll().toSeq.reverse
     }
 
     def createCaseBody(rs: Name): Seq[Instruction] =
@@ -132,8 +146,9 @@ trait JumpTableConstruction
         case None => Seq.empty // case body is empty
         case Some(defInst) =>
           val node = dataDependenceGraph get defInst
-          val postDominated = postDominators.of(defInst)
-          traverse(node)(postDominated)
+          traverse(node) { predInst =>
+            postDomRelation.isDefined(defInst, predInst)
+          }
       }
 
     // collect the instructions required to compute the default case
@@ -480,25 +495,8 @@ trait JumpTableConstruction
     )
   }
 
-  private trait PostDominators {
-    // create an object that can be used to check where some other
-    // instruction is post dominate by instruction
-    // e.g., PostDominator.of(inst1).postDominates(inst2) returns true if
-    // is inst1 post dominates inst2
-    def of(instruction: Instruction): PostDominatorOf
-  }
-
-  private trait PostDominatorOf {
-    // checks wether otherInstruction is post dominated by some instruction
-    def postDominated(otherInstruction: Instruction): Boolean
-    def apply(otherInstruction: Instruction): Boolean = postDominated(
-      otherInstruction
-    )
-  }
-
-  /**
-    * Compute the post dominators for all the instruction in the process
-    * (does not look inside jump tables if any)
+  /** Compute the post dominators for all the instruction in the process (does
+    * not look inside jump tables if any)
     *
     * @param process
     * @param ctx
@@ -506,7 +504,7 @@ trait JumpTableConstruction
     */
   private def computePostDominators(
       process: DefProcess
-  )(implicit ctx: AssemblyContext): PostDominators = {
+  )(implicit ctx: AssemblyContext): PostDominanceRelation = {
 
     abstract sealed trait Vertex {
       def index: Int
@@ -583,36 +581,61 @@ trait JumpTableConstruction
       }
 
       // compute the intersection of the post dominators of the predecessors
-      val predIntersect = node.diPredecessors.foldLeft(universalSet) {
-        case (intersect, pred) => intersect & postDominators(pred.toOuter.index)
+      val predecessors = node.diPredecessors.toSeq
+      val predIntersect = predecessors match {
+        case first +: rest =>
+          rest.foldLeft(postDominators(first.toOuter.index)) {
+            case (intersect, pred) =>
+              intersect & postDominators(pred.toOuter.index)
+          }
+        case Nil => BitSet()
       }
+
       // update the using
       // pdom(n) = {n} union (intersect over predecessor p of n pdom(p))
       postDominators(node.toOuter.index) =
         BitSet(node.toOuter.index) | predIntersect
 
-      for (pred <- node.diPredecessors) {
+      for (pred <- node.diSuccessors) {
         dfsLikeTraversal(pred)
       }
     }
 
     dfsLikeTraversal(reverseDataflowGraph get EntryV)
 
-    val postDom = new PostDominators {
-      override def of(instruction: Instruction): PostDominatorOf = {
-        val pDominatorIndex = indexOf(instruction)
-        new PostDominatorOf {
-          override def postDominated(otherInstruction: Instruction): Boolean = {
-            val otherIndex = indexOf(otherInstruction)
-            postDominators(otherIndex).contains(pDominatorIndex)
-          }
-        }
-
+    ctx.logger.dumpArtifact(s"post_dominators.txt") {
+      val text = new StringBuilder
+      text ++= "Post Dominators: \n"
+      text ++= s"(1) BEGIN\n"
+      for (instr <- process.body) {
+        val index = indexOf(instr)
+        text ++= s"(${index}) ${instr}: ${postDominators(index).mkString(", ")}\n"
       }
+      text ++= s"(0) END\n"
+      text.toString()
+    }
 
+    // wrap the computation in a closure, better than return the individual
+    // mutable bits of computation
+    val postDom = new PostDominanceRelation {
+      def isDefined(
+          postDominator: Instruction,
+          postDominated: Instruction
+      ): Boolean = {
+        val pDominatorIndex = indexOf(postDominator)
+        val pDominatedIndex = indexOf(postDominated)
+        postDominators(pDominatedIndex).contains(pDominatorIndex)
+      }
     }
     postDom
+  }
 
+  private trait PostDominanceRelation {
+    // checks whether postDominator post-dominates postDominated
+    def isDefined(
+        postDominator: Instruction,
+        postDominated: Instruction
+    ): Boolean
   }
 
 }

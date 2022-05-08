@@ -199,9 +199,9 @@ object Logger {
       dump_dir match {
         case Some(dir) if dump_all =>
           Files.createDirectories(dir.toPath())
-
-          info(s"Dumping ${file_name} to ${dir.toPath.toAbsolutePath}")
-          val xpath = dir.toPath().resolve(file_name)
+          val actualFileName = s"${countProgress()}_${phase_id}_${file_name}"
+          info(s"Dumping ${actualFileName} to ${dir.toPath.toAbsolutePath}")
+          val xpath = dir.toPath().resolve(actualFileName)
           val writer = new PrintWriter(xpath.toFile)
           writer.print(gen)
           writer.close()
