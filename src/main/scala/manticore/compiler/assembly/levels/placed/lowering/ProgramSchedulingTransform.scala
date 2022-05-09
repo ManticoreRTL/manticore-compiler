@@ -122,7 +122,7 @@ private[lowering] object ProgramSchedulingTransform
 
       // see if there is anything that can be committed
       val nodesToCommit = core.scheduleContext.activeList.collect {
-        case (n, t) if t == core.currentCycle => n
+        case (n, t) if t <= core.currentCycle => n
       }
       // and remove them from the activeList
       core.scheduleContext.activeList --= nodesToCommit
@@ -146,20 +146,22 @@ private[lowering] object ProgramSchedulingTransform
           val commitCycle =
             LatencyAnalysis.latency(newActive.toOuter) + core.currentCycle + 1
           core.scheduleContext.activeList += (newActive -> commitCycle)
+
+          ctx.logger.info(s"@${core.process.id}:${core.currentCycle}: ${newActive.toOuter}")
+          ctx.logger.info(s"commits @ ${commitCycle}")
+          newActive.toOuter match {
+            case jtb: JumpTable =>
+              core.scheduleContext.schedule += jtb
+              core.currentCycle += numCyclesInJumpTable(jtb)
+            case anyInst: Instruction =>
+              core.scheduleContext.schedule += anyInst
+              core.currentCycle += 1
+          }
         case None => // nothing to add to the active list
-      }
-      // schedule the active node and advance time
-      ready.map(_.toOuter) match {
-        case None => // there was nothing we could do mate
           core.scheduleContext.schedule += Nop
           core.currentCycle += 1
-        case Some(jtb: JumpTable) =>
-          core.scheduleContext.schedule += jtb
-          core.currentCycle += numCyclesInJumpTable(jtb)
-        case Some(inst: Instruction) =>
-          core.scheduleContext.schedule += inst
-          core.currentCycle += 1
       }
+
       // finally, send back any "seemingly" ready node (which is certainly of type Send)
       // to the readyList
       assert(
@@ -179,6 +181,7 @@ private[lowering] object ProgramSchedulingTransform
             advanceCoreState(core)
           }
         }
+        ctx.logger.debug(s"finished ${globalCycle}")
         globalCycle += 1
       }
     }
@@ -556,19 +559,27 @@ private[lowering] object ProgramSchedulingTransform
         inst match {
           case Mov(rd, rs, _) =>
             if (statePairs.contains(rd)) {
-              ctx.logger.warn("removing MOV to input", inst)
+              ctx.logger.warn(
+                "removing MOV to input, state updates should be handled at register allocation time",
+                inst
+              )
               false
             } else {
               true
             }
           case Nop =>
-            ctx.logger.warn("removing nops")
+            ctx.logger.warn(
+              "removing nops, scheduler will decide on the number of nops."
+            )
             false
           case _ =>
             if (
               DependenceAnalysis.regDef(inst).exists(statePairs.contains(_))
             ) {
-              ctx.logger.error("unexpected write to input register", inst)
+              ctx.logger.error(
+                "unexpected write to input register, updates to state should be handled at register allocation time",
+                inst
+              )
               false
             } else {
               true
@@ -762,7 +773,7 @@ private[lowering] object ProgramSchedulingTransform
           for (dependentNode <- nodeBeingCommitted.diSuccessors) {
             // add any successor that only depend on the node that
             // is being committed
-            if (dependentNode.inDegree == 0) {
+            if (dependentNode.inDegree == 1) {
               scheduleContext.readyList += dependentNode
             }
           }
@@ -783,7 +794,8 @@ private[lowering] object ProgramSchedulingTransform
           ctx.logger.debug(
             s"@$time: Scheduling ${toSchedule.toOuter.serialized}"
           )
-          val commitTime = time + LatencyAnalysis.latency(toSchedule.toOuter)
+          val commitTime =
+            time + LatencyAnalysis.latency(toSchedule.toOuter) + 1
 
           scheduleContext.schedule += toSchedule.toOuter
           scheduleContext.activeList += (toSchedule -> commitTime)
@@ -810,7 +822,8 @@ private[lowering] object ProgramSchedulingTransform
     }
     jtb
       .copy(
-        dslot = Seq.fill(jumpDelaySlotSize) { Nop },
+        // dslot = Seq.fill(jumpDelaySlotSize) { Nop },
+        dslot = Seq.empty,
         blocks = paddedBlocks
       )
       .setPos(jtb.pos)

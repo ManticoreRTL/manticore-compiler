@@ -8,8 +8,7 @@ object LoweringTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
   private val Impl =
-    InstructionScheduling followedBy
-    PredicateInsertionTransform followedBy
+    ProgramSchedulingTransform followedBy
     RegisterAllocationTransform
   override def transform(
       source: PlacedIR.DefProgram,

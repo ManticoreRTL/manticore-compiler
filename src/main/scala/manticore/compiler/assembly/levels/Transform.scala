@@ -100,7 +100,7 @@ trait AssemblyTransformer[
 
     ctx.logger.info(f"Finished after ${duration_time}%.3f ms")
     ctx.logger.dumpArtifact(
-      s"dump_post_${ctx.logger.countProgress()}_${phase_id}.masm"
+      s"dump_post.masm"
     ) {
       res.serialized
     }
