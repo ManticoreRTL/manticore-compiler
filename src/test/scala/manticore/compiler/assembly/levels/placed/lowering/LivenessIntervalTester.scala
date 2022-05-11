@@ -18,6 +18,8 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRConstantF
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRCommonSubExpressionElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.assembly.utils.XorShift128
+import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
+import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
 
 class LivenessIntervalTester extends UnitFixtureTest {
 
@@ -32,8 +34,9 @@ class LivenessIntervalTester extends UnitFixtureTest {
     UnconstrainedIRCommonSubExpressionElimination followedBy
     UnconstrainedDeadCodeElimination followedBy
     UnconstrainedToPlacedTransform followedBy
-    PlacedIRCloseSequentialCycles followedBy
-    ProgramSchedulingTransform
+    JumpTableNormalizationTransform followedBy
+    ProgramSchedulingTransform followedBy
+    JumpLabelAssignmentTransform
 
   it should "do something" in { fixture =>
     val numState = 5
@@ -129,9 +132,9 @@ class LivenessIntervalTester extends UnitFixtureTest {
       PlacedIRDebugSymbolRenamer.makeHumanReadable(compiled)(ctx).serialized
     )
 
-    val lifetime = util.LifetimeAnalysis.lifetime(compiled.processes.head)
+    val lifetime = util.LifetimeAnalysis(compiled.processes.head)
 
-    
+
   }
 
 }

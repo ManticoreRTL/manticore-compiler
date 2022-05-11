@@ -7,15 +7,27 @@ import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
 import manticore.compiler.HasLoggerId
+import javax.swing.text.Position
+
+
+case class PositionedInstruction(instr: Instruction, position: Int)
+
+trait LifetimeAnalysis {
+  def of(name: Name): IntervalSet
+  def apply(name: Name): IntervalSet = of(name)
+  // def instructions: Seq[PositionedInstruction]
+}
+
 
 private[lowering] object LifetimeAnalysis {
 
   private implicit val loggerId = new HasLoggerId {
     val id = "LifetimeAnalysis"
   }
-  def lifetime(
+
+  def apply(
       process: DefProcess
-  )(implicit ctx: AssemblyContext): Name => IntervalSet = {
+  )(implicit ctx: AssemblyContext): LifetimeAnalysis = {
 
     import scala.collection.mutable.ArrayBuffer
     import scala.collection.mutable.{Set => MutableSet}
@@ -29,7 +41,7 @@ private[lowering] object LifetimeAnalysis {
     case class PhiProxySingleton(rd: Name, rs: Name) extends PhiProxy
     case class PhiProxyLabeled(rd: Name, rss: Seq[(Label, Name)])
         extends PhiProxy
-    case class PositionedInstruction(instr: Instruction, position: Int)
+
     class CodeBlock(
         val header: Seq[PhiProxy],
         val body: ArrayBuffer[PositionedInstruction] = ArrayBuffer.empty,
@@ -242,7 +254,12 @@ private[lowering] object LifetimeAnalysis {
         .map { case (name, intervals) => s"${name}: ${intervals}" }
         .mkString("\n")
     }
-    intervals.toMap.withDefault(_ => IntervalSet.empty)
+    val asFunc = intervals.toMap.withDefault(_ => IntervalSet.empty)
+    new LifetimeAnalysis {
+
+      def of(name: Name): IntervalSet = asFunc(name)
+
+    }
   }
 
 }

@@ -2,6 +2,7 @@ package manticore.compiler.assembly.levels.placed.lowering.util
 
 case class Interval(start: Int, end: Int) {
   require(end >= start, s"invalid interval [${start}, ${end})")
+  // def isEmpty: Boolean = start == end
 }
 object Interval {
   def from(start: Int): Interval = Interval(start, Int.MaxValue)
@@ -12,6 +13,18 @@ final class IntervalSet private (private val orderedSets: Seq[Interval]) {
 
   def nonEmpty: Boolean = orderedSets.nonEmpty
   def isEmpty: Boolean = orderedSets.isEmpty
+  def isSingleton: Boolean = orderedSets.length == 1
+
+  def map[T](fn: Interval => T) = orderedSets.map(fn)
+
+  def min: Int = {
+    require(nonEmpty, "Can not take the start interval of an empty set")
+    orderedSets.head.start
+  }
+  def max: Int = {
+    require(nonEmpty, "Can not take the end interval of an empty set")
+    orderedSets.last.end
+  }
   def covers(cycle: Int): Boolean = {
     def check(xs: Seq[Interval]): Boolean = xs match {
       case Interval(start, end) +: tail =>
@@ -51,6 +64,16 @@ final class IntervalSet private (private val orderedSets: Seq[Interval]) {
     new IntervalSet(intersect(orderedSets))
   }
 
+  def &(otherSet: IntervalSet): IntervalSet = {
+
+    val parts = otherSet.orderedSets.map(this & _).flatMap(_.orderedSets)
+    if (parts.isEmpty) {
+      IntervalSet.empty
+    } else {
+      parts.tail.foldLeft(IntervalSet(parts.head)) { _ | _ }
+    }
+  }
+
   def trimStart(start: Int): IntervalSet = {
     if (nonEmpty && start <= orderedSets.last.end) {
       this & Interval(start, orderedSets.last.end)
@@ -81,7 +104,12 @@ object IntervalSet {
           } else {
             // tos.end >= start
             intervalStack.pop()
-            intervalStack push Interval(tos.start, end max tos.end)
+            val maxEnd = end max tos.end
+            if (maxEnd == tos.start) {
+              intervalStack
+            } else {
+              intervalStack push Interval(tos.start, end max tos.end)
+            }
           }
           doMerge(tail)
         case Nil =>
@@ -93,8 +121,11 @@ object IntervalSet {
 
   def empty: IntervalSet = new IntervalSet(Seq.empty)
   def apply(start: Int, end: Int): IntervalSet = apply(Interval(start, end))
-  def apply(interval: Interval): IntervalSet = new IntervalSet(
-    Seq(interval)
-  )
+  def apply(interval: Interval): IntervalSet =
+    if (interval.start == interval.end) {
+      empty
+    } else {
+      new IntervalSet(Seq(interval))
+    }
 
 }

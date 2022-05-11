@@ -118,7 +118,9 @@ object JumpTableNormalizationTransform
           }
 
         def phiRename(label: Label, rs: Name): Name =
-          aliases(label).collectFirst { case (orig, als) if orig == rs => als}.getOrElse(rs)
+          aliases(label)
+            .collectFirst { case (orig, als) if orig == rs => als }
+            .getOrElse(rs)
 
         val newPhis = jump.results.map { case Phi(rd, rsx) =>
           Phi(
@@ -180,19 +182,24 @@ object JumpTableNormalizationTransform
         case jtb: JumpTable => normalize(jtb, mkAlias)
         case i              => i
       }
-      val flatSubst = scopedSubst.map { case ((lbl, orig) -> alias) =>
-        orig -> alias
-      }
+
+      val flatSubst = scopedSubst.groupMap { case ((lbl, orig) -> alias) =>
+        orig
+      } { case (_, alias) => alias }.withDefault(_ => Seq.empty)
+
+      // scopedSubst.groupb
       def hasAlias(orig: Name): Boolean = flatSubst.exists { orig == _._1 }
       val newRegs = process.registers.flatMap { r =>
-        flatSubst.collect {
-          case (orig, alias) if orig == r.variable.name =>
+        val itsCopy = flatSubst(r.variable.name).map { alias =>
             DefReg(
               ValueVariable(alias, -1, WireType),
               None
             ).setPos(r.pos)
-        }.toSeq :+ r
+        }.toSeq
+
+        itsCopy :+ r
       }
+
       process.copy(
         body = newBody,
         registers = newRegs
