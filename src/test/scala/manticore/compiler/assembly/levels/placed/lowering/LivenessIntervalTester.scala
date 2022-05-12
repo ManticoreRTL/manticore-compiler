@@ -20,6 +20,7 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeEli
 import manticore.compiler.assembly.utils.XorShift128
 import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
+import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 
 class LivenessIntervalTester extends UnitFixtureTest {
 
@@ -36,7 +37,9 @@ class LivenessIntervalTester extends UnitFixtureTest {
     UnconstrainedToPlacedTransform followedBy
     JumpTableNormalizationTransform followedBy
     ProgramSchedulingTransform followedBy
-    JumpLabelAssignmentTransform
+    JumpLabelAssignmentTransform followedBy
+    LocalMemoryAllocation followedBy
+    RegisterAllocationTransform
 
   it should "do something" in { fixture =>
     val numState = 5

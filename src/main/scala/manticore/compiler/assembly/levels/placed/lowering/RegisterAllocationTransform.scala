@@ -8,11 +8,13 @@ import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
+import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
 import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import manticore.compiler.assembly.levels.CarryType
 import scala.annotation.tailrec
 import java.util.ArrayDeque
+import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 
 private[lowering] object RegisterAllocationTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
@@ -21,7 +23,13 @@ private[lowering] object RegisterAllocationTransform
   override def transform(
       source: DefProgram,
       context: AssemblyContext
-  ): DefProgram = ???
+  ): DefProgram = {
+
+    val processes = source.processes.map(transform(_)(context))
+    source.copy(
+      processes = processes
+    )
+  }
 
   private def withId(r: DefReg, new_id: Int): DefReg =
     r.copy(variable = r.variable.withId(new_id)).setPos(r.pos)
@@ -125,7 +133,7 @@ private[lowering] object RegisterAllocationTransform
   }
   private def createHintManager(
       process: DefProcess
-  )(implicit ctx: AssemblyContext) = {
+  )(implicit ctx: AssemblyContext): HintManager = {
 
     val statePairs = InputOutputPairs.createInputOutputPairs(process)
 
@@ -141,10 +149,6 @@ private[lowering] object RegisterAllocationTransform
       }
       .flatten
       .toMap
-
-    val currentStates = statePairs.map { case (curr, _) =>
-      curr.variable.name
-    }.toSet
 
     val getCurrent = statePairs.map { case (curr, next) =>
       next.variable.name -> curr.variable.name
@@ -178,17 +182,18 @@ private[lowering] object RegisterAllocationTransform
       def seek(n: Name): Option[AllocationHint] =
         alias(n) match {
           case None        => None
-          case Some(value) => hints(value)
+          case Some(realName) => hints(realName)
         }
 
       def tell(name: Name)(newHint: => AllocationHint): Unit =
         alias(name) match {
           case None        => // do nothing, can not accept hint
-          case Some(value) => hints.update(name, Some(newHint))
+          case Some(realName) => hints.update(realName, Some(newHint))
         }
 
     }
   }
+
   private def transform(
       process: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
@@ -244,11 +249,11 @@ private[lowering] object RegisterAllocationTransform
         val firstActive = activeList.dequeue()
         // check if the given interval starts after the
         val mayHavePassedInterval = lifetime(firstActive.variable.name)
-        if (mayHavePassedInterval.max <= currentInterval.min) {
+        if (mayHavePassedInterval.max <= currentInterval.min) { // <= because interval end in exclusive
           // the firstActive is no longer alive
 
           freeListUsed += firstActive.variable.id
-
+          ctx.logger.debug(s"Freed ${firstActive.variable.name}:${firstActive.variable.id}")
           tryRelease(currentInterval, freeListUsed)
 
         } else {
@@ -291,65 +296,72 @@ private[lowering] object RegisterAllocationTransform
     def allocateWhileHaveFree(
         unallocatedList: PriorityQueue[DefReg]
     ): Seq[DefReg] = {
+      if (unallocatedList.nonEmpty) {
+        val currentRegToAllocate = unallocatedList.dequeue()
+        val currentInterval = lifetime(currentRegToAllocate.variable.name)
 
-      val currentRegToAllocate = unallocatedList.dequeue()
-      val currentInterval = lifetime(currentRegToAllocate.variable.name)
-
-      val freeListUsed =
-        if (currentRegToAllocate.variable.varType == ConstType) {
-          freeCarryList
-        } else {
-          mainFreeList
-        }
-      // release any registers whose intervals are passed
-      tryRelease(currentInterval, freeListUsed)
-
-      if (freeListUsed.nonEmpty) {
-        // look for any hint for allocation
-        def allocate(removeIndex: Int) = {
-
-          val allocationId = freeListUsed.remove(removeIndex)
-          allocatedList += withId(currentRegToAllocate, allocationId)
-          activeList += currentRegToAllocate
-          hints.tell(currentRegToAllocate.variable.name) {
-            AllocationHint(allocationId, currentInterval)
+        val freeListUsed =
+          if (currentRegToAllocate.variable.varType == ConstType) {
+            freeCarryList
+          } else {
+            mainFreeList
           }
-        }
-        hints.seek(currentRegToAllocate.variable.name) match {
-          case Some(lastHint) =>
-            // try to use lastId
-            val idPosition =
-              tryFindIdPositionInFreeList(lastHint.lastId, freeListUsed)
-            idPosition match {
-              case Some(index) =>
-                // there is valid hint that we can use (by construction
-                // we have the guarantee the interval given in the hint
-                // is dead otherwise we would not be able to find in the
-                // freeListUsed)
-                allocate(index)
+        // release any registers whose intervals are passed
+        tryRelease(currentInterval, freeListUsed)
 
-              case None =>
-                // There is a valid hint, but we can not use it, this is because
-                // either the hint is used by some other interval or the original
-                // user is still alive. So we take a new Id from the freeListUsed
-                // and allocate the register accordingly. After register allocation
-                // we need to resolve all unrealized hints with MOVs and a bit of
-                // scheduling
-                allocate(0)
+        if (freeListUsed.nonEmpty) {
+          // look for any hint for allocation
+          def allocate(removeIndex: Int) = {
 
+            val allocationId = freeListUsed.remove(removeIndex)
+            val regWithId = withId(currentRegToAllocate, allocationId)
+            allocatedList += regWithId
+            activeList += regWithId
+            hints.tell(currentRegToAllocate.variable.name) {
+              AllocationHint(allocationId, currentInterval)
             }
-          case None =>
-            // there was no hint, so we simply just take fresh register and
-            // get on with our lives
-            allocate(0)
+          }
+          hints.seek(currentRegToAllocate.variable.name) match {
+            case Some(lastHint) =>
+              // try to use lastId
+              val idPosition =
+                tryFindIdPositionInFreeList(lastHint.lastId, freeListUsed)
+              idPosition match {
+                case Some(index) =>
+                  // there is valid hint that we can use (by construction
+                  // we have the guarantee the interval given in the hint
+                  // is dead otherwise we would not be able to find in the
+                  // freeListUsed)
+                  ctx.logger.debug(s"Using hint ${lastHint.lastId} for ${currentRegToAllocate.variable.name}")
+                  allocate(index)
 
+                case None =>
+                  // There is a valid hint, but we can not use it, this is because
+                  // either the hint is used by some other interval or the original
+                  // user is still alive. So we take a new Id from the freeListUsed
+                  // and allocate the register accordingly. After register allocation
+                  // we need to resolve all unrealized hints with MOVs and a bit of
+                  // scheduling
+                  ctx.logger.debug(s"Could not use hint ${lastHint.lastId} for ${currentRegToAllocate.variable.name}")
+                  allocate(0)
+
+              }
+            case None =>
+              // there was no hint, so we simply just take fresh register and
+              // get on with our lives
+              allocate(0)
+
+          }
+
+          allocateWhileHaveFree(unallocatedList)
+
+        } else {
+          // failed register allocation!
+          unallocatedList.dequeueAll
         }
-
-        allocateWhileHaveFree(unallocatedList)
-
       } else {
-        // failed register allocation!
-        unallocatedList.dequeueAll
+        // success!
+        Nil
       }
     }
 
@@ -358,7 +370,7 @@ private[lowering] object RegisterAllocationTransform
       Ordering.by[DefReg, Int] { r => lifetime(r.variable.name).min }.reverse
 
     val unallocated = PriorityQueue.empty[DefReg](IncreasingStartTimeOrder)
-    unallocated ++ process.registers.filter { r =>
+    unallocated ++= process.registers.filter { r =>
       r.variable.varType != ConstType && r.variable.varType != MemoryType
     }
     val failedToAllocate = allocateWhileHaveFree(unallocated)
@@ -383,17 +395,81 @@ private[lowering] object RegisterAllocationTransform
 
   }
 
-  def resolveUnrealizedHints(
+  private def resolveUnrealizedHints(
       process: DefProcess,
       hints: HintManager,
       lifetime: util.LifetimeAnalysis
-  ): DefProcess = {
+  )(implicit ctx: AssemblyContext): DefProcess = {
     import scala.collection.mutable.ArrayBuffer
 
-    
-    val moveQueue = ArrayBuffer.empty[(Mov, Int)]
+    val registers = process.registers.map { r => r.variable.name -> r }.toMap
+    val moveQueue = ArrayBuffer.empty[(Mov, IntervalSet)]
 
-    ???
+    def doIfMovNotElided(
+        inst: Instruction
+    )(action: (Name, Name) => Unit): Unit = {
+      for (rd <- DependenceAnalysis.regDef(inst)) {
+        hints.alias(rd) match {
+          case None         => // nothing to do
+          case Some(realRd) =>
+            // inst is some instruction that write to the output
+            // but we could not elide its MOV to the input using register
+            // allocation hints
+            val thisId = registers(rd).variable.id
+            val realRdId = registers(realRd).variable.id
+            if (thisId != realRdId) {
+              action(rd, realRd)
+              ctx.logger.debug(s"Can not elide MOV for ${rd} -> ${realRd}")
+              moveQueue += (Mov(realRd, rd) -> lifetime(rd))
+            }
+
+        }
+      }
+
+    }
+    def createMove(rd: Name, realRd: Name): Unit = {
+      ctx.logger.debug(s"Can not elide MOV for ${rd} -> ${realRd}")
+      moveQueue += (Mov(realRd, rd) -> lifetime(rd))
+    }
+    for (inst <- process.body) {
+
+      inst match {
+        case jtb: JumpTable =>
+          for (delayedInst <- jtb.dslot) {
+            doIfMovNotElided(inst)(createMove)
+          }
+
+          for (JumpCase(_, block) <- jtb.blocks) {
+
+            for (caseInst <- block) {
+              doIfMovNotElided(caseInst) { case (rd, realRd) =>
+                ctx.logger.error(
+                  s"Can not avoid move elision in Jump table for ${rd}!"
+                )
+              }
+            }
+
+          }
+
+        case _ =>
+          doIfMovNotElided(inst)(createMove)
+
+      }
+    }
+
+    // now add the movs, ideally this requires some form scheduling to place the
+    // moves in-between other instruction is there are some Nops, but I am to tired
+    // of this pass for now and do a naive version in which I put the movs at the
+    // end. Note that we also add a bunch of Nops before these moves to make sure
+    // any read-after-write dependency through the pipeline is satisfied
+
+    val withMoves = process.body ++ Seq.fill(LatencyAnalysis.maxLatency()) {
+      Nop
+    } ++ moveQueue.map(_._1)
+
+    process.copy(
+      body = withMoves
+    )
   }
 
 }

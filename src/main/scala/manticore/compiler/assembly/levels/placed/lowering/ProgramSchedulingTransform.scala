@@ -147,18 +147,48 @@ private[lowering] object ProgramSchedulingTransform
             LatencyAnalysis.latency(newActive.toOuter) + core.currentCycle + 1
           core.scheduleContext.activeList += (newActive -> commitCycle)
 
-          ctx.logger.info(s"@${core.process.id}:${core.currentCycle}: ${newActive.toOuter}")
+          ctx.logger.info(
+            s"@${core.process.id}:${core.currentCycle}: ${newActive.toOuter}"
+          )
           ctx.logger.info(s"commits @ ${commitCycle}")
+
+          def storePredicate(store: Instruction) = store match {
+            case lstore: LocalStore => lstore.predicate
+            case gstore: GlobalStore => gstore.predicate
+            case _ => None
+          }
+          def removePredicate(store: Instruction) = store match {
+            case lstore: LocalStore => lstore.copy(predicate = None)
+            case gstore: GlobalStore => gstore.copy(predicate = None)
+            case _ => store
+          }
+
           newActive.toOuter match {
             case jtb: JumpTable =>
-              core.scheduleContext.schedule += jtb
+              core.scheduleContext += jtb
               core.currentCycle += numCyclesInJumpTable(jtb)
+            case store @ (_: LocalStore | _: GlobalStore) =>
+              storePredicate(store) match {
+                case Some(p) =>
+                  if (!core.hasPredicate(p)) {
+                    core.activatePredicate(p)
+                    core.scheduleContext += Predicate(p)
+                    core.scheduleContext += removePredicate(store)
+                    core.currentCycle += 2
+                  } else {
+                    core.scheduleContext += removePredicate(store)
+                    core.currentCycle += 1
+                  }
+                case None => ctx.logger.error("Expected predicated store!")
+                  core.scheduleContext += store
+                  core.currentCycle += 1
+              }
             case anyInst: Instruction =>
-              core.scheduleContext.schedule += anyInst
+              core.scheduleContext += anyInst
               core.currentCycle += 1
           }
         case None => // nothing to add to the active list
-          core.scheduleContext.schedule += Nop
+          core.scheduleContext += Nop
           core.currentCycle += 1
       }
 
@@ -263,7 +293,7 @@ private[lowering] object ProgramSchedulingTransform
       }
     }
     val sortedRecvs = core.getReceivesSorted()
-    val currentSched = core.scheduleContext.schedule.toSeq
+    val currentSched = core.scheduleContext.getSchedule()
     val currentCycle = core.currentCycle
 
     val (withRecvs, finalCycle) =
@@ -415,7 +445,15 @@ private[lowering] object ProgramSchedulingTransform
       builder
     }
 
-    val schedule = scala.collection.mutable.Queue.empty[Instruction]
+    private var nodesToSchedule = dependenceGraph.nodes.length
+    private val schedule = scala.collection.mutable.Queue.empty[Instruction]
+
+    def +=(inst: Instruction) = {
+      assert(nodesToSchedule != 0)
+      schedule += inst
+      if (inst != Nop)
+        nodesToSchedule -= 1
+    }
 
     // pre-populate the ready list
     val readyList = scala.collection.mutable.PriorityQueue
@@ -426,7 +464,9 @@ private[lowering] object ProgramSchedulingTransform
     val activeList =
       scala.collection.mutable.Map.empty[DependenceGraph#NodeT, Int]
 
-    def finished(): Boolean = graph.isEmpty
+    def finished(): Boolean = nodesToSchedule == 0
+
+    def getSchedule() = schedule.toSeq
 
   }
 
@@ -440,7 +480,14 @@ private[lowering] object ProgramSchedulingTransform
     // since the priority queue sorts the collection in decreasing priority
     // we need to use .reverse on the ordering
     private val recvQueue = scala.collection.mutable.Queue.empty[RecvEvent]
-
+    private var activePredicate: Option[Name] = None
+    def hasPredicate(n: Name): Boolean = activePredicate match {
+      case None        => false
+      case Some(value) => value == n
+    }
+    def activatePredicate(n: Name): Unit = {
+      activePredicate = Some(n)
+    }
     def checkCollision(recvEv: RecvEvent): Option[RecvEvent] =
       recvQueue.find(_.cycle == recvEv.cycle)
 
@@ -785,7 +832,7 @@ private[lowering] object ProgramSchedulingTransform
         if (scheduleContext.readyList.isEmpty) {
 
           // tough luck, there is nothing to do
-          scheduleContext.schedule += Nop
+          scheduleContext += Nop
 
         } else {
 
@@ -797,23 +844,40 @@ private[lowering] object ProgramSchedulingTransform
           val commitTime =
             time + LatencyAnalysis.latency(toSchedule.toOuter) + 1
 
-          scheduleContext.schedule += toSchedule.toOuter
+          scheduleContext += toSchedule.toOuter
           scheduleContext.activeList += (toSchedule -> commitTime)
 
         }
         time += 1
       }
 
-      val inBreakDelaySlot =
-        scheduleContext.schedule.takeRight(breakDelaySlotSize)
-      val len = scheduleContext.schedule.length
-      val beforeBreakDelaySlot =
-        scheduleContext.schedule.take(len - breakDelaySlotSize)
-      // put a break in the middle
-      val schedBlk =
-        (beforeBreakDelaySlot.toSeq :+ BreakCase(-1)) ++ inBreakDelaySlot.toSeq
-      JumpCase(lbl, schedBlk)
+      val schedule = scheduleContext.getSchedule()
+      val scheduleLength = schedule.length
 
+      if (scheduleLength <= breakDelaySlotSize) {
+
+        JumpCase(
+          lbl,
+          (BreakCase(-1) +: schedule) ++ Seq.fill(
+            breakDelaySlotSize - scheduleLength
+          ) { Nop }
+        )
+      } else {
+
+        val inBreakDelaySlot =
+          schedule.takeRight(breakDelaySlotSize)
+
+        val beforeBreakDelaySlot =
+          schedule.take(scheduleLength - breakDelaySlotSize)
+        // put a break in the middle
+        val withBreak = beforeBreakDelaySlot match {
+          case before :+ Nop =>
+            before :+ BreakCase(-1) // replace a Nop with break
+          case _ => beforeBreakDelaySlot :+ BreakCase(-1)
+        }
+
+        JumpCase(lbl, withBreak ++ inBreakDelaySlot)
+      }
     }
 
     val caseLength = scheduledBlocks.maxBy(_.block.length).block.length
@@ -823,7 +887,7 @@ private[lowering] object ProgramSchedulingTransform
     jtb
       .copy(
         // dslot = Seq.fill(jumpDelaySlotSize) { Nop },
-        dslot = Seq.empty,
+        dslot = Seq.fill { jumpDelaySlotSize } { Nop },
         blocks = paddedBlocks
       )
       .setPos(jtb.pos)

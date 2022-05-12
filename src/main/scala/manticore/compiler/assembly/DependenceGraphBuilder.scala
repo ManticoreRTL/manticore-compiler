@@ -90,7 +90,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         case Lookup(rd, index, base, annons) =>
           Seq(base, index)
         case JumpTable(target, phis, blocks, dslot, _) =>
-          assert(dslot.isEmpty, "dslot should only be used after scheduling!")
+          // assert(dslot.isEmpty, "dslot should only be used after scheduling!")
           val defs = blocks.flatMap { case JumpCase(_, blk) =>
             blk.flatMap(regDef)
           } ++ dslot.flatMap { regDef }
@@ -145,7 +145,10 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         case _: Recv                                          => Nil
         case ParMux(rd, _, _, _)                              => Seq(rd)
         case JumpTable(_, results, _, dslot, _) =>
-          assert(dslot.isEmpty, "dslot should only be used after scheduling!")
+          assert(
+            dslot.isEmpty || dslot.forall(_ == Nop),
+            "dslot should only be used after scheduling!"
+          )
           results.map(_.rd)
         case Lookup(rd, _, _, _) => Seq(rd)
         case _: BreakCase        => Seq.empty
