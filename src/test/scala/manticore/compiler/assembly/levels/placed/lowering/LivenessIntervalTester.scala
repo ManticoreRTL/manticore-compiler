@@ -135,7 +135,7 @@ class LivenessIntervalTester extends UnitFixtureTest {
       PlacedIRDebugSymbolRenamer.makeHumanReadable(compiled)(ctx).serialized
     )
 
-    val lifetime = util.LifetimeAnalysis(compiled.processes.head)
+
 
 
   }

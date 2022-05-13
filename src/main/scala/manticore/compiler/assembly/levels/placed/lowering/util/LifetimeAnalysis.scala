@@ -7,15 +7,28 @@ import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
 import manticore.compiler.HasLoggerId
-import javax.swing.text.Position
 
 
+/**
+  * Lifetime computation utility
+  *
+  * @author Mahyar Emami
+  */
+
+/**
+  * an instruction tagged with position marker (position is basically the PC)
+  *
+  * @param instr
+  * @param position
+  */
 case class PositionedInstruction(instr: Instruction, position: Int)
 
+// lifetime interface. Use the apply method to get an interval set representing
+// the lifetime of a name. Note that life times may contain holes in them.
 trait LifetimeAnalysis {
   def of(name: Name): IntervalSet
   def apply(name: Name): IntervalSet = of(name)
-  // def instructions: Seq[PositionedInstruction]
+
 }
 
 

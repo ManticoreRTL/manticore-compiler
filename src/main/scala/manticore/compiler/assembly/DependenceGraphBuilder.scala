@@ -145,10 +145,10 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         case _: Recv                                          => Nil
         case ParMux(rd, _, _, _)                              => Seq(rd)
         case JumpTable(_, results, _, dslot, _) =>
-          assert(
-            dslot.isEmpty || dslot.forall(_ == Nop),
-            "dslot should only be used after scheduling!"
-          )
+          // assert(
+          //   dslot.isEmpty || dslot.forall(_ == Nop),
+          //   "dslot should only be used after scheduling!"
+          // )
           results.map(_.rd)
         case Lookup(rd, _, _, _) => Seq(rd)
         case _: BreakCase        => Seq.empty

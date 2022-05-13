@@ -233,7 +233,7 @@ trait ManticoreAssemblyIR {
   ) extends ControlInstruction {
 
     override def toString: String = {
-      s"SWITCH ${target}:\n" +
+      s"SWITCH ${target}:\n${dslot.map(_.serialized).mkString("\t\t\t\t\n")}\n" +
         blocks
           .map { case JumpCase(label, body) =>
             s"\t\t\tCASE ${label}:\n" +
@@ -276,8 +276,10 @@ trait ManticoreAssemblyIR {
 
   }
 
-  case class BreakCase(target: Int = -1, annons: Seq[AssemblyAnnotation] = Seq())
-      extends ControlInstruction {
+  case class BreakCase(
+      target: Int = -1,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends ControlInstruction {
     override def toString: String = s"BREAK ${target}"
   }
 
@@ -466,10 +468,8 @@ trait ManticoreAssemblyIR {
 
   }
 
-  /**
-    * Extracts a bit slice, equivalent to the following Verilog statement
-    * wire [HIGH - LOW: 0] rd;
-    * wire [RSLEN - 1 : 0] rs; // RSLEN >= HIGH - LOW + 1
+  /** Extracts a bit slice, equivalent to the following Verilog statement wire
+    * [HIGH - LOW: 0] rd; wire [RSLEN - 1 : 0] rs; // RSLEN >= HIGH - LOW + 1
     * assign rd = rs[OFFSET :+ LENGTH];
     * @param rd
     * @param rs

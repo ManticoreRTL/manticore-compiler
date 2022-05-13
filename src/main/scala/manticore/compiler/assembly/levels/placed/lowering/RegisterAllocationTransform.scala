@@ -13,9 +13,13 @@ import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import manticore.compiler.assembly.levels.CarryType
 import scala.annotation.tailrec
-import java.util.ArrayDeque
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 
+/**
+  * Register allocation pass using a linear scan-like algorithm
+  *
+  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  */
 private[lowering] object RegisterAllocationTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
   import PlacedIR._
@@ -181,13 +185,13 @@ private[lowering] object RegisterAllocationTransform
 
       def seek(n: Name): Option[AllocationHint] =
         alias(n) match {
-          case None        => None
+          case None           => None
           case Some(realName) => hints(realName)
         }
 
       def tell(name: Name)(newHint: => AllocationHint): Unit =
         alias(name) match {
-          case None        => // do nothing, can not accept hint
+          case None           => // do nothing, can not accept hint
           case Some(realName) => hints.update(realName, Some(newHint))
         }
 
@@ -253,7 +257,9 @@ private[lowering] object RegisterAllocationTransform
           // the firstActive is no longer alive
 
           freeListUsed += firstActive.variable.id
-          ctx.logger.debug(s"Freed ${firstActive.variable.name}:${firstActive.variable.id}")
+          ctx.logger.debug(
+            s"Freed ${firstActive.variable.name}:${firstActive.variable.id}"
+          )
           tryRelease(currentInterval, freeListUsed)
 
         } else {
@@ -332,7 +338,9 @@ private[lowering] object RegisterAllocationTransform
                   // we have the guarantee the interval given in the hint
                   // is dead otherwise we would not be able to find in the
                   // freeListUsed)
-                  ctx.logger.debug(s"Using hint ${lastHint.lastId} for ${currentRegToAllocate.variable.name}")
+                  ctx.logger.debug(
+                    s"Using hint ${lastHint.lastId} for ${currentRegToAllocate.variable.name}"
+                  )
                   allocate(index)
 
                 case None =>
@@ -342,7 +350,9 @@ private[lowering] object RegisterAllocationTransform
                   // and allocate the register accordingly. After register allocation
                   // we need to resolve all unrealized hints with MOVs and a bit of
                   // scheduling
-                  ctx.logger.debug(s"Could not use hint ${lastHint.lastId} for ${currentRegToAllocate.variable.name}")
+                  ctx.logger.debug(
+                    s"Could not use hint ${lastHint.lastId} for ${currentRegToAllocate.variable.name}"
+                  )
                   allocate(0)
 
               }
@@ -370,8 +380,22 @@ private[lowering] object RegisterAllocationTransform
       Ordering.by[DefReg, Int] { r => lifetime(r.variable.name).min }.reverse
 
     val unallocated = PriorityQueue.empty[DefReg](IncreasingStartTimeOrder)
+    // check that there are no unused registers, this can be due to some
+    // errors in removing dead code/registers in previous passes
+
+    for (reg <- process.registers) {
+      if (
+        reg.variable.varType != ConstType &&
+        reg.variable.varType != MemoryType &&
+        lifetime(reg.variable.name).isEmpty
+      ) {
+        ctx.logger.error(s"${reg.variable.name} is never used!", reg)
+      }
+    }
     unallocated ++= process.registers.filter { r =>
-      r.variable.varType != ConstType && r.variable.varType != MemoryType
+      r.variable.varType != ConstType && r.variable.varType != MemoryType && lifetime(
+        r.variable.name
+      ).nonEmpty
     }
     val failedToAllocate = allocateWhileHaveFree(unallocated)
 
@@ -418,9 +442,8 @@ private[lowering] object RegisterAllocationTransform
             val thisId = registers(rd).variable.id
             val realRdId = registers(realRd).variable.id
             if (thisId != realRdId) {
-              action(rd, realRd)
               ctx.logger.debug(s"Can not elide MOV for ${rd} -> ${realRd}")
-              moveQueue += (Mov(realRd, rd) -> lifetime(rd))
+              action(rd, realRd)
             }
 
         }
@@ -442,9 +465,14 @@ private[lowering] object RegisterAllocationTransform
           for (JumpCase(_, block) <- jtb.blocks) {
 
             for (caseInst <- block) {
+              // we can not handle allocation failure in JumpTables. Especially
+              // with possibly instruction that sucked into the JumpTable from
+              // outside without doing a proper reschedule with push and pops
+              // from a compiler managed stack.
               doIfMovNotElided(caseInst) { case (rd, realRd) =>
                 ctx.logger.error(
-                  s"Can not avoid move elision in Jump table for ${rd}!"
+                  s"Can not handle MOV elision failure in Jump table for ${rd}! " +
+                    s"This is probably due to high register pressure!"
                 )
               }
             }

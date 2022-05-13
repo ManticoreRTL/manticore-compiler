@@ -1,9 +1,23 @@
 package manticore.compiler.assembly.levels.placed.lowering.util
 
+/** Interval computation utilities
+  *
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
+
+/** Helper class for representing a single interval range [start, end) (i.e.,
+  * inclusive start, exclusive end)
+  *
+  * @param start
+  * @param end
+  */
+
 case class Interval(start: Int, end: Int) {
   require(end >= start, s"invalid interval [${start}, ${end})")
   // def isEmpty: Boolean = start == end
 }
+
 object Interval {
   def from(start: Int): Interval = Interval(start, Int.MaxValue)
 }
@@ -86,8 +100,12 @@ final class IntervalSet private (private val orderedSets: Seq[Interval]) {
     orderedSets.map { i => s"[${i.start}, ${i.end})" } mkString (" | ")
 
 }
+
+// companion object to create set of intervals
 object IntervalSet {
 
+  // merge a sequence of start-time-increasing sorted intervals
+  // that may be overlapping
   protected def merge(sorted: Seq[Interval]): Seq[Interval] = {
     require(sorted.nonEmpty)
     import scala.collection.mutable.Stack
@@ -119,7 +137,9 @@ object IntervalSet {
     doMerge(sorted.tail)
   }
 
+  // an empty interval set
   def empty: IntervalSet = new IntervalSet(Seq.empty)
+  // a singleton interval set
   def apply(start: Int, end: Int): IntervalSet = apply(Interval(start, end))
   def apply(interval: Interval): IntervalSet =
     if (interval.start == interval.end) {
