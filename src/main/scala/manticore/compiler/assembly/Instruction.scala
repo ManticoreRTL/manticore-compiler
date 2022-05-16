@@ -487,6 +487,44 @@ trait ManticoreAssemblyIR {
       s"SLICE ${rd}, ${rs}[${offset} +: ${length}]"
   }
 
+  case class PutSerial(
+      rs: Name,
+      pred: Name,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends PrivilegedInstruction {
+    override def toString: String =
+      s"PUT ${rs}, ${pred}";
+  }
+
+
+  sealed trait InterruptAction
+  case object FinishInterrupt extends InterruptAction
+  case object StopInterrupt extends InterruptAction
+  case object AssertionInterrupt extends InterruptAction
+  case class SerialInterrupt(fmt: String) extends InterruptAction
+
+  // other things such as VDI calls are also interrupts and should be defined
+  // here
+  case class Interrupt(
+    action: InterruptAction,
+    condition: Name,
+    annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends PrivilegedInstruction {
+    override def toString: String = {
+      val s = action match {
+        case AssertionInterrupt   => "ASSERT "
+        case FinishInterrupt      => "FINISH "
+        case StopInterrupt        => "STOP "
+        case SerialInterrupt(fmt) => s"FLUSH \"${fmt}\""
+      }
+      s"${s}, ${condition}"
+    }
+  }
+
+
+
+
+
   // /**
   //   * Concatenates rs1 and rs2 by replacing the upper bits of rs2 with lower bits
   //   * of rs1, equivalent to the following Verilog statement

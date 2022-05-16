@@ -42,7 +42,7 @@ object UnconstrainedInterpreter
   sealed trait InterpretationTrap
 
   case object InterpretationFailure extends InterpretationTrap
-  case object InterpretationStop extends InterpretationTrap
+  case object InterpretationFinish extends InterpretationTrap
 
   private final class ProcessState(val proc: DefProcess)(implicit
       val ctx: AssemblyContext
@@ -540,6 +540,23 @@ object UnconstrainedInterpreter
       case Send(rd, rs, dest_id, annons) =>
         ctx.logger.error("Can not handle SEND", instruction)
         state.exception_occurred = Some(InterpretationFailure)
+      case intr @ Interrupt(action, condition, _) =>
+        val cond_val = state.register_file(condition)
+        if (cond_val == 1) {
+          action match {
+            case AssertionInterrupt =>
+              ctx.logger.error(s"Assertion failed!", intr)
+              state.exception_occurred = Some(InterpretationFailure)
+            case FinishInterrupt =>
+              ctx.logger.info(s"Finished.", intr)
+              state.exception_occurred = Some(InterpretationFinish)
+            case SerialInterrupt(fmt) =>
+              // print the message
+            case StopInterrupt =>
+              ctx.logger.info(s"Stopped!", intr)
+              state.exception_occurred = Some(InterpretationFailure)
+          }
+        }
       case Expect(ref, got, error_id, annons) =>
         val ref_val = state.register_file(ref)
         val got_val = state.register_file(got)
@@ -571,7 +588,7 @@ object UnconstrainedInterpreter
                   s"Stop condition from ${trap_source}",
                   instruction
                 )
-              Some(InterpretationStop)
+              Some(InterpretationFinish)
             case _ =>
               ctx.logger.error(s"Missing TRAP type!", instruction)
               Some(InterpretationFailure)

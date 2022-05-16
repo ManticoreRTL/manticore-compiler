@@ -164,7 +164,12 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     "PADZERO",
     "MOV",
     "PARMUX",
-    "SLICE"
+    "SLICE",
+    "PUT",
+    "FLUSH",
+    "FINISH",
+    "STOP",
+    "ASSERT"
   )
   lexical.reserved ++= Seq("LD", "ST") //short hand for LLD and LST
   // defs
@@ -360,6 +365,34 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       Predicate(rs.chars, a)
     }
 
+  def finish_inst: Parser[Interrupt] =
+    (annotations ~ keyword("FINISH") ~ ident) ^^ { case (a ~ _ ~ rs) =>
+      Interrupt(FinishInterrupt, rs.chars, a)
+    }
+  def stop_inst: Parser[Interrupt] =
+    (annotations ~ keyword("STOP") ~ ident) ^^ { case (a ~ _ ~ rs) =>
+      Interrupt(StopInterrupt, rs.chars, a)
+    }
+  def assert_inst: Parser[Interrupt] =
+    (annotations ~ keyword("ASSERT") ~ ident) ^^ { case (a ~ _ ~ rs) =>
+      Interrupt(AssertionInterrupt, rs.chars, a)
+    }
+
+  def flush_inst: Parser[Interrupt] =
+    (annotations ~ keyword("FLUSH") ~ stringLit ~ "," ~ ident) ^^ {
+      case (a ~ _ ~ fmt ~ _ ~ cond) =>
+        Interrupt(SerialInterrupt(fmt.chars), cond.chars, a)
+    }
+
+  def interrupt_inst: Parser[Interrupt] =
+    finish_inst | stop_inst | assert_inst | flush_inst
+
+  def put_inst: Parser[PutSerial] =
+    (annotations ~ keyword("PUT") ~ ident ~ "," ~ ident) ^^ {
+      case (a ~ _ ~ rs ~ _ ~ pred) =>
+        PutSerial(rs.chars, pred.chars, a)
+    }
+
   def mux_inst: Parser[Mux] =
     (annotations ~ keyword(
       "MUX"
@@ -388,8 +421,11 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     }
 
   def slice_inst: Parser[Slice] =
-    (annotations ~ keyword("SLICE") ~ ident ~ "," ~ ident ~ "," ~ const_value ~ "," ~ const_value) ^^ {
-      case (a ~ _ ~ rd ~ _ ~ rs ~ _ ~ offset ~ _ ~ length) => Slice(rd.chars, rs.chars, offset.toInt, length.toInt)
+    (annotations ~ keyword(
+      "SLICE"
+    ) ~ ident ~ "," ~ ident ~ "," ~ const_value ~ "," ~ const_value) ^^ {
+      case (a ~ _ ~ rd ~ _ ~ rs ~ _ ~ offset ~ _ ~ length) =>
+        Slice(rd.chars, rs.chars, offset.toInt, length.toInt)
     }
 
   def nop_inst: Parser[Instruction] = (keyword("NOP")) ^^ { _ => Nop }
@@ -404,6 +440,7 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def instruction: Parser[Instruction] = positioned(
     arith_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
       | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst | slice_inst
+      | interrupt_inst | put_inst
   ) <~ ";"
   def body: Parser[Seq[Instruction]] = rep(instruction)
   def regs: Parser[Seq[Seq[DefReg]]] = rep(def_reg)
@@ -429,7 +466,9 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     phrase(positioned(program))(tokens) match {
       case Success(result, _) => result
       case failure: NoSuccess =>
-        ctx.logger.error(s"Failed parsing at ${failure.next.pos}: ${failure.msg}")
+        ctx.logger.error(
+          s"Failed parsing at ${failure.next.pos}: ${failure.msg}"
+        )
         // println(failure.msg)
         ctx.logger.fail("Parsing failed")
     }
@@ -452,7 +491,10 @@ object AssemblyParser extends HasTransformationID {
       context: AssemblyContext
   ): UnconstrainedIR.DefProgram = {
     context.logger.info("Parsing from file input")
-    UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""), context)
+    UnconstrainedAssemblyParser(
+      scala.io.Source.fromFile(source).mkString(""),
+      context
+    )
   }
 
 }
