@@ -32,13 +32,24 @@ import org.jgrapht.GraphMapping
 class Cone[V] private (
   val root: V,
   // The primary inputs are *outside* the cone and feed the cone.
-  val primaryInputs: Set[V],
+  //
+  // A cone computes an expression and the primary inputs are the variables in
+  // the expression. We want to support comparing two cones to determine if they
+  // compute the same function.
+  //
+  // Two cones of the same arity that compute the same function do so subject to
+  // the order of their primary inputs. The number we assign here is this order
+  // and can be used to map the primary inputs of one cone to those of the other.
+  val piArgIdxToName: Map[PlacedIR.CustomFunctionImpl.AtomArg, V],
+  val piNameToArgIdx: Map[V, PlacedIR.CustomFunctionImpl.AtomArg],
   val leaves: Set[V],
   // Contains the root, the leaves, and all intermediate vertices between.
   val vertices: Set[V]
 ) {
 
   def size: Int = vertices.size
+
+  def arity: Int = piArgIdxToName.size
 
   def contains(v: V): Boolean = {
     vertices.contains(v)
@@ -48,13 +59,9 @@ class Cone[V] private (
     vertices.exists(p)
   }
 
-  def isPrimaryInput(v: V): Boolean = {
-    primaryInputs.contains(v)
-  }
-
   override def toString(): String = {
     val nonRootVertices = vertices - root
-    s"(root = ${root}), (body = ${nonRootVertices.mkString(" --- ")}), (primary inputs = ${primaryInputs.mkString(" --- ")})"
+    s"{arity = ${arity}, root = ${root}, (body = ${nonRootVertices.mkString(" --- ")}), (primary inputs = ${piNameToArgIdx.keys.mkString(" --- ")})}"
   }
 }
 
@@ -68,8 +75,19 @@ object Cone {
     val piSuccs = primaryInputs.flatMap { pi =>
       Graphs.successorListOf(g, pi).asScala.toSet
     }
+
     val leaves = piSuccs.intersect(vertices)
-    new Cone(root, primaryInputs, leaves, vertices)
+
+    val piNameToArgIdx = primaryInputs
+      .zipWithIndex
+      .map { case (pi, idx) =>
+        pi -> PlacedIR.CustomFunctionImpl.AtomArg(idx)
+      }
+      .toMap
+
+    val piArgIdxToName = piNameToArgIdx.map(kv => kv.swap)
+
+    new Cone(root, piArgIdxToName, piNameToArgIdx, leaves, vertices)
   }
 }
 
@@ -77,11 +95,12 @@ object GraphDump {
   def apply[V](
     g: Graph[V, DefaultEdge],
     vColorMap: Map[V, Color] = Map.empty[V, Color],
-    vStringMap: Map[V, String] = Map.empty[V, String]
+    vNameMap: Map[V, String] = Map.empty[V, String],
+    vShapeMap: Map[V, String] = Map.empty[V, String]
   ): String = {
     val vertexIdProvider = new Function[V, String] {
       def apply(v: V): String = {
-        val vStr = vStringMap.getOrElse(v, v.toString)
+        val vStr = vNameMap.getOrElse(v, v.toString)
 
         // Note the use of quotes around the serialized name so it is a legal graphviz identifier (as
         // characters such as "." are not allowed in identifiers).
@@ -98,6 +117,11 @@ object GraphDump {
           val color = vColorMap(v)
           attrMap += "fillcolor" -> DefaultAttribute.createAttribute(color.toCssHexString())
           attrMap += "style" -> DefaultAttribute.createAttribute("filled")
+        }
+
+        if (vShapeMap.contains(v)) {
+          val shape = vShapeMap(v)
+          attrMap += "shape" -> DefaultAttribute.createAttribute(shape)
         }
 
         attrMap.asJava
@@ -223,7 +247,7 @@ object CustomLutInsertion
     maxCutSize: Int,
     nameToConstMap: Map[Name, Constant],
     nameToInstrMap: Map[Name, Instruction]
-  ): Set[Cone[Name]] = {
+  ): Iterable[Cone[Name]] = {
     // Returns a subgraph of the dependence graph containing the logic vertices *and* their inputs
     // (which are not logic vertices by definition). The inputs are needed to perform cut enumeration
     // as otherwise we would not know the in-degree of the first logic vertices in the graph.
@@ -278,7 +302,7 @@ object CustomLutInsertion
     val cuts = CutEnumerator(gWithoutConsts, primaryInputs, maxCutSize)
 
     // Now that we have all cuts, we find the cones that they span.
-    val allCones = logicVertices.flatMap { root =>
+    val allCones = logicVertices.toSeq.flatMap { root =>
       val rootCuts = cuts(root)
       // These do NOT include the "singleton" cones that consist of a single
       // vertex as the backtracking algorithm to generate a cone from a (root, cut)
@@ -320,171 +344,408 @@ object CustomLutInsertion
     cone: Cone[Name],
     nameToConstMap: Map[Name, Constant],
     nameToInstrMap: Map[Name, Instruction]
-  ): (
-    CustomFunction, // The custom function of this cone.
-    Map[AtomArg, Name] // The names of the custom function's inputs.
-  ) = {
-
-    // We already know all primary inputs of the cone. We therefore assign an
-    // AtomArg with an increasing index to each so we can refer to them when
-    // constructing the cone's expression tree.
-    val nameToAtomArgMap = cone.primaryInputs.zipWithIndex.map { case (pi, idx) =>
-      pi -> AtomArg(idx)
-    }.toMap
+  ): CustomFunction = {
 
     def makeExpr(
       name: Name
     ): CustomFunctionImpl.ExprTree = {
-      if (nameToAtomArgMap.contains(name)) {
-        // Base case: The name is a primary input.
-        val atomArg = nameToAtomArgMap(name)
-        IdExpr(atomArg)
+      cone.piNameToArgIdx.get(name) match {
+        case Some(atomArg) =>
+          // Base case: The name is a primary input.
+          IdExpr(atomArg)
 
-      } else if (nameToConstMap.contains(name)) {
-        // Base case: The name is a constant.
-        val const = nameToConstMap(name)
-        IdExpr(AtomConst(const))
+        case None =>
+          nameToConstMap.get(name) match {
+            case Some(const) =>
+              // Base case: The name is a constant.
+              IdExpr(AtomConst(const))
 
-      } else {
-        // General case: Create expression for each argument of the instruction and
-        // join them to form an expression tree.
-        val instr = nameToInstrMap(name)
-        instr match {
-          case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
-            val rs1Expr = makeExpr(rs1)
-            val rs2Expr = makeExpr(rs2)
+            case None =>
+              // General case: Create expression for each argument of the instruction
+              // and join them to form an expression tree.
+              val instr = nameToInstrMap(name)
+              instr match {
+                case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
+                  val rs1Expr = makeExpr(rs1)
+                  val rs2Expr = makeExpr(rs2)
 
-            operator match {
-              case AND => AndExpr(rs1Expr, rs2Expr)
-              case OR => OrExpr(rs1Expr, rs2Expr)
-              case XOR => XorExpr(rs1Expr, rs2Expr)
-              case _ =>
-                throw new IllegalArgumentException(s"Unexpected non-logic operator ${operator}.")
-            }
+                  operator match {
+                    case AND => AndExpr(rs1Expr, rs2Expr)
+                    case OR => OrExpr(rs1Expr, rs2Expr)
+                    case XOR => XorExpr(rs1Expr, rs2Expr)
+                    case _ =>
+                      throw new IllegalArgumentException(s"Unexpected non-logic operator ${operator}.")
+                  }
 
-          case _ =>
-            throw new IllegalArgumentException(s"Expected to see a logic instruction, but saw \"${instr}\" instead.")
-        }
+                case _ =>
+                  throw new IllegalArgumentException(s"Expected to see a logic instruction, but saw \"${instr}\" instead.")
+              }
+          }
       }
     }
 
     val rootName = cone.root
     val rootExpr = makeExpr(rootName)
     val customFunc = CustomFunctionImpl(rootExpr)
-    val atomArgToNameMap = nameToAtomArgMap.map(kv => kv.swap)
 
-    (customFunc, atomArgToNameMap)
+    customFunc
   }
 
-  // Returns a map of isomorphic cone tuples (c1, c2) and the mapping between the names of c1 and c2's vertices.
+  // Returns a map of cone tuples (c1, c2) and the mapping between the names of c1 and c2's vertices.
   // If (c1, c2) are not isomorphic, then no entry is entered in the resulting map.
   def identifyCommonFunctions(
-    g: Graph[Name, DefaultEdge],
-    cones: Set[Cone[Name]],
-    nameToConstMap: Map[Name, Constant],
-    nameToInstrMap: Map[Name, Instruction]
-  ): Map[
-    (Cone[Name], Cone[Name]),
-    Map[Name,Name]
-  ] = {
+    funcs: Map[
+      Int, // Cone ID
+      CustomFunctionImpl // Custom function of this cone
+    ],
+  ): (
+    UnionFind[Int], // Common cone clusters.
+    Map[
+      (
+        Int, // Cone 1 ID
+        Int  // Cone 2 ID
+      ),
+      Map[
+        AtomArg, // Cone 1 primary input idx
+        AtomArg  // Cone 2 primary input idx
+      ]
+    ]
+  ) = {
 
-    def getType(v: Name): Either[BinaryOperator, Constant] = {
-      nameToInstrMap.get(v) match {
-        case Some(instr) =>
-          Left(instr.asInstanceOf[BinaryArithmetic].operator)
-
-        case None =>
-          Right(nameToConstMap(v))
-      }
-    }
-
-    def countConeResources(
-      c: Cone[Name]
-    ): Map[
-      Either[BinaryOperator, Constant],
-      Int
+    def areFuncsEqual(
+      f1: CustomFunction,
+      f2: CustomFunction
+    ): Option[ // Returns None if the functions are not equal.
+      Map[AtomArg, AtomArg] // Maps arg indices in f1 to arg indices in f2.
     ] = {
-      val counts = c.vertices
-        .map(v => getType(v))
-        .groupBy(identity)
-        .map { case (k, v) =>
-          k -> v.size
-        }
+      if (f1.arity != f2.arity) {
+        // Early exit.
+        // Two functions that have a different arity will definitely not be equal.
+        None
 
-      counts
-    }
+      } else {
+        val equ1 = f1.equation
+        val equ2 = f2.equation
 
-    def areConesEqual(
-      c1: Cone[Name],
-      c2: Cone[Name]
-    ): Option[ // Returns None if the cones are not equal.
-      Map[Name, Name] // Maps names in c1 to names in c2.
-    ] = {
-      def isValidMapping(
-        c1: Cone[Name],
-        c2: Cone[Name],
-        mapping: GraphMapping[Name, DefaultEdge]
-      ): Boolean = {
-        // The vertices in c1/c2 must be of the same type for the graphs to truly be isomorphic.
-        c1.vertices.forall { v1 =>
-          val v2 = mapping.getVertexCorrespondence(v1, true)
-          (getType(v1), getType(v2)) match {
-            case (Left(op1), Left(op2)) => op1 == op2
-            case (Right(const1), Right(const2)) => const1 == const2
-            case _ => false
-          }
-        }
-      }
+        if (equ1 == equ2) {
+          // Fast path:
+          // Sometimes identical functions with different structures can quickly be determined
+          // to be equal without needing to enumerate input permutations of f2. This always
+          // happens when we are in the presence of "homegenous" functions like all-AND, all-OR,
+          // or all-XOR.
 
-      // We perform an actual isomorphism to detect structural equivalence.
-      val gc1 = new AsSubgraph(g, c1.vertices.asJava)
-      val gc2 = new AsSubgraph(g, c2.vertices.asJava)
-
-      // The cones may not be trees as there may be intermediate outputs in the cone that
-      // get propagated to multiple other intermediate vertices. We therefore cannot use
-      // a linear-time isomorphism algorithm like AHU, but must instead use the general-purpose
-      // VF2 algorithm. Cones are very small though, so we expect the runtime not to be an issue.
-      val isoMappings = new VF2GraphIsomorphismInspector(gc1, gc2).getMappings().asScala
-
-      // Multiple structural mappings may exist. We must try them until we find one where all
-      // vertices in gc1 and gc2 match.
-      val validMapping = isoMappings.collectFirst {
-        case mapping if isValidMapping(c1, c2, mapping) =>
-          // Transform to a scala collection
-          c1.vertices.map { v1 =>
-            v1 -> mapping.getVertexCorrespondence(v1, true)
+          // The order of inputs in the two functions matched out of the box. We can just map
+          // them to each other without modifying their order.
+          val inputIdxMap = (0 to f1.arity).map { argIdx =>
+            AtomArg(argIdx) -> AtomArg(argIdx)
           }.toMap
-      }
+          Some(inputIdxMap)
 
-      validMapping
+        } else {
+
+          // Slow path:
+          // To determine if f2 is equivalent to f1, we must compute its equation for all possible
+          // permutations of its inputs. If any permutation results a equation for f2 that matches
+          // that of f1, then the functions are equivalent.
+
+          val inputIdxMap = (0 to f1.arity)
+            .permutations
+            .map { inputPermutation =>
+              val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
+                AtomArg(inputIdx) -> AtomArg(idx)
+              }.toMap
+              subst
+            }
+            .find { subst =>
+              val substExpr = CustomFunctionImpl.substitute(f2.expr)(subst)
+              val substFunc = CustomFunctionImpl(substExpr)
+              val substEqu = substFunc.equation
+
+              equ1 == substEqu
+            }.map { subst =>
+              subst.toMap[AtomArg, AtomArg]
+            }
+
+          inputIdxMap
+        }
+      }
     }
 
-    val coneSetsToCompare = cones
-      .groupBy { cone =>
-        // It only makes sense to compare cones that are composed of the same resources.
-        countConeResources(cone)
-      }
+    val equalCones = MHashMap.empty[
+      (Int, Int), // (cone1Id, cone2Id)
+      Map[AtomArg, AtomArg] // (cone1AtomArg, cone2AtomArg)
+    ]
 
-    val isoConeMappings = coneSetsToCompare
-      .flatMap { case (resourceCnt, cones) =>
-        // We now have a cluster of cones to compare against each other in a pairwise fashion
-        // to identify duplicates.
-        val mappings = new MHashMap[(Cone[Name], Cone[Name]), Map[Name, Name]]
+    val uf = new UnionFind(funcs.keySet.asJava)
 
-        cones.foreach { c1 =>
-          cones.foreach { c2 =>
-            areConesEqual(c1, c2) match {
+    val funcsByArity = funcs.groupBy { case (coneId, func) =>
+      // No point in comparing functions that have different arity.
+      func.arity
+    }
+
+    funcsByArity.foreach { case (arity, coneFuncs) =>
+      coneFuncs.foreach { case (c1Id, f1) =>
+        coneFuncs.foreach { case (c2Id, f2) =>
+          // Optimization to avoid comparing tuples we would have already computed.
+          if (c1Id < c2Id) {
+            areFuncsEqual(f1, f2) match {
               case None =>
-              case Some(mapping) =>
-                mappings += (c1, c2) -> mapping
+                // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
+              case Some(arg1ToArg2Map) =>
+                // We found some mapping from f1's inputs to f2's input such that their equations are equal.
+                // We keep track of the mapping by converting the `AtomArg`s to actual `Name`s.
+                equalCones += (c1Id, c2Id) -> arg1ToArg2Map
+                uf.union(c1Id, c2Id)
             }
           }
         }
+      }
+    }
 
-        mappings
+    (uf, equalCones.toMap)
+  }
+
+  // Finds the set of cone IDs to choose to maximize the number of instructions we
+  // save through the use of custom functions.
+  def findOptimalConeCover[V](
+    cones: Map[
+      Int, // Cone ID
+      Cone[V] // Cone
+    ],
+    // Groups cones that compute the same function together. We don't care about
+    // what they are computing, just that they are computing the same function
+    // and therefore don't need an additional custom function to model if already
+    // chosen.
+    coneIdToCategory: Map[
+      Int, // Cone ID
+      Int  // Category
+    ],
+    maxNumCones: Int
+  )(
+    implicit ctx: AssemblyContext
+  ): Set[Int] = {
+    // We want to maximize the number of instructions we can remove from the program.
+    // The cones must be non-overlapping as otherwise a vertex *outside* the cone uses an intermediate
+    // result from within the cone and we therefore can't remove the vertices that make up the cone.
+    // In other words, the cones must be fanout-free.
+    //
+    // This is a proxy for the set cover problem with non-overlapping sets. We can solve this optimally
+    // using an ILP formulation.
+
+    // known values
+    // ------------
+    //
+    // - Set C = {C_1, C_2, ..., C_N}
+    //
+    //   The cones in the system. A cone is a collection of vertices.
+    //
+    // - Set CT = {CT_1, CT_2, ..., CT_Z}
+    //
+    //   The "types" (or categories) of cones in the system. Each CT_i is itself a set that
+    //   contains the cones that implement the same function.
+    //
+    // - max_custom_functions
+    //
+    //   The maximum number of custom functions supported in hardware.
+    //
+    // objective function
+    // ------------------
+    //
+    // Maximize the number of instructions that are saved through the use of custom functions.
+    //
+    //     max sum_{C_i \in C} x_i * (|C_i|-1)
+    //
+    // constraints
+    // -----------
+    //
+    //   (1) Create binary variable x_i for every cone C_i in the system.
+    //
+    //         x_i \in {0, 1} for C_i \in C
+    //
+    //   (2) Create auxiliary binary variable y_i for every custom function (cone "type/category") CT_i in the system.
+    //
+    //         y_i \in {0, 1} for CT_i \in CT
+    //
+    //   (3) Each vertex is covered by at most once.
+    //
+    //         sum_{C_i \in C : v \in C_i} x_i <= 1
+    //
+    //   (4) The number of custom functions does not surprass the maximum available.
+    //
+    //         sum_{CT_i \in CT} y_i <= max_custom_functions
+    //
+    //       where y_i is defined as "cone TYPE i is used".
+    //
+    //         y_i = OR_{C_i \in C : C_i \in CT_i} x_i
+    //
+    //       Note that OR is not a linear constraint, but it can be made linear through
+    //       the following transformation:
+    //
+    //         y_i >= x_i      \forall C_i \in C : C_i \in CT_i
+    //
+    //         y_i <= sum_{C_i \in C : C_i \in CT_i} x_i
+
+    Loader.loadNativeLibraries()
+    val solver = MPSolver.createSolver("SCIP")
+    if (solver == null) {
+      ctx.logger.fail("Could not create solver SCIP.")
+    }
+
+    //   (1) Create binary variable x_i for every cone C_i in the system.
+    //
+    //         x_i \in {0, 1} for C_i \in C
+    //
+    val coneVars = MHashMap.empty[Int, MPVariable]
+    cones.foreach { case (coneId, cone) =>
+      coneVars += coneId -> solver.makeIntVar(0, 1, s"x_${coneId}")
+    }
+
+    //   (2) Create auxiliary binary variable y_i for every custom function (cone "type/category") CT_i in the system.
+    //
+    //         y_i \in {0, 1} for CT_i \in CT
+    //
+    val conesPerCategory = coneIdToCategory
+      .groupMap { case (coneId, category) =>
+        category
+      } { case (coneId, category) =>
+        coneId
+      }
+    val categoryVars = MHashMap.empty[Int, MPVariable]
+    conesPerCategory.keys.foreach { category =>
+      categoryVars += category -> solver.makeIntVar(0, 1, s"y_${category}")
+    }
+
+    //   (3) Each vertex is covered by at most once.
+    //
+    //         sum_{C_i \in C : v \in C_i} x_i <= 1
+    //
+    //       We model this as
+    //
+    //         0 <= sum_{C_i \in C : v \in C_i} x_i <= 1
+    //
+    val allVertices = cones.flatMap { case (coneId, cone) =>
+      cone.vertices
+    }.toSet
+    allVertices.foreach { v =>
+      val constraint = solver.makeConstraint(0, 1, s"covered_v${v}")
+      cones.foreach { case (coneId, cone) =>
+        val coneVar = coneVars(coneId)
+        val coefficient = if (cone.contains(v)) 1 else 0
+        constraint.setCoefficient(coneVar, coefficient)
+      }
+    }
+
+    //   (4) The number of custom functions does not surprass the maximum available.
+    //
+    //         sum_{CT_i \in CT} y_i <= max_custom_functions
+    //
+    //       where y_i is defined as "cone TYPE i is used".
+    //
+    //         y_i = OR_{C_i \in C : C_i \in CT_i} x_i
+    //
+    //       Note that OR is not a linear constraint, but it can be made linear through
+    //       the following transformation:
+    //
+    //         y_i >= x_i      \forall C_i \in C : C_i \in CT_i
+    //
+    //         y_i <= sum_{C_i \in C : C_i \in CT_i} x_i
+    //
+
+    //   (4) The number of custom functions does not surprass the maximum available.
+    //
+    //         sum_{CT_i \in CT} y_i <= max_custom_functions
+    //
+    //       We model this as
+    //
+    //         0 <= sum_{CT_i \in CT} y_i <= max_custom_functions
+    //
+    val maxNumConesConstraint = solver.makeConstraint(0, maxNumCones, s"maxNumCones_constraint")
+    categoryVars.keys.foreach { category =>
+      val categoryVar = categoryVars(category)
+      maxNumConesConstraint.setCoefficient(categoryVar, 1)
+    }
+    //   (4)
+    //       ...
+    //       Note that OR is not a linear constraint, but it can be made linear through
+    //       the following transformation:
+    //
+    //         y_i >= x_i      \forall C_i \in C : C_i \in CT_i
+    //
+    //       We model this as
+    //
+    //        0 <= y_i - xi <= 1
+    //
+    conesPerCategory.foreach { case (category, coneIds) =>
+      coneIds.foreach { coneId =>
+        val constraint = solver.makeConstraint(0, 1, s"y_${category} >= x_${coneId}")
+        val coneVar = coneVars(coneId)
+        val categoryVar = categoryVars(category)
+        constraint.setCoefficient(categoryVar, 1)
+        constraint.setCoefficient(coneVar, -1)
+      }
+    }
+    //   (4)
+    //       ...
+    //       Note that OR is not a linear constraint, but it can be made linear through
+    //       the following transformation:
+    //
+    //         y_i <= sum_{C_i \in C : C_i \in CT_i} x_i
+    //
+    //       We model this as
+    //
+    //        0 <= (sum_{C_i \in C : C_i \in CT_i} x_i) - yi <= sum_{C_i \in C : C_i \in CT_i} 1
+    //
+    conesPerCategory.foreach { case (category, coneIds) =>
+      val constraint = solver.makeConstraint(0, coneIds.size, s"y_${category} <= ${coneIds.size}")
+      coneIds.foreach { coneId =>
+        val coneVar = coneVars(coneId)
+        constraint.setCoefficient(coneVar, 1)
+      }
+      val categoryVar = categoryVars(category)
+      constraint.setCoefficient(categoryVar, -1)
+    }
+
+    // objective function
+    // ------------------
+    //
+    // Maximize the number of instructions that are saved through the use of custom functions.
+    //
+    //     max sum_{C_i \in C} x_i * (|C_i|-1)
+    //
+    val objective = solver.objective()
+    cones.foreach { case (coneId, cone) =>
+      val coneSize = cone.size
+      val coefficient = coneSize - 1
+      val coneVar = coneVars(coneId)
+      objective.setCoefficient(coneVar, coefficient)
+    }
+    objective.setMaximization()
+
+    // solve optimization problem
+    val resultStatus = solver.solve()
+    if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
+      // The selected cones.
+      val conesUsed = coneVars.filter { case (coneId, coneVar) =>
+        coneVar.solutionValue.toInt > 0
+      }.keySet
+
+      // The "types" of custom functions used.
+      val customFuncsUsed = categoryVars.filter { case (category, categoryVar) =>
+        categoryVar.solutionValue.toInt > 0
+      }.keySet
+
+      ctx.logger.debug {
+        val conesUsedStr = conesUsed.mkString("\n")
+        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
       }
 
-    isoConeMappings
+      conesUsed.toSet
+
+    } else {
+      ctx.logger.fail(s"Could not optimally solve cone cover problem (resultStatus = ${resultStatus}).")
+      // We return the empty set to signal that no logic instructions could be fused together.
+      Set.empty
+    }
   }
 
   def onProcess(
@@ -523,78 +784,131 @@ object CustomLutInsertion
       s"Covering ${logicClusters.size} logic clusters in ${proc.id} with sizes:\n${clusterSizesStr}"
     }
 
+    // We assign an Int id to every cone as we will be storing pairs of cones in a hash table later
+    // and it is costly to has the Cone itself each time (hashing its id is much faster).
     val cones = getFanoutFreeCones(
       dependenceGraph,
       logicClusters.flatten,
       ctx.max_custom_instruction_inputs,
       nameToConstMap,
       nameToInstrMap
-    )
+    ).filter { cone =>
+      // We don't care about cones that consist of a single instruction as there
+      // is no benefit in doing so (we will not reduce the instruction count).
+      cone.size > 1
+    }
+    .zipWithIndex.map { case (cone, idx) =>
+      idx -> cone
+    }.toMap
 
-    // Group cones by the function they compute.
+    ctx.logger.debug {
+      val numConesOfArity = cones
+        .groupBy { case (id, cone) =>
+          cone.arity
+        }
+        .map { case (arity, group) =>
+          arity -> group.size
+        }
+        .toSeq
+        .sortBy { case (arity, numCones) =>
+          arity
+        }
+        .map { case (arity, numCones) =>
+          s"arity ${arity} -> ${numCones} cones"
+        }
+        .mkString("\n")
 
-    val coneToCustomfuncMap = identifyCommonFunctions(dependenceGraph, cones, nameToConstMap, nameToInstrMap)
+      s"There are ${cones.size} fanout-free cones.\n${numConesOfArity}"
+    }
 
-    // // Find the optimal cone cover globally. Note that multiple cones may use the same custom
-    // // function (if we enable the identification of common functions).
-    // val coneToCustomfuncMap = findOptimalConeCover(
-    //   dependenceGraph,
-    //   logicClusters,
-    //   nameToInstrMap,
-    //   maxCutSize = ctx.max_custom_instruction_inputs,
-    //   maxNumCones = ctx.max_custom_instructions,
-    //   identifyCommonFunctions = true
-    // )(ctx)
+    val coneFuncs = cones.map { case (coneId, cone) =>
+      coneId -> coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
+    }.toMap
 
-    // // Must convert to a Seq before mapping as otherwise cones of identical size will
-    // // "disappear" from the count due to the semantics of Set[Int] (Map.keySet returns
-    // // a Set and mapping a Set returns a Set as well).
-    // val numSavedInstructions = coneToCustomfuncMap.keySet.toSeq.map(cone => cone.size - 1).sum
-    // ctx.logger.info(s"We save ${numSavedInstructions} instructions in ${proc.id} using ${coneToCustomfuncMap.size} custom instructions.")
+    // Identify pairs of cones that are identical.
+    val (commonFuncClusters, commonFuncsArgMap) = identifyCommonFunctions(coneFuncs)
+    val coneIdToCategory = cones.keys.map { coneId =>
+      coneId -> commonFuncClusters.find(coneId)
+    }.toMap
 
-    // // To visually inspect the mapping for correctness, we dump a highlighted dot file
-    // // showing each cone with a different color.
-    // ctx.logger.dumpArtifact(
-    //   s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
-    // ) {
-    //   val colors = CyclicColorGenerator(bestCones.size)
+    ctx.logger.debug {
+      s"The cones are clustered into ${commonFuncClusters.numberOfSets()} function groups."
+    }
 
-    //   val colorMap = bestCones
-    //     .zip(colors)
-    //     .flatMap { case (cone, color) =>
-    //       cone.vertices.map { v =>
-    //         v -> color
-    //       }
-    //     }.toMap
+    // We know which cones compute the same function. We can now solve an optimization
+    // problem to choose the best cones to implement knowing which ones come "for free"
+    // due to duplicates existing.
+    val bestCones = findOptimalConeCover(
+      cones,
+      coneIdToCategory,
+      maxNumCones = ctx.max_custom_instructions
+    )(ctx)
 
-    //   val stringMap = bestCones
-    //     .flatMap { cone =>
-    //       cone.vertices.map { v =>
-    //         v -> nameToInstrMap(v).toString()
-    //       }
-    //     }.toMap
+    // To visually inspect the mapping for correctness, we dump a highlighted dot file
+    // showing each cone category with a different color.
+    ctx.logger.dumpArtifact(
+      s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
+    ) {
+      def vToStr(v: Name): String = {
+        nameToInstrMap.get(v) match {
+          case Some(instr) =>
+            instr.toString()
+          case None =>
+            nameToConstMap.get(v) match {
+              case Some(const) =>
+                const.toString()
+              case _ =>
+                // Neither a constant nor an instruction. Must be a primary input. We keep the name as-is.
+                v
+            }
+        }
+      }
 
-    //   GraphDump(dependenceGraph, colorMap, stringMap)
-    // }
+      val categoryToColor = coneIdToCategory
+        .values
+        .toSet
+        .zip(CyclicColorGenerator(ctx.max_custom_instructions))
+        .toMap
 
-    // // Compute a custom function for every cone found.
+      // Color all vertices of a cone with its color.
+      val colorMap = bestCones
+        .flatMap { coneId =>
+          val cone = cones(coneId)
+          val category = coneIdToCategory(coneId)
+          val color = categoryToColor(category)
 
-    // // val rootToDefFuncMap = bestCones.zipWithIndex.map { case (cone, idx) =>
-    // //   val (customFunc, argToNameMap) = coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
-    // //   // Custom functions are wrapped in a named DefFunc as per the IR spec.
-    // //   val defFunc = DefFunc(s"custom_func_${idx}", customFunc)
-    // //   // We map the root INSTRUCTION (not its regDef-ed name) to the DefFunc so we can later
-    // //   // map the instruction in the process body without extra processing.
-    // //   val rootInstr = nameToInstrMap(cone.root)
-    // //   rootInstr -> (defFunc, argToNameMap)
-    // // }.toMap
+          cone.vertices.map { v =>
+            v -> color
+          }
+        }.toMap
 
-    // ctx.logger.debug {
-    //   val defFuncsStr = rootToDefFuncMap.map { case (root, customFunc) =>
-    //     s"${root} -> ${customFunc}"
-    //   }.mkString("\n")
-    //   s"Mapped custom functions:\n${defFuncsStr}"
-    // }
+      // All vertices should use the string representation of the instruction
+      // that generates them, or the name itself (if a primary input).
+      val nameMap = bestCones
+        .flatMap { coneId =>
+          val cone = cones(coneId)
+
+          cone.vertices.map { v =>
+            v -> vToStr(v)
+          }
+        }.toMap
+
+      // Draw a bold border around the root vertex in a selected cone.
+      // We do this as neighboring cones of the same category will be hard to
+      // see otherwise.
+      val shapeMap = bestCones
+        .map { coneId =>
+          val cone = cones(coneId)
+          cone.root -> "invtrapezium"
+        }.toMap
+
+      GraphDump(
+        dependenceGraph,
+        vColorMap=colorMap,
+        vNameMap=nameMap,
+        vShapeMap=shapeMap
+      )
+    }
 
     // // Replace the cone roots with their custom functions.
     // // Note that this keeps all intermediate vertices of the cones in the process body.

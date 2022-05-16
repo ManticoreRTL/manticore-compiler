@@ -157,8 +157,11 @@ object PlacedIR extends ManticoreAssemblyIR {
       }
     }
 
-    // Substitute (some or all) [[AtomArg]]s in the expression tree with constants.
-    def substitute(tree: ExprTree)(subst: Map[AtomArg, AtomConst]): ExprTree = {
+    // Substitute (some or all) [[AtomArg]]s in the expression tree with another
+    // AtomArg or a AtomConst. Note that the key of the Map must be AtomArg as
+    // they are the only things that we can externally control in the expression
+    // (we can't change internal constants of the expression).
+    def substitute(tree: ExprTree)(subst: Map[AtomArg, Atom]): ExprTree = {
       tree match {
         case AndExpr(op1, op2) =>
           AndExpr(substitute(op1)(subst), substitute(op2)(subst))
@@ -166,8 +169,11 @@ object PlacedIR extends ManticoreAssemblyIR {
           OrExpr(substitute(op1)(subst), substitute(op2)(subst))
         case XorExpr(op1, op2) =>
           XorExpr(substitute(op1)(subst), substitute(op2)(subst))
-        case IdExpr(a: AtomArg)       => IdExpr(subst(a))
-        case e @ IdExpr(_: AtomConst) => e
+        case IdExpr(arg: AtomArg) =>
+          IdExpr(subst.getOrElse(arg, arg))
+        case expr @ IdExpr(const: AtomConst) =>
+          // We cannot substitute a constant, so we leave it as-is.
+          expr
       }
     }
 
