@@ -168,11 +168,11 @@ trait AssemblyNameChecker extends Flavored {
               }
             case i: BreakCase => // nothing to check
               acc
-            case PutSerial(rs, cond, _) =>
+            case PutSerial(rs, cond, _, _) =>
               acc ++ Seq(rs, cond).collect {
                 case n if !isDefinedReg(n) => n -> inst
               }
-            case Interrupt(action, cond, _) =>
+            case Interrupt(action, cond, _, _) =>
               if (isDefinedReg(cond)) {
                 acc
               } else {
@@ -275,7 +275,7 @@ trait AssemblyNameChecker extends Flavored {
             case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect |
                 _: GlobalStore | _: BreakCase | _: PutSerial) =>
               assigns
-            case Interrupt(action, _, _) =>
+            case Interrupt(action, _, _, _) =>
               action match {
                 case AssertionInterrupt => assigns
                 case FinishInterrupt => assigns

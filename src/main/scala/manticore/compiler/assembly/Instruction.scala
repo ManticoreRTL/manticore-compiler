@@ -176,7 +176,9 @@ trait ManticoreAssemblyIR {
   sealed trait ControlInstruction extends Instruction
   sealed trait PrivilegedInstruction extends Instruction
   sealed trait SynchronizationInstruction extends Instruction
-
+  sealed trait ExplicitlyOrderedInstruction extends Instruction {
+    val order: ExecutionOrder
+  }
   /** A parallel multiplexer
     *
     * @param rd
@@ -487,13 +489,20 @@ trait ManticoreAssemblyIR {
       s"SLICE ${rd}, ${rs}[${offset} +: ${length}]"
   }
 
+
+  case class ExecutionOrder(major: Int, minor: Int) {
+    override def toString: String = s"($major, $minor)"
+  }
+
+
   case class PutSerial(
       rs: Name,
       pred: Name,
+      order: ExecutionOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends PrivilegedInstruction {
+  ) extends PrivilegedInstruction with ExplicitlyOrderedInstruction {
     override def toString: String =
-      s"PUT ${rs}, ${pred}";
+      s" ${order} PUT ${rs}, ${pred}";
   }
 
 
@@ -510,16 +519,17 @@ trait ManticoreAssemblyIR {
   case class Interrupt(
     action: InterruptAction,
     condition: Name,
+    order: ExecutionOrder,
     annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends PrivilegedInstruction {
+  ) extends PrivilegedInstruction with ExplicitlyOrderedInstruction {
     override def toString: String = {
       val s = action match {
         case AssertionInterrupt   => "ASSERT "
         case FinishInterrupt      => "FINISH "
         case StopInterrupt        => "STOP "
-        case SerialInterrupt(fmt) => s"FLUSH \"${fmt}\""
+        case SerialInterrupt(fmt) => s"FLUSH \"${fmt}\", "
       }
-      s"${s}, ${condition}"
+      s" ${order} ${s} ${condition}"
     }
   }
 

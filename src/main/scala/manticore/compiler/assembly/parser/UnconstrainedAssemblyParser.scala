@@ -365,32 +365,37 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       Predicate(rs.chars, a)
     }
 
+  def exec_order: Parser[ExecutionOrder] = ("(" ~> const_value ~ "," ~ const_value <~ ")") ^^ {
+    case (v1 ~ _ ~ v2) => ExecutionOrder(v1.toInt, v2.toInt)
+  }
+
   def finish_inst: Parser[Interrupt] =
-    (annotations ~ keyword("FINISH") ~ ident) ^^ { case (a ~ _ ~ rs) =>
-      Interrupt(FinishInterrupt, rs.chars, a)
+    (annotations ~ exec_order ~ keyword("FINISH") ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
+      Interrupt(FinishInterrupt, rs.chars, order, a)
     }
   def stop_inst: Parser[Interrupt] =
-    (annotations ~ keyword("STOP") ~ ident) ^^ { case (a ~ _ ~ rs) =>
-      Interrupt(StopInterrupt, rs.chars, a)
+    (annotations ~ exec_order ~ keyword("STOP") ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
+      Interrupt(StopInterrupt, rs.chars, order, a)
     }
   def assert_inst: Parser[Interrupt] =
-    (annotations ~ keyword("ASSERT") ~ ident) ^^ { case (a ~ _ ~ rs) =>
-      Interrupt(AssertionInterrupt, rs.chars, a)
+    (annotations ~ exec_order ~ keyword("ASSERT") ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
+      Interrupt(AssertionInterrupt, rs.chars, order, a)
     }
 
   def flush_inst: Parser[Interrupt] =
-    (annotations ~ keyword("FLUSH") ~ stringLit ~ "," ~ ident) ^^ {
-      case (a ~ _ ~ fmt ~ _ ~ cond) =>
-        Interrupt(SerialInterrupt(fmt.chars), cond.chars, a)
+    (annotations ~ exec_order ~ keyword("FLUSH") ~ stringLit ~ "," ~ ident) ^^ {
+      case (a ~ order ~ _ ~ fmt ~ _ ~ cond) =>
+        Interrupt(SerialInterrupt(fmt.chars), cond.chars, order, a)
     }
+
 
   def interrupt_inst: Parser[Interrupt] =
     finish_inst | stop_inst | assert_inst | flush_inst
 
   def put_inst: Parser[PutSerial] =
-    (annotations ~ keyword("PUT") ~ ident ~ "," ~ ident) ^^ {
-      case (a ~ _ ~ rs ~ _ ~ pred) =>
-        PutSerial(rs.chars, pred.chars, a)
+    (annotations ~ exec_order ~ keyword("PUT") ~ ident ~ "," ~ ident) ^^ {
+      case (a ~ order ~ _ ~ rs ~ _ ~ pred) =>
+        PutSerial(rs.chars, pred.chars, order, a)
     }
 
   def mux_inst: Parser[Mux] =

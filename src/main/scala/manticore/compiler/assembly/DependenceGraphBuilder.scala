@@ -110,6 +110,14 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           (allUses.toSet -- defs.toSet).toSeq
         case i: BreakCase =>
           Seq.empty
+        case PutSerial(rs, pred, _, _) => Seq(rs, pred)
+        case Interrupt(action, cond, _, _) =>
+          action match {
+            case StopInterrupt | FinishInterrupt | AssertionInterrupt =>
+              Seq(cond)
+            case SerialInterrupt(_) => Seq(cond)
+          }
+
       }
     }
 
@@ -152,6 +160,8 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           results.map(_.rd)
         case Lookup(rd, _, _, _) => Seq(rd)
         case _: BreakCase        => Seq.empty
+        case _: PutSerial => Seq.empty
+        case _: Interrupt => Seq.empty
       }
     }
 
@@ -228,6 +238,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           // do nothing
         }
       }
+      println(s"${raw_dependence_graph.nodes.length} == ${process.body.length}")
       raw_dependence_graph
     }.ensuring { g =>
       g.nodes.length == process.body.length

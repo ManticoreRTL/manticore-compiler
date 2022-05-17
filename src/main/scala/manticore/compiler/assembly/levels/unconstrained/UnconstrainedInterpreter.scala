@@ -542,13 +542,13 @@ object UnconstrainedInterpreter
       case Send(rd, rs, dest_id, annons) =>
         ctx.logger.error("Can not handle SEND", instruction)
         state.exception_occurred = Some(InterpretationFailure)
-      case PutSerial(rs, cond, _) =>
+      case PutSerial(rs, cond, _, _) =>
         val cond_val = state.register_file(cond)
         if (cond_val == 1) {
           val rs_val = state.register_file(rs)
           state.serial_queue += rs_val
         }
-      case intr @ Interrupt(action, condition, _) =>
+      case intr @ Interrupt(action, condition, _, _) =>
         val cond_val = state.register_file(condition)
         if (cond_val == 1) {
           action match {
