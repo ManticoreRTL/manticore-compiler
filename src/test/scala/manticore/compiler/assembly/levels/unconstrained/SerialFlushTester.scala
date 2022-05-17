@@ -26,7 +26,7 @@ class SerialFlushTester extends UnitFixtureTest with UnitTestMatchers {
                 .const true 1 1
                 PUT v1, true;
                 PUT v2, true;
-                FLUSH "v1 is %032d and v2 is %14b", true;
+                FLUSH "#OUT# v1 is %032d and v2 is %14b", true;
         """
 
         implicit val ctx = fixture.ctx
@@ -34,7 +34,7 @@ class SerialFlushTester extends UnitFixtureTest with UnitTestMatchers {
         val interp = UnconstrainedInterpreter.instance(
             program = program,
             serial = Some(ln =>
-                ln shouldBe "v1 is 00000000000000000000000001231241 and v2 is 00000000001101"
+                ln shouldBe "#OUT# v1 is 0001231241 and v2 is 00000000001101"
             )
         )
         interp.runVirtualCycle()

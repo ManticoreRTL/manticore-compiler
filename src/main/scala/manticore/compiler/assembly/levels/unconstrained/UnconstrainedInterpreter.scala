@@ -577,8 +577,8 @@ object UnconstrainedInterpreter
                     } else {
                       state.serial_queue.dequeue()
                     }
-                    def truncated(vString: String, filler: String) = {
-                      val width = w.toInt
+                    def truncated(vString: String, width :Int, filler: String) = {
+
                       val truncated = if (vString.length > width) {
                         vString.takeRight(width)
                       } else {
@@ -586,16 +586,19 @@ object UnconstrainedInterpreter
                       }
                       truncated
                     }
+                    val bitWidth = w.toInt
                     val fmtValue = t match {
                       case "d" | "D" =>
-                        truncated(v.toString(), if (z.nonEmpty) "0" else " ")
+                        val decWidth = ((BigInt(1) << bitWidth) - 1).toString().length
+                        truncated(v.toString(), decWidth, if (z.nonEmpty) "0" else " ")
                       case "h" | "H" =>
                         val vString =
-                          if (t == "H") v.toString(4).toUpperCase()
+                          if (t == "H") v.toString(16).toUpperCase()
                           else v.toString(4)
-                        truncated(vString, "0")
+                        val hexWidth = ((BigInt(1) << bitWidth) - 1).toString(16).length
+                        truncated(vString, hexWidth, "0")
                       case "b" | "B" =>
-                        truncated(v.toString(2), "0")
+                        truncated(v.toString(2), bitWidth, "0")
                       case _ =>
                         ctx.logger.error(s"invalid format type %${t}!")
                         ""
