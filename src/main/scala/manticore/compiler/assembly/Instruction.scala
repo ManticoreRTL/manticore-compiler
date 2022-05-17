@@ -503,8 +503,10 @@ trait ManticoreAssemblyIR {
   case object AssertionInterrupt extends InterruptAction
   case class SerialInterrupt(fmt: String) extends InterruptAction
 
-  // other things such as VDI calls are also interrupts and should be defined
-  // here
+  // other things such as function calls are also interrupts and should be
+  // defined here
+
+
   case class Interrupt(
     action: InterruptAction,
     condition: Name,
@@ -522,30 +524,5 @@ trait ManticoreAssemblyIR {
   }
 
 
-
-
-
-  // /**
-  //   * Concatenates rs1 and rs2 by replacing the upper bits of rs2 with lower bits
-  //   * of rs1, equivalent to the following Verilog statement
-  //   * wire [RDL - 1 : 0] rd;
-  //   * wire [BITPOS - 1 : 0] rs1;
-  //   * wire [RDL - BITPOS - 1 : 0] rs2;
-  //   * assign rd = {rs2, rs1};
-  //   * @param rd
-  //   * @param rs1
-  //   * @param rs2
-  //   * @param bitpos
-  //   * @param annons
-  //   */
-  // case class Concat(
-  //     rd: Name,
-  //     rs1: Name,
-  //     rs2: Name,
-  //     bitpos: Int,
-  //     annons: Seq[AssemblyAnnotation] = Seq()
-  // ) extends Instruction {
-  //   override def toString: String =
-  //     s"CONCAT ${rd}, ${rs1}, ${rs2}[${bitpos}]"
-  // }
 }
+

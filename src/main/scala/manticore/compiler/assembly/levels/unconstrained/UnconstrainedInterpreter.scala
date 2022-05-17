@@ -48,6 +48,7 @@ object UnconstrainedInterpreter
       val ctx: AssemblyContext
   ) {
 
+    val serial_queue = scala.collection.mutable.Queue.empty[BigInt]
     // a mutable register file
     val register_file = scala.collection.mutable.Map[Name, BigInt]() ++
       proc.registers.map { r =>
@@ -190,10 +191,11 @@ object UnconstrainedInterpreter
   final class ProcessInterpreter private[UnconstrainedInterpreter] (
       val proc: DefProcess,
       val vcd_writer: Option[UnconstrainedValueChangeWriter],
-      val monitor: Option[UnconstrainedIRInterpreterMonitor]
+      val monitor: Option[UnconstrainedIRInterpreterMonitor],
+      val serial: Option[String => Unit]
   )(implicit
       val ctx: AssemblyContext
-  ) extends InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter]{
+  ) extends InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter] {
 
     private def handleMemoryAccess(base: Name, instruction: Instruction)(
         handler: (BlockRam, Option[Int]) => Unit
@@ -540,6 +542,12 @@ object UnconstrainedInterpreter
       case Send(rd, rs, dest_id, annons) =>
         ctx.logger.error("Can not handle SEND", instruction)
         state.exception_occurred = Some(InterpretationFailure)
+      case PutSerial(rs, cond, _) =>
+        val cond_val = state.register_file(cond)
+        if (cond_val == 1) {
+          val rs_val = state.register_file(rs)
+          state.serial_queue += rs_val
+        }
       case intr @ Interrupt(action, condition, _) =>
         val cond_val = state.register_file(condition)
         if (cond_val == 1) {
@@ -551,7 +559,58 @@ object UnconstrainedInterpreter
               ctx.logger.info(s"Finished.", intr)
               state.exception_occurred = Some(InterpretationFinish)
             case SerialInterrupt(fmt) =>
-              // print the message
+              // split the string by % but also keep the delimiter see:
+              // https://stackoverflow.com/questions/2206378/how-to-split-a-string-but-also-keep-the-delimiters
+              val parts = fmt.split("(?=%)")
+              val fmtSpec = raw"%(0?)([1-9][0-9]*)([dbhDBH])(.*)".r
+
+              val builder = new StringBuilder
+              for (p <- parts) {
+                p match {
+                  case fmtSpec(z, w, t, msg) =>
+                    val v = if (state.serial_queue.isEmpty) {
+                      ctx.logger.error(
+                        s"invalid Flush, missing serial value!",
+                        instruction
+                      )
+                      BigInt(0)
+                    } else {
+                      state.serial_queue.dequeue()
+                    }
+                    def truncated(vString: String, filler: String) = {
+                      val width = w.toInt
+                      val truncated = if (vString.length > width) {
+                        vString.takeRight(width)
+                      } else {
+                        (filler * (width - vString.length)) ++ vString
+                      }
+                      truncated
+                    }
+                    val fmtValue = t match {
+                      case "d" | "D" =>
+                        truncated(v.toString(), if (z.nonEmpty) "0" else " ")
+                      case "h" | "H" =>
+                        val vString =
+                          if (t == "H") v.toString(4).toUpperCase()
+                          else v.toString(4)
+                        truncated(vString, "0")
+                      case "b" | "B" =>
+                        truncated(v.toString(2), "0")
+                      case _ =>
+                        ctx.logger.error(s"invalid format type %${t}!")
+                        ""
+                    }
+                    builder ++= fmtValue
+                    builder ++= msg
+                  case _ =>
+                    builder ++= p
+                }
+              }
+              serial match {
+                case None =>
+                  ctx.logger.info(s"[SERIAL]\n ${builder.toString()}")
+                case Some(printer) => printer(builder.toString())
+              }
             case StopInterrupt =>
               ctx.logger.info(s"Stopped!", intr)
               state.exception_occurred = Some(InterpretationFailure)
@@ -730,7 +789,7 @@ object UnconstrainedInterpreter
                 }
             }
         }
-      case i @(_: Recv | _: BreakCase) =>
+      case i @ (_: Recv | _: BreakCase) =>
         ctx.logger.error("Illegal instruction", instruction)
         state.exception_occurred = Some(InterpretationFailure)
 
@@ -772,8 +831,9 @@ object UnconstrainedInterpreter
 
     def runVirtualCycle(): Option[InterpretationTrap] = {
       step() match {
-        case StepVCycleContinue => if (getException().isEmpty) runVirtualCycle() else getException()
-        case StepVCycleFinish   => // clear out the label bindings (not really
+        case StepVCycleContinue =>
+          if (getException().isEmpty) runVirtualCycle() else getException()
+        case StepVCycleFinish => // clear out the label bindings (not really
           // needed but may help catch some errors!)
           state.label_bindings.clear()
           getException()
@@ -822,8 +882,7 @@ object UnconstrainedInterpreter
 
   }
 
-  /**
-    * Create an instance of the interpreter to use outside the check
+  /** Create an instance of the interpreter to use outside the check
     *
     * @param program
     * @param vcdDump
@@ -833,20 +892,20 @@ object UnconstrainedInterpreter
     */
   def instance(
       program: DefProgram,
-      vcdDump: Option[UnconstrainedValueChangeWriter],
-      monitor: Option[UnconstrainedIRInterpreterMonitor]
+      vcdDump: Option[UnconstrainedValueChangeWriter] = None,
+      monitor: Option[UnconstrainedIRInterpreterMonitor] = None,
+      serial: Option[String => Unit] = None
   )(implicit ctx: AssemblyContext): ProcessInterpreter = {
     require(
       program.processes.length == 1,
       "Could only interpret a single process"
     )
-    new ProcessInterpreter(program.processes.head, vcdDump, monitor)(ctx)
+    new ProcessInterpreter(program.processes.head, vcdDump, monitor, serial)(
+      ctx
+    )
   }
 
-  /**
-    *
-    *
-    * @param source
+  /** @param source
     * @param context
     */
   override def check(

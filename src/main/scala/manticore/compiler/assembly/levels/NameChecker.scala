@@ -23,9 +23,9 @@ trait AssemblyNameChecker extends Flavored {
   object NameCheck {
 
     /** Collect names that have been defined in multiple DefRegs
-     * @param process
-     * @return
-     */
+      * @param process
+      * @return
+      */
     def collectDefRegsWithSameName(
         process: DefProcess
     ): Seq[(DefReg, DefReg)] = {
@@ -168,6 +168,16 @@ trait AssemblyNameChecker extends Flavored {
               }
             case i: BreakCase => // nothing to check
               acc
+            case PutSerial(rs, cond, _) =>
+              acc ++ Seq(rs, cond).collect {
+                case n if !isDefinedReg(n) => n -> inst
+              }
+            case Interrupt(action, cond, _) =>
+              if (isDefinedReg(cond)) {
+                acc
+              } else {
+                acc :+ (cond -> inst)
+              }
           }
 
         }
@@ -263,8 +273,15 @@ trait AssemblyNameChecker extends Flavored {
             case Slice(rd, rs, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
             case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect |
-                _: GlobalStore | _: BreakCase) =>
+                _: GlobalStore | _: BreakCase | _: PutSerial) =>
               assigns
+            case Interrupt(action, _, _) =>
+              action match {
+                case AssertionInterrupt => assigns
+                case FinishInterrupt => assigns
+                case SerialInterrupt(_) => assigns
+                case StopInterrupt => assigns
+              }
           }
         }
       checkSSA(
@@ -276,18 +293,20 @@ trait AssemblyNameChecker extends Flavored {
       }
     }
 
-    /**
-      * Check all DefRegs have unique names
+    /** Check all DefRegs have unique names
       *
       * @param process
       * @param notifier
       */
     def checkUniqueDefReg(
-      process: DefProcess
+        process: DefProcess
     )(notifier: (DefReg, DefReg) => Unit): Unit = {
       val multipleDefs = collectDefRegsWithSameName(process)
-      multipleDefs.foreach { case (secondDef, firstDef) => notifier(secondDef, firstDef) }
+      multipleDefs.foreach { case (secondDef, firstDef) =>
+        notifier(secondDef, firstDef)
+      }
     }
+
     /** Check all register names have a DefReg
       *
       * @param process
