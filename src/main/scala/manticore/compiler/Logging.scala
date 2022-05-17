@@ -182,15 +182,23 @@ object Logger {
     }
 
     def debug(msg: => String)(implicit phase_id: HasLoggerId): Unit =
-      if (db_en)
+      if (db_en) {
         message(s"[${CYAN}debug${RESET}] ${msg}")
+        // We want debug messages to be printed even if the program crashes
+        // shortly after the call to the logger, so we flush.
+        printer.flush()
+      }
 
     def debug[N <: HasSerialized with Positional](
         msg: => String,
         node: N
     )(implicit phase_id: HasLoggerId): Unit =
-      if (db_en)
+      if (db_en) {
         message(s"[${CYAN}debug${RESET}] ${msg}", node)
+        // We want debug messages to be printed even if the program crashes
+        // shortly after the call to the logger, so we flush.
+        printer.flush()
+      }
 
     def dumpArtifact(
         file_name: String
