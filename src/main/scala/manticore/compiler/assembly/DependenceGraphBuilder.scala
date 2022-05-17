@@ -238,7 +238,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           // do nothing
         }
       }
-      println(s"${raw_dependence_graph.nodes.length} == ${process.body.length}")
+
       raw_dependence_graph
     }.ensuring { g =>
       g.nodes.length == process.body.length
