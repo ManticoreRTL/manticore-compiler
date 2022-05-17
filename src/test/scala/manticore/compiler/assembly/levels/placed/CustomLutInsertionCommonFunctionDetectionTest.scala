@@ -64,5 +64,13 @@ class CustomLutInsertionCommonFunctionDetectionTest extends UnitFixtureTest with
       proc.functions.size shouldBe 1
     }
 
+    // Interpret the optimized program to ensure it does not fail.
+    // If it crashes, then the program is incorrect (as the previous lowered program
+    // is correct if we reached this point)
+
+    // Note that we must close sequential cycles before running the interpreter as we have not
+    // scheduled the code and sequential cycles are open (InputType registers never get updated
+    // between cycles).
+    (PlacedIRCloseSequentialCycles followedBy AtomicInterpreter)(loweredWithLuts, ctx)
   }
 }

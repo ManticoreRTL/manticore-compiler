@@ -92,49 +92,138 @@ object Cone {
 }
 
 object GraphDump {
+  // The jgrapht library does not support emitting graphviz `subgraph`s.
+  // The scala-graph library does support emitting graphviz `subgraphs`s, so we use it instead.
+  import scalax.collection.{Graph => SGraph}
+  import scalax.collection.mutable.{Graph => MSGraph}
+  import scalax.collection.GraphEdge.DiEdge
+  import scalax.collection.io.dot._
+  import scalax.collection.io.dot.implicits._
+
+  // Converts a jgrapht Graph to a scala-graph graph.
+  // Note that a mutable graph (MSGraph) is constructed, but we return a graph of the
+  // "interface" type (SGraph) as the DOT exporter only supports this parent interface.
+  private def jg2sc[V](
+    jg: Graph[V, DefaultEdge]
+  ): SGraph[V, DiEdge] = {
+    val sg = MSGraph.empty[V, DiEdge]
+
+    jg.vertexSet().asScala.foreach { v =>
+      sg += v
+    }
+
+    jg.edgeSet().asScala.foreach { e =>
+      val src = jg.getEdgeSource(e)
+      val dst = jg.getEdgeTarget(e)
+      sg += DiEdge(src, dst)
+    }
+
+    sg
+  }
+
   def apply[V](
     g: Graph[V, DefaultEdge],
-    vColorMap: Map[V, Color] = Map.empty[V, Color],
+    clusters: Map[
+      Int, // Cluster ID
+      Set[V] // Vertices in cluster
+    ],
+    clusterColorMap: Map[
+      Int, // Cluster ID
+      String // Color to be assigned to cluster
+    ],
     vNameMap: Map[V, String] = Map.empty[V, String],
-    vShapeMap: Map[V, String] = Map.empty[V, String]
   ): String = {
-    val vertexIdProvider = new Function[V, String] {
-      def apply(v: V): String = {
-        val vStr = vNameMap.getOrElse(v, v.toString)
+    val sg = jg2sc(g)
 
-        // Note the use of quotes around the serialized name so it is a legal graphviz identifier (as
-        // characters such as "." are not allowed in identifiers).
-        s"\"${vStr}\""
+    val dotRoot = DotRootGraph(
+      directed = true,
+      id = Some("program graph with custom functions")
+    )
+
+    val dotSubgraphs = clusters.map { case (clusterId, vertices) =>
+      val dotSub = DotSubGraph(
+        dotRoot,
+        Id(s"cluster_${clusterId}")
+      )
+      clusterId -> dotSub
+    }
+
+    def edgeTransform(
+      iedge: scalax.collection.Graph[V, DiEdge]#EdgeT
+    ): Option[(
+      DotGraph, // The graph/subgraph to which this edge belongs.
+      DotEdgeStmt // Statements to modify the edge's representation.
+    )] = {
+      iedge.edge match {
+        case DiEdge(source, target) =>
+          Some(
+            (
+              dotRoot, // All edges are part of the root graph.
+              DotEdgeStmt(
+                NodeId(source.toString()),
+                NodeId(target.toString())
+              )
+            )
+          )
+        case e @ _ =>
+          assert(
+            false,
+            s"Edge ${e} in the dependence graph could not be serialized!"
+          )
+          None
       }
     }
 
-    val vertexAttrProvider = new Function[V, java.util.Map[String, Attribute]] {
-      def apply(v: V): java.util.Map[String, Attribute] = {
-        val attrMap = LinkedHashMap.empty[String, Attribute]
-
-        // We color the vertices that will be fused into a custom instruction.
-        if (vColorMap.contains(v)) {
-          val color = vColorMap(v)
-          attrMap += "fillcolor" -> DefaultAttribute.createAttribute(color.toCssHexString())
-          attrMap += "style" -> DefaultAttribute.createAttribute("filled")
+    def nodeTransformer(
+      inode: scalax.collection.Graph[V, DiEdge]#NodeT
+    ): Option[(
+      DotGraph, // The graph/subgraph to which this node belongs.
+      DotNodeStmt // Statements to modify the node's representation.
+    )] = {
+      val clusterId = clusters
+        .find { case (clusterId, vertices) =>
+          vertices.contains(inode.toOuter)
+        }.map { case (clusterId, vertices) =>
+          clusterId
         }
 
-        if (vShapeMap.contains(v)) {
-          val shape = vShapeMap(v)
-          attrMap += "shape" -> DefaultAttribute.createAttribute(shape)
-        }
+      // If the vertex is part of a cluster, select the corresponding subgraph.
+      // Otherwise add the vertex to the root graph.
+      val dotGraph = clusterId.map { id =>
+        dotSubgraphs(id)
+      }.getOrElse(dotRoot)
 
-        attrMap.asJava
-      }
+      val v = inode.toOuter
+      val vLabel = vNameMap.getOrElse(v, v.toString())
+
+      // If the vertex is part of a cluster, select its corresponding color.
+      // Otherwise use white as the default color.
+      val vColor = clusterId.map { id =>
+        clusterColorMap(id)
+      }.getOrElse("white")
+
+      Some(
+        (
+          dotGraph,
+          DotNodeStmt(
+            NodeId(v.toString()),
+            Seq(
+              DotAttr("label", vLabel),
+              DotAttr("style", "filled"),
+              DotAttr("fillcolor", vColor)
+            )
+          )
+        )
+      )
     }
 
-    val dotExporter = new org.jgrapht.nio.dot.DOTExporter[V, DefaultEdge]()
-    dotExporter.setVertexIdProvider(vertexIdProvider)
-    dotExporter.setVertexAttributeProvider(vertexAttrProvider)
+    val dotExport: String = sg.toDot(
+      dotRoot = dotRoot,
+      edgeTransformer = edgeTransform,
+      cNodeTransformer = Some(nodeTransformer)
+    )
 
-    val writer = new StringWriter()
-    dotExporter.exportGraph(g, writer)
-    writer.toString()
+    dotExport
   }
 }
 
@@ -391,23 +480,22 @@ object CustomLutInsertion
     customFunc
   }
 
-  // Returns a map of cone tuples (c1, c2) and the mapping between the names of c1 and c2's vertices.
-  // If (c1, c2) are not isomorphic, then no entry is entered in the resulting map.
+  // Maps every cone to a representative cone that computes the same function.
+  // The representative cone can be found by querying the Union-Find graph returned.
+  // The input argument mapping between a cone and its representative is returned
+  // as the 2nd element of the result.
   def identifyCommonFunctions(
     funcs: Map[
       Int, // Cone ID
       CustomFunctionImpl // Custom function of this cone
     ],
   ): (
-    UnionFind[Int], // Common cone clusters.
+    UnionFind[Int], // Clusters of cones that compute the same function.
     Map[
-      (
-        Int, // Cone 1 ID
-        Int  // Cone 2 ID
-      ),
+      Int, // Cone ID
       Map[
-        AtomArg, // Cone 1 primary input idx
-        AtomArg  // Cone 2 primary input idx
+        AtomArg, // Cone primary input idx
+        AtomArg  // Representative primary input idx. The representative of a cluster is the result of uf.find(coneId)
       ]
     ]
   ) = {
@@ -486,27 +574,35 @@ object CustomLutInsertion
     funcsByArity.foreach { case (arity, coneFuncs) =>
       coneFuncs.foreach { case (c1Id, f1) =>
         coneFuncs.foreach { case (c2Id, f2) =>
-          // Optimization to avoid comparing tuples we would have already computed.
-          if (c1Id < c2Id) {
-            areFuncsEqual(f1, f2) match {
-              case None =>
-                // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
-              case Some(arg1ToArg2Map) =>
-                // We found some mapping from f1's inputs to f2's input such that their equations are equal.
-                // We keep track of the mapping by converting the `AtomArg`s to actual `Name`s.
-                equalCones += (c1Id, c2Id) -> arg1ToArg2Map
-                uf.union(c1Id, c2Id)
-            }
+          areFuncsEqual(f1, f2) match {
+            case None =>
+              // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
+            case Some(arg1ToArg2Map) =>
+              // We found some mapping from f1's inputs to f2's input such that their equations are equal.
+              // We keep track of the mapping by converting the `AtomArg`s to actual `Name`s.
+              equalCones += (c1Id, c2Id) -> arg1ToArg2Map
+              uf.union(c1Id, c2Id)
           }
         }
       }
     }
 
-    (uf, equalCones.toMap)
+    val coneToReprArgMap = equalCones
+      .filter { case ((c1Id, c2Id), argMap) =>
+        val reprId = uf.find(c1Id)
+        c2Id == reprId
+      }
+      .map { case ((cId, reprId), argMap) =>
+        cId -> argMap
+      }
+
+    (uf, coneToReprArgMap.toMap)
   }
 
   // Finds the set of cone IDs to choose to maximize the number of instructions we
   // save through the use of custom functions.
+  // Note that this function returns the cones used and not the function categories
+  // used as these are already known to the caller.
   def findOptimalConeCover[V](
     cones: Map[
       Int, // Cone ID
@@ -821,24 +917,28 @@ object CustomLutInsertion
       s"There are ${cones.size} fanout-free cones.\n${numConesOfArity}"
     }
 
+    // The functions computed by each cone.
     val coneFuncs = cones.map { case (coneId, cone) =>
       coneId -> coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
     }.toMap
 
-    // Identify pairs of cones that are identical.
-    val (commonFuncClusters, commonFuncsArgMap) = identifyCommonFunctions(coneFuncs)
+    // Cluster cones that compute the same function together. Cones that compute
+    // the same function do so under a permutation of their inputs. This permutation
+    // is computed between every cone and its representative cone (not between
+    // all cones).
+    val (ufCones, coneToReprArgMap) = identifyCommonFunctions(coneFuncs)
     val coneIdToCategory = cones.keys.map { coneId =>
-      coneId -> commonFuncClusters.find(coneId)
+      coneId -> ufCones.find(coneId)
     }.toMap
 
     ctx.logger.debug {
-      s"The cones are clustered into ${commonFuncClusters.numberOfSets()} function groups."
+      s"The cones are clustered into ${ufCones.numberOfSets()} function groups."
     }
 
     // We know which cones compute the same function. We can now solve an optimization
     // problem to choose the best cones to implement knowing which ones come "for free"
     // due to duplicates existing.
-    val bestCones = findOptimalConeCover(
+    val bestConeIds = findOptimalConeCover(
       cones,
       coneIdToCategory,
       maxNumCones = ctx.max_custom_instructions
@@ -849,109 +949,102 @@ object CustomLutInsertion
     ctx.logger.dumpArtifact(
       s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
     ) {
-      def vToStr(v: Name): String = {
-        nameToInstrMap.get(v) match {
-          case Some(instr) =>
-            instr.toString()
-          case None =>
-            nameToConstMap.get(v) match {
-              case Some(const) =>
-                const.toString()
-              case _ =>
-                // Neither a constant nor an instruction. Must be a primary input. We keep the name as-is.
-                v
-            }
-        }
-      }
-
+      // Each category has a defined color.
       val categoryToColor = coneIdToCategory
         .values
         .toSet
         .zip(CyclicColorGenerator(ctx.max_custom_instructions))
         .toMap
 
-      // Color all vertices of a cone with its color.
-      val colorMap = bestCones
-        .flatMap { coneId =>
-          val cone = cones(coneId)
-          val category = coneIdToCategory(coneId)
-          val color = categoryToColor(category)
+      val clusters = bestConeIds
+        .map { coneId =>
+          // We use the ID of the cone as the ID of the cluster.
+          coneId -> cones(coneId).vertices
+        }
+        .toMap
 
-          cone.vertices.map { v =>
-            v -> color
-          }
-        }.toMap
+      // Color all vertices of a cone with its color.
+      val clusterColorMap = cones.map { case (clusterId, vertices) =>
+        val category = coneIdToCategory(clusterId)
+        val color = categoryToColor(category)
+        clusterId -> color.toCssHexString()
+      }
 
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).
-      val nameMap = bestCones
-        .flatMap { coneId =>
-          val cone = cones(coneId)
-
-          cone.vertices.map { v =>
-            v -> vToStr(v)
-          }
-        }.toMap
-
-      // Draw a bold border around the root vertex in a selected cone.
-      // We do this as neighboring cones of the same category will be hard to
-      // see otherwise.
-      val shapeMap = bestCones
-        .map { coneId =>
-          val cone = cones(coneId)
-          cone.root -> "invtrapezium"
-        }.toMap
+      val nameMap = nameToInstrMap.map { case (regDef, instr) =>
+        regDef -> instr.toString
+      }
 
       GraphDump(
         dependenceGraph,
-        vColorMap=colorMap,
-        vNameMap=nameMap,
-        vShapeMap=shapeMap
+        clusters=clusters,
+        clusterColorMap=clusterColorMap,
+        vNameMap=nameMap
       )
     }
 
-    // // Replace the cone roots with their custom functions.
-    // // Note that this keeps all intermediate vertices of the cones in the process body.
-    // // A subsequent DeadCodeElimination pass will be needed to eliminate these now-unused instructions.
-    // val newBody = proc.body.map { instr =>
-    //   rootToDefFuncMap.get(instr) match {
-    //     case Some((defFunc, argToNameMap)) =>
-    //       // Replace the instruction with a custom instruction.
+    // The custom functions to emit. We only emit the custom functions used by the best cones.
+    val categoryToFunc = bestConeIds.map { coneId =>
+      val category = coneIdToCategory(coneId)
+      val func = coneFuncs(category)
+      category -> DefFunc(s"func_${category}", func)
+    }.toMap
 
-    //       // We have the guarantee there is only 1 target register by construction.
-    //       val rd = DependenceAnalysis.regDef(instr).head
+    val bestConesToFunc = bestConeIds.map { coneId =>
+      val category = coneIdToCategory(coneId)
+      val func = categoryToFunc(category)
+      val coneArgMap = coneToReprArgMap(coneId)
+      coneId -> (func, coneArgMap)
+    }.toMap
 
-    //       // The LUT hardware has "arity" inputs, but the custom function may have less
-    //       // than this count. Nevertheless, we still need a named for every argument of
-    //       // the custom function. We just re-use the first LUT input in all unused inputs.
-    //       val defaultInput = argToNameMap(AtomArg(0))
+    // Replace the cone roots with their custom functions.
+    // Note that this keeps all intermediate vertices of the cones in the process body.
+    // A subsequent DeadCodeElimination pass will be needed to eliminate these now-unused instructions.
+    val newBody = proc.body.map { instr =>
+      DependenceAnalysis.regDef(instr) match {
+        case Seq(rd) =>
+          bestConeIds.find { coneId =>
+            val cone = cones(coneId)
+            cone.root == rd
+          } match {
+            case None =>
+              // Leave the instruction unchanged as the output of the instruction
+              // does not match the root vertex of a selected cone.
+              instr
 
-    //       val rsx = Seq.tabulate(ctx.max_custom_instruction_inputs) { argIdx =>
-    //         // Unused inputs use the name of constant 0 here.
-    //         argToNameMap.get(AtomArg(argIdx)) match {
-    //           case Some(name) => name
-    //           case None => defaultInput
-    //         }
-    //       }
+            case Some(coneId) =>
+              // Replace instruction with a custom instruction.
+              val (func, coneToFuncArgMap) = bestConesToFunc(coneId)
+              val cone = cones(coneId)
+              val rsx = cone.piArgIdxToName
+                .map { case (origArgIdx, argName) =>
+                  val funcArgIdx = coneToFuncArgMap(origArgIdx)
+                  funcArgIdx -> argName
+                }
+                .toSeq
+                .sortBy { case (funcArgIdx, argName) =>
+                  funcArgIdx.v
+                }
+                .map { case (funcArgIdx, argName) =>
+                  argName
+                }
 
-    //       CustomInstruction(defFunc.name, rd, rsx)
+              CustomInstruction(func.name, rd, rsx)
+          }
 
-    //     case None =>
-    //       // Leave the instruction unchanged.
-    //       instr
-    //     }
-    // }
+        case _ =>
+          // Leave the instruction unchanged as the instruction is not the root of a selected cone.
+          instr
+      }
+    }
 
-    // val newProc = proc.copy(
-    //   body = newBody,
-    //   functions = rootToDefFuncMap.values.map {
-    //     case (defFunc, argToNameMap) => defFunc
-    //   }.toSeq
-    // )
+    val newProc = proc.copy(
+      body = newBody,
+      functions = categoryToFunc.values.toSeq
+    )
 
-    // newProc
-
-    proc
+    newProc
   }
 
   override def transform(
