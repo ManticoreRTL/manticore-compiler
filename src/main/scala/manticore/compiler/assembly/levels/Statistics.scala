@@ -259,6 +259,17 @@ object StatisticCollector {
     */
   class StatisticCollectorImpl extends StatisticCollector {
 
+    def prettyPrintRuntime(runtimeMs: Double): String = {
+      val numMsInSec = 1e3
+      val numMsInMin = 60 * numMsInSec
+      val (runtime, units) = runtimeMs match {
+        case t if t > numMsInMin => (t / numMsInMin, "m")
+        case t if t > numMsInSec => (t / numMsInSec, "s")
+        case t => (t, "ms")
+      }
+      f"${runtime}%.3f ${units}"
+    }
+
     case class UserDict(
         runtime: Seq[(String, Double)] = Nil,
         pairs: Seq[(String, Any)] = Nil
@@ -271,7 +282,7 @@ object StatisticCollector {
         if (runtime.nonEmpty) {
           str ++= s"${tabs}\truntime:\n"
           runtime.foreach { case (k, v) =>
-            str ++= f"${tabs}\t\t- ${k}: ${v}%.3f\n"
+            str ++= s"${tabs}\t\t- ${k}: ${prettyPrintRuntime(v)}\n"
           }
         }
         if (pairs.nonEmpty) {
@@ -285,7 +296,7 @@ object StatisticCollector {
     }
     case class TransformationStatBuilder(
         id: String,
-        runtime: Double,
+        runtimeMs: Double,
         user: UserDict = UserDict(),
         nProcesses: Option[Int] = None,
         vcycle: Option[Int] = None,
@@ -301,7 +312,7 @@ object StatisticCollector {
     private val transStatBuilder =
       scala.collection.mutable.ArrayBuffer.empty[TransformationStatBuilder]
     private var currentTrans =
-      TransformationStatBuilder(id = "<INV>", runtime = 0.0)
+      TransformationStatBuilder(id = "<INV>", runtimeMs = 0.0)
     private var open = false
     override def recordRunTime(
         label: String,
@@ -338,12 +349,12 @@ object StatisticCollector {
         func: => R
     )(implicit id: TransformationID): (R, Double) = {
       require(!open, "Can not have nested scopes yet!")
-      currentTrans = TransformationStatBuilder(id = id.toString(), runtime = 0)
+      currentTrans = TransformationStatBuilder(id = id.toString(), runtimeMs = 0)
       open = true
-      val (res, runtime) = timed(func)
-      transStatBuilder += currentTrans.copy(runtime = runtime)
+      val (res, runtimeMs) = timed(func)
+      transStatBuilder += currentTrans.copy(runtimeMs = runtimeMs)
       open = false
-      (res, runtime)
+      (res, runtimeMs)
     }
 
     override def asYaml: String = {
@@ -357,7 +368,7 @@ object StatisticCollector {
           s"- ${stat.id}:"
         }
         tabs(2) {
-          f"runtime: ${stat.runtime}%.3f"
+          s"runtime: ${prettyPrintRuntime(stat.runtimeMs)}"
         }
         if (stat.user.nonEmpty) {
           str ++= stat.user.toYaml(2)
