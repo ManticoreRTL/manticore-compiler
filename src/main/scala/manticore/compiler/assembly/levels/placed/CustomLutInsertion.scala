@@ -121,16 +121,18 @@ object GraphDump {
     sg
   }
 
+  private def quote(s: String): String = s"\"${s}\""
+
   def apply[V](
     g: Graph[V, DefaultEdge],
     clusters: Map[
       Int, // Cluster ID
       Set[V] // Vertices in cluster
-    ],
+    ] = Map.empty[Int, Set[V]],
     clusterColorMap: Map[
       Int, // Cluster ID
       String // Color to be assigned to cluster
-    ],
+    ] = Map.empty[Int, String],
     vNameMap: Map[V, String] = Map.empty[V, String],
   ): String = {
     val sg = jg2sc(g)
@@ -208,9 +210,9 @@ object GraphDump {
           DotNodeStmt(
             NodeId(v.toString()),
             Seq(
-              DotAttr("label", vLabel),
-              DotAttr("style", "filled"),
-              DotAttr("fillcolor", vColor)
+              DotAttr("label", quote(vLabel)),
+              DotAttr("style", quote("filled")),
+              DotAttr("fillcolor", quote(vColor))
             )
           )
         )
@@ -336,6 +338,8 @@ object CustomLutInsertion
     maxCutSize: Int,
     nameToConstMap: Map[Name, Constant],
     nameToInstrMap: Map[Name, Instruction]
+  )(
+    implicit ctx: AssemblyContext
   ): Iterable[Cone[Name]] = {
     // Returns a subgraph of the dependence graph containing the logic vertices *and* their inputs
     // (which are not logic vertices by definition). The inputs are needed to perform cut enumeration
@@ -345,11 +349,13 @@ object CustomLutInsertion
       Set[Name] // inputs
     ) = {
       // The inputs are vertices *outside* the given set of vertices that are connected
-      // to vertices *inside* the cluster.
+      // to vertices *inside* the cluster. Some of these "inputs" are constants, but
+      // constants are known at compile time and do not affect the runtime behavior of
+      // a function. We therefore do not count them as inputs and filter them out.
       val inputs = logicVertices.flatMap { vLogic =>
         Graphs.predecessorListOf(dependenceGraph, vLogic).asScala
       }.filter { vAnywhere =>
-        !logicVertices.contains(vAnywhere)
+        !logicVertices.contains(vAnywhere) && !nameToConstMap.contains(vAnywhere)
       }
 
       val subgraphVertices = inputs ++ logicVertices
@@ -383,12 +389,25 @@ object CustomLutInsertion
     // Form a graph containing the vertices of all clusters AND their inputs.
     val (gLswi, primaryInputs) = logicSubgraphWithInputs()
 
-    // Enumerate the cuts of every vertex in the graph. We mask out vertices
-    // that correspond to constants as the cut enumeration algorithm should not
-    // consider constants as potential "primary inputs" of the cuts found.
-    val nonConstVertices = gLswi.vertexSet().asScala.filter(v => !nameToConstMap.contains(v))
-    val gWithoutConsts = new AsSubgraph(gLswi, nonConstVertices.asJava)
-    val cuts = CutEnumerator(gWithoutConsts, primaryInputs, maxCutSize)
+    ctx.logger.dumpArtifact(
+      s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_logicSubgraphWithInputs.dot"
+    ) {
+      // All vertices should use the string representation of the instruction
+      // that generates them, or the name itself (if a primary input).
+      val nameMap = nameToInstrMap.map { case (regDef, instr) =>
+        regDef -> instr.toString
+      }
+
+      GraphDump(
+        gLswi,
+        vNameMap=nameMap
+      )
+    }
+
+    // Enumerate the cuts of every vertex in the graph.
+    val cuts = ctx.stats.recordRunTime("cut_enumeration") {
+     CutEnumerator(gLswi, primaryInputs, maxCutSize)
+    }
 
     // Now that we have all cuts, we find the cones that they span.
     val allCones = logicVertices.toSeq.flatMap { root =>
@@ -524,7 +543,7 @@ object CustomLutInsertion
 
           // The order of inputs in the two functions matched out of the box. We can just map
           // them to each other without modifying their order.
-          val inputIdxMap = (0 to f1.arity).map { argIdx =>
+          val inputIdxMap = (0 until f1.arity).map { argIdx =>
             AtomArg(argIdx) -> AtomArg(argIdx)
           }.toMap
           Some(inputIdxMap)
@@ -536,7 +555,7 @@ object CustomLutInsertion
           // permutations of its inputs. If any permutation results a equation for f2 that matches
           // that of f1, then the functions are equivalent.
 
-          val inputIdxMap = (0 to f1.arity)
+          val inputIdxMap = (0 until f1.arity)
             .permutations
             .map { inputPermutation =>
               val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
@@ -566,22 +585,28 @@ object CustomLutInsertion
 
     val uf = new UnionFind(funcs.keySet.asJava)
 
-    val funcsByArity = funcs.groupBy { case (coneId, func) =>
-      // No point in comparing functions that have different arity.
-      func.arity
+    val groupedFuncs = funcs.groupBy { case (coneId, func) =>
+      // No point in comparing functions that have different arity or resources.
+      (func.arity, func.resources)
     }
 
-    funcsByArity.foreach { case (arity, coneFuncs) =>
+    groupedFuncs.foreach { case (k, coneFuncs) =>
       coneFuncs.foreach { case (c1Id, f1) =>
         coneFuncs.foreach { case (c2Id, f2) =>
-          areFuncsEqual(f1, f2) match {
-            case None =>
-              // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
-            case Some(arg1ToArg2Map) =>
-              // We found some mapping from f1's inputs to f2's input such that their equations are equal.
-              // We keep track of the mapping by converting the `AtomArg`s to actual `Name`s.
-              equalCones += (c1Id, c2Id) -> arg1ToArg2Map
-              uf.union(c1Id, c2Id)
+          // Optimization to avoid comparing (c1, c2) if (c2, c1) was already compared.
+          // It's important to do <= instead of < as we need to have a (cId, cId) entry
+          // in the map in case cId ends up being its own root.
+          if (c1Id <= c2Id) {
+            areFuncsEqual(f1, f2) match {
+              case None =>
+                // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
+              case Some(arg1ToArg2Map) =>
+                // We found some mapping from f1's inputs to f2's input such that their equations are equal.
+                // We keep track of the mapping by converting the `AtomArg`s to actual `Name`s.
+                equalCones += (c1Id, c2Id) -> arg1ToArg2Map
+                equalCones += (c2Id, c1Id) -> arg1ToArg2Map.map(kv => kv.swap)
+                uf.union(c1Id, c2Id)
+            }
           }
         }
       }
@@ -830,8 +855,7 @@ object CustomLutInsertion
         categoryVar.solutionValue.toInt > 0
       }.keySet
 
-      ctx.logger.debug {
-        val conesUsedStr = conesUsed.mkString("\n")
+      ctx.logger.info {
         s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
       }
 
@@ -922,17 +946,65 @@ object CustomLutInsertion
       coneId -> coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
     }.toMap
 
-    // Cluster cones that compute the same function together. Cones that compute
-    // the same function do so under a permutation of their inputs. This permutation
-    // is computed between every cone and its representative cone (not between
-    // all cones).
-    val (ufCones, coneToReprArgMap) = identifyCommonFunctions(coneFuncs)
-    val coneIdToCategory = cones.keys.map { coneId =>
-      coneId -> ufCones.find(coneId)
-    }.toMap
+    ctx.logger.debug {
+      coneFuncs
+        .toSeq
+        .sortBy { case (coneId, func) =>
+          (func.arity, coneId)
+        }
+        .map { case (coneId, func) =>
+          val cone = cones(coneId)
+          s"coneId ${coneId} | ${func} | ${cone}"
+        }.mkString("\n")
+    }
+
+    val (coneIdToCategory, coneToReprArgMap) = if (ctx.optimize_common_custom_functions) {
+      // Identify which functions are identical and select cones with this knowledge.
+
+      // Cluster cones that compute the same function together. Cones that compute
+      // the same function do so under a permutation of their inputs. This permutation
+      // is computed between every cone and its representative cone (not between
+      // all cones).
+      val (ufCones, coneToReprArgMap) = identifyCommonFunctions(coneFuncs)
+      val coneIdToCategory = cones.keys.map { coneId =>
+        coneId -> ufCones.find(coneId)
+      }.toMap
+
+      ctx.logger.debug {
+        s"The cones are clustered into ${ufCones.numberOfSets()} function groups."
+      }
+
+      (coneIdToCategory, coneToReprArgMap)
+
+    } else {
+      // Consider all cones to be in distinct categories of their own.
+
+      // If all cones are distinct, then their arguments are unique and we don't
+      // need to compute whether they are a permutation of another cone's inputs.
+      val coneToReprArgMap = cones.keys.map { coneId =>
+        val cone = cones(coneId)
+        val argMap = Seq.tabulate(cone.arity) { idx =>
+          AtomArg(idx) -> AtomArg(idx)
+        }.toMap
+        coneId -> argMap
+      }.toMap
+
+      val coneIdToCategory = cones.keys.map { coneId =>
+        coneId -> coneId
+      }.toMap
+
+      (coneIdToCategory, coneToReprArgMap)
+    }
+
+    val categories = coneIdToCategory.values.toSet
 
     ctx.logger.debug {
-      s"The cones are clustered into ${ufCones.numberOfSets()} function groups."
+      coneIdToCategory
+        .toSeq
+        .sorted
+        .map { case (coneId, category) =>
+          s"cone ${coneId} -> category ${category}"
+        }.mkString("\n")
     }
 
     // We know which cones compute the same function. We can now solve an optimization
@@ -944,16 +1016,26 @@ object CustomLutInsertion
       maxNumCones = ctx.max_custom_instructions
     )(ctx)
 
+    ctx.logger.debug {
+      val conesStr = bestConeIds
+        .toSeq
+        .sorted
+        .map { coneId =>
+          val func = coneFuncs(coneId)
+          s"cone ${coneId} -> ${func}"
+        }.mkString("\n")
+
+      s"Selected cones:\n${conesStr}"
+    }
+
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
     // showing each cone category with a different color.
     ctx.logger.dumpArtifact(
       s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
     ) {
       // Each category has a defined color.
-      val categoryToColor = coneIdToCategory
-        .values
-        .toSet
-        .zip(CyclicColorGenerator(ctx.max_custom_instructions))
+      val categoryToColor = categories
+        .zip(CyclicColorGenerator(categories.size))
         .toMap
 
       val clusters = bestConeIds

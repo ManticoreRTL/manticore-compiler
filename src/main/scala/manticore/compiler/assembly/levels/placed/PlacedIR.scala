@@ -9,6 +9,7 @@ import manticore.compiler.assembly.annotations.{Memblock => MemblockAnnotation}
 import manticore.compiler.assembly.levels.AssemblyPrinter
 import java.math.BigInteger
 import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
+import manticore.compiler.assembly.BinaryOperator
 
 /** IR level with placed processes and allocated registers.
   *
@@ -87,6 +88,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
   final class CustomFunctionImpl private (
       val arity: Int,
+      val resources: Map[Either[Constant, BinaryOperator.BinaryOperator], Int],
       val expr: CustomFunctionImpl.ExprTree
   ) extends HasSerialized {
 
@@ -99,7 +101,13 @@ object PlacedIR extends ManticoreAssemblyIR {
 
     override def toString: String = {
       val args = Seq.tabulate(arity) { idx => s"%${idx}" }.mkString(", ")
-      s"(${args}) => ${expr}"
+      val resourcesStr = resources.map { case (constOrOp, cnt) =>
+        constOrOp match {
+          case Left(const) => s"$$${const} -> ${cnt}"
+          case Right(op) => s"${op} -> ${cnt}"
+        }
+      }.mkString(", ")
+      s"(${args}) => ${expr} : resources = ${resourcesStr}"
     }
 
     override def serialized: String = toString
@@ -194,6 +202,49 @@ object PlacedIR extends ManticoreAssemblyIR {
       // Make sure the args are consecutive set of integers.
       assert(args == Seq.tabulate(args.length) { idx => AtomArg(idx) })
       args.length
+    }
+
+    private def computeResources(
+      tree: ExprTree
+    ): Map[
+      Either[Constant, BinaryOperator.BinaryOperator],
+      Int
+    ] = {
+
+      def accumulate(
+        expr: ExprTree,
+        acc: Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = Map.empty.withDefaultValue(0)
+      ): Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = {
+        expr match {
+          case OrExpr(op1, op2) =>
+            val childrenAcc = accumulate(op1, accumulate(op2, acc))
+            val key = Right(BinaryOperator.OR)
+            val cnt = childrenAcc(key) + 1
+            childrenAcc + (key -> cnt)
+
+          case AndExpr(op1, op2) =>
+            val childrenAcc = accumulate(op1, accumulate(op2, acc))
+            val key = Right(BinaryOperator.AND)
+            val cnt = childrenAcc(key) + 1
+            childrenAcc + (key -> cnt)
+
+          case XorExpr(op1, op2) =>
+            val childrenAcc = accumulate(op1, accumulate(op2, acc))
+            val key = Right(BinaryOperator.XOR)
+            val cnt = childrenAcc(key) + 1
+            childrenAcc + (key -> cnt)
+
+          case IdExpr(const: AtomConst) =>
+            val key = Left(const.v)
+            val cnt = acc(key)
+            acc + (key -> cnt)
+
+          case _ =>
+            acc
+        }
+      }
+
+      accumulate(tree)
     }
 
     private def computeEquation(arity: Int, expr: ExprTree): Seq[BigInt] = {
@@ -308,7 +359,8 @@ object PlacedIR extends ManticoreAssemblyIR {
       // We compute the arity here so we can reject incorrectly-constructed expression trees
       // given by the user.
       val arity = computeArity(expr)
-      new CustomFunctionImpl(arity, expr)
+      val resources = computeResources(expr)
+      new CustomFunctionImpl(arity, resources, expr)
     }
 
     def unapply(cf: CustomFunctionImpl) = {
