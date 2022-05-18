@@ -8,6 +8,7 @@ import manticore.compiler.assembly.levels.HasVariableType
 import manticore.compiler.assembly.annotations.AssemblyAnnotation
 import manticore.compiler.assembly.annotations.AnnotationValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.FieldName
+import manticore.compiler.assembly.annotations.Sourceinfo
 
 /** Base classes for the various IR flavors.
   * @author
@@ -170,6 +171,7 @@ trait ManticoreAssemblyIR {
       with HasAnnotations {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\t${toString}; //@${pos}"
+
   }
 
   sealed trait DataInstruction extends Instruction
@@ -179,6 +181,7 @@ trait ManticoreAssemblyIR {
   sealed trait ExplicitlyOrderedInstruction extends Instruction {
     val order: ExecutionOrder
   }
+
   /** A parallel multiplexer
     *
     * @param rd
@@ -489,22 +492,20 @@ trait ManticoreAssemblyIR {
       s"SLICE ${rd}, ${rs}[${offset} +: ${length}]"
   }
 
-
   case class ExecutionOrder(major: Int, minor: Int) {
     override def toString: String = s"($major, $minor)"
   }
-
 
   case class PutSerial(
       rs: Name,
       pred: Name,
       order: ExecutionOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends PrivilegedInstruction with ExplicitlyOrderedInstruction {
+  ) extends PrivilegedInstruction
+      with ExplicitlyOrderedInstruction {
     override def toString: String =
       s" ${order} PUT ${rs}, ${pred}";
   }
-
 
   sealed trait InterruptAction
   case object FinishInterrupt extends InterruptAction
@@ -515,13 +516,13 @@ trait ManticoreAssemblyIR {
   // other things such as function calls are also interrupts and should be
   // defined here
 
-
   case class Interrupt(
-    action: InterruptAction,
-    condition: Name,
-    order: ExecutionOrder,
-    annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends PrivilegedInstruction with ExplicitlyOrderedInstruction {
+      action: InterruptAction,
+      condition: Name,
+      order: ExecutionOrder,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends PrivilegedInstruction
+      with ExplicitlyOrderedInstruction {
     override def toString: String = {
       val s = action match {
         case AssertionInterrupt   => "ASSERT "
@@ -533,6 +534,4 @@ trait ManticoreAssemblyIR {
     }
   }
 
-
 }
-
