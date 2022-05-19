@@ -26,6 +26,7 @@ import org.jgrapht.alg.isomorphism.AHURootedTreeIsomorphismInspector
 import manticore.compiler.assembly.BinaryOperator
 import org.jgrapht.alg.isomorphism.VF2GraphIsomorphismInspector
 import org.jgrapht.GraphMapping
+import manticore.compiler.assembly.levels.UInt16
 
 // Represents a rooted cone of vertices in a graph.
 // The constructor is private as I want to force callers to go through the factory method in the Cone object.
@@ -61,7 +62,7 @@ class Cone[V] private (
 
   override def toString(): String = {
     val nonRootVertices = vertices - root
-    s"{arity = ${arity}, root = ${root}, (body = ${nonRootVertices.mkString(" --- ")}), (primary inputs = ${piNameToArgIdx.keys.mkString(" --- ")})}"
+    s"{arity = ${arity}, root = ${root}, (body = ${nonRootVertices.mkString(" --- ")}), (primary inputs = ${piArgIdxToName.mkString(", ")})}"
   }
 }
 
@@ -528,50 +529,39 @@ object CustomLutInsertion
         "Functions of unequal arities should not have been passed to this method!"
       )
 
+      // Slow path:
+      // To determine if f2 is equivalent to f1, we must compute its equation for all possible
+      // permutations of its inputs. If any permutation results a equation for f2 that matches
+      // that of f1, then the functions are equivalent.
+
       val equ1 = f1.equation
-      val equ2 = f2.equation
 
-      if (equ1 == equ2) {
-        // Fast path:
-        // Sometimes identical functions with different structures can quickly be determined
-        // to be equal without needing to enumerate input permutations of f2. This always
-        // happens when we are in the presence of "homegenous" functions like all-AND, all-OR,
-        // or all-XOR.
+      // Seq.permutations is an Iterator and only computes the next element if queried.
+      // We use Iterator.find() so we can exit the expensive permutation generation as
+      // soon as we find a valid input permutation (instead of computing all permutations
+      // and filtering them afterwards, which is very expensive).
+      val matchingPermutation = (0 until f1.arity)
+        .view // @TODO (skashani: Check if using `.view` helps performance).
+        .permutations
+        .find { inputPermutation =>
+          val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
+            AtomArg(inputIdx) -> AtomArg(idx)
+          }.toMap
+          val substExpr = CustomFunctionImpl.substitute(f2.expr)(subst)
+          val substFunc = CustomFunctionImpl(substExpr)
+          val substEqu = substFunc.equation
+          equ1 == substEqu
+        }
 
-        // The order of inputs in the two functions matched out of the box. We can just map
-        // them to each other without modifying their order.
-        val inputIdxMap = (0 until f1.arity).map { argIdx =>
-          AtomArg(argIdx) -> AtomArg(argIdx)
+      // Re-create the substitution map if one was found (as `find` returns the input permutation,
+      // not the resulting AtomArg map).
+      val subst = matchingPermutation.map { inputPermutation =>
+        inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
+          AtomArg(inputIdx) -> AtomArg(idx)
         }.toMap
-        Some(inputIdxMap)
-
-      } else {
-
-        // Slow path:
-        // To determine if f2 is equivalent to f1, we must compute its equation for all possible
-        // permutations of its inputs. If any permutation results a equation for f2 that matches
-        // that of f1, then the functions are equivalent.
-
-        val inputIdxMap = (0 until f1.arity)
-          .permutations
-          .map { inputPermutation =>
-            val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
-              AtomArg(inputIdx) -> AtomArg(idx)
-            }.toMap
-            subst
-          }
-          .find { subst =>
-            val substExpr = CustomFunctionImpl.substitute(f2.expr)(subst)
-            val substFunc = CustomFunctionImpl(substExpr)
-            val substEqu = substFunc.equation
-
-            equ1 == substEqu
-          }.map { subst =>
-            subst.toMap[AtomArg, AtomArg]
-          }
-
-        inputIdxMap
       }
+
+      subst
     }
 
     def isHomogeneousResource(
@@ -640,7 +630,6 @@ object CustomLutInsertion
             // We keep both (c1Id -> c2Id) and (c2Id -> c1Id) to ensure a representative is found for both of
             // them after these pairwise comparisons.
             equalCones += (c1Id, c2Id) -> identityArgMap
-            equalCones += (c2Id, c1Id) -> identityArgMap
             uf.union(c1Id, c2Id)
 
           } else {
@@ -650,11 +639,7 @@ object CustomLutInsertion
                 // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
               case Some(arg1ToArg2Map) =>
                 // We found some mapping from f1's inputs to f2's input such that their equations are equal.
-
-                // We keep both (c1Id -> c2Id) and (c2Id -> c1Id) to ensure a representative is found for both of
-                // them after these pairwise comparisons.
                 equalCones += (c1Id, c2Id) -> arg1ToArg2Map
-                equalCones += (c2Id, c1Id) -> arg1ToArg2Map.map(kv => kv.swap)
                 uf.union(c1Id, c2Id)
             }
           }
@@ -662,14 +647,18 @@ object CustomLutInsertion
       }
     }
 
-    val coneToReprArgMap = equalCones
-      .filter { case ((c1Id, c2Id), argMap) =>
-        val reprId = uf.find(c1Id)
-        c2Id == reprId
-      }
-      .map { case ((cId, reprId), argMap) =>
-        cId -> argMap
-      }
+    // Only keep mappings from cones to the representative.
+    val coneToReprArgMap = equalCones.collect {
+      case ((c1Id, c2Id), arg1ToArg2Map) if uf.find(c1Id) == c2Id =>
+        // c2 is the representative and the arg map is already c1 -> c2, so we
+        // keep it as-is
+        c1Id -> arg1ToArg2Map
+
+      case ((c1Id, c2Id), arg1ToArg2Map) if c1Id == uf.find(c2Id) =>
+        // c1 is the representative, but the arg map is c1 -> c2. We want to
+        // have the arg map for c2 -> c1, so we invert it.
+        c2Id -> arg1ToArg2Map.map(kv => kv.swap)
+    }
 
     (uf, coneToReprArgMap.toMap)
   }
@@ -687,7 +676,7 @@ object CustomLutInsertion
     // what they are computing, just that they are computing the same function
     // and therefore don't need an additional custom function to model if already
     // chosen.
-    coneIdToCategory: Map[
+    coneIdToReprId: Map[
       Int, // Cone ID
       Int  // Category
     ],
@@ -775,7 +764,7 @@ object CustomLutInsertion
     //
     //         y_i \in {0, 1} for CT_i \in CT
     //
-    val conesPerCategory = coneIdToCategory
+    val conesPerCategory = coneIdToReprId
       .groupMap { case (coneId, category) =>
         category
       } { case (coneId, category) =>
@@ -1016,16 +1005,14 @@ object CustomLutInsertion
         }.mkString("\n")
     }
 
-    val (coneIdToCategory, coneToReprArgMap) = if (ctx.optimize_common_custom_functions) {
-      // Identify which functions are identical and select cones with this knowledge.
-
+    val (coneIdToReprId, coneToReprArgMap) = if (ctx.optimize_common_custom_functions) {
       // Cluster cones that compute the same function together. Cones that compute
       // the same function do so under a permutation of their inputs. This permutation
       // is computed between every cone and its representative cone (not between
       // all cones).
 
       val (ufCones, coneToReprArgMap) = ctx.stats.recordRunTime("identifyCommonFunctions")(identifyCommonFunctions(coneFuncs))
-      val coneIdToCategory = cones.keys.map { coneId =>
+      val coneIdToReprId = cones.keys.map { coneId =>
         coneId -> ufCones.find(coneId)
       }.toMap
 
@@ -1033,7 +1020,7 @@ object CustomLutInsertion
         s"The cones are clustered into ${ufCones.numberOfSets()} function groups."
       }
 
-      (coneIdToCategory, coneToReprArgMap)
+      (coneIdToReprId, coneToReprArgMap)
 
     } else {
       // Consider all cones to be in distinct categories of their own.
@@ -1048,21 +1035,21 @@ object CustomLutInsertion
         coneId -> argMap
       }.toMap
 
-      val coneIdToCategory = cones.keys.map { coneId =>
+      val coneIdToReprId = cones.keys.map { coneId =>
         coneId -> coneId
       }.toMap
 
-      (coneIdToCategory, coneToReprArgMap)
+      (coneIdToReprId, coneToReprArgMap)
     }
 
-    val categories = coneIdToCategory.values.toSet
+    val reprIds = coneIdToReprId.values.toSet
 
     ctx.logger.debug {
-      coneIdToCategory
+      coneIdToReprId
         .toSeq
         .sorted
-        .map { case (coneId, category) =>
-          s"cone ${coneId} -> category ${category}"
+        .map { case (coneId, reprId) =>
+          s"cone ${coneId} -> representative ${reprId}"
         }.mkString("\n")
     }
 
@@ -1072,7 +1059,7 @@ object CustomLutInsertion
     val bestConeIds = ctx.stats.recordRunTime("findOptimalConeCover") {
       findOptimalConeCover(
         cones,
-        coneIdToCategory,
+        coneIdToReprId,
         maxNumCones = ctx.max_custom_instructions
       )(ctx)
     }
@@ -1080,7 +1067,10 @@ object CustomLutInsertion
     ctx.logger.debug {
       val conesStr = bestConeIds
         .toSeq
-        .sorted
+        .sortBy { coneId =>
+          val cone = cones(coneId)
+          cone.arity
+        }
         .map { coneId =>
           val func = coneFuncs(coneId)
           s"cone ${coneId} -> ${func}"
@@ -1095,8 +1085,8 @@ object CustomLutInsertion
       s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
     ) {
       // Each category has a defined color.
-      val categoryToColor = categories
-        .zip(CyclicColorGenerator(categories.size))
+      val reprIdToColor = reprIds
+        .zip(CyclicColorGenerator(reprIds.size))
         .toMap
 
       val clusters = bestConeIds
@@ -1107,11 +1097,11 @@ object CustomLutInsertion
         .toMap
 
       // Color all vertices of a cone with its color.
-      val clusterColorMap = cones.map { case (clusterId, vertices) =>
-        val category = coneIdToCategory(clusterId)
-        val color = categoryToColor(category)
+      val clusterColorMap = clusters.keys.map { clusterId =>
+        val reprId = coneIdToReprId(clusterId)
+        val color = reprIdToColor(reprId)
         clusterId -> color.toCssHexString()
-      }
+      }.toMap
 
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).
@@ -1127,18 +1117,18 @@ object CustomLutInsertion
       )
     }
 
-    // The custom functions to emit. We only emit the custom functions used by the best cones.
-    val categoryToFunc = bestConeIds.map { coneId =>
-      val category = coneIdToCategory(coneId)
-      val func = coneFuncs(category)
-      category -> DefFunc(s"func_${category}", func)
+    // The custom functions to emit. We only emit the representative function of the best cones.
+    val reprIdToFunc = bestConeIds.map { coneId =>
+      val reprId = coneIdToReprId(coneId)
+      val reprFunc = coneFuncs(reprId)
+      reprId -> DefFunc(s"func_${reprId}", reprFunc)
     }.toMap
 
-    val bestConesToFunc = bestConeIds.map { coneId =>
-      val category = coneIdToCategory(coneId)
-      val func = categoryToFunc(category)
+    val bestConesToReprFunc = bestConeIds.map { coneId =>
+      val reprId = coneIdToReprId(coneId)
+      val reprFunc = reprIdToFunc(reprId)
       val coneArgMap = coneToReprArgMap(coneId)
-      coneId -> (func, coneArgMap)
+      coneId -> (reprFunc, coneArgMap)
     }.toMap
 
     // Replace the cone roots with their custom functions.
@@ -1158,7 +1148,7 @@ object CustomLutInsertion
 
             case Some(coneId) =>
               // Replace instruction with a custom instruction.
-              val (func, coneToFuncArgMap) = bestConesToFunc(coneId)
+              val (func, coneToFuncArgMap) = bestConesToReprFunc(coneId)
               val cone = cones(coneId)
               val rsx = cone.piArgIdxToName
                 .map { case (origArgIdx, argName) =>
@@ -1184,7 +1174,7 @@ object CustomLutInsertion
 
     val newProc = proc.copy(
       body = newBody,
-      functions = categoryToFunc.values.toSeq
+      functions = reprIdToFunc.values.toSeq
     )
 
     newProc
@@ -1197,4 +1187,28 @@ object CustomLutInsertion
     val newProcesses = program.processes.map(proc => onProcess(proc)(context))
     program.copy(processes = newProcesses)
   }
+}
+
+object Test extends App {
+  import manticore.compiler.assembly.levels.placed.PlacedIR._
+  import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
+
+  val expr = OrExpr(
+    XorExpr(
+      IdExpr(AtomArg(1)),
+      IdExpr(AtomConst(UInt16(1)))
+    ),
+    IdExpr(AtomArg(0))
+  )
+
+  val f1 = CustomFunctionImpl(expr)
+  val f2 = CustomFunctionImpl(expr)
+
+  val f1Equ = f1.equation
+  val f2Equ = f2.equation
+
+  println(f1Equ)
+  println(f2Equ)
+
+  assert(f1Equ == f2Equ)
 }

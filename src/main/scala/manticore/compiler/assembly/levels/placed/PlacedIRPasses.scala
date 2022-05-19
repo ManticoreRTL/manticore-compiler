@@ -9,6 +9,7 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.CanRenameToDebugSymbols
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.levels.UInt16
+import manticore.compiler.assembly.levels.BreakSequentialCycles
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
@@ -38,6 +39,18 @@ object PlacedIROrderInstructions
 
 object PlacedIRCloseSequentialCycles
     extends CloseSequentialCycles
+    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+
+  val flavor = PlacedIR
+  import flavor._
+  override def transform(
+      source: DefProgram,
+      context: AssemblyContext
+  ): DefProgram = do_transform(source)(context)
+}
+
+object PlacedIRBreakSequentialCycles
+    extends BreakSequentialCycles
     with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
 
   val flavor = PlacedIR

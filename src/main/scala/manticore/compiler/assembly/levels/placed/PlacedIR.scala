@@ -101,12 +101,18 @@ object PlacedIR extends ManticoreAssemblyIR {
 
     override def toString: String = {
       val args = Seq.tabulate(arity) { idx => s"%${idx}" }.mkString(", ")
-      val resourcesStr = resources.map { case (constOrOp, cnt) =>
-        constOrOp match {
-          case Left(const) => s"$$${const} -> ${cnt}"
-          case Right(op) => s"${op} -> ${cnt}"
+
+      val resourcesStr = resources
+        .map { case (constOrOp, cnt) =>
+          constOrOp match {
+            case Left(const) => s"$$${const} -> ${cnt}"
+            case Right(op) => s"${op} -> ${cnt}"
+          }
         }
-      }.mkString(", ")
+        .toSeq
+        .sorted
+        .mkString(", ")
+
       s"(${args}) => ${expr} : resources = ${resourcesStr}"
     }
 
