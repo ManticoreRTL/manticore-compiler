@@ -405,9 +405,7 @@ object CustomLutInsertion
     }
 
     // Enumerate the cuts of every vertex in the graph.
-    val cuts = ctx.stats.recordRunTime("cut_enumeration") {
-     CutEnumerator(gLswi, primaryInputs, maxCutSize)
-    }
+    val cuts = CutEnumerator(gLswi, primaryInputs, maxCutSize)
 
     // Now that we have all cuts, we find the cones that they span.
     val allCones = logicVertices.toSeq.flatMap { root =>
@@ -519,63 +517,72 @@ object CustomLutInsertion
     ]
   ) = {
 
-    def areFuncsEqual(
+    def fullFuncEqualityCheck(
       f1: CustomFunction,
       f2: CustomFunction
     ): Option[ // Returns None if the functions are not equal.
       Map[AtomArg, AtomArg] // Maps arg indices in f1 to arg indices in f2.
     ] = {
-      if (f1.arity != f2.arity) {
-        // Early exit.
-        // Two functions that have a different arity will definitely not be equal.
-        None
+      assert(
+        f1.arity == f2.arity,
+        "Functions of unequal arities should not have been passed to this method!"
+      )
+
+      val equ1 = f1.equation
+      val equ2 = f2.equation
+
+      if (equ1 == equ2) {
+        // Fast path:
+        // Sometimes identical functions with different structures can quickly be determined
+        // to be equal without needing to enumerate input permutations of f2. This always
+        // happens when we are in the presence of "homegenous" functions like all-AND, all-OR,
+        // or all-XOR.
+
+        // The order of inputs in the two functions matched out of the box. We can just map
+        // them to each other without modifying their order.
+        val inputIdxMap = (0 until f1.arity).map { argIdx =>
+          AtomArg(argIdx) -> AtomArg(argIdx)
+        }.toMap
+        Some(inputIdxMap)
 
       } else {
-        val equ1 = f1.equation
-        val equ2 = f2.equation
 
-        if (equ1 == equ2) {
-          // Fast path:
-          // Sometimes identical functions with different structures can quickly be determined
-          // to be equal without needing to enumerate input permutations of f2. This always
-          // happens when we are in the presence of "homegenous" functions like all-AND, all-OR,
-          // or all-XOR.
+        // Slow path:
+        // To determine if f2 is equivalent to f1, we must compute its equation for all possible
+        // permutations of its inputs. If any permutation results a equation for f2 that matches
+        // that of f1, then the functions are equivalent.
 
-          // The order of inputs in the two functions matched out of the box. We can just map
-          // them to each other without modifying their order.
-          val inputIdxMap = (0 until f1.arity).map { argIdx =>
-            AtomArg(argIdx) -> AtomArg(argIdx)
-          }.toMap
-          Some(inputIdxMap)
+        val inputIdxMap = (0 until f1.arity)
+          .permutations
+          .map { inputPermutation =>
+            val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
+              AtomArg(inputIdx) -> AtomArg(idx)
+            }.toMap
+            subst
+          }
+          .find { subst =>
+            val substExpr = CustomFunctionImpl.substitute(f2.expr)(subst)
+            val substFunc = CustomFunctionImpl(substExpr)
+            val substEqu = substFunc.equation
 
-        } else {
+            equ1 == substEqu
+          }.map { subst =>
+            subst.toMap[AtomArg, AtomArg]
+          }
 
-          // Slow path:
-          // To determine if f2 is equivalent to f1, we must compute its equation for all possible
-          // permutations of its inputs. If any permutation results a equation for f2 that matches
-          // that of f1, then the functions are equivalent.
-
-          val inputIdxMap = (0 until f1.arity)
-            .permutations
-            .map { inputPermutation =>
-              val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
-                AtomArg(inputIdx) -> AtomArg(idx)
-              }.toMap
-              subst
-            }
-            .find { subst =>
-              val substExpr = CustomFunctionImpl.substitute(f2.expr)(subst)
-              val substFunc = CustomFunctionImpl(substExpr)
-              val substEqu = substFunc.equation
-
-              equ1 == substEqu
-            }.map { subst =>
-              subst.toMap[AtomArg, AtomArg]
-            }
-
-          inputIdxMap
-        }
+        inputIdxMap
       }
+    }
+
+    def isHomogeneousResource(
+      f1: CustomFunction,
+      f2: CustomFunction
+    ): Boolean = {
+      val f1Ops = f1.resources.keySet
+      val f2Ops = f2.resources.keySet
+
+      // There should only be 1 operator.
+      (f1Ops == f2Ops) && (f1Ops.size == 1)
     }
 
     val equalCones = MHashMap.empty[
@@ -585,24 +592,67 @@ object CustomLutInsertion
 
     val uf = new UnionFind(funcs.keySet.asJava)
 
+    // Comparing functions for equality is exponential as it involves computing their equation
+    // and checking if they are equivalent under various input orderings. It is therefore important
+    // to prune the space of functions for which we have no choice but to do the exponential comparison.
+    //
+    // Functions are determined to definitely be unequivalent if:
+    //
+    //   1. Their arity is different.
+    //   2. They have different resources.
+    //
+    // Within the group of functions in each (arity, resource) category, we can quickly determine equivalence
+    // between two functions if:
+    //
+    //   1. The functions have the same cone ID.
+    //   2. The functions are composed of a homogeneous type of resource (all-AND, all-OR, all-XOR).
+    //
+    // In all other cases we must perform the expensive exponential check.
+
     val groupedFuncs = funcs.groupBy { case (coneId, func) =>
       // No point in comparing functions that have different arity or resources.
       (func.arity, func.resources)
     }
 
-    groupedFuncs.foreach { case (k, coneFuncs) =>
-      coneFuncs.foreach { case (c1Id, f1) =>
-        coneFuncs.foreach { case (c2Id, f2) =>
-          // Optimization to avoid comparing (c1, c2) if (c2, c1) was already compared.
-          // It's important to do <= instead of < as we need to have a (cId, cId) entry
-          // in the map in case cId ends up being its own root.
-          if (c1Id <= c2Id) {
-            areFuncsEqual(f1, f2) match {
+    groupedFuncs.foreach { case ((arity, resources), coneFuncs) =>
+      val identityArgMap = Seq.tabulate(arity) { idx =>
+        AtomArg(idx) -> AtomArg(idx)
+      }.toMap
+
+      // A cone is equal to itself.
+      coneFuncs.foreach { case (coneId, f) =>
+        equalCones += (coneId, coneId) -> identityArgMap
+      }
+
+      // Pairwise cone comparisons (with redundant comparisons skipped).
+      val sortedConeFuncs = coneFuncs.toArray
+      (0 until sortedConeFuncs.size).foreach { i =>
+        val (c1Id, f1) = sortedConeFuncs(i)
+
+        // Do not compare (j, i) as we would have already compared (i, j).
+        (i+1 until sortedConeFuncs.size).foreach { j =>
+          val (c2Id, f2) = sortedConeFuncs(j)
+
+          if (isHomogeneousResource(f1, f2)) {
+            // If thefunctions are composed of homogeneous operators, then we know immediately
+            // that the functions are identical and the order of their inputs do not matter.
+
+            // We keep both (c1Id -> c2Id) and (c2Id -> c1Id) to ensure a representative is found for both of
+            // them after these pairwise comparisons.
+            equalCones += (c1Id, c2Id) -> identityArgMap
+            equalCones += (c2Id, c1Id) -> identityArgMap
+            uf.union(c1Id, c2Id)
+
+          } else {
+            // Need to try a more expensive check to determine if the functions are identical.
+            fullFuncEqualityCheck(f1, f2) match {
               case None =>
                 // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
               case Some(arg1ToArg2Map) =>
                 // We found some mapping from f1's inputs to f2's input such that their equations are equal.
-                // We keep track of the mapping by converting the `AtomArg`s to actual `Name`s.
+
+                // We keep both (c1Id -> c2Id) and (c2Id -> c1Id) to ensure a representative is found for both of
+                // them after these pairwise comparisons.
                 equalCones += (c1Id, c2Id) -> arg1ToArg2Map
                 equalCones += (c2Id, c1Id) -> arg1ToArg2Map.map(kv => kv.swap)
                 uf.union(c1Id, c2Id)
@@ -843,7 +893,11 @@ object CustomLutInsertion
     objective.setMaximization()
 
     // solve optimization problem
-    val resultStatus = solver.solve()
+    val resultStatus = ctx.stats.recordRunTime("solver.solve") {
+      solver.solve()
+    }
+
+    // Extract results
     if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
       // The selected cones.
       val conesUsed = coneVars.filter { case (coneId, coneVar) =>
@@ -906,20 +960,22 @@ object CustomLutInsertion
 
     // We assign an Int id to every cone as we will be storing pairs of cones in a hash table later
     // and it is costly to has the Cone itself each time (hashing its id is much faster).
-    val cones = getFanoutFreeCones(
-      dependenceGraph,
-      logicClusters.flatten,
-      ctx.max_custom_instruction_inputs,
-      nameToConstMap,
-      nameToInstrMap
-    ).filter { cone =>
-      // We don't care about cones that consist of a single instruction as there
-      // is no benefit in doing so (we will not reduce the instruction count).
-      cone.size > 1
+    val cones = ctx.stats.recordRunTime("getFanoutFreeCones") {
+      getFanoutFreeCones(
+        dependenceGraph,
+        logicClusters.flatten,
+        ctx.max_custom_instruction_inputs,
+        nameToConstMap,
+        nameToInstrMap
+      ).filter { cone =>
+        // We don't care about cones that consist of a single instruction as there
+        // is no benefit in doing so (we will not reduce the instruction count).
+        cone.size > 1
+      }
+      .zipWithIndex.map { case (cone, idx) =>
+        idx -> cone
+      }.toMap
     }
-    .zipWithIndex.map { case (cone, idx) =>
-      idx -> cone
-    }.toMap
 
     ctx.logger.debug {
       val numConesOfArity = cones
@@ -942,9 +998,11 @@ object CustomLutInsertion
     }
 
     // The functions computed by each cone.
-    val coneFuncs = cones.map { case (coneId, cone) =>
-      coneId -> coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
-    }.toMap
+    val coneFuncs = ctx.stats.recordRunTime("conesToCustomFunctions") {
+      cones.map { case (coneId, cone) =>
+        coneId -> coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
+      }.toMap
+    }
 
     ctx.logger.debug {
       coneFuncs
@@ -965,7 +1023,8 @@ object CustomLutInsertion
       // the same function do so under a permutation of their inputs. This permutation
       // is computed between every cone and its representative cone (not between
       // all cones).
-      val (ufCones, coneToReprArgMap) = identifyCommonFunctions(coneFuncs)
+
+      val (ufCones, coneToReprArgMap) = ctx.stats.recordRunTime("identifyCommonFunctions")(identifyCommonFunctions(coneFuncs))
       val coneIdToCategory = cones.keys.map { coneId =>
         coneId -> ufCones.find(coneId)
       }.toMap
@@ -1010,11 +1069,13 @@ object CustomLutInsertion
     // We know which cones compute the same function. We can now solve an optimization
     // problem to choose the best cones to implement knowing which ones come "for free"
     // due to duplicates existing.
-    val bestConeIds = findOptimalConeCover(
-      cones,
-      coneIdToCategory,
-      maxNumCones = ctx.max_custom_instructions
-    )(ctx)
+    val bestConeIds = ctx.stats.recordRunTime("findOptimalConeCover") {
+      findOptimalConeCover(
+        cones,
+        coneIdToCategory,
+        maxNumCones = ctx.max_custom_instructions
+      )(ctx)
+    }
 
     ctx.logger.debug {
       val conesStr = bestConeIds
