@@ -399,14 +399,58 @@ object UnconstrainedInterpreter
             ctx.logger.error("unsupported SRA shift amount", inst)
             BigInt(0)
           }
+        case SLT =>
+          val rs1_val = state.register_file(rs1)
+          val rs2_val = state.register_file(rs2)
+          assert(rs1_val >= 0 && rs2_val >= 0)
+          if (rs1_val < rs2_val) {
+            BigInt(1)
+          } else {
+            BigInt(0)
+          }
         case SLTS =>
           // again, we should encode the signs manually since all
           // interpreted values are stored as positive numbers
-          val rs1_signed_val = getSignedValue(rs1)
-          val rs2_signed_val = getSignedValue(rs2)
-          val is_less = rs1_signed_val < rs2_signed_val
-          state.select = is_less
-          BigInt(if (is_less) 1 else 0)
+          val rs1_width = definitions(rs1).variable.width
+          val rs2_width = definitions(rs2).variable.width
+          assert(
+            rs1_width == rs2_width,
+            s"both operands of SLTS should have the same width in: \n${inst}"
+          )
+
+          val rs1_val = state.register_file(rs1)
+          val rs2_val = state.register_file(rs2)
+          val rs1_sign = rs1_val.testBit(rs1_width - 1)
+          val rs2_sign = rs2_val.testBit(rs2_width - 1)
+
+          if (rs1_sign && rs2_sign) {
+            // both are "negative" so we should compare their positive value
+            // representation
+            val rs1_pos_val =
+              clipped((~rs1_val) + BigInt(1))(ClipWidth(rs1_width))
+            val rs2_pos_val =
+              clipped((~rs2_val) + BigInt(1))(ClipWidth(rs2_width))
+            if (rs1_pos_val > rs2_pos_val) {
+              BigInt(1)
+            } else {
+              BigInt(0)
+            }
+          } else if (rs1_sign && !rs2_sign) {
+            BigInt(
+              1
+            ) // rs1 is negative and rs2 is not, therefore it is certainly
+            // less than rs2
+          } else if (!rs1_sign && rs2_sign) {
+            BigInt(
+              0
+            ) // rs1 is positive and rs2 negative. Therefore rs1 < rs2 is false
+          } else { // both are positive
+            if (rs1_val < rs2_val) {
+              BigInt(1)
+            } else {
+              BigInt(0)
+            }
+          }
       }
 
       update(rd, rd_val)
@@ -577,7 +621,11 @@ object UnconstrainedInterpreter
                     } else {
                       state.serial_queue.dequeue()
                     }
-                    def truncated(vString: String, width :Int, filler: String) = {
+                    def truncated(
+                        vString: String,
+                        width: Int,
+                        filler: String
+                    ) = {
 
                       val truncated = if (vString.length > width) {
                         vString.takeRight(width)
@@ -589,13 +637,19 @@ object UnconstrainedInterpreter
                     val bitWidth = w.toInt
                     val fmtValue = t match {
                       case "d" | "D" =>
-                        val decWidth = ((BigInt(1) << bitWidth) - 1).toString().length
-                        truncated(v.toString(), decWidth, if (z.nonEmpty) "0" else " ")
+                        val decWidth =
+                          ((BigInt(1) << bitWidth) - 1).toString().length
+                        truncated(
+                          v.toString(),
+                          decWidth,
+                          if (z.nonEmpty) "0" else " "
+                        )
                       case "h" | "H" =>
                         val vString =
                           if (t == "H") v.toString(16).toUpperCase()
                           else v.toString(4)
-                        val hexWidth = ((BigInt(1) << bitWidth) - 1).toString(16).length
+                        val hexWidth =
+                          ((BigInt(1) << bitWidth) - 1).toString(16).length
                         truncated(vString, hexWidth, "0")
                       case "b" | "B" =>
                         truncated(v.toString(2), bitWidth, "0")

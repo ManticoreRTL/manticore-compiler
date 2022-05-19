@@ -19,7 +19,7 @@ import manticore.compiler.assembly.annotations.Sourceinfo
   */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SEQ, SLTS, MUX, ADDC = Value
+  val ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC = Value
 }
 
 trait HasSerialized {

@@ -211,6 +211,96 @@ object WidthConversionCore
 
   import flavor._
 
+  private def createLessThan(rs1Array: Seq[Name], rs2Array: Seq[Name])(implicit
+      builder: Builder,
+      ctx: AssemblyContext
+  ): (Seq[DataInstruction], Name) = {
+    require(rs1Array.length == rs1Array.length, "comparison should be aligned")
+
+    // starting from the most significant word we have the following formulas
+    // eq[i] = rs1[i] == rs2[i];
+    // lt[i] = rs1[i] < rs2[i];
+    // result[i] = found[i + 1] ? ;; if found result use the found result
+    //                r[i + 1] : eq[i] ? if not found result but current, we don't care (false or true)
+    //                            false : lt[i] ? // if not equal and less than then result is true
+    //                                         true : false // if not equal not less than then its bigger so result is false
+    //
+    // found[i] = found[i+1] ? true : eq[i] ? false : true
+    //
+    // this is like implementing the following imperative code:
+    // var i = rs1Width - 1;
+    // var found = false
+    // var result = false
+    // while(i >= 0) {
+    //    if (found) {
+    //      found = found
+    //      result = result
+    //    } else {
+    //      if (rs1[i] == rs2[i]) { result = false; found = false; }
+    //      else if (rs1[i] < rs2[i]) { result = true; found = true; }
+    //      else { result = false; found = true; }
+    //    }
+    // }
+    //
+    val constFalse = builder.mkConstant(0)
+    val constTrue = builder.mkConstant(1)
+    val instQ = scala.collection.mutable.ArrayBuffer.empty[DataInstruction]
+    val (_, result) =
+      rs1Array.zip(rs2Array).foldRight((constFalse, constFalse)) {
+        case ((op1, op2), (foundPrev, resultPrev)) =>
+          val eq = builder.mkWire("eq", 1)
+          val lt = builder.mkWire("lt", 1)
+          instQ += BinaryArithmetic(
+            operator = BinaryOperator.SEQ,
+            rd = eq,
+            rs1 = op1,
+            rs2 = op2
+          )
+          instQ += BinaryArithmetic(
+            operator = BinaryOperator.SLT,
+            rd = lt,
+            rs1 = op1,
+            rs2 = op2
+          )
+          val rlt = builder.mkWire("rlt", 1)
+          instQ += Mux(
+            rd = rlt,
+            sel = lt,
+            rtrue = constTrue,
+            rfalse = constFalse
+          )
+          val req = builder.mkWire("req", 1)
+          instQ += Mux(
+            rd = req,
+            sel = eq,
+            rtrue = constFalse,
+            rfalse = rlt
+          )
+          val resultNext = builder.mkWire("resultNext", 1)
+          instQ += Mux(
+            rd = resultNext,
+            sel = foundPrev,
+            rtrue = resultPrev,
+            rfalse = req
+          )
+          val feq = builder.mkWire("feq", 1)
+          instQ += Mux(
+            rd = feq,
+            sel = eq,
+            rtrue = constFalse,
+            rfalse = constTrue
+          )
+          val foundNext = builder.mkWire("foundNext", 1)
+          instQ += Mux(
+            rd = foundNext,
+            sel = foundPrev,
+            rtrue = constTrue,
+            rfalse = feq
+          )
+          (foundNext, resultNext)
+      }
+    (instQ.toSeq, result)
+  }
   // val MaxLocalAddressBits = 11
   private def assert16Bit(
       uint16_array: Seq[Name],
@@ -460,12 +550,12 @@ object WidthConversionCore
           // we handle SUB with carry by NOTing the second operand and AddCing
           // them. However, unlike the ADD conversion, we initialize the first
           // carry to 1
-          val carry = builder.mkCarry()
+          // val carry = builder.mkCarry()
           val rs2_16_neg = builder.mkWire(instruction.rs2 + "_neg", 16)
           val const_0xFFFF = builder.mkConstant(0xffff)
 
           // set the initial carry to 1
-          inst_q += SetCarry(carry)
+          // inst_q += SetCarry(carry)
 
           (rs1_uint16_array_aligned zip rs2_uint16_array_aligned zip rd_uint16_array_mutable)
             .foldLeft(builder.mkCarry1()) {
@@ -1770,79 +1860,234 @@ object WidthConversionCore
           )
         }
 
+      case BinaryOperator.SLT =>
+        // set less that
+
+        val rs1Width = builder.originalWidth(instruction.rs1)
+        val rs2Width = builder.originalWidth(instruction.rs2)
+        val rdWidth = builder.originalWidth(instruction.rd)
+        if (rdWidth != 1) {
+          ctx.logger.warn(
+            "Expected a single-bit as the comparison result!",
+            instruction
+          )
+        }
+        assert(rs1Width == rs2Width)
+
+        val rdArray = builder.getConversion(instruction.rd).parts
+        val rs1Array = builder.getConversion(instruction.rs1).parts
+        val rs2Array = builder.getConversion(instruction.rs2).parts
+        val (insts, result) = createLessThan(rs1Array, rs2Array)
+        inst_q ++= insts
+        inst_q += Mov(
+          rd = rdArray.head,
+          rs = result
+        )
+
+        inst_q ++= rdArray.tail.map(r =>
+          Mov(rd = r, rs = builder.mkConstant(0))
+        )
+
       case BinaryOperator.SLTS =>
         // we should only handle SLTS rd, rs1, const_0, because this is the
         // only thing the Thyrio frontend gives us. This is rather easy and
         // cheap, we only need to convert rs1 into an array and then check
         // the most significant half-word of rs1 to be less than zero!
-        def assumptions(): Unit = {
-          val rs2_const = builder.originalDef(instruction.rs2)
-          if (rs2_const.variable.varType != ConstType) {
-            ctx.logger.error(
-              "Second SLTS operand should be constant 0!",
-              instruction
-            )
-          } else {
-            rs2_const.value match {
-              case Some(x) if x == 0 => // nothing
-              case _ =>
-                ctx.logger.error(
-                  "Second SLTS operand should be constant 0!",
-                  instruction
-                )
-            }
-          }
-        }
-        assumptions()
 
-        val ConvertedWire(rs1_uint16_array, _) =
-          builder.getConversion(instruction.rs1)
-        val orig_rd_width = builder.originalWidth(instruction.rd)
-        if (orig_rd_width == 1) {
-          ctx.logger.warn("Expected Boolean result in SLTS", instruction)
-        }
-        val rd_uint16 = builder.getConversion(instruction.rd).parts.head
-
-        // number of used bits in the most significant short word
-        val rs1_ms_half_word_bits = builder.originalWidth(instruction.rs1) % 16
-
-        if (rs1_ms_half_word_bits == 0) {
-          // the first operand is 16-bit aligned, so we can simply perform
-          // SLTS on the most significant short-word
-          inst_q += instruction.copy(
-            rd = rd_uint16,
-            rs1 = rs1_uint16_array.last,
-            rs2 = builder.mkConstant(0)
+        val rs1Width = builder.originalWidth(instruction.rs1)
+        val rs2Width = builder.originalWidth(instruction.rs2)
+        val rdWidth = builder.originalWidth(instruction.rd)
+        if (rdWidth != 1) {
+          ctx.logger.warn(
+            "Expected a single-bit as the comparison result!",
+            instruction
           )
-        } else {
-          // the first operand is not 16-bit aligned
-          // now we need to shift the most significant bit of the rs1_uint16_array.last
-          // to the right and bring it to bit position zero, then we can just use
-          // a SEQ to check the sign bit.
-          if (rs1_ms_half_word_bits == 1) {
-            // trivial case, no need to right shift
-            inst_q += instruction.copy(
-              operator = BinaryOperator.SEQ,
-              rd = rd_uint16,
-              rs1 = rs1_uint16_array.last,
-              rs2 = builder.mkConstant(1)
+        }
+        assert(rs1Width == rs2Width)
+        val rdArray = builder.getConversion(instruction.rd).parts
+        val rs1Array = builder.getConversion(instruction.rs1).parts
+        val rs2Array = builder.getConversion(instruction.rs2).parts
+        // the next line should not really matter, put here for completeness
+        // in case some code read the upper bits of a wire that is supposed to be
+        // single-bit but because of bad Verilog code is not. The optimizations
+        // will get rid of the MOVs.
+        inst_q ++= rdArray.tail.map { r =>
+          Mov(rd = r, rs = builder.mkConstant(0))
+        }
+        if (rs1Width == 16) {
+          assert(rs2Array.length == 1)
+          assert(rs1Array.length == 1)
+
+          // jackpot
+          inst_q += instruction.copy(
+            rd = rdArray.head,
+            rs1 = rs1Array.head,
+            rs2 = rs2Array.head
+          )
+
+        } else if (rs1Width < 16) {
+          // sign extend the operands and use the native SLTS instruction
+          assert(rs2Array.length == 1)
+          assert(rs1Array.length == 1)
+          val rs1Sign = builder.mkWire("rs1Sign", 1)
+          inst_q += instruction.copy(
+            operator = BinaryOperator.SRL,
+            rd = rs1Sign,
+            rs1 = rs1Array.head,
+            rs2 = builder.mkConstant(rs1Width - 1)
+          )
+
+          val rs2Sign = builder.mkWire("rs2Sign", 1)
+          inst_q += instruction.copy(
+            operator = BinaryOperator.SRL,
+            rd = rs2Sign,
+            rs1 = rs2Array.head,
+            rs2 = builder.mkConstant(rs2Width - 1)
+          )
+
+          val rs1NegMasked = builder.mkWire("rs1NegMasked", 16)
+          val rs2NegMasked = builder.mkWire("rs2NegMasked", 16)
+          inst_q += instruction.copy(
+            operator = BinaryOperator.OR,
+            rd = rs1NegMasked,
+            rs1 = rs1Array.head,
+            rs2 = builder.mkConstant(
+              0xffff - ((1 << rs1Width) - 1)
             )
-          } else {
-            // need to right shift the most significant bit
-            val sign_bit = builder.mkWire("sign_bit", 16)
-            inst_q += instruction.copy(
-              operator = BinaryOperator.SRL,
-              rd = sign_bit,
-              rs1 = rs1_uint16_array.last,
-              rs2 = builder.mkConstant(rs1_ms_half_word_bits - 1)
+          )
+          inst_q += instruction.copy(
+            operator = BinaryOperator.OR,
+            rd = rs2NegMasked,
+            rs1 = rs2Array.head,
+            rs2 = builder.mkConstant(
+              0xffff - ((1 << rs2Width) - 1)
             )
-            inst_q += instruction.copy(
-              operator = BinaryOperator.SEQ,
-              rd = rd_uint16,
-              rs1 = sign_bit,
-              rs2 = builder.mkConstant(1)
+          )
+
+          val rs1Extended = builder.mkWire("rs1Extended", 16)
+          val rs2Extended = builder.mkWire("rs2Extended", 16)
+          inst_q += Mux(
+            rd = rs1Extended,
+            sel = rs1Sign,
+            rtrue = rs1NegMasked,
+            rfalse = rs1Array.head
+          )
+          inst_q += Mux(
+            rd = rs2Extended,
+            sel = rs2Sign,
+            rtrue = rs2NegMasked,
+            rfalse = rs2Array.head
+          )
+          inst_q += instruction.copy(
+            rd = rdArray.head,
+            rs1 = rs1Extended,
+            rs2 = rs2Extended
+          )
+        } else { // arbitrary wide words
+
+          assert(rs1Width == rs2Width)
+          val signShiftAmount = if (rs1Width % 16 == 0) 15 else ((rs1Width % 16) - 1)
+          val rs1Sign = builder.mkWire("rs1Sign", 16)
+          inst_q += instruction.copy(
+            operator = BinaryOperator.SRL,
+            rd = rs1Sign,
+            rs1 = rs1Array.last,
+            rs2 = builder.mkConstant(signShiftAmount)
+          )
+
+          val rs2Sign = builder.mkWire("rs2Sign", 16)
+          inst_q += instruction.copy(
+            operator = BinaryOperator.SRL,
+            rd = rs2Sign,
+            rs1 = rs2Array.last,
+            rs2 = builder.mkConstant(signShiftAmount)
+          )
+
+          val rs2Flipped = rs2Array.map { _ =>
+            builder.mkWire("rs2Flipped", 16)
+          }
+          inst_q ++= rs2Array.zip(rs2Flipped).map { case (rs, rsf) =>
+            BinaryArithmetic(
+              operator = BinaryOperator.XOR,
+              rd = rsf,
+              rs1 = rs,
+              rs2 = builder.mkConstant(0xffff)
             )
           }
+          val diffArray = rs2Array.map(_ => builder.mkWire("diff", 16))
+          diffArray.zip(rs1Array.zip(rs2Flipped)).foldLeft(builder.mkCarry1()) {
+            case (cin, (diff, (rs1, rs2f))) =>
+              val cout = builder.mkCarry()
+              inst_q += AddC(
+                rd = diff,
+                rs1 = rs1,
+                rs2 = rs2f,
+                ci = cin,
+                co = cout
+              )
+              cout
+          }
+
+          // A < B (signed) is (A_msb & ~B_msb) | (diff_msb & (~A_msb ^ B_msb)
+
+          val diffSign = builder.mkWire("diffSign", 16)
+          // make sure dff is single bit
+          val diffShift = builder.mkWire("diffShift", 16)
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.SRL,
+            rd = diffShift,
+            rs1 = diffArray.last,
+            rs2 = builder.mkConstant(signShiftAmount)
+          )
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.AND,
+            rd = diffSign,
+            rs1 = diffShift,
+            rs2 = builder.mkConstant(1)
+          )
+
+          val rs1SignNot = builder.mkWire("rs1SignNot", 16)
+          val rs2SignNot = builder.mkWire("rs2SignNot", 16)
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.XOR,
+            rd = rs1SignNot,
+            rs1 = rs1Sign,
+            rs2 = builder.mkConstant(1)
+          )
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.XOR,
+            rd = rs2SignNot,
+            rs1 = rs2Sign,
+            rs2 = builder.mkConstant(1)
+          )
+          val term1 = builder.mkWire("term1", 16)
+          val term2 = builder.mkWire("term2", 16)
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.AND,
+            rd = term1,
+            rs1 = rs1Sign,
+            rs2 = rs2SignNot
+          )
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.XOR,
+            rd = term2,
+            rs1 = rs1SignNot,
+            rs2 = rs2Sign
+          )
+          val term3 = builder.mkWire("term3", 16)
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.AND,
+            rd = term3,
+            rs1 = diffSign,
+            rs2 = term2
+          )
+          inst_q += BinaryArithmetic(
+            operator = BinaryOperator.OR,
+            rd = rdArray.head,
+            rs1 = term1,
+            rs2 = term3
+          )
+
         }
       // no need to mask
 
@@ -2059,7 +2304,9 @@ object WidthConversionCore
       // As a sanity check we fail if the `slice` we see does not satisfy this
       // criteria.
       if (!sliceCoversOneWord(i)) {
-        ctx.logger.error("Slice instruction only applies to intervals that fit in one 16-bit word!")
+        ctx.logger.error(
+          "Slice instruction only applies to intervals that fit in one 16-bit word!"
+        )
       }
 
       val rs_uint16_array = builder.getConversion(rs).parts
@@ -2144,7 +2391,7 @@ object WidthConversionCore
         val rss = values.map { case (lbl, n) =>
           builder.getConversion(n).parts.map((lbl, _))
         }
-        rds.zip(rss.transpose).map { case (rd, rsv) =>  Phi(rd, rsv) }
+        rds.zip(rss.transpose).map { case (rd, rsv) => Phi(rd, rsv) }
 
       }
 
@@ -2184,28 +2431,34 @@ object WidthConversionCore
   }
 
   def replaceWordCrossingSlices(
-    proc: DefProcess
-  )(
-    implicit ctx: AssemblyContext
+      proc: DefProcess
+  )(implicit
+      ctx: AssemblyContext
   ): DefProcess = {
 
     val newConsts = ArrayBuffer.empty[DefReg]
 
-    val newBody = proc.body.map { i => i match {
-      case s @ Slice(rd, rs, offset, length, annons) if !sliceCoversOneWord(s) =>
-        // We transform the slice into an unconstrained SRL with a narrower output.
-        // The width conversion core can later take care of transforming the SRL into
-        // multiple SRL / SLL / OR instructions.
-        val shiftAmountName = UnconstrainedRenameVariables.mkFreshName("slice_srl_const", ConstType)
-        val shiftAmountVar = DefReg(
-          LogicVariable(shiftAmountName, 16, ConstType),
-          Some(BigInt(offset))
-        )
-        newConsts += shiftAmountVar
-        BinaryArithmetic(BinaryOperator.SRL, rd, rs, shiftAmountName, annons)
+    val newBody = proc.body.map { i =>
+      i match {
+        case s @ Slice(rd, rs, offset, length, annons)
+            if !sliceCoversOneWord(s) =>
+          // We transform the slice into an unconstrained SRL with a narrower output.
+          // The width conversion core can later take care of transforming the SRL into
+          // multiple SRL / SLL / OR instructions.
+          val shiftAmountName = UnconstrainedRenameVariables.mkFreshName(
+            "slice_srl_const",
+            ConstType
+          )
+          val shiftAmountVar = DefReg(
+            LogicVariable(shiftAmountName, 16, ConstType),
+            Some(BigInt(offset))
+          )
+          newConsts += shiftAmountVar
+          BinaryArithmetic(BinaryOperator.SRL, rd, rs, shiftAmountName, annons)
 
-      case _ => i
-    }}
+        case _ => i
+      }
+    }
 
     proc.copy(
       registers = proc.registers ++ newConsts,
@@ -2216,7 +2469,9 @@ object WidthConversionCore
   def convert(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
     val procWithoutMultiwordSlices = replaceWordCrossingSlices(proc)
     implicit val builder = new Builder(procWithoutMultiwordSlices)
-    val insts: Seq[Instruction] = procWithoutMultiwordSlices.body.flatMap { instr => convert(instr) }
+    val insts: Seq[Instruction] = procWithoutMultiwordSlices.body.flatMap {
+      instr => convert(instr)
+    }
     builder.buildFrom(insts)
   }
   override def transform(

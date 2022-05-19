@@ -21,20 +21,30 @@ import scala.io.BufferedSource
 import manticore.compiler.HasLoggerId
 import scala.annotation.tailrec
 
+sealed trait TestCode
+case class CodeText(src: String) extends TestCode
+case class CodeResource(path: String) extends TestCode
+
 trait YosysUnitTest {
   import scala.sys.process.{Process, ProcessLogger}
+
   def testIterations: Int
   // def topModule: String
-  def resourcePathString: String
+  def code: TestCode
   def testDir: Path
 
   final def run(): Unit = {
 
-    implicit val ctx = defaultContext(true)
+    implicit val ctx = defaultContext(false)
 
     try {
       // copy the unit test verilog files to test directory
-      val filename = copyResource(resourcePathString).getFileName().toString()
+      val filename = code match {
+        case CodeText(src) =>
+          dump("test.sv", src).getFileName().toString()
+        case CodeResource(path) =>
+          copyResource(path).getFileName().toString()
+      }
       // generate test bench using yosys
       val tbFilename = yosysTestbench(filename)
       // get the reference results by simulating using Verilator
