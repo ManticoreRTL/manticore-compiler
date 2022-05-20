@@ -1,12 +1,14 @@
-package manticore.compiler.integration.yosys.unit.tiny
+package manticore.compiler.integration.yosys.unit.tiny.operators
 
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.integration.yosys.unit.CodeText
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
-class BinaryOpsTester extends UnitFixtureTest {
+trait BinaryOperatorTestGenerator extends UnitFixtureTest {
 
-  behavior of "Yosys' binary operators "
+  def operator: String
+
+  behavior of s"Yosys' $operator "
 
   val randGen =
     new scala.util.Random(
@@ -36,43 +38,43 @@ class BinaryOpsTester extends UnitFixtureTest {
 
     }
 
-  val operators = Seq(
-    "<", // $lt
-    // "<=", // $le
-    // "==", // $eq
-    // "!=", // $ne
-    // ">=", // $ge
-    // ">", // $gt
-    // "+", // $add
-    // "-", // $sub
-    // "&", // $and
-    // "|", // $or
-    // "^", // $xor
-    // "~^", // $xnor
-    // "<<", // $shl
-    // ">>", // $shr
-    // "<<<", // $sshl
-    // ">>>", // $sshr
-    // "&&", // $logic_and
-    // "||", // $logc_or
-    // "===", // $eqx
-    // "!===" // $nex
-  )
+  // val operators = Seq(
+  //   // "<", // $lt
+  //   "<=", // $le
+  //   // "==", // $eq
+  //   // "!=", // $ne
+  //   // ">=", // $ge
+  //   // ">", // $gt
+  //   // "+", // $add
+  //   // "-", // $sub
+  //   // "&", // $and
+  //   // "|", // $or
+  //   // "^", // $xor
+  //   // "~^", // $xnor
+  //   // "<<", // $shl
+  //   // ">>", // $shr
+  //   // "<<<", // $sshl
+  //   // ">>>", // $sshr
+  //   // "&&", // $logic_and
+  //   // "||", // $logc_or
+  //   // "===", // $eqx
+  //   // "!===" // $nex
+  // )
   val randomWidth = (Seq(1, 2, 3, 4, 8) ++ Seq.fill(5) {
     randGen.nextInt(maxWidth)
   }).distinct
   val testCases =
     for (
-      w1 <- randomWidth; w2 <- randomWidth; w3 <- randomWidth; op <- operators
-    ) yield { (w1, w2, w3, op) }
+      w1 <- randomWidth; w2 <- randomWidth; w3 <- randomWidth
+    ) yield { (w1, w2, w3) }
 
-  testCases.foreach { case (w1, w2, w3, op) =>
+  testCases.foreach { case (w1, w2, w3) =>
 
-    s"signed or unsigned assign c[$w3 - 1 : 0] = a[$w1 - 1 : 0] $op b[$w2 - 1 : 0]" should "match verilator results" in { f =>
+    s"signed or unsigned assign c[$w3 - 1 : 0] = a[$w1 - 1 : 0] $operator b[$w2 - 1 : 0]" should "match verilator results" in { f =>
 
         new YosysUnitTest {
             val testIterations = 128
-            val code = generateRandom(op, w1, w2, w3)
+            val code = generateRandom(operator, w1, w2, w3)
             val testDir = f.test_dir
         }.run()
 
@@ -81,3 +83,8 @@ class BinaryOpsTester extends UnitFixtureTest {
   }
 
 }
+
+
+
+
+
