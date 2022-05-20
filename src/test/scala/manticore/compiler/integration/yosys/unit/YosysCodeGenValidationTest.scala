@@ -95,7 +95,7 @@ trait YosysUnitTest {
       }
     } catch {
       case e: Exception =>
-        println(s"Failed the test because: ${e.getMessage()}")
+        println(s"Failed the test because: ${e.getMessage()}\nin: ${testDir.toString()}")
         ctx.logger.flush()
         throw new CompilationFailureException("test failed")
     }
@@ -115,6 +115,7 @@ trait YosysUnitTest {
     "opt_reduce",
     "opt_demorgan",
     "opt_clean",
+    "write_rtlil original.rtl",
     "manticore_init", // do basic stuff such as setting track attributes
     "manticore_memory", // handle memories
     "flatten", // flatten the design
@@ -123,6 +124,7 @@ trait YosysUnitTest {
     "manticore_dff", // turn every state element into a $dff and fail if not possible
     "manticore_opt_replicate", // optimize bit-replication SigSpecs for code generation
     "manticore_subword", // remove any subword assignment on lhs of connections and output of cells
+    "write_rtlil main.rtl", // print the final result
     "manticore_check", // check for existence of a unique clock
     "manticore_writer main.masm" // write manticore assembly
   )

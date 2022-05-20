@@ -3,8 +3,9 @@ package manticore.compiler.integration.yosys.unit.tiny.operators
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.integration.yosys.unit.CodeText
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
+import org.scalatest.CancelAfterFailure
 
-trait UnaryOperatorTestGeneratorBase extends UnitFixtureTest {
+trait UnaryOperatorTestGeneratorBase extends UnitFixtureTest with CancelAfterFailure {
   def operator: String
 
   behavior of s"Yosys' unary $operator"

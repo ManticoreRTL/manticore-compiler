@@ -1903,7 +1903,12 @@ object WidthConversionCore
             instruction
           )
         }
-        assert(rs1Width == rs2Width)
+        val rs2Orig = builder.originalDef(instruction.rs2)
+        assert(
+          rs1Width == rs2Width || (rs2Orig.variable.varType == ConstType && rs2Orig.value == Some(
+            BigInt(0)
+          ))
+        )
         val rdArray = builder.getConversion(instruction.rd).parts
         val rs1Array = builder.getConversion(instruction.rs1).parts
         val rs2Array = builder.getConversion(instruction.rs2).parts
@@ -1915,7 +1920,7 @@ object WidthConversionCore
           Mov(rd = r, rs = builder.mkConstant(0))
         }
         if (rs1Width == 16) {
-          assert(rs2Array.length == 1)
+
           assert(rs1Array.length == 1)
 
           // jackpot
@@ -1927,7 +1932,7 @@ object WidthConversionCore
 
         } else if (rs1Width < 16) {
           // sign extend the operands and use the native SLTS instruction
-          assert(rs2Array.length == 1)
+
           assert(rs1Array.length == 1)
           val rs1Sign = builder.mkWire("rs1Sign", 1)
           inst_q += instruction.copy(
@@ -1985,8 +1990,8 @@ object WidthConversionCore
           )
         } else { // arbitrary wide words
 
-          assert(rs1Width == rs2Width)
-          val signShiftAmount = if (rs1Width % 16 == 0) 15 else ((rs1Width % 16) - 1)
+          val signShiftAmount =
+            if (rs1Width % 16 == 0) 15 else ((rs1Width % 16) - 1)
           val rs1Sign = builder.mkWire("rs1Sign", 16)
           inst_q += instruction.copy(
             operator = BinaryOperator.SRL,

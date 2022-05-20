@@ -3,8 +3,9 @@ package manticore.compiler.integration.yosys.unit.tiny.operators
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.integration.yosys.unit.CodeText
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
+import org.scalatest.CancelAfterFailure
 
-trait BinaryOperatorTestGenerator extends UnitFixtureTest {
+trait BinaryOperatorTestGenerator extends UnitFixtureTest with CancelAfterFailure {
 
   def operator: String
 
@@ -15,7 +16,9 @@ trait BinaryOperatorTestGenerator extends UnitFixtureTest {
       0
     ) // set the seed to get reproducible results/failures
 
-  val maxWidth = 74
+  def maxWidth = 74
+
+  def maxShiftBits: Option[Int] = None
 
   def generateRandom(op: String, widthIn1: Int, widthIn2: Int, widthOut: Int) =
     CodeText {
@@ -38,35 +41,21 @@ trait BinaryOperatorTestGenerator extends UnitFixtureTest {
 
     }
 
-  // val operators = Seq(
-  //   // "<", // $lt
-  //   "<=", // $le
-  //   // "==", // $eq
-  //   // "!=", // $ne
-  //   // ">=", // $ge
-  //   // ">", // $gt
-  //   // "+", // $add
-  //   // "-", // $sub
-  //   // "&", // $and
-  //   // "|", // $or
-  //   // "^", // $xor
-  //   // "~^", // $xnor
-  //   // "<<", // $shl
-  //   // ">>", // $shr
-  //   // "<<<", // $sshl
-  //   // ">>>", // $sshr
-  //   // "&&", // $logic_and
-  //   // "||", // $logc_or
-  //   // "===", // $eqx
-  //   // "!===" // $nex
-  // )
-  val randomWidth = (Seq(1, 2, 3, 4, 8) ++ Seq.fill(5) {
+
+  val randomWidth = (Seq(1, 2, 3, 4, 15, 16, 17) ++ Seq.fill(5) {
     randGen.nextInt(maxWidth)
   }).distinct
-  val testCases =
-    for (
+  def testCases =
+    (for (
       w1 <- randomWidth; w2 <- randomWidth; w3 <- randomWidth
-    ) yield { (w1, w2, w3) }
+    ) yield {
+      maxShiftBits match {
+        case None => (w1, w2, w3)
+        case Some(m) =>
+          if (w2 > m) (w1, m, w3)
+          else        (w1, w2, w3)
+      }
+    }).distinct
 
   testCases.foreach { case (w1, w2, w3) =>
 
