@@ -124,7 +124,9 @@ object PlacedIR extends ManticoreAssemblyIR {
     sealed trait Atom
 
     case class AtomConst(v: UInt16) extends Atom
-    case class AtomArg(v: Int) extends Atom
+    abstract class AtomArg extends Atom
+    case class PositionalArg(v: Int) extends AtomArg
+    case class NamedArg(v: Name) extends AtomArg
 
     sealed trait ExprTree
 
@@ -150,7 +152,10 @@ object PlacedIR extends ManticoreAssemblyIR {
       override def toString(): String = {
         id match {
           case AtomConst(v) => v.toString()
-          case AtomArg(v)   => s"%${v}"
+          case arg: AtomArg => arg match {
+            case PositionalArg(v) => s"%${v}"
+            case NamedArg(v) => v
+          }
         }
       }
     }
@@ -204,10 +209,33 @@ object PlacedIR extends ManticoreAssemblyIR {
         }
       }
 
-      val args = collectArgs(tree).toSeq.sortBy(_.v)
-      // Make sure the args are consecutive set of integers.
-      assert(args == Seq.tabulate(args.length) { idx => AtomArg(idx) })
-      args.length
+      // Make sure ALL the args are either:
+      //  1. a consecutive list of integers (starting from 0)
+      //  2. a list of names.
+      // Mixes of both are not possible.
+      val args = collectArgs(tree)
+      val arity = args.size
+
+      val argsArePositional = args.forall {
+        case _: PositionalArg => true
+        case _ => false
+      } && {
+        val foundPositions = args.collect { case PositionalArg(pos) => pos }
+        val expectedPositions = Set.tabulate(arity)(idx => idx)
+        foundPositions == expectedPositions
+      }
+
+      val argsAreNamed = args.forall {
+        case _: NamedArg => true
+        case _ => false
+      }
+
+      assert(
+        argsArePositional || argsAreNamed,
+        s"Expression ${tree} to contains a mix of positional and named args!"
+      )
+
+      arity
     }
 
     private def computeResources(
@@ -337,8 +365,8 @@ object PlacedIR extends ManticoreAssemblyIR {
         val lutOutputs = inputCombinations.map { inputCombination =>
           // The expression tree has arguments that are mapped to indices starting from 0.
           // We replace these indices with constants (defined by the LUT's current input combination).
-          val subst = inputCombination.zipWithIndex.map { case (const, idx) =>
-            AtomArg(idx) -> AtomConst(const)
+          val subst: Map[AtomArg, Atom] = inputCombination.zipWithIndex.map { case (const, idx) =>
+            PositionalArg(idx) -> AtomConst(const)
           }.toMap
 
           val resFullDatapath = evaluate(substitute(expr)(subst))

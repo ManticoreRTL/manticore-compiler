@@ -27,70 +27,7 @@ import manticore.compiler.assembly.BinaryOperator
 import org.jgrapht.alg.isomorphism.VF2GraphIsomorphismInspector
 import org.jgrapht.GraphMapping
 import manticore.compiler.assembly.levels.UInt16
-
-// Represents a rooted cone of vertices in a graph.
-// The constructor is private as I want to force callers to go through the factory method in the Cone object.
-class Cone[V] private (
-  val root: V,
-  // The primary inputs are *outside* the cone and feed the cone.
-  //
-  // A cone computes an expression and the primary inputs are the variables in
-  // the expression. We want to support comparing two cones to determine if they
-  // compute the same function.
-  //
-  // Two cones of the same arity that compute the same function do so subject to
-  // the order of their primary inputs. The number we assign here is this order
-  // and can be used to map the primary inputs of one cone to those of the other.
-  val piArgIdxToName: Map[PlacedIR.CustomFunctionImpl.AtomArg, V],
-  val piNameToArgIdx: Map[V, PlacedIR.CustomFunctionImpl.AtomArg],
-  val leaves: Set[V],
-  // Contains the root, the leaves, and all intermediate vertices between.
-  val vertices: Set[V]
-) {
-
-  def size: Int = vertices.size
-
-  def arity: Int = piArgIdxToName.size
-
-  def contains(v: V): Boolean = {
-    vertices.contains(v)
-  }
-
-  def exists(p: V => Boolean): Boolean = {
-    vertices.exists(p)
-  }
-
-  override def toString(): String = {
-    val nonRootVertices = vertices - root
-    s"{arity = ${arity}, root = ${root}, (body = ${nonRootVertices.mkString(" --- ")}), (primary inputs = ${piArgIdxToName.mkString(", ")})}"
-  }
-}
-
-object Cone {
-  def apply[V](
-    g: Graph[V, DefaultEdge],
-    root: V,
-    primaryInputs: Set[V],
-    vertices: Set[V]
-  ): Cone[V] = {
-    val piSuccs = primaryInputs.flatMap { pi =>
-      Graphs.successorListOf(g, pi).asScala.toSet
-    }
-
-    val leaves = piSuccs.intersect(vertices)
-
-    val piNameToArgIdx = primaryInputs
-      .zipWithIndex
-      .map { case (pi, idx) =>
-        pi -> PlacedIR.CustomFunctionImpl.AtomArg(idx)
-      }
-      .toMap
-
-    val piArgIdxToName = piNameToArgIdx.map(kv => kv.swap)
-
-    new Cone(root, piArgIdxToName, piNameToArgIdx, leaves, vertices)
-  }
-}
+import org.jgrapht.graph.AsUnmodifiableGraph
 
 object GraphDump {
   // The jgrapht library does not support emitting graphviz `subgraph`s.
@@ -239,58 +176,194 @@ object CustomLutInsertion
 
   import CustomFunctionImpl._
 
-  // We want vertices for every element that could be used as a primary input. This means we must use `Name`
-  // as the vertex instead of `Instruction` as no instruction exists to represent inputs of the circuit (registers).
+  // We want vertices for every element that could be used as a primary input. The highest-level names are not generated
+  // by instructions, so we store `Name` directly for those. For all other vertices we store the `Instruction`.
+  type DepVertex = Either[Name, Instruction]
+  type DepGraph = Graph[DepVertex, DefaultEdge]
+
+  // Represents a rooted cone of vertices in a graph.
+  // The constructor is private as I want to force callers to go through the factory method in the Cone object.
+  class Cone private (
+    // // Contains the vertices of the root *and* the primary inputs (i.e., g.vertexSet = vertices ++ primaryInputs)
+    // val g: AsUnmodifiableGraph[DepVertex, DefaultEdge],
+    val root: DepVertex,
+    val vertices: Set[DepVertex],
+    val primaryInputs: Set[DepVertex],
+    val func: CustomFunctionImpl,
+    val posArgToNamedArg: Map[PositionalArg, NamedArg]
+  ) {
+
+    def size: Int = vertices.size
+
+    def arity: Int = primaryInputs.size
+
+    def contains(v: DepVertex): Boolean = {
+      vertices.contains(v)
+    }
+
+    def exists(p: DepVertex => Boolean): Boolean = {
+      vertices.exists(p)
+    }
+
+    override def toString(): String = {
+      val nonRootVertices = vertices - root
+      val funcStr = CustomFunctionImpl.substitute(func.expr)(posArgToNamedArg.toMap[AtomArg, NamedArg]).toString
+      s"{arity = ${arity}, root = ${root}, func = ${funcStr}"
+    }
+
+    // Intentional as I don't want Cones to be hashable (don't know how the jgrapht would hash the graph I
+    // am storing in the cone).
+    override def hashCode(): Int = ???
+  }
+
+  object Cone {
+
+    private def createExpr(
+      root: DepVertex,
+      vertices: Set[DepVertex],
+      primaryInputs: Set[DepVertex],
+      nameToInstrMap: Map[Name, Instruction],
+      vToConstMap: Map[DepVertex, Constant]
+    ): (
+      ExprTree,
+      Map[PositionalArg, NamedArg]
+    ) = {
+
+      val posArgToNamedArg = MHashMap.empty[PositionalArg, NamedArg]
+      def nextPos() = posArgToNamedArg.size
+
+      def makeExpr(v: DepVertex): CustomFunctionImpl.ExprTree = {
+        v match {
+          case Left(name) =>
+            vToConstMap.get(v) match {
+              case Some(const) =>
+                IdExpr(AtomConst(const))
+
+              case None =>
+                val pos = nextPos()
+                val posArg = PositionalArg(pos)
+                val namedArg = NamedArg(name)
+                posArgToNamedArg += posArg -> namedArg
+                IdExpr(posArg)
+            }
+
+          case Right(instr) =>
+            instr match {
+              case BinaryArithmetic(operator, rd, rs1, rs2, _) =>
+                val rs1Expr = nameToInstrMap.get(rs1) match {
+                  case None => makeExpr(Left(rs1))
+                  case Some(rs1Instr) => makeExpr(Right(rs1Instr))
+                }
+                val rs2Expr = nameToInstrMap.get(rs2) match {
+                  case None => makeExpr(Left(rs2))
+                  case Some(rs2Instr) => makeExpr(Right(rs2Instr))
+                }
+
+                operator match {
+                  case AND => AndExpr(rs1Expr, rs2Expr)
+                  case OR => OrExpr(rs1Expr, rs2Expr)
+                  case XOR => XorExpr(rs1Expr, rs2Expr)
+                  case _ =>
+                    throw new IllegalArgumentException(s"Unexpected non-logic operator ${operator}.")
+                }
+
+              case _ =>
+                throw new IllegalArgumentException(s"Expected to see a logic instruction, but saw \"${instr}\" instead.")
+            }
+        }
+      }
+
+      (makeExpr(root), posArgToNamedArg.toMap)
+    }
+
+    def apply(
+      g: DepGraph,
+      root: DepVertex,
+      primaryInputs: Set[DepVertex],
+      vToConstMap: Map[DepVertex, Constant]
+    ): Cone = {
+
+      // Backtracks from the root until (and including) the primary inputs.
+      // All vertices encountered along the way form a cone.
+      def getConeGraphVertices(): Set[DepVertex] = {
+        val coneVertices = MHashSet.empty[DepVertex]
+
+        // Backtrack from the given vertex until a primary input is seen.
+        def backtrack(v: DepVertex): Unit = {
+          coneVertices += v
+          if (!primaryInputs.contains(v)) {
+            Graphs.predecessorListOf(g, v).asScala.foreach(pred => backtrack(pred))
+          }
+        }
+
+        backtrack(root)
+        coneVertices.toSet
+      }
+
+      val verticesInclPrimaryInputs = getConeGraphVertices()
+      val vertices = verticesInclPrimaryInputs -- primaryInputs
+      val nameToInstrMap = vertices.flatMap {
+        case Right(instr) =>
+          val regDefs = DependenceAnalysis.regDef(instr)
+          regDefs.map { regDef =>
+            regDef -> instr
+          }
+        case _ =>
+          None
+      }.toMap
+      val (expr, posArgToNamedArg) = createExpr(root, vertices, primaryInputs, nameToInstrMap, vToConstMap)
+      val func = CustomFunctionImpl(expr)
+
+      new Cone(root, vertices, primaryInputs, func, posArgToNamedArg)
+    }
+  }
+
+  // We want vertices for every element that could be used as a primary input. The highest-level names are not generated
+  // by instructions, so we store `Name` directly for those. For all other vertices we store the `Instruction`.
   def createDependenceGraph(
     proc: DefProcess
   )(
     implicit ctx: AssemblyContext
-  ): Graph[Name, DefaultEdge] = {
-    val g: Graph[Name, DefaultEdge] = new DirectedAcyclicGraph(classOf[DefaultEdge])
+  ): DepGraph = {
+    val g: DepGraph = new DirectedAcyclicGraph(classOf[DefaultEdge])
 
-    val constNames = proc.registers.filter { reg =>
-      reg.variable.varType == ConstType
-    }.map { constReg =>
-      constReg.variable.name
-    }.toSet
+    val instrRegDefs = proc.body
+      .flatMap { instr =>
+        val regDefs = DependenceAnalysis.regDef(instr)
+        regDefs.map { regDef =>
+          regDef -> instr
+        }
+      }
+      .toMap
 
     proc.body.foreach { instr =>
-      // Add a vertex for every register that is written and associate it with its instruction.
-      val regDefs = DependenceAnalysis.regDef(instr)
-      regDefs.foreach { rd =>
-        g.addVertex(rd)
-      }
+      // Add a vertex for every instruction.
+      g.addVertex(Right(instr))
 
-      // Add a vertex for every register that is read.
+      // Add a vertex for every register that is read. Note that we may read names that
+      // are not generated by any instruction (primary inputs for example). We therefore
+      // need to be careful here and possibly create a `Name` for the vertex instead of
+      // a `Instruction`.
       val regUses = DependenceAnalysis.regUses(instr)
       regUses.foreach { rs =>
-        // The vertex will not be added again if it already exists (defined by a previous
-        // instruction).
-        g.addVertex(rs)
-      }
+        instrRegDefs.get(rs) match {
+          case None =>
+            // rs is not generated by an instruction, so we create a `Name` for it.
+            g.addVertex(Left(rs))
+            // Use Left(rs) here as it is a `Name`.
+            g.addEdge(Left(rs), Right(instr))
 
-      // Add edges between regDefs and regUses.
-      regDefs.foreach { rd =>
-        regUses.foreach { rs =>
-          g.addEdge(rs, rd)
+          case Some(rsInstr) =>
+            // rs is generated by an instruction. The program is ordered, so we must
+            // have already seen rs and created a vertex for it beforehand. There is
+            // nothing to do.
+            // Use Right(rsInstr) here as rs is generated by an `Instruction`, not a `Name`.
+            g.addEdge(Right(rsInstr), Right(instr))
         }
       }
     }
 
     g
-  }
-
-  def isLogicInstr(
-    name: Name,
-    nameToInstrMap: Map[Name, Instruction]
-  ): Boolean = {
-    nameToInstrMap.get(name) match {
-      case None =>
-        // The name must be a top-level input or a constant as no instruction defines it.
-        false
-      case Some(instr) =>
-        isLogicInstr(instr)
-    }
   }
 
   def isLogicInstr(instr: Instruction): Boolean = {
@@ -301,53 +374,56 @@ object CustomLutInsertion
   }
 
   def findLogicClusters(
-    g: Graph[Name, DefaultEdge],
-    nameToInstrMap: Map[Name, Instruction]
-  ): Set[Set[Name]] = {
+    g: DepGraph
+  ): Set[Set[DepVertex]] = {
     // We use Union-Find to cluster logic instructions together.
     val uf = new UnionFind(g.vertexSet())
+
+    val logicVertices = g.vertexSet()
+      .asScala
+      .filter {
+        case Right(instr) if isLogicInstr(instr) => true
+        case _ => false
+      }
+      .toSet
 
     // Merge the edges that link 2 logic instructions.
     g.edgeSet().asScala.foreach { e =>
       val src = g.getEdgeSource(e)
       val dst = g.getEdgeTarget(e)
 
-      val isSrcLogic = isLogicInstr(src, nameToInstrMap)
-      val isDstLogic = isLogicInstr(dst, nameToInstrMap)
+      val srcIsLogic = logicVertices.contains(src)
+      val dstIsLogic = logicVertices.contains(dst)
 
-      if (isSrcLogic && isDstLogic) {
+      if (srcIsLogic && dstIsLogic) {
         uf.union(src, dst)
       }
     }
 
-    val logicClusters = g.vertexSet()
-      .asScala // Returns a mutable.Set
-      .toSet // Convert to immutable.Set
-      .filter { v =>
-        isLogicInstr(v, nameToInstrMap)
-      }
+    val logicClusters = logicVertices
       .groupBy { v =>
         uf.find(v)
-      }.values.toSet
+      }
+      .values
+      .toSet
 
     logicClusters
   }
 
   def getFanoutFreeCones(
-    dependenceGraph: Graph[Name, DefaultEdge],
-    logicVertices: Set[Name],
+    dependenceGraph: DepGraph,
+    logicVertices: Set[DepVertex],
     maxCutSize: Int,
-    nameToConstMap: Map[Name, Constant],
-    nameToInstrMap: Map[Name, Instruction]
+    vToConstMap: Map[DepVertex, Constant],
   )(
     implicit ctx: AssemblyContext
-  ): Iterable[Cone[Name]] = {
+  ): Iterable[Cone] = {
     // Returns a subgraph of the dependence graph containing the logic vertices *and* their inputs
     // (which are not logic vertices by definition). The inputs are needed to perform cut enumeration
     // as otherwise we would not know the in-degree of the first logic vertices in the graph.
     def logicSubgraphWithInputs(): (
-      Graph[Name, DefaultEdge],
-      Set[Name] // inputs
+      DepGraph,
+      Set[DepVertex] // inputs
     ) = {
       // The inputs are vertices *outside* the given set of vertices that are connected
       // to vertices *inside* the cluster. Some of these "inputs" are constants, but
@@ -356,35 +432,13 @@ object CustomLutInsertion
       val inputs = logicVertices.flatMap { vLogic =>
         Graphs.predecessorListOf(dependenceGraph, vLogic).asScala
       }.filter { vAnywhere =>
-        !logicVertices.contains(vAnywhere) && !nameToConstMap.contains(vAnywhere)
+        !logicVertices.contains(vAnywhere) && !vToConstMap.contains(vAnywhere)
       }
 
       val subgraphVertices = inputs ++ logicVertices
       val subgraph = new AsSubgraph(dependenceGraph, subgraphVertices.asJava)
 
       (subgraph, inputs)
-    }
-
-    // Backtracks from the root until the cut vertices. All vertices encountered along the
-    // way form a cone. The cut vertices themselves are not part of the cone and are instead
-    // its "primary inputs".
-    def cutToCone[V](
-      g: Graph[V, DefaultEdge],
-      root: V,
-      cut: Set[V]
-    ): Cone[V] = {
-      val coneVertices = MHashSet.empty[V]
-
-      // Backtrack from the given vertex until a vertex in the cut is seen.
-      def backtrack(v: V): Unit = {
-        if (!cut.contains(v)) {
-          coneVertices += v
-          Graphs.predecessorListOf(g, v).asScala.foreach(pred => backtrack(pred))
-        }
-      }
-
-      backtrack(root)
-      Cone(g, root, cut, coneVertices.toSet)
     }
 
     // Form a graph containing the vertices of all clusters AND their inputs.
@@ -395,9 +449,13 @@ object CustomLutInsertion
     ) {
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).
-      val nameMap = nameToInstrMap.map { case (regDef, instr) =>
-        regDef -> instr.toString
-      }
+      val nameMap = gLswi.vertexSet()
+        .asScala
+        .map { v => v match {
+          case Left(name) => v -> name
+          case Right(instr) => v -> instr.toString()
+        }}
+        .toMap
 
       GraphDump(
         gLswi,
@@ -417,17 +475,8 @@ object CustomLutInsertion
       // Note though that this is not a problem as we are not computing a full
       // set cover where *every* vertex of the graph must be covered, but rather
       // the largest partial cover using the cones that have at least 2 vertices.
-      rootCuts.map(cut => cutToCone(gLswi, root, cut))
+      rootCuts.map(cut => Cone(gLswi, root, cut, vToConstMap))
     }
-
-    // Sanity check.
-    val invalidCones = allCones.filter { cone =>
-      cone.exists(v => !isLogicInstr(v, nameToInstrMap))
-    }
-    assert(
-      invalidCones.isEmpty,
-      s"Found invalid cones as they contain non-logic instructions:\n${invalidCones.mkString("\n")}"
-    )
 
     // Keep only the cones that are fanout-free.
     // Fanout-free means that only the root of the cone has outgoing edges to a vertex *outside*
@@ -445,57 +494,6 @@ object CustomLutInsertion
     }
 
     fanoutFreeCones
-  }
-
-  def coneToCustomFunction(
-    cone: Cone[Name],
-    nameToConstMap: Map[Name, Constant],
-    nameToInstrMap: Map[Name, Instruction]
-  ): CustomFunction = {
-
-    def makeExpr(
-      name: Name
-    ): CustomFunctionImpl.ExprTree = {
-      cone.piNameToArgIdx.get(name) match {
-        case Some(atomArg) =>
-          // Base case: The name is a primary input.
-          IdExpr(atomArg)
-
-        case None =>
-          nameToConstMap.get(name) match {
-            case Some(const) =>
-              // Base case: The name is a constant.
-              IdExpr(AtomConst(const))
-
-            case None =>
-              // General case: Create expression for each argument of the instruction
-              // and join them to form an expression tree.
-              val instr = nameToInstrMap(name)
-              instr match {
-                case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
-                  val rs1Expr = makeExpr(rs1)
-                  val rs2Expr = makeExpr(rs2)
-
-                  operator match {
-                    case AND => AndExpr(rs1Expr, rs2Expr)
-                    case OR => OrExpr(rs1Expr, rs2Expr)
-                    case XOR => XorExpr(rs1Expr, rs2Expr)
-                    case _ =>
-                      throw new IllegalArgumentException(s"Unexpected non-logic operator ${operator}.")
-                  }
-
-                case _ =>
-                  throw new IllegalArgumentException(s"Expected to see a logic instruction, but saw \"${instr}\" instead.")
-              }
-          }
-      }
-    }
-
-    val rootName = cone.root
-    val rootExpr = makeExpr(rootName)
-    val customFunc = CustomFunctionImpl(rootExpr)
-
-    customFunc
   }
 
   // Maps every cone to a representative cone that computes the same function.
@@ -545,8 +543,8 @@ object CustomLutInsertion
         .permutations
         .find { inputPermutation =>
           val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
-            AtomArg(inputIdx) -> AtomArg(idx)
-          }.toMap
+            PositionalArg(inputIdx) -> PositionalArg(idx)
+          }.toMap[AtomArg, Atom]
           val substExpr = CustomFunctionImpl.substitute(f2.expr)(subst)
           val substFunc = CustomFunctionImpl(substExpr)
           val substEqu = substFunc.equation
@@ -557,8 +555,8 @@ object CustomLutInsertion
       // not the resulting AtomArg map).
       val subst = matchingPermutation.map { inputPermutation =>
         inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
-          AtomArg(inputIdx) -> AtomArg(idx)
-        }.toMap
+          PositionalArg(inputIdx) -> PositionalArg(idx)
+        }.toMap[AtomArg, AtomArg]
       }
 
       subst
@@ -606,8 +604,8 @@ object CustomLutInsertion
 
     groupedFuncs.foreach { case ((arity, resources), coneFuncs) =>
       val identityArgMap = Seq.tabulate(arity) { idx =>
-        AtomArg(idx) -> AtomArg(idx)
-      }.toMap
+        PositionalArg(idx) -> PositionalArg(idx)
+      }.toMap[AtomArg, AtomArg]
 
       // A cone is equal to itself.
       coneFuncs.foreach { case (coneId, f) =>
@@ -670,7 +668,7 @@ object CustomLutInsertion
   def findOptimalConeCover[V](
     cones: Map[
       Int, // Cone ID
-      Cone[V] // Cone
+      Cone // Cone
     ],
     // Groups cones that compute the same function together. We don't care about
     // what they are computing, just that they are computing the same function
@@ -918,22 +916,19 @@ object CustomLutInsertion
   ): DefProcess = {
     val dependenceGraph = createDependenceGraph(proc)
 
-    val nameToConstMap = proc.registers.filter { reg =>
-      reg.variable.varType == ConstType
-    }.map { constReg =>
-      // constants are guaranteed to have a constant assigned to their variable value, so
-      // it is safe to call `get`.
-      constReg.variable.name -> constReg.value.get
-    }.toMap
-
-    val nameToInstrMap = proc.body.foldLeft(Map.empty[Name, Instruction]) { case (currNameToInstrMap, instr) =>
-      val regDefs = DependenceAnalysis.regDef(instr)
-      val newEntries = regDefs.map(rd => rd -> instr).toMap
-      currNameToInstrMap ++ newEntries
-    }
+    val vToConstMap: Map[DepVertex, Constant] = proc.registers
+      .filter { reg =>
+        reg.variable.varType == ConstType
+      }
+      .map { constReg =>
+        // constants are guaranteed to have a constant assigned to their variable value, so
+        // it is safe to call `get`.
+        Left(constReg.variable.name) -> constReg.value.get
+      }
+      .toMap
 
     // Identify logic clusters in the graph.
-    val logicClusters = findLogicClusters(dependenceGraph, nameToInstrMap)
+    val logicClusters = findLogicClusters(dependenceGraph)
       .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
 
     ctx.logger.debug {
@@ -954,8 +949,7 @@ object CustomLutInsertion
         dependenceGraph,
         logicClusters.flatten,
         ctx.max_custom_instruction_inputs,
-        nameToConstMap,
-        nameToInstrMap
+        vToConstMap,
       ).filter { cone =>
         // We don't care about cones that consist of a single instruction as there
         // is no benefit in doing so (we will not reduce the instruction count).
@@ -971,38 +965,23 @@ object CustomLutInsertion
         .groupBy { case (id, cone) =>
           cone.arity
         }
-        .map { case (arity, group) =>
-          arity -> group.size
-        }
-        .toSeq
-        .sortBy { case (arity, numCones) =>
-          arity
-        }
-        .map { case (arity, numCones) =>
-          s"arity ${arity} -> ${numCones} cones"
+        .map { case (arity, groupCones) =>
+          groupCones
+            .toSeq
+            .sortBy { case (coneId, cone) =>
+              (cone.size, coneId)
+            }
+            .map { case (coneId, cone) =>
+              s"coneId ${coneId} -> ${cone.toString()}"
+            }.mkString("\n")
         }
         .mkString("\n")
 
       s"There are ${cones.size} fanout-free cones.\n${numConesOfArity}"
     }
 
-    // The functions computed by each cone.
-    val coneFuncs = ctx.stats.recordRunTime("conesToCustomFunctions") {
-      cones.map { case (coneId, cone) =>
-        coneId -> coneToCustomFunction(cone, nameToConstMap, nameToInstrMap)
-      }.toMap
-    }
-
-    ctx.logger.debug {
-      coneFuncs
-        .toSeq
-        .sortBy { case (coneId, func) =>
-          (func.arity, coneId)
-        }
-        .map { case (coneId, func) =>
-          val cone = cones(coneId)
-          s"coneId ${coneId} | ${func} | ${cone}"
-        }.mkString("\n")
+    val coneFuncs = cones.map { case (coneId, cone) =>
+      coneId -> cone.func
     }
 
     val (coneIdToReprId, coneToReprArgMap) = if (ctx.optimize_common_custom_functions) {
@@ -1030,8 +1009,8 @@ object CustomLutInsertion
       val coneToReprArgMap = cones.keys.map { coneId =>
         val cone = cones(coneId)
         val argMap = Seq.tabulate(cone.arity) { idx =>
-          AtomArg(idx) -> AtomArg(idx)
-        }.toMap
+          PositionalArg(idx) -> PositionalArg(idx)
+        }.toMap[AtomArg, AtomArg]
         coneId -> argMap
       }.toMap
 
@@ -1103,17 +1082,10 @@ object CustomLutInsertion
         clusterId -> color.toCssHexString()
       }.toMap
 
-      // All vertices should use the string representation of the instruction
-      // that generates them, or the name itself (if a primary input).
-      val nameMap = nameToInstrMap.map { case (regDef, instr) =>
-        regDef -> instr.toString
-      }
-
       GraphDump(
         dependenceGraph,
         clusters=clusters,
         clusterColorMap=clusterColorMap,
-        vNameMap=nameMap
       )
     }
 
@@ -1136,35 +1108,35 @@ object CustomLutInsertion
     // A subsequent DeadCodeElimination pass will be needed to eliminate these now-unused instructions.
     val newBody = proc.body.map { instr =>
       DependenceAnalysis.regDef(instr) match {
-        case Seq(rd) =>
-          bestConeIds.find { coneId =>
-            val cone = cones(coneId)
-            cone.root == rd
-          } match {
-            case None =>
-              // Leave the instruction unchanged as the output of the instruction
-              // does not match the root vertex of a selected cone.
-              instr
+        // case Seq(rd) =>
+        //   bestConeIds.find { coneId =>
+        //     val cone = cones(coneId)
+        //     cone.root == rd
+        //   } match {
+        //     case None =>
+        //       // Leave the instruction unchanged as the output of the instruction
+        //       // does not match the root vertex of a selected cone.
+        //       instr
 
-            case Some(coneId) =>
-              // Replace instruction with a custom instruction.
-              val (func, coneToFuncArgMap) = bestConesToReprFunc(coneId)
-              val cone = cones(coneId)
-              val rsx = cone.piArgIdxToName
-                .map { case (origArgIdx, argName) =>
-                  val funcArgIdx = coneToFuncArgMap(origArgIdx)
-                  funcArgIdx -> argName
-                }
-                .toSeq
-                .sortBy { case (funcArgIdx, argName) =>
-                  funcArgIdx.v
-                }
-                .map { case (funcArgIdx, argName) =>
-                  argName
-                }
+        //     case Some(coneId) =>
+        //       // Replace instruction with a custom instruction.
+        //       val (func, coneToFuncArgMap) = bestConesToReprFunc(coneId)
+        //       val cone = cones(coneId)
+        //       val rsx = cone.posArgToNamedArg
+        //         .map { case (origArgIdx, argName) =>
+        //           val funcArgIdx = coneToFuncArgMap(origArgIdx)
+        //           funcArgIdx -> argName
+        //         }
+        //         .toSeq
+        //         .sortBy { case (funcArgIdx, argName) =>
+        //           funcArgIdx.v
+        //         }
+        //         .map { case (funcArgIdx, argName) =>
+        //           argName
+        //         }
 
-              CustomInstruction(func.name, rd, rsx)
-          }
+        //       CustomInstruction(func.name, rd, rsx)
+        //   }
 
         case _ =>
           // Leave the instruction unchanged as the instruction is not the root of a selected cone.
@@ -1195,10 +1167,10 @@ object Test extends App {
 
   val expr = OrExpr(
     XorExpr(
-      IdExpr(AtomArg(1)),
+      IdExpr(PositionalArg(1)),
       IdExpr(AtomConst(UInt16(1)))
     ),
-    IdExpr(AtomArg(0))
+    IdExpr(PositionalArg(0))
   )
 
   val f1 = CustomFunctionImpl(expr)
