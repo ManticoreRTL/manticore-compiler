@@ -26,6 +26,7 @@ class CustomLutInsertionCommonFunctionDetectionTest extends UnitFixtureTest with
       debug_message = true,
       max_custom_instructions = 32,
       max_custom_instruction_inputs = 6,
+      optimize_common_custom_functions = true,
       max_dimx = 1,
       max_dimy = 1,
       max_cycles = 200,
