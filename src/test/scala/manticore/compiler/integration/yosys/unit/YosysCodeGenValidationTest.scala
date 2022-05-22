@@ -95,27 +95,32 @@ trait YosysUnitTest {
       }
     } catch {
       case e: Exception =>
-        println(s"Failed the test because: ${e.getMessage()}\nin: ${testDir.toString()}")
+        println(
+          s"Failed the test because: ${e.getMessage()}\nin: ${testDir.toString()}"
+        )
         ctx.logger.flush()
         throw new CompilationFailureException("test failed")
     }
 
   }
-  private final def defaultContext(dump_all: Boolean = false): AssemblyContext = AssemblyContext(
-    dump_all = dump_all,
-    dump_dir = Some(testDir.toFile),
-    log_file = Some(testDir.resolve("run.log").toFile),
-    max_cycles = testIterations + 1000
-  )
+  private final def defaultContext(dump_all: Boolean = false): AssemblyContext =
+    AssemblyContext(
+      dump_all = dump_all,
+      dump_dir = Some(testDir.toFile),
+      log_file = Some(testDir.resolve("run.log").toFile),
+      max_cycles = testIterations + 1000
+    )
 
-  private final val yosysDefaultPasses = Seq(
+  def yosysSelectPasses: Seq[String] = Nil
+  private def yosysDefaultPasses = Seq(
     s"hierarchy -auto-top -check",
     "proc",
     "opt",
     "opt_reduce",
     "opt_demorgan",
     "opt_clean",
-    "write_rtlil original.rtl",
+    "write_rtlil original.rtl"
+  ) ++ yosysSelectPasses ++ Seq(
     "manticore_init", // do basic stuff such as setting track attributes
     "manticore_memory", // handle memories
     "flatten", // flatten the design
