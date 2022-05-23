@@ -2,6 +2,7 @@ package manticore.compiler.assembly.levels.placed.lowering
 
 import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
+import manticore.compiler.assembly.levels.placed.PlacedIRRenamer.Rename
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
@@ -13,12 +14,29 @@ import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.TaggedInstruction
 import scala.annotation.tailrec
-
+import manticore.compiler.assembly.levels.WireType
+import manticore.compiler.assembly.levels.placed.lowering.util.Processor
+import manticore.compiler.assembly.levels.placed.lowering.util.ScheduleContext
+import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
+import manticore.compiler.assembly.levels.placed.lowering.util.RecvEvent
+/**
+ * Program scheduler pass
+ *
+ * A List scheduling inspired scheduling algorithm that performs:
+ * 1. Nop insertion, to handle instruction latencies
+ * 2. Send scheduling, to handle flow-control NoC traffic
+ * 3. Predicate insertion, to have explicit store predicates
+ * 4. JumpTable optimization, to fill in the Nop gaps inside jump cases
+ *
+ * @author Mahyar Emami <mahyar.emami@epfl.ch>
+ */
 private[lowering] object ProgramSchedulingTransform
     extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
   import PlacedIR._
-  private type DependenceGraph = Graph[Instruction, GraphEdge.DiEdge]
 
+
+  private val jumpDelaySlotSize = 2
+  private val breakDelaySlotSize = 2
   def transform(program: DefProgram, context: AssemblyContext): DefProgram = {
 
     val prepared = context.stats.recordRunTime("preparing processes") {
@@ -35,6 +53,7 @@ private[lowering] object ProgramSchedulingTransform
   private def numCyclesInJumpTable(jtb: JumpTable): Int = {
     jtb.blocks.head.block.length + jtb.dslot.length + 1
   }
+
   def createProgramSchedule(program: DefProgram)(implicit
       ctx: AssemblyContext
   ): DefProgram = {
@@ -73,100 +92,261 @@ private[lowering] object ProgramSchedulingTransform
       */
     def advanceCoreState(core: Processor): Unit = {
 
-      /** Try the ready list and see if there is any instruction that can be
-        * scheduled. If there is a send that can be routed at the head of the
-        * readList, this function tries to reserve a path on the network for it
-        * (has side effects) and return the send instruction. If the send
-        * instruction at the head is not routable. The function is called again
-        * on the tail of the readList until some other (send or nonsend)
-        * instruction ready to be scheduled is found. All the instructions that
-        * were popped from the queue but were not scheduleable are returned.
-        * These returned instruction are bound to be of type [[Send]]. The
-        * second returned value is the instruction to be scheduled (could be any
-        * type).
-        * @param triedButFailed
-        * @return
-        */
+      // try popping the readyList until we find an instruction that is accepted
+      // by the given matcher
       @tailrec
-      def tryUntilFindReadyWithSideEffects(
-          triedButFailed: Seq[DependenceGraph#NodeT] = Seq.empty
-      ): (Seq[DependenceGraph#NodeT], Option[DependenceGraph#NodeT]) = {
+      def findCompatible[T](
+          matcher: Instruction => Option[T],
+          notMatched: Seq[Processor.DependenceGraph#NodeT] = Seq.empty
+      ): Option[T] = {
         if (core.scheduleContext.readyList.nonEmpty) {
           val toSchedule = core.scheduleContext.readyList.dequeue()
-          toSchedule.toOuter match {
-            case send: Send =>
-              val response =
-                network.request(core.process.id, send, core.currentCycle)
-              response match {
-                case network.Denied =>
-                  tryUntilFindReadyWithSideEffects(triedButFailed :+ toSchedule)
-                case network.Granted(arrivalCycle) =>
-                  getCore(send.dest_id).notifyRecv(
-                    RecvEvent(
-                      Recv(
-                        rd = send.rd,
-                        rs = send.rs,
-                        source_id = core.process.id
-                      ),
-                      arrivalCycle
-                    )
-                  )
-                  (triedButFailed, Some(toSchedule))
-              }
-            case inst => (triedButFailed, Some(toSchedule))
+          val matched = matcher(toSchedule.toOuter)
+          if (matched.nonEmpty) {
+            core.scheduleContext.readyList ++= notMatched
+            matched
+          } else {
+            findCompatible(matcher, notMatched :+ toSchedule)
           }
         } else {
-          (triedButFailed, None)
+          None
         }
       }
 
-      // see if there is anything that can be committed
-      val nodesToCommit = core.scheduleContext.activeList.collect {
-        case (n, t) if t == core.currentCycle => n
+      sealed trait MatchResult {
+        val inst: Instruction
       }
-      // and remove them from the activeList
-      core.scheduleContext.activeList --= nodesToCommit
+      case class SendMatch(inst: Send, path: network.Path) extends MatchResult
+      case class AnyMatch(inst: Instruction) extends MatchResult
 
-      for (nodeJustCommitted <- nodesToCommit) {
-        for (dependentNode <- nodeJustCommitted.diSuccessors) {
-          // add any successor that only depend on the node that
-          // is being committed
-          if (dependentNode.inDegree == 1) {
-            core.scheduleContext.readyList += dependentNode
+      def matchSend(send: Send) = {
+        val path =
+          network.tryReserve(core.process.id, send, core.currentCycle)
+        if (path.nonEmpty) {
+          Some(SendMatch(send, path.get))
+        } else {
+          None
+        }
+      }
+
+      def matchSendOrAnyInst(inst: Instruction): Option[MatchResult] =
+        inst match {
+          case send: Send =>
+            matchSend(send)
+          case inst: Instruction => Some(AnyMatch(inst))
+        }
+
+      def matchAnyButStore(inst: Instruction): Option[MatchResult] =
+        inst match {
+          case send: Send                          => matchSend(send)
+          case _ @(_: LocalStore | _: GlobalStore) => None
+          case inst                                => Some(AnyMatch(inst))
+        }
+
+      def tryCommitting(): Unit = {
+        val nodesToCommit = core.scheduleContext.activeList.collect {
+          case (n, t) if t <= core.currentCycle => n
+        }
+        // and remove them from the activeList
+        core.scheduleContext.activeList --= nodesToCommit
+
+        for (nodeJustCommitted <- nodesToCommit) {
+          for (dependentNode <- nodeJustCommitted.diSuccessors) {
+            // add any successor that only depend on the node that
+            // is being committed
+            if (dependentNode.inDegree == 1) {
+              core.scheduleContext.readyList += dependentNode
+            }
           }
+          // remove the node from the graph (note that the graph acts as scoreboard)
+          core.scheduleContext.graph -= nodeJustCommitted
         }
-        // remove the node from the graph (note that the graph acts as scoreboard)
-        core.scheduleContext.graph -= nodeJustCommitted
       }
-      val (triedNoLuck, ready) = tryUntilFindReadyWithSideEffects()
 
-      ready match {
+      def storePredicate(store: Instruction) = store match {
+        case lstore: LocalStore  => lstore.predicate
+        case gstore: GlobalStore => gstore.predicate
+        case _                   => None
+      }
+      def removePredicate(store: Instruction) = store match {
+        case lstore: LocalStore  => lstore.copy(predicate = None)
+        case gstore: GlobalStore => gstore.copy(predicate = None)
+        case _                   => store
+      }
+
+      def notifyReceiver(ready: Option[MatchResult]): Unit = ready match {
+        case Some(SendMatch(send, path)) =>
+          val recvEvent = network.request(path)
+          getCore(send.dest_id).notifyRecv(recvEvent)
+        case _ => //nothing to do
+      }
+
+      def activateInstruction(inst: Instruction): Unit = {
+        // make the node active
+        val commitCycle =
+          LatencyAnalysis.latency(
+            inst
+          ) + core.currentCycle + 1
+
+        core.scheduleContext.activeList += (core.scheduleContext.graph
+          .get(inst) -> commitCycle)
+
+        ctx.logger.info(
+          s"@${core.process.id}:${core.currentCycle}: ${inst}"
+        )
+        ctx.logger.info(s"commits @ ${commitCycle}")
+      }
+      def activateReady(ready: Option[MatchResult]): Unit = ready match {
         case Some(newActive) =>
           // make the node active
-          val commitCycle =
-            LatencyAnalysis.latency(newActive.toOuter) + core.currentCycle + 1
-          core.scheduleContext.activeList += (newActive -> commitCycle)
+          activateInstruction(newActive.inst)
+          notifyReceiver(ready)
+        case None => //nothing to do
+      }
+      def scheduleReady(ready: Option[MatchResult]): Unit = ready match {
+        case Some(newActive) =>
+          newActive.inst match {
+            case jtb: JumpTable =>
+              // do not push jtb into the schedule yet
+              core.state = Processor.DelaySlot(jtb, 0)
+              core.jtbBuilder = new Processor.JtbBuilder(jtb)
+              core.currentCycle += 1
+            case store @ (_: LocalStore | _: GlobalStore) =>
+              storePredicate(store) match {
+                case Some(p) =>
+                  if (!core.hasPredicate(p)) {
+                    core.activatePredicate(p)
+                    core.scheduleContext += Predicate(p)
+                    core.scheduleContext += removePredicate(store)
+                    core.currentCycle += 2
+                  } else {
+                    core.scheduleContext += removePredicate(store)
+                    core.currentCycle += 1
+                  }
+                case None =>
+                  ctx.logger.error("Expected predicated store!")
+                  core.scheduleContext += store
+                  core.currentCycle += 1
+              }
+            case anyInst: Instruction =>
+              core.scheduleContext += anyInst
+              core.currentCycle += 1
+          }
         case None => // nothing to add to the active list
-      }
-      // schedule the active node and advance time
-      ready.map(_.toOuter) match {
-        case None => // there was nothing we could do mate
-          core.scheduleContext.schedule += Nop
-          core.currentCycle += 1
-        case Some(jtb: JumpTable) =>
-          core.scheduleContext.schedule += jtb
-          core.currentCycle += numCyclesInJumpTable(jtb)
-        case Some(inst: Instruction) =>
-          core.scheduleContext.schedule += inst
+          core.scheduleContext += Nop
           core.currentCycle += 1
       }
-      // finally, send back any "seemingly" ready node (which is certainly of type Send)
-      // to the readyList
-      assert(
-        triedNoLuck.forall { _.toOuter.isInstanceOf[Send] },
-        "Oops! Your schedule implementation has a bug. Why are you delaying nonsend instructions?"
-      )
-      core.scheduleContext.readyList ++= triedNoLuck
+      // see if there is anything that can be committed
+      tryCommitting()
+
+      core.state match {
+        case Processor.MainBlock =>
+          // then try to get an instruction to schedule it
+          val ready = findCompatible(matchSendOrAnyInst)
+          activateReady(ready)
+          scheduleReady(ready)
+
+        case Processor.DelaySlot(jtb, pos) =>
+          // put a single and only a single instruction at the current position
+          // i.e., this excludes LocalStore and GlobalStore because those ones
+          // unpack into two instructions
+          val ready = findCompatible(matchAnyButStore)
+          val newInst = ready.map(_.inst).getOrElse(Nop)
+          activateReady(ready)
+          core.scheduleContext +?= newInst // tell the context we scheduling
+          // a proxy for the original instruction, needed for correct "finish"
+          // condition
+          core.currentCycle += 1
+          core.jtbBuilder.dslot += newInst
+
+          if (pos == jumpDelaySlotSize - 1) {
+            core.state = Processor.CaseBlock(jtb, 0)
+          } else {
+            core.state = Processor.DelaySlot(jtb, pos + 1)
+          }
+        case Processor.CaseBlock(jtb, pos) =>
+          val maxPos = core.jtbBuilder.blocks.head._2.length - 1
+
+          // we can only bring new instruction from outside if all blocks
+          // doing a Nop right now
+          val canScheduleInstFromOutside = core.jtbBuilder.blocks.forall {
+            case (lbl, blk) =>
+              blk(pos) == Nop
+          }
+
+          if (canScheduleInstFromOutside) {
+            val ready = findCompatible(matchAnyButStore)
+            val newInst = ready.map(_.inst).getOrElse(Nop)
+            activateReady(ready)
+            // notify the context that this newInst is being scheduled
+            // in an opaque way
+            core.scheduleContext +?= newInst
+
+            if (newInst != Nop) {
+              ctx.logger.debug("Bringing in instruction to JumpTable", newInst)
+
+            }
+            // need to rename the output of newInst to a fresh name in every
+            // case block
+            val phiOutputs = DependenceAnalysis.regDef(newInst)
+            val phiInputs =
+              for ((label, caseBlock) <- core.jtbBuilder.blocks) yield {
+
+                val newOutputNames = phiOutputs.map { origOutput =>
+                  origOutput -> s"%w${ctx.uniqueNumber()}"
+                }
+
+                for ((_, rdNew) <- newOutputNames) {
+                  // create a new definition
+                  core.newDefs += DefReg(
+                    ValueVariable(rdNew, -1, WireType),
+                    None
+                  )
+                }
+
+                core.jtbBuilder.addMapping(label, newOutputNames)
+
+                val renamedInst = Rename.asRenamed(newInst) {
+                  core.jtbBuilder.getMapping(label)
+                }
+
+                caseBlock(pos) = renamedInst
+                newOutputNames.map { case (rd, rs) => label -> rs }
+              }
+            // we create Phis for all the new outputs even though they may
+            // no longer be used outside. We have to remove the redundant ones
+            // later. If we don't, we screw up lifetime intervals for register
+            // allocation (i.e., we wrongfully extends lifetimes by keeping
+            // dead Phis and thus introduce artificial register pressure)
+            core.jtbBuilder.phis ++= phiOutputs.zip(phiInputs.transpose).map {
+              case (rd: Name, rsx: Seq[(Label, Name)]) => Phi(rd, rsx)
+            }
+
+          }
+          core.currentCycle += 1
+          if (pos == maxPos) {
+            // we are done with the jump table
+            core.state = Processor.MainBlock
+            // now is the time for actually making the jump table active. The
+            // redundant Phis can be removed after the full schedule is done
+            // to ensure lifetime intervals remain accurate
+
+            val newJtb = jtb
+              .copy(
+                results = jtb.results ++ core.jtbBuilder.phis,
+                dslot = core.jtbBuilder.dslot.toSeq,
+                blocks = core.jtbBuilder.blocks.map { case (lbl, blk) =>
+                  JumpCase(lbl, blk.toSeq)
+                }
+              )
+              .setPos(jtb.pos)
+            core.scheduleContext += newJtb
+
+          } else {
+            core.state = Processor.CaseBlock(jtb, pos + 1)
+          }
+
+      }
 
     }
 
@@ -179,6 +359,7 @@ private[lowering] object ProgramSchedulingTransform
             advanceCoreState(core)
           }
         }
+        ctx.logger.debug(s"finished ${globalCycle}")
         globalCycle += 1
       }
     }
@@ -221,11 +402,41 @@ private[lowering] object ProgramSchedulingTransform
       }
     program
       .copy(
-        processes = scheduledProcesses
+        processes = scheduledProcesses.map(removeDeadPhis)
       )
       .setPos(program.pos)
   }
 
+  private def removeDeadPhis(
+      process: DefProcess
+  )(implicit ctx: AssemblyContext) = {
+
+    // in the process of bringing instructions inside case body, we might have
+    // created dead phi nodes. Now it is the time to go through all the dead
+    // phi nodes and remove them.
+
+    val usedNames = scala.collection.mutable.Set.empty[Name]
+    val namesToRemove = scala.collection.mutable.Set.empty[Name]
+
+    val newBody = process.body.reverseIterator.map {
+      case jtb: JumpTable =>
+        val (toKeep, toRemove) = jtb.results.partition { case Phi(rd, _) =>
+          usedNames(rd)
+        }
+        namesToRemove ++= toRemove.map(_.rd)
+        jtb.copy(results = toKeep)
+      case inst => // nothing to do
+        usedNames ++= DependenceAnalysis.regUses(inst)
+        inst
+    }.toSeq.reverse
+
+    val usedDefs = process.registers.filter { r => !namesToRemove(r.variable.name) }
+
+    process.copy(
+      body = newBody,
+      registers = usedDefs
+    )
+  }
   private def finalizeScheduleWithReceives(
       core: Processor
   )(implicit ctx: AssemblyContext): DefProcess = {
@@ -260,7 +471,7 @@ private[lowering] object ProgramSchedulingTransform
       }
     }
     val sortedRecvs = core.getReceivesSorted()
-    val currentSched = core.scheduleContext.schedule.toSeq
+    val currentSched = core.scheduleContext.getSchedule()
     val currentCycle = core.currentCycle
 
     val (withRecvs, finalCycle) =
@@ -287,171 +498,14 @@ private[lowering] object ProgramSchedulingTransform
 
     core.process
       .copy(
-        body = finalSchedule
+        body = finalSchedule,
+        registers = core.process.registers ++ core.newDefs
       )
       .setPos(core.process.pos)
 
   }
-  private class NetworkOnChip(dimX: Int, dimY: Int) {
 
-    sealed abstract trait Response
-    case object Denied extends Response
-    case class Granted(arrival: Int) extends Response
 
-    // the start time given should be the cycle at which a Send gets scheduled
-
-    // plus Latency
-
-    case class Step(loc: Int, t: Int)
-    case class Path(from: ProcessId, send: Send, scheduleCycle: Int) {
-
-      val to = send.dest_id
-      val xDist =
-        LatencyAnalysis.xHops(from, to, (dimX, dimY))
-      val yDist =
-        LatencyAnalysis.yHops(from, to, (dimX, dimY))
-
-      /** [[LatencyAnalysis.latency]] gives the number of NOPs required between
-        * two depending instruction, that is, it gives the latency between
-        * executing and writing back the instruction but the [[Send]] latency
-        * should also consider the number of cycles required for fetching and
-        * decoding. That is why we add "2" to the number given by
-        * [[LatencyAnalysis.latency]]
-        */
-      val enqueueTime = LatencyAnalysis.latency(send) + 2 + scheduleCycle
-      val xHops: Seq[Step] =
-        Seq.tabulate(xDist) { i =>
-          val x_v = (from.x + i + 1) % dimX
-
-          Step(x_v, (enqueueTime + i))
-        }
-      val yHops: Seq[Step] = {
-
-        val p = Seq.tabulate(yDist) { i =>
-          val y_v = (from.y + i + 1) % dimY
-          xHops match {
-            case _ :+ last => Step(y_v, (xHops.last.t + i + 1))
-            case Seq() => // there are no steps in the X direction
-              Step(y_v, (enqueueTime + i))
-          }
-        }
-        // the last hop always occupies a Y link which the is Y output of
-        // the target switch (Y output is shared with the local output)
-        val lastHop = p match {
-          case _ :+ last => Step((to.y + 1) % dimY, (last.t + 1))
-          case Nil       =>
-            // this happens if the packet only goes in the X direction. The
-            // packet should have at least one X hop, hence xHops can not be
-            // empty (we don't have self messages so at least one the
-            // the two paths are non empty)
-            assert(
-              xHops.nonEmpty,
-              s"Can not have self messages send ${send.serialized}"
-            )
-            Step((to.y + 1) % dimY, (xHops.last.t + 1))
-        }
-        p :+ lastHop
-      }
-
-    }
-    private type LinkOccupancy = scala.collection.mutable.Set[Int]
-    private val linksX = Array.ofDim[LinkOccupancy](dimX, dimY)
-    private val linksY = Array.ofDim[LinkOccupancy](dimX, dimY)
-
-    // initially no link is occupied
-    for (x <- 0 until dimX; y <- 0 until dimY) {
-      linksX(x)(y) = scala.collection.mutable.Set.empty[Int]
-      linksY(x)(y) = scala.collection.mutable.Set.empty[Int]
-    }
-
-    /** called by a processor to try to enqueue a Send to the NoC
-      *
-      * @param path
-      *   the path the message should traverse
-      * @return
-      */
-    def request(from: ProcessId, send: Send, scheduleCycle: Int): Response =
-      request(Path(from, send, scheduleCycle))
-    def request(path: Path): Response = {
-      val canRouteHorizontally = path.xHops.forall { case Step(x, t) =>
-        linksX(x)(path.from.y).contains(t) == false
-      }
-      val canRouteVertically = path.yHops.forall { case Step(y, t) =>
-        linksY(path.to.x)(y).contains(t) == false
-      }
-      if (canRouteVertically && canRouteHorizontally) {
-        // reserve the links
-        for (Step(x, t) <- path.xHops) {
-          linksX(x)(path.from.y) += t
-        }
-        for (Step(y, t) <- path.yHops) {
-          linksY(path.to.x)(y) += t
-        }
-        Granted(path.yHops.last.t) // you lucky bastard
-      } else {
-        Denied // you've been served sir
-      }
-    }
-
-  }
-
-  private final class ScheduleContext(
-      dependenceGraph: DependenceGraph,
-      priority: Ordering[DependenceGraph#NodeT]
-  ) {
-
-    val graph = {
-      // a copy of the original dependence graph excluding the Send instructions
-
-      val builder = MutableGraph.empty[Instruction, GraphEdge.DiEdge]
-      builder ++= dependenceGraph.nodes.filter(!_.isInstanceOf[Send])
-      builder ++= dependenceGraph.edges.filter {
-        case GraphEdge.DiEdge(_, _: Send) => false
-        case _                            => true
-      }
-      builder
-    }
-
-    val schedule = scala.collection.mutable.Queue.empty[Instruction]
-
-    // pre-populate the ready list
-    val readyList = scala.collection.mutable.PriorityQueue
-      .empty[DependenceGraph#NodeT](priority) ++ graph.nodes.filter {
-      _.inDegree == 0
-    }
-
-    val activeList =
-      scala.collection.mutable.Map.empty[DependenceGraph#NodeT, Int]
-
-    def finished(): Boolean = graph.isEmpty
-
-  }
-
-  case class RecvEvent(recv: Recv, cycle: Int)
-  private class Processor(
-      val process: DefProcess,
-      val scheduleContext: ScheduleContext
-  ) {
-    var currentCycle: Int = 0
-    // keep a sorted queue of Recv events in increasing recv time
-    // since the priority queue sorts the collection in decreasing priority
-    // we need to use .reverse on the ordering
-    private val recvQueue = scala.collection.mutable.Queue.empty[RecvEvent]
-
-    def checkCollision(recvEv: RecvEvent): Option[RecvEvent] =
-      recvQueue.find(_.cycle == recvEv.cycle)
-
-    def notifyRecv(recvEv: RecvEvent): Unit = {
-      assert(checkCollision(recvEv).isEmpty, "Collision in recv port")
-      recvQueue enqueue recvEv
-    }
-
-    // get the RecvEvents in increasing time order
-    def getReceivesSorted(): Seq[RecvEvent] =
-      recvQueue.toSeq.sorted(Ordering.by { recvEv: RecvEvent =>
-        recvEv.cycle
-      })
-  }
   def createDotDependenceGraph(
       graph: Graph[Instruction, GraphEdge.DiEdge]
   )(implicit ctx: AssemblyContext): String = {
@@ -556,19 +610,27 @@ private[lowering] object ProgramSchedulingTransform
         inst match {
           case Mov(rd, rs, _) =>
             if (statePairs.contains(rd)) {
-              ctx.logger.warn("removing MOV to input", inst)
+              ctx.logger.warn(
+                "removing MOV to input, state updates should be handled at register allocation time",
+                inst
+              )
               false
             } else {
               true
             }
           case Nop =>
-            ctx.logger.warn("removing nops")
+            ctx.logger.warn(
+              "removing nops, scheduler will decide on the number of nops."
+            )
             false
           case _ =>
             if (
               DependenceAnalysis.regDef(inst).exists(statePairs.contains(_))
             ) {
-              ctx.logger.error("unexpected write to input register", inst)
+              ctx.logger.error(
+                "unexpected write to input register, updates to state should be handled at register allocation time",
+                inst
+              )
               false
             } else {
               true
@@ -600,7 +662,7 @@ private[lowering] object ProgramSchedulingTransform
   private def createDependenceGraph(
       instructionBlock: Seq[Instruction],
       definingInstruction: Map[Name, Instruction]
-  )(implicit ctx: AssemblyContext): DependenceGraph = {
+  )(implicit ctx: AssemblyContext): Processor.DependenceGraph = {
 
     def getMemoryBlock(inst: Instruction) = inst.annons.collectFirst {
       case mb: Memblock => mb
@@ -659,13 +721,13 @@ private[lowering] object ProgramSchedulingTransform
   }
 
   private def estimatePriority(
-      dependenceGraph: DependenceGraph
+      dependenceGraph: Processor.DependenceGraph
   )(sendPenalty: ProcessId => Int) = {
 
     val sources = dependenceGraph.nodes.filter { _.inDegree == 0 }
 
     val distance =
-      scala.collection.mutable.Map.empty[DependenceGraph#NodeT, Int]
+      scala.collection.mutable.Map.empty[Processor.DependenceGraph#NodeT, Int]
 
     def compute(node: dependenceGraph.NodeT): Int = {
       val dist = node.toOuter match {
@@ -732,9 +794,6 @@ private[lowering] object ProgramSchedulingTransform
 
     require(jtb.dslot.isEmpty, "Did not expect a populated delay slot")
 
-    val jumpDelaySlotSize = 2
-    val breakDelaySlotSize = 2
-
     val scheduledBlocks = for (JumpCase(lbl, block) <- jtb.blocks) yield {
 
       val dependenceGraph = ctx.stats.recordRunTime(s"$lbl dependence graph") {
@@ -762,7 +821,7 @@ private[lowering] object ProgramSchedulingTransform
           for (dependentNode <- nodeBeingCommitted.diSuccessors) {
             // add any successor that only depend on the node that
             // is being committed
-            if (dependentNode.inDegree == 0) {
+            if (dependentNode.inDegree == 1) {
               scheduleContext.readyList += dependentNode
             }
           }
@@ -774,7 +833,7 @@ private[lowering] object ProgramSchedulingTransform
         if (scheduleContext.readyList.isEmpty) {
 
           // tough luck, there is nothing to do
-          scheduleContext.schedule += Nop
+          scheduleContext += Nop
 
         } else {
 
@@ -783,25 +842,43 @@ private[lowering] object ProgramSchedulingTransform
           ctx.logger.debug(
             s"@$time: Scheduling ${toSchedule.toOuter.serialized}"
           )
-          val commitTime = time + LatencyAnalysis.latency(toSchedule.toOuter)
+          val commitTime =
+            time + LatencyAnalysis.latency(toSchedule.toOuter) + 1
 
-          scheduleContext.schedule += toSchedule.toOuter
+          scheduleContext += toSchedule.toOuter
           scheduleContext.activeList += (toSchedule -> commitTime)
 
         }
         time += 1
       }
 
-      val inBreakDelaySlot =
-        scheduleContext.schedule.takeRight(breakDelaySlotSize)
-      val len = scheduleContext.schedule.length
-      val beforeBreakDelaySlot =
-        scheduleContext.schedule.take(len - breakDelaySlotSize)
-      // put a break in the middle
-      val schedBlk =
-        (beforeBreakDelaySlot.toSeq :+ BreakCase(-1)) ++ inBreakDelaySlot.toSeq
-      JumpCase(lbl, schedBlk)
+      val schedule = scheduleContext.getSchedule()
+      val scheduleLength = schedule.length
 
+      if (scheduleLength <= breakDelaySlotSize) {
+
+        JumpCase(
+          lbl,
+          (BreakCase(-1) +: schedule) ++ Seq.fill(
+            breakDelaySlotSize - scheduleLength
+          ) { Nop }
+        )
+      } else {
+
+        val inBreakDelaySlot =
+          schedule.takeRight(breakDelaySlotSize)
+
+        val beforeBreakDelaySlot =
+          schedule.take(scheduleLength - breakDelaySlotSize)
+        // put a break in the middle
+        val withBreak = beforeBreakDelaySlot match {
+          case before :+ Nop =>
+            before :+ BreakCase(-1) // replace a Nop with break
+          case _ => beforeBreakDelaySlot :+ BreakCase(-1)
+        }
+
+        JumpCase(lbl, withBreak ++ inBreakDelaySlot)
+      }
     }
 
     val caseLength = scheduledBlocks.maxBy(_.block.length).block.length
@@ -810,7 +887,8 @@ private[lowering] object ProgramSchedulingTransform
     }
     jtb
       .copy(
-        dslot = Seq.fill(jumpDelaySlotSize) { Nop },
+        // dslot = Seq.fill(jumpDelaySlotSize) { Nop },
+        dslot = Nil,
         blocks = paddedBlocks
       )
       .setPos(jtb.pos)

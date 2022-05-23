@@ -424,9 +424,9 @@ object LatencyAnalysis {
       val delaySlotLatency = maxLatency() + delaySlot.foldLeft(1) {
         _ + latency(_)
       }
-      blocks.foldLeft(delaySlotLatency) { case (ltncy, JumpCase(_, blk)) =>
-        blk.foldLeft(ltncy) { _ + latency(_) }
-      }
+      blocks.map { case JumpCase(_, blk) =>
+        blk.foldLeft(delaySlotLatency) { _ + latency(_) }
+      }.max
 
     case _ => maxLatency()
   }

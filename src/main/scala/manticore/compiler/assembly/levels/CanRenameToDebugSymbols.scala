@@ -25,6 +25,9 @@ trait CanRenameToDebugSymbols extends CanRename {
         }
     }.toMap
 
+    ctx.logger.dumpArtifact("rename_map.txt") {
+      humanNames.map { kv => s"${kv._1} -> ${kv._2}" }.mkString("\n")
+    }
     val renamedBody = process.body.map { Rename.asRenamed(_) { humanNames } }
     val renamedRegs = process.registers.map { r =>
       r.copy(variable = r.variable.withName(humanNames(r.variable.name)))

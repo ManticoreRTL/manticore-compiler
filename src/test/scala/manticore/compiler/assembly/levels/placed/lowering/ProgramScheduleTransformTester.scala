@@ -51,7 +51,8 @@ class ProgramScheduleTransformTester
       UnconstrainedOrderInstructions followedBy
       UnconstrainedToPlacedTransform followedBy
       PlacedIRCloseSequentialCycles followedBy
-      ProgramSchedulingTransform
+      ProgramSchedulingTransform followedBy
+      PlacedIRCloseSequentialCycles
 
     val compiled = compiler(parsed, ctx)._1
 
@@ -68,12 +69,14 @@ class ProgramScheduleTransformTester
       monitor = Some(monitor)
     )(ctx)
 
-    // for(cycle <- 0 until 3000) {
+    for (cycle <- 0 until 3000) {
 
-    //     interp.interpretVirtualCycle() shouldBe Nil
-    //     monitor.read(randGen.randNext).toInt shouldBe randGen.nextRef().toInt
-    //     // println("Fuck")
-    // }
+      interp.interpretVirtualCycle() shouldBe Nil
+      withClue(s"@${cycle} result mismatch:") {
+        monitor.read(randGen.randNext).toInt shouldBe randGen.nextRef().toInt
+      }
+
+    }
 
   }
 

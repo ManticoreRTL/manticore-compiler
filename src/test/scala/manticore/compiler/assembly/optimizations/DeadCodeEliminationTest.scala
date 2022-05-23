@@ -22,7 +22,7 @@ class DeadCodeEliminationTest extends UnitFixtureTest with UnitTestMatchers{
 
   behavior of "DeadCodeElimination"
 
-  class XorShift128 {
+  private class XorShift128 {
     val x = Array[Int](
       123456789,
       362436069,

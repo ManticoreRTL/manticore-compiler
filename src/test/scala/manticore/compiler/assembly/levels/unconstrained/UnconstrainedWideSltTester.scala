@@ -3,7 +3,7 @@ package manticore.compiler.assembly.levels.unconstrained
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.parser.AssemblyParser
 
-class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
+class UnconstrainedWideSltTester extends UnconstrainedWideTest {
 
   def mkProgram(f: FixtureParam, width: Int): String = {
     // don't pick too large a value, the test will fail because
@@ -14,25 +14,7 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
 
     // not masking the results will make the test fail, obviously.
     val rd_vals = rs1_vals zip rs2_vals map { case (r1, r2) =>
-      val sign1 = r1.testBit(width - 1)
-      val sign2 = r2.testBit(width - 1)
-      if (sign1 && sign2) {
-        if ((-r1) > (-r2)) {
-          BigInt(1)
-        } else {
-          BigInt(0)
-        }
-      } else if (sign1 && !sign2) {
-        BigInt(1)
-      } else if (!sign1 && sign2) {
-        BigInt(0)
-      } else {
-        if (r1 < r2) {
-          BigInt(1)
-        } else {
-          BigInt(0)
-        }
-      }
+      if (r1 < r2) BigInt(1) else BigInt(0)
     }
 
     val rs1_fp = f.dump("rs1_vals.dat", rs1_vals)
@@ -79,7 +61,7 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
             LD rs1_v, rs1_ptr[0];
             ${rs2_mb}
             LD rs2_v, rs2_ptr[0];
-            SLTS rd_v, rs1_v, rs2_v;
+            SLT rd_v, rs1_v, rs2_v;
             ${rd_mb}
             LD rd_ref, rd_ptr[0];
             @TRAP [type = "\\fail"]
@@ -96,14 +78,14 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
     """
   }
 
-  behavior of "wide STLS"
+  behavior of "wide SLT"
 
   val widthCases = (Seq(1, 2, 3, 4, 8, 17, 18, 32, 33) ++ Seq.fill(70) {
     randgen.nextInt(70) + 1 // + 1 not to have width 0
   }).distinct
   for (w <- widthCases) {
 
-    it should s"should hanle SLTS $w" taggedAs Tags.WidthConversion in { f =>
+    it should s"should hanle SLT $w" taggedAs Tags.WidthConversion in { f =>
       val prog = mkProgram(f, w)
       val parsed = AssemblyParser(prog, f.ctx)
       backend(parsed, f.ctx)

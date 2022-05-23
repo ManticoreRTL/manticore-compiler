@@ -8,6 +8,7 @@ import manticore.compiler.assembly.levels.HasVariableType
 import manticore.compiler.assembly.annotations.AssemblyAnnotation
 import manticore.compiler.assembly.annotations.AnnotationValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.FieldName
+import manticore.compiler.assembly.annotations.Sourceinfo
 
 /** Base classes for the various IR flavors.
   * @author
@@ -18,7 +19,7 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.FieldNam
   */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SEQ, SLTS, MUX, ADDC = Value
+  val ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC = Value
 }
 
 trait HasSerialized {
@@ -170,12 +171,16 @@ trait ManticoreAssemblyIR {
       with HasAnnotations {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\t${toString}; //@${pos}"
+
   }
 
   sealed trait DataInstruction extends Instruction
   sealed trait ControlInstruction extends Instruction
   sealed trait PrivilegedInstruction extends Instruction
   sealed trait SynchronizationInstruction extends Instruction
+  sealed trait ExplicitlyOrderedInstruction extends Instruction {
+    val order: ExecutionOrder
+  }
 
   /** A parallel multiplexer
     *
@@ -233,7 +238,7 @@ trait ManticoreAssemblyIR {
   ) extends ControlInstruction {
 
     override def toString: String = {
-      s"SWITCH ${target}:\n" +
+      s"SWITCH ${target}:\n${dslot.map(_.serialized).mkString("\t\t\t\t\n")}\n" +
         blocks
           .map { case JumpCase(label, body) =>
             s"\t\t\tCASE ${label}:\n" +
@@ -276,8 +281,10 @@ trait ManticoreAssemblyIR {
 
   }
 
-  case class BreakCase(target: Int = -1, annons: Seq[AssemblyAnnotation] = Seq())
-      extends ControlInstruction {
+  case class BreakCase(
+      target: Int = -1,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends ControlInstruction {
     override def toString: String = s"BREAK ${target}"
   }
 
@@ -466,10 +473,8 @@ trait ManticoreAssemblyIR {
 
   }
 
-  /**
-    * Extracts a bit slice, equivalent to the following Verilog statement
-    * wire [HIGH - LOW: 0] rd;
-    * wire [RSLEN - 1 : 0] rs; // RSLEN >= HIGH - LOW + 1
+  /** Extracts a bit slice, equivalent to the following Verilog statement wire
+    * [HIGH - LOW: 0] rd; wire [RSLEN - 1 : 0] rs; // RSLEN >= HIGH - LOW + 1
     * assign rd = rs[OFFSET :+ LENGTH];
     * @param rd
     * @param rs
@@ -487,27 +492,46 @@ trait ManticoreAssemblyIR {
       s"SLICE ${rd}, ${rs}[${offset} +: ${length}]"
   }
 
-  // /**
-  //   * Concatenates rs1 and rs2 by replacing the upper bits of rs2 with lower bits
-  //   * of rs1, equivalent to the following Verilog statement
-  //   * wire [RDL - 1 : 0] rd;
-  //   * wire [BITPOS - 1 : 0] rs1;
-  //   * wire [RDL - BITPOS - 1 : 0] rs2;
-  //   * assign rd = {rs2, rs1};
-  //   * @param rd
-  //   * @param rs1
-  //   * @param rs2
-  //   * @param bitpos
-  //   * @param annons
-  //   */
-  // case class Concat(
-  //     rd: Name,
-  //     rs1: Name,
-  //     rs2: Name,
-  //     bitpos: Int,
-  //     annons: Seq[AssemblyAnnotation] = Seq()
-  // ) extends Instruction {
-  //   override def toString: String =
-  //     s"CONCAT ${rd}, ${rs1}, ${rs2}[${bitpos}]"
-  // }
+  case class ExecutionOrder(major: Int, minor: Int) {
+    override def toString: String = s"($major, $minor)"
+  }
+
+  case class PutSerial(
+      rs: Name,
+      pred: Name,
+      order: ExecutionOrder,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends PrivilegedInstruction
+      with ExplicitlyOrderedInstruction {
+    override def toString: String =
+      s" ${order} PUT ${rs}, ${pred}";
+  }
+
+  sealed trait InterruptAction
+  case object FinishInterrupt extends InterruptAction
+  case object StopInterrupt extends InterruptAction
+  case object AssertionInterrupt extends InterruptAction
+  case class SerialInterrupt(fmt: String) extends InterruptAction
+
+  // other things such as function calls are also interrupts and should be
+  // defined here
+
+  case class Interrupt(
+      action: InterruptAction,
+      condition: Name,
+      order: ExecutionOrder,
+      annons: Seq[AssemblyAnnotation] = Seq()
+  ) extends PrivilegedInstruction
+      with ExplicitlyOrderedInstruction {
+    override def toString: String = {
+      val s = action match {
+        case AssertionInterrupt   => "ASSERT "
+        case FinishInterrupt      => "FINISH "
+        case StopInterrupt        => "STOP "
+        case SerialInterrupt(fmt) => s"FLUSH \"${fmt}\", "
+      }
+      s" ${order} ${s} ${condition}"
+    }
+  }
+
 }

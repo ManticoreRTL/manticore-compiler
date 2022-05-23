@@ -10,6 +10,8 @@ import manticore.compiler.assembly.levels.CanRenameToDebugSymbols
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.BreakSequentialCycles
+import manticore.compiler.assembly.levels.CanCollectProgramStatistics
+import manticore.compiler.assembly.levels.CanRename
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
@@ -72,4 +74,15 @@ object PlacedIRDebugSymbolRenamer extends CanRenameToDebugSymbols {
       case None        => ""
     })
   def constantName(v: UInt16, w: Int): Name = s"$$$v"
+}
+
+object PlacedIRStatisticCollector extends CanCollectProgramStatistics {
+    val flavor = PlacedIR
+}
+
+object PlacedIRRenamer extends CanRename {
+
+  val flavor = PlacedIR
+
+
 }

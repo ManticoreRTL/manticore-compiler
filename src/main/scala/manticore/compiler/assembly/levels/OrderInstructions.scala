@@ -14,6 +14,8 @@ import scala.collection.mutable.ArrayBuffer
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import scalax.collection.edge.LDiEdge
 import scalax.collection.Graph
+import scalax.collection.mutable.{Graph => MutableGraph}
+import scalax.collection.GraphEdge.DiEdge
 
 /** This transform sorts instructions based on their depenencies.
   */
@@ -24,6 +26,21 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
 
   import flavor._
 
+  def createDependenceGraph(proc: DefProcess)(implicit ctx: AssemblyContext) = {
+
+    val dependence_graph = DependenceAnalysis.build(proc, (_, _) => None)(ctx)
+
+    proc.body
+      .collect { case inst: ExplicitlyOrderedInstruction => inst }
+      .groupBy(_.order.major)
+      .foreach { case (_, block) =>
+        block.sortBy(_.order.minor).sliding(2).foreach { case Seq(prev, next) =>
+          dependence_graph += LDiEdge(prev -> next)(None)
+        }
+      }
+
+    dependence_graph
+  }
   def orderInstructions(
       proc: DefProcess
   )(implicit
@@ -34,7 +51,7 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
     // Must use Instruction instead of flavor.Instruction as GraphBuilder requires knowledge
     // of the type itself and cannot use the instance variable flavor to infer the type.
 
-    val dependence_graph = DependenceAnalysis.build(proc, (_, _) => None)(ctx)
+    val dependence_graph = createDependenceGraph(proc)
 
     if (dependence_graph.isCyclic) {
       ctx.logger.error(

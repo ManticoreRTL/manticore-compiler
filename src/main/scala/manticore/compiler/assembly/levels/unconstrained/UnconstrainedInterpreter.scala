@@ -42,12 +42,13 @@ object UnconstrainedInterpreter
   sealed trait InterpretationTrap
 
   case object InterpretationFailure extends InterpretationTrap
-  case object InterpretationStop extends InterpretationTrap
+  case object InterpretationFinish extends InterpretationTrap
 
   private final class ProcessState(val proc: DefProcess)(implicit
       val ctx: AssemblyContext
   ) {
 
+    val serial_queue = scala.collection.mutable.Queue.empty[BigInt]
     // a mutable register file
     val register_file = scala.collection.mutable.Map[Name, BigInt]() ++
       proc.registers.map { r =>
@@ -190,10 +191,11 @@ object UnconstrainedInterpreter
   final class ProcessInterpreter private[UnconstrainedInterpreter] (
       val proc: DefProcess,
       val vcd_writer: Option[UnconstrainedValueChangeWriter],
-      val monitor: Option[UnconstrainedIRInterpreterMonitor]
+      val monitor: Option[UnconstrainedIRInterpreterMonitor],
+      val serial: Option[String => Unit]
   )(implicit
       val ctx: AssemblyContext
-  ) extends InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter]{
+  ) extends InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter] {
 
     private def handleMemoryAccess(base: Name, instruction: Instruction)(
         handler: (BlockRam, Option[Int]) => Unit
@@ -397,14 +399,58 @@ object UnconstrainedInterpreter
             ctx.logger.error("unsupported SRA shift amount", inst)
             BigInt(0)
           }
+        case SLT =>
+          val rs1_val = state.register_file(rs1)
+          val rs2_val = state.register_file(rs2)
+          assert(rs1_val >= 0 && rs2_val >= 0)
+          if (rs1_val < rs2_val) {
+            BigInt(1)
+          } else {
+            BigInt(0)
+          }
         case SLTS =>
           // again, we should encode the signs manually since all
           // interpreted values are stored as positive numbers
-          val rs1_signed_val = getSignedValue(rs1)
-          val rs2_signed_val = getSignedValue(rs2)
-          val is_less = rs1_signed_val < rs2_signed_val
-          state.select = is_less
-          BigInt(if (is_less) 1 else 0)
+          val rs1_width = definitions(rs1).variable.width
+          val rs2_width = definitions(rs2).variable.width
+          assert(
+            rs1_width == rs2_width,
+            s"both operands of SLTS should have the same width in: \n${inst}"
+          )
+
+          val rs1_val = state.register_file(rs1)
+          val rs2_val = state.register_file(rs2)
+          val rs1_sign = rs1_val.testBit(rs1_width - 1)
+          val rs2_sign = rs2_val.testBit(rs2_width - 1)
+
+          if (rs1_sign && rs2_sign) {
+            // both are "negative" so we should compare their positive value
+            // representation
+            val rs1_pos_val =
+              clipped((~rs1_val) + BigInt(1))(ClipWidth(rs1_width))
+            val rs2_pos_val =
+              clipped((~rs2_val) + BigInt(1))(ClipWidth(rs2_width))
+            if (rs1_pos_val > rs2_pos_val) {
+              BigInt(1)
+            } else {
+              BigInt(0)
+            }
+          } else if (rs1_sign && !rs2_sign) {
+            BigInt(
+              1
+            ) // rs1 is negative and rs2 is not, therefore it is certainly
+            // less than rs2
+          } else if (!rs1_sign && rs2_sign) {
+            BigInt(
+              0
+            ) // rs1 is positive and rs2 negative. Therefore rs1 < rs2 is false
+          } else { // both are positive
+            if (rs1_val < rs2_val) {
+              BigInt(1)
+            } else {
+              BigInt(0)
+            }
+          }
       }
 
       update(rd, rd_val)
@@ -540,6 +586,93 @@ object UnconstrainedInterpreter
       case Send(rd, rs, dest_id, annons) =>
         ctx.logger.error("Can not handle SEND", instruction)
         state.exception_occurred = Some(InterpretationFailure)
+      case PutSerial(rs, cond, _, _) =>
+        val cond_val = state.register_file(cond)
+        if (cond_val == 1) {
+          val rs_val = state.register_file(rs)
+          state.serial_queue += rs_val
+        }
+      case intr @ Interrupt(action, condition, _, _) =>
+        val cond_val = state.register_file(condition)
+        if (cond_val == 1) {
+          action match {
+            case AssertionInterrupt =>
+              ctx.logger.error(s"Assertion failed!", intr)
+              state.exception_occurred = Some(InterpretationFailure)
+            case FinishInterrupt =>
+              ctx.logger.info(s"Finished.", intr)
+              state.exception_occurred = Some(InterpretationFinish)
+            case SerialInterrupt(fmt) =>
+              // split the string by % but also keep the delimiter see:
+              // https://stackoverflow.com/questions/2206378/how-to-split-a-string-but-also-keep-the-delimiters
+              val parts = fmt.split("(?=%)")
+              val fmtSpec = raw"%(0?)([1-9][0-9]*)([dbhDBH])(.*)".r
+
+              val builder = new StringBuilder
+              for (p <- parts) {
+                p match {
+                  case fmtSpec(z, w, t, msg) =>
+                    val v = if (state.serial_queue.isEmpty) {
+                      ctx.logger.error(
+                        s"invalid Flush, missing serial value!",
+                        instruction
+                      )
+                      BigInt(0)
+                    } else {
+                      state.serial_queue.dequeue()
+                    }
+                    def truncated(
+                        vString: String,
+                        width: Int,
+                        filler: String
+                    ) = {
+
+                      val truncated = if (vString.length > width) {
+                        vString.takeRight(width)
+                      } else {
+                        (filler * (width - vString.length)) ++ vString
+                      }
+                      truncated
+                    }
+                    val bitWidth = w.toInt
+                    val fmtValue = t match {
+                      case "d" | "D" =>
+                        val decWidth =
+                          ((BigInt(1) << bitWidth) - 1).toString().length
+                        truncated(
+                          v.toString(),
+                          decWidth,
+                          if (z.nonEmpty) "0" else " "
+                        )
+                      case "h" | "H" =>
+                        val vString =
+                          if (t == "H") v.toString(16).toUpperCase()
+                          else v.toString(4)
+                        val hexWidth =
+                          ((BigInt(1) << bitWidth) - 1).toString(16).length
+                        truncated(vString, hexWidth, "0")
+                      case "b" | "B" =>
+                        truncated(v.toString(2), bitWidth, "0")
+                      case _ =>
+                        ctx.logger.error(s"invalid format type %${t}!")
+                        ""
+                    }
+                    builder ++= fmtValue
+                    builder ++= msg
+                  case _ =>
+                    builder ++= p
+                }
+              }
+              serial match {
+                case None =>
+                  ctx.logger.info(s"[SERIAL]\n ${builder.toString()}")
+                case Some(printer) => printer(builder.toString())
+              }
+            case StopInterrupt =>
+              ctx.logger.info(s"Stopped!", intr)
+              state.exception_occurred = Some(InterpretationFailure)
+          }
+        }
       case Expect(ref, got, error_id, annons) =>
         val ref_val = state.register_file(ref)
         val got_val = state.register_file(got)
@@ -571,7 +704,7 @@ object UnconstrainedInterpreter
                   s"Stop condition from ${trap_source}",
                   instruction
                 )
-              Some(InterpretationStop)
+              Some(InterpretationFinish)
             case _ =>
               ctx.logger.error(s"Missing TRAP type!", instruction)
               Some(InterpretationFailure)
@@ -713,7 +846,7 @@ object UnconstrainedInterpreter
                 }
             }
         }
-      case i @(_: Recv | _: BreakCase) =>
+      case i @ (_: Recv | _: BreakCase) =>
         ctx.logger.error("Illegal instruction", instruction)
         state.exception_occurred = Some(InterpretationFailure)
 
@@ -755,8 +888,9 @@ object UnconstrainedInterpreter
 
     def runVirtualCycle(): Option[InterpretationTrap] = {
       step() match {
-        case StepVCycleContinue => if (getException().isEmpty) runVirtualCycle() else getException()
-        case StepVCycleFinish   => // clear out the label bindings (not really
+        case StepVCycleContinue =>
+          if (getException().isEmpty) runVirtualCycle() else getException()
+        case StepVCycleFinish => // clear out the label bindings (not really
           // needed but may help catch some errors!)
           state.label_bindings.clear()
           getException()
@@ -805,8 +939,7 @@ object UnconstrainedInterpreter
 
   }
 
-  /**
-    * Create an instance of the interpreter to use outside the check
+  /** Create an instance of the interpreter to use outside the check
     *
     * @param program
     * @param vcdDump
@@ -816,20 +949,20 @@ object UnconstrainedInterpreter
     */
   def instance(
       program: DefProgram,
-      vcdDump: Option[UnconstrainedValueChangeWriter],
-      monitor: Option[UnconstrainedIRInterpreterMonitor]
+      vcdDump: Option[UnconstrainedValueChangeWriter] = None,
+      monitor: Option[UnconstrainedIRInterpreterMonitor] = None,
+      serial: Option[String => Unit] = None
   )(implicit ctx: AssemblyContext): ProcessInterpreter = {
     require(
       program.processes.length == 1,
       "Could only interpret a single process"
     )
-    new ProcessInterpreter(program.processes.head, vcdDump, monitor)(ctx)
+    new ProcessInterpreter(program.processes.head, vcdDump, monitor, serial)(
+      ctx
+    )
   }
 
-  /**
-    *
-    *
-    * @param source
+  /** @param source
     * @param context
     */
   override def check(

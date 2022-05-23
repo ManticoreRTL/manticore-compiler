@@ -27,6 +27,7 @@ import manticore.compiler.assembly.annotations.StringValue
 import manticore.compiler.assembly.annotations.IntValue
 import manticore.compiler.assembly.levels.CanRenameToDebugSymbols
 import manticore.compiler.assembly.annotations.DebugSymbol
+import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
@@ -275,4 +276,8 @@ object UnconstrainedIRDebugSymbolRenamer extends CanRenameToDebugSymbols {
       case None        => ""
     })
   def constantName(v: BigInt, w: Int): Name = s"$$${w}d$v"
+}
+
+object UnconstrainedIRStatisticsCollector extends CanCollectProgramStatistics {
+  val flavor = UnconstrainedIR
 }
