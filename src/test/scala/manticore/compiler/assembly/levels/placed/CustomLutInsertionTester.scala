@@ -72,7 +72,7 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
             implicit val ctx = AssemblyContext(
               dump_all = true,
               dump_dir = Some(f.test_dir.toFile()),
-              debug_message = true,
+              debug_message = false,
               max_custom_instructions = 32,
               max_custom_instruction_inputs = numCustomInstrInputs,
               optimize_common_custom_functions = shareLuts,
@@ -87,33 +87,6 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
             // Sanity check that the program interprets correctly without LUTs
             (PlacedIRCloseSequentialCycles followedBy AtomicInterpreter)(progLowered, ctx)
-
-            // val progWithLuts = (CustomLutInsertion followedBy PlacedIRCloseSequentialCycles)(progLowered, ctx)._1
-            // val monitor = PlacedIRInterpreterMonitor(progWithLuts)
-            // val interp = AtomicInterpreter.instance(
-            //   program = progWithLuts,
-            //   monitor = Some(monitor)
-            // )
-            // val keys = monitor.keys.toSeq.sortBy(key => key)
-            // val values = MHashMap.empty[(Int, String), BigInt]
-
-            // for { cycle <- 0 until 55 } {
-            //   println(s"vCycle = ${cycle}")
-            //   val traps = interp.interpretVirtualCycle()
-            //   keys.foreach { key =>
-            //     val value = monitor.read(key)
-            //     values += (cycle, key) -> value
-            //   }
-
-            //   if (cycle > 0) {
-            //     // Check that something has changed between this and the previous cycle.
-            //     val prevCycleValues = keys.map(k => k -> values((cycle - 1, k)))
-            //     val currCycleValues = keys.map(k => k -> values((cycle, k)))
-            //     if (prevCycleValues == currCycleValues) {
-            //       println(s"State has not changed between cycle ${cycle-1} and ${cycle}!")
-            //     }
-            //   }
-            // }
 
             val progWithLuts = CustomLutInsertion(progLowered, ctx)._1
 
@@ -141,7 +114,9 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
             val vCyclesAfter = computeVirtualCycle(progWithLutsDce)
             val percentDeltaStr = computePercentDelta(vCyclesBefore, vCyclesAfter)
 
-            println(s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, share LUTs = ${shareLuts}, vCycle ${vCyclesBefore} -> ${vCyclesAfter} (${percentDeltaStr})")
+            val numCustFuncsPerCore = progWithLutsDce.processes.map { proc => proc.functions.size }.sorted
+            val numCustFuncsTotal = numCustFuncsPerCore.sum
+            println(s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, share LUTs = ${shareLuts}, vCycle ${vCyclesBefore} -> ${vCyclesAfter} (${percentDeltaStr}) using ${numCustFuncsPerCore.mkString("+")} = ${numCustFuncsTotal} custom functions")
             // assert(vCyclesBefore >= vCyclesAfter)
 
             ctx.logger.dumpArtifact("stats.yaml") {

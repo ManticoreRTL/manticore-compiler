@@ -1166,27 +1166,3 @@ object CustomLutInsertion
     program.copy(processes = newProcesses)
   }
 }
-
-object Test extends App {
-  import manticore.compiler.assembly.levels.placed.PlacedIR._
-  import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
-
-  val expr = OrExpr(
-    XorExpr(
-      IdExpr(PositionalArg(1)),
-      IdExpr(AtomConst(UInt16(1)))
-    ),
-    IdExpr(PositionalArg(0))
-  )
-
-  val f1 = CustomFunctionImpl(expr)
-  val f2 = CustomFunctionImpl(expr)
-
-  val f1Equ = f1.equation
-  val f2Equ = f2.equation
-
-  println(f1Equ)
-  println(f2Equ)
-
-  assert(f1Equ == f2Equ)
-}
