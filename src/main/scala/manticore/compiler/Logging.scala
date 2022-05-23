@@ -128,6 +128,7 @@ object Logger {
       printer.println(
         s"${msg} \n at \n${node.serialized}:${node.pos}\n\t\t reported by ${BOLD}${phase_id}${RESET}"
       )
+      flush()
 
     override protected def message(
         msg: => String
@@ -135,6 +136,7 @@ object Logger {
       printer.println(
         s"${msg} \n\t\treported by ${BOLD}${phase_id}${RESET}"
       )
+      flush()
 
     def error[N <: HasSerialized with Positional](
         msg: => String,
@@ -142,11 +144,13 @@ object Logger {
     )(implicit phase_id: HasLoggerId): Unit = {
       message(s"[${RED}error${RESET}] ${msg}", node)
       error_count += 1
+      flush()
     }
     def error(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
       message(s"[${RED}error${RESET}] ${msg}")
       error_count += 1
     }
+    flush()
     def countErrors(): Int = error_count
     def countWarnings(): Int = warn_count
     def countProgress(): Int = transform_index
@@ -154,6 +158,7 @@ object Logger {
     def warn(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
       message(s"[${YELLOW}warn${RESET}] ${msg}")
       warn_count += 1
+      flush()
     }
 
     def warn[N <: HasSerialized with Positional](msg: => String, node: N)(
@@ -161,36 +166,48 @@ object Logger {
     ): Unit = {
       message(s"[${YELLOW}warn${RESET}] ${msg}", node)
       warn_count += 1
+      flush()
     }
 
     def info[N <: HasSerialized with Positional](msg: => String, node: N)(
         implicit phase_id: HasLoggerId
     ): Unit = if (info_en) {
       message(s"[${BLUE}info${RESET}] ${msg}", node)
+      flush()
     }
 
     def info(msg: => String)(implicit phase_id: HasLoggerId): Unit = if (
       info_en
     ) {
       message(s"[${BLUE}info${RESET}] ${msg}")
+      flush()
     }
 
     def fail(msg: => String)(implicit phase_id: HasLoggerId): Nothing = {
-
-      printer.flush()
+      flush()
       throw new CompilationFailureException(msg)
     }
 
-    def debug(msg: => String)(implicit phase_id: HasLoggerId): Unit =
-      if (db_en)
+    def debug(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
+      if (db_en) {
         message(s"[${CYAN}debug${RESET}] ${msg}")
+        // We want debug messages to be printed even if the program crashes
+        // shortly after the call to the logger, so we flush.
+        flush()
+      }
+    }
 
     def debug[N <: HasSerialized with Positional](
         msg: => String,
         node: N
-    )(implicit phase_id: HasLoggerId): Unit =
-      if (db_en)
+    )(implicit phase_id: HasLoggerId): Unit = {
+      if (db_en) {
         message(s"[${CYAN}debug${RESET}] ${msg}", node)
+        // We want debug messages to be printed even if the program crashes
+        // shortly after the call to the logger, so we flush.
+        flush()
+      }
+    }
 
     def dumpArtifact(
         file_name: String

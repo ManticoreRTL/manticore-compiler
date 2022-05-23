@@ -226,7 +226,7 @@ trait ConstantFolding
               if (isFullWidthSlice) {
                 // We are slicing the full width of another name. The slice operation
                 // is therefore redundanat and we remove it.
-                builder.bindName(rd, rs)
+                builder.bindName(rd, name)
               } else {
                 // Can not simplify
                 builder.keep(i)

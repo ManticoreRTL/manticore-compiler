@@ -9,6 +9,7 @@ import manticore.compiler.assembly.annotations.{Memblock => MemblockAnnotation}
 import manticore.compiler.assembly.levels.AssemblyPrinter
 import java.math.BigInteger
 import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
+import manticore.compiler.assembly.BinaryOperator
 
 /** IR level with placed processes and allocated registers.
   *
@@ -87,6 +88,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
   final class CustomFunctionImpl private (
       val arity: Int,
+      val resources: Map[Either[Constant, BinaryOperator.BinaryOperator], Int],
       val expr: CustomFunctionImpl.ExprTree
   ) extends HasSerialized {
 
@@ -99,7 +101,19 @@ object PlacedIR extends ManticoreAssemblyIR {
 
     override def toString: String = {
       val args = Seq.tabulate(arity) { idx => s"%${idx}" }.mkString(", ")
-      s"(${args}) => ${expr}"
+
+      val resourcesStr = resources
+        .map { case (constOrOp, cnt) =>
+          constOrOp match {
+            case Left(const) => s"$$${const} -> ${cnt}"
+            case Right(op) => s"${op} -> ${cnt}"
+          }
+        }
+        .toSeq
+        .sorted
+        .mkString(", ")
+
+      s"(${args}) => ${expr} : resources = ${resourcesStr}"
     }
 
     override def serialized: String = toString
@@ -110,7 +124,9 @@ object PlacedIR extends ManticoreAssemblyIR {
     sealed trait Atom
 
     case class AtomConst(v: UInt16) extends Atom
-    case class AtomArg(v: Int) extends Atom
+    abstract class AtomArg extends Atom
+    case class PositionalArg(v: Int) extends AtomArg
+    case class NamedArg(v: Name) extends AtomArg
 
     sealed trait ExprTree
 
@@ -136,7 +152,10 @@ object PlacedIR extends ManticoreAssemblyIR {
       override def toString(): String = {
         id match {
           case AtomConst(v) => v.toString()
-          case AtomArg(v)   => s"%${v}"
+          case arg: AtomArg => arg match {
+            case PositionalArg(v) => s"%${v}"
+            case NamedArg(v) => v
+          }
         }
       }
     }
@@ -157,8 +176,11 @@ object PlacedIR extends ManticoreAssemblyIR {
       }
     }
 
-    // Substitute (some or all) [[AtomArg]]s in the expression tree with constants.
-    def substitute(tree: ExprTree)(subst: Map[AtomArg, AtomConst]): ExprTree = {
+    // Substitute (some or all) [[AtomArg]]s in the expression tree with another
+    // AtomArg or a AtomConst. Note that the key of the Map must be AtomArg as
+    // they are the only things that we can externally control in the expression
+    // (we can't change internal constants of the expression).
+    def substitute(tree: ExprTree)(subst: Map[AtomArg, Atom]): ExprTree = {
       tree match {
         case AndExpr(op1, op2) =>
           AndExpr(substitute(op1)(subst), substitute(op2)(subst))
@@ -166,8 +188,11 @@ object PlacedIR extends ManticoreAssemblyIR {
           OrExpr(substitute(op1)(subst), substitute(op2)(subst))
         case XorExpr(op1, op2) =>
           XorExpr(substitute(op1)(subst), substitute(op2)(subst))
-        case IdExpr(a: AtomArg)       => IdExpr(subst(a))
-        case e @ IdExpr(_: AtomConst) => e
+        case IdExpr(arg: AtomArg) =>
+          IdExpr(subst.getOrElse(arg, arg))
+        case expr @ IdExpr(const: AtomConst) =>
+          // We cannot substitute a constant, so we leave it as-is.
+          expr
       }
     }
 
@@ -184,10 +209,76 @@ object PlacedIR extends ManticoreAssemblyIR {
         }
       }
 
-      val args = collectArgs(tree).toSeq.sortBy(_.v)
-      // Make sure the args are consecutive set of integers.
-      assert(args == Seq.tabulate(args.length) { idx => AtomArg(idx) })
-      args.length
+      // Make sure ALL the args are either:
+      //  1. a consecutive list of integers (starting from 0)
+      //  2. a list of names.
+      // Mixes of both are not possible.
+      val args = collectArgs(tree)
+      val arity = args.size
+
+      val argsArePositional = args.forall {
+        case _: PositionalArg => true
+        case _ => false
+      } && {
+        val foundPositions = args.collect { case PositionalArg(pos) => pos }
+        val expectedPositions = Set.tabulate(arity)(idx => idx)
+        foundPositions == expectedPositions
+      }
+
+      val argsAreNamed = args.forall {
+        case _: NamedArg => true
+        case _ => false
+      }
+
+      assert(
+        argsArePositional || argsAreNamed,
+        s"Expression ${tree} to contains a mix of positional and named args!"
+      )
+
+      arity
+    }
+
+    private def computeResources(
+      tree: ExprTree
+    ): Map[
+      Either[Constant, BinaryOperator.BinaryOperator],
+      Int
+    ] = {
+
+      def accumulate(
+        expr: ExprTree,
+        acc: Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = Map.empty.withDefaultValue(0)
+      ): Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = {
+        expr match {
+          case OrExpr(op1, op2) =>
+            val childrenAcc = accumulate(op1, accumulate(op2, acc))
+            val key = Right(BinaryOperator.OR)
+            val cnt = childrenAcc(key) + 1
+            childrenAcc + (key -> cnt)
+
+          case AndExpr(op1, op2) =>
+            val childrenAcc = accumulate(op1, accumulate(op2, acc))
+            val key = Right(BinaryOperator.AND)
+            val cnt = childrenAcc(key) + 1
+            childrenAcc + (key -> cnt)
+
+          case XorExpr(op1, op2) =>
+            val childrenAcc = accumulate(op1, accumulate(op2, acc))
+            val key = Right(BinaryOperator.XOR)
+            val cnt = childrenAcc(key) + 1
+            childrenAcc + (key -> cnt)
+
+          case IdExpr(const: AtomConst) =>
+            val key = Left(const.v)
+            val cnt = acc(key)
+            acc + (key -> cnt)
+
+          case _ =>
+            acc
+        }
+      }
+
+      accumulate(tree)
     }
 
     private def computeEquation(arity: Int, expr: ExprTree): Seq[BigInt] = {
@@ -274,8 +365,8 @@ object PlacedIR extends ManticoreAssemblyIR {
         val lutOutputs = inputCombinations.map { inputCombination =>
           // The expression tree has arguments that are mapped to indices starting from 0.
           // We replace these indices with constants (defined by the LUT's current input combination).
-          val subst = inputCombination.zipWithIndex.map { case (const, idx) =>
-            AtomArg(idx) -> AtomConst(const)
+          val subst: Map[AtomArg, Atom] = inputCombination.zipWithIndex.map { case (const, idx) =>
+            PositionalArg(idx) -> AtomConst(const)
           }.toMap
 
           val resFullDatapath = evaluate(substitute(expr)(subst))
@@ -302,7 +393,8 @@ object PlacedIR extends ManticoreAssemblyIR {
       // We compute the arity here so we can reject incorrectly-constructed expression trees
       // given by the user.
       val arity = computeArity(expr)
-      new CustomFunctionImpl(arity, expr)
+      val resources = computeResources(expr)
+      new CustomFunctionImpl(arity, resources, expr)
     }
 
     def unapply(cf: CustomFunctionImpl) = {
