@@ -19,7 +19,8 @@ import manticore.compiler.assembly.annotations.Sourceinfo
   */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC = Value
+  val ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC =
+    Value
 }
 
 trait HasSerialized {
@@ -305,8 +306,9 @@ trait ManticoreAssemblyIR {
       rd: Name,
       base: Name,
       offset: Constant,
+      order: MemoryAccessOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends DataInstruction {
+  ) extends DataInstruction with ExplicitlyOrderedInstruction {
     override def toString: String = s"LLD ${rd}, ${base}[${offset}]"
 
   }
@@ -317,8 +319,10 @@ trait ManticoreAssemblyIR {
       base: Name,
       offset: Constant,
       predicate: Option[Name],
+      order: MemoryAccessOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends DataInstruction {
+  ) extends DataInstruction
+      with ExplicitlyOrderedInstruction {
     override def toString: String = s"LST ${rs}, ${base}[${offset}] ${predicate
       .map(", " + _.toString())
       .getOrElse("")}"
@@ -492,8 +496,31 @@ trait ManticoreAssemblyIR {
       s"SLICE ${rd}, ${rs}[${offset} +: ${length}]"
   }
 
-  case class ExecutionOrder(major: Int, minor: Int) {
-    override def toString: String = s"($major, $minor)"
+  sealed trait ExecutionOrder extends Ordered[ExecutionOrder] {
+    override def compare(that: ExecutionOrder): Int = (this, that) match {
+      case (r1: SystemCallOrder, r2: SystemCallOrder) =>
+        Ordering[Int].compare(r1.value, r2.value)
+      case (r1: SystemCallOrder, r2: MemoryAccessOrder) => -1
+      case (r1: MemoryAccessOrder, r2: SystemCallOrder) => 1
+      case (r1: MemoryAccessOrder, r2: MemoryAccessOrder) =>
+        if (r1.memory == r2.memory) {
+          Ordering[Int].compare(r1.value, r2.value)
+        } else {
+          0
+        }
+    }
+  }
+
+  case class SystemCallOrder(value: Int) extends ExecutionOrder {
+    override def toString = s"($value)"
+    def withValue(v: Int): SystemCallOrder = copy(value = v)
+  }
+
+  case class MemoryAccessOrder(memory: Name, value: Int)
+      extends ExecutionOrder {
+    override def toString = s"($memory, $value)"
+    def withMemory(m: Name): MemoryAccessOrder = copy(memory = m)
+    def withValue(v: Int): MemoryAccessOrder = copy(value = v)
   }
 
   case class PutSerial(
@@ -519,7 +546,7 @@ trait ManticoreAssemblyIR {
   case class Interrupt(
       action: InterruptAction,
       condition: Name,
-      order: ExecutionOrder,
+      order: SystemCallOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends PrivilegedInstruction
       with ExplicitlyOrderedInstruction {

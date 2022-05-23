@@ -100,12 +100,16 @@ trait RenameTransformation extends Flavored {
             i.copy(
               rsx = rsx.map(rs => subst(rs))
             ).copy(rd = outerRenamer(rd))
-          case i @ LocalLoad(rd, base, _, _) =>
-            i.copy(base = subst(base)).copy(rd = outerRenamer(rd))
-          case i @ LocalStore(rs, base, _, p, _) =>
+          case i @ LocalLoad(rd, base, _, order, _) =>
+            i.copy(
+              base = subst(base),
+              order = order.withMemory(subst(order.memory))
+            ).copy(rd = outerRenamer(rd))
+          case i @ LocalStore(rs, base, _, p, order, _) =>
             i.copy(
               rs = subst(rs),
               base = subst(base),
+              order = order.withMemory(subst(order.memory)),
               predicate = p.map { subst }
             )
           case i @ GlobalLoad(rd, (hh, h, l), _) =>
@@ -144,7 +148,7 @@ trait RenameTransformation extends Flavored {
             i.copy(carry = outerRenamer(rd))
           case i @ Slice(rd, rs, _, _, _) =>
             i.copy(rs = subst(rs))
-             .copy(rd = outerRenamer(rd))
+              .copy(rd = outerRenamer(rd))
           case i @ Expect(ref, got, _, _) =>
             i.copy(ref = subst(ref), got = subst(got))
           case i @ Nop => i
@@ -193,7 +197,6 @@ trait RenameTransformation extends Flavored {
         }
         renamed.setPos(inst.pos)
       }
-
 
       proc.body.foreach { inst =>
         val new_inst: Instruction = renameInstruction(inst)

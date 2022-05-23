@@ -119,10 +119,11 @@ trait YosysUnitTest {
     "opt_reduce",
     "opt_demorgan",
     "opt_clean",
+    "memory_collect",
+    "memory_unpack",
     "write_rtlil original.rtl"
   ) ++ yosysSelectPasses ++ Seq(
     "manticore_init", // do basic stuff such as setting track attributes
-    "manticore_memory", // handle memories
     "flatten", // flatten the design
     "manticore_meminit", // remove $meminit cells
     "opt", // optimize the flattened design, maybe too expensive if the design is large

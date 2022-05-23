@@ -302,21 +302,25 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         BinaryArithmetic(op, rd.chars, rs1.chars, rs2.chars, a)
     }
 
+  def memory_order: Parser[MemoryAccessOrder] =
+    ("(" ~> ident ~ "," ~ const_value <~ ")") ^^ { case (memid ~ _ ~ v) =>
+      MemoryAccessOrder(memid.chars, v.toInt)
+    }
   def lload_inst: Parser[LocalLoad] =
-    (annotations ~ (keyword(
+    (annotations ~ memory_order ~ (keyword(
       "LLD"
     ) | keyword("LD")) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]") ^^ {
-      case (a ~ _ ~ rd ~ _ ~ base ~ _ ~ offset ~ _) =>
-        LocalLoad(rd.chars, base.chars, offset, a)
+      case (a ~ order ~ _ ~ rd ~ _ ~ base ~ _ ~ offset ~ _) =>
+        LocalLoad(rd.chars, base.chars, offset, order, a)
     }
 
   def lstore_inst: Parser[LocalStore] =
-    (annotations ~ (keyword(
+    (annotations ~ memory_order ~ (keyword(
       "LST"
     ) | keyword("ST")) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]" ~ opt(
       "," ~> ident
-    )) ^^ { case (a ~ _ ~ rs ~ _ ~ base ~ _ ~ offset ~ _ ~ p) =>
-      LocalStore(rs.chars, base.chars, offset, p.map(_.chars), a)
+    )) ^^ { case (a ~ order ~ _ ~ rs ~ _ ~ base ~ _ ~ offset ~ _ ~ p) =>
+      LocalStore(rs.chars, base.chars, offset, p.map(_.chars), order, a)
     }
 
   def gstore_inst: Parser[GlobalStore] =
@@ -365,35 +369,30 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       Predicate(rs.chars, a)
     }
 
-  def exec_order: Parser[ExecutionOrder] = ("(" ~> const_value ~ "," ~ const_value <~ ")") ^^ {
-    case (v1 ~ _ ~ v2) => ExecutionOrder(v1.toInt, v2.toInt)
+  def syscall_order: Parser[SystemCallOrder] = ("(" ~> const_value <~ ")") ^^ {
+    case v1 => SystemCallOrder(v1.toInt)
   }
 
-  def finish_inst: Parser[Interrupt] =
-    (annotations ~ exec_order ~ keyword("FINISH") ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
-      Interrupt(FinishInterrupt, rs.chars, order, a)
-    }
-  def stop_inst: Parser[Interrupt] =
-    (annotations ~ exec_order ~ keyword("STOP") ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
-      Interrupt(StopInterrupt, rs.chars, order, a)
-    }
-  def assert_inst: Parser[Interrupt] =
-    (annotations ~ exec_order ~ keyword("ASSERT") ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
-      Interrupt(AssertionInterrupt, rs.chars, order, a)
+  def control_syscall(n: String): Parser[Interrupt] =
+    (annotations ~ syscall_order ~ keyword(n) ~ ident) ^^ {
+      case (a ~ order ~ _ ~ rs) =>
+        Interrupt(FinishInterrupt, rs.chars, order, a)
     }
 
   def flush_inst: Parser[Interrupt] =
-    (annotations ~ exec_order ~ keyword("FLUSH") ~ stringLit ~ "," ~ ident) ^^ {
-      case (a ~ order ~ _ ~ fmt ~ _ ~ cond) =>
-        Interrupt(SerialInterrupt(fmt.chars), cond.chars, order, a)
+    (annotations ~ syscall_order ~ keyword(
+      "FLUSH"
+    ) ~ stringLit ~ "," ~ ident) ^^ { case (a ~ order ~ _ ~ fmt ~ _ ~ cond) =>
+      Interrupt(SerialInterrupt(fmt.chars), cond.chars, order, a)
     }
 
-
   def interrupt_inst: Parser[Interrupt] =
-    finish_inst | stop_inst | assert_inst | flush_inst
+    control_syscall("FINISH") | control_syscall("STOP") | control_syscall(
+      "ASSERT"
+    ) | flush_inst
 
   def put_inst: Parser[PutSerial] =
-    (annotations ~ exec_order ~ keyword("PUT") ~ ident ~ "," ~ ident) ^^ {
+    (annotations ~ syscall_order ~ keyword("PUT") ~ ident ~ "," ~ ident) ^^ {
       case (a ~ order ~ _ ~ rs ~ _ ~ pred) =>
         PutSerial(rs.chars, pred.chars, order, a)
     }

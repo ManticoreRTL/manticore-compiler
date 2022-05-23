@@ -404,7 +404,7 @@ object MachineCodeGenerator
       case i: CustomInstruction =>
         ctx.logger.error(s"Can not generate code", i)
         0L
-      case LocalLoad(rd, base, offset, annons) =>
+      case LocalLoad(rd, base, offset, _, annons) =>
         asm
           .Opcode(Opcodes.LLOAD)
           .Rd(local(rd))
@@ -415,7 +415,7 @@ object MachineCodeGenerator
           )
           .Immediate(offset.toInt)
           .toLong
-      case LocalStore(rs, base, offset, predicate, annons) =>
+      case LocalStore(rs, base, offset, predicate, _, annons) =>
         if (predicate.nonEmpty) {
           ctx.logger.error("can not handle explicit predicate", inst)
         }

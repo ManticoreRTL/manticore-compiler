@@ -46,12 +46,12 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           Seq(rs1, rs2)
         case CustomInstruction(func, rd, rsx, annons) =>
           rsx
-        case LocalLoad(rd, base, offset, annons) =>
-          Seq(base)
-        case LocalStore(rs, base, offset, predicate, annons) =>
+        case LocalLoad(rd, base, offset, order, annons) =>
+          Seq(base) :+ order.memory
+        case LocalStore(rs, base, offset, predicate, order, annons) =>
           val pred = predicate match {
-            case None      => Seq.empty
-            case Some(reg) => Seq(reg)
+            case None      => Seq(order.memory)
+            case Some(reg) => Seq(reg, order.memory)
           }
           Seq(rs, base) ++ pred
         case GlobalLoad(rd, base, annons) =>
@@ -134,8 +134,8 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons) => Seq(rd)
         case CustomInstruction(func, rd, rsx, annons)         => Seq(rd)
-        case LocalLoad(rd, base, offset, annons)              => Seq(rd)
-        case LocalStore(rs, base, offset, p, annons)          => Nil
+        case LocalLoad(rd, base, offset, _, annons)           => Seq(rd)
+        case LocalStore(rs, base, offset, p, _, annons)       => Nil
         case GlobalLoad(rd, base, annons)                     => Seq(rd)
         case GlobalStore(rs, base, pred, annons)              => Nil
         case Send(rd, rs, dest_id, annons)                    => Nil
@@ -152,7 +152,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         case SetCarry(rd, _)                                  => Seq(rd)
         case _: Recv                                          => Nil
         case ParMux(rd, _, _, _)                              => Seq(rd)
-        case JumpTable(_, results, _, dslot, _) =>
+        case JumpTable(_, results, _, dslot, _)               =>
           // assert(
           //   dslot.isEmpty || dslot.forall(_ == Nop),
           //   "dslot should only be used after scheduling!"
@@ -160,8 +160,8 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           results.map(_.rd)
         case Lookup(rd, _, _, _) => Seq(rd)
         case _: BreakCase        => Seq.empty
-        case _: PutSerial => Seq.empty
-        case _: Interrupt => Seq.empty
+        case _: PutSerial        => Seq.empty
+        case _: Interrupt        => Seq.empty
       }
     }
 
@@ -187,15 +187,6 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       // A map from registers to the instruction defining it (if any), useful for back tracking
       val def_instructions = definingInstructionMap(process)
 
-      // create a mapping from unique memory blocks to store instructions
-      val blocks_to_stores = memoryBlockStores(process)
-      val loads = process.body.collect {
-        case x @ (_: LocalLoad | _: GlobalLoad) => x -> extractBlock(x).get
-      }
-      val load_to_store = loads.map { case (l, b) =>
-        l -> blocks_to_stores.get(b)
-      }.toMap
-
       val raw_dependence_graph = MutableGraph.empty[Instruction, LDiEdge]
 
       process.body.foreach { inst =>
@@ -211,31 +202,22 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
             // nothing
           }
         }
+      }
+      // now add explicit orderings as dependencies
+      val hasOrder = process.body.collect {
+        case inst: ExplicitlyOrderedInstruction => inst
+      }
 
-        // now add a load to store dependency if the instruction is a load
-        inst match {
-          case load @ (_: LocalLoad | _: GlobalLoad) =>
-            // find the memory block associated with this load
-            extractBlock(load) match {
-              case Some(block) =>
-                blocks_to_stores.get(block) match {
-                  case Some(store) =>
-                    raw_dependence_graph += LDiEdge[Instruction, L](
-                      load,
-                      store
-                    )(
-                      label(load, store)
-                    )
-                  case None =>
-                    ctx.logger.debug("Inferring read-only memory", load)
-                  // read only memory
-                }
-              case _ =>
-                ctx.logger.error(s"Missing valid @${Memblock.name}", load)
+      val groups = hasOrder.groupBy { inst =>
+        inst.order match {
+          case scall: SystemCallOrder    => "$syscall"
+          case morder: MemoryAccessOrder => s"$$memory:${morder.memory.toString()}"
+        }
+      }
 
-            }
-          case _ =>
-          // do nothing
+      groups.foreach { case (_, block) =>
+        block.sortBy(_.order).sliding(2).foreach { case Seq(prev, next) =>
+          raw_dependence_graph += LDiEdge(prev, next)(label(prev, next))
         }
       }
 

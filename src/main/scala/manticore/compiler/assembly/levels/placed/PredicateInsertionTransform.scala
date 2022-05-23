@@ -38,7 +38,7 @@ object PredicateInsertionTransform
         Some(p)
       }
       val (p, to_sched) = inst match { // get the new predicate Name
-        case store @ LocalStore(rs, b, offset, Some(p), a) =>
+        case store @ LocalStore(rs, b, offset, Some(p), _, a) =>
           (schedulePredicate(p), store.copy(predicate = None))
         case store @ GlobalStore(_, _, Some(p), _) =>
           (schedulePredicate(p), store.copy(predicate = None))

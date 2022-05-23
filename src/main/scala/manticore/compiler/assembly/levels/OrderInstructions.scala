@@ -27,18 +27,7 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
   import flavor._
 
   def createDependenceGraph(proc: DefProcess)(implicit ctx: AssemblyContext) = {
-
     val dependence_graph = DependenceAnalysis.build(proc, (_, _) => None)(ctx)
-
-    proc.body
-      .collect { case inst: ExplicitlyOrderedInstruction => inst }
-      .groupBy(_.order.major)
-      .foreach { case (_, block) =>
-        block.sortBy(_.order.minor).sliding(2).foreach { case Seq(prev, next) =>
-          dependence_graph += LDiEdge(prev -> next)(None)
-        }
-      }
-
     dependence_graph
   }
   def orderInstructions(

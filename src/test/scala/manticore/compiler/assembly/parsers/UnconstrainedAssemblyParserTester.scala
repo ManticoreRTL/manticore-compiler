@@ -66,8 +66,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
 
   val insts = (
     """ADD x, xi, xi;
-      |LD  o, m[0x01]; // LD or LLD are the same
-      |ST  i, mi[0x02], p; // ST or LST are the same, predicate p is optional
+      |(m, 0) LD  o, m[0x01]; // LD or LLD are the same
+      |(m, 1) ST  i, mi[0x02], p; // ST or LST are the same, predicate p is optional
       |SET  mi, 0x12123;
       |MUX  x, sel, xi, xi;
       |""".stripMargin,
@@ -78,8 +78,8 @@ class UnconstrainedAssemblyParserTester extends UnitTest {
         "xi",
         "xi"
       ),
-      LocalLoad("o", "m", BigInt(0x01)),
-      LocalStore("i", "mi", BigInt(0x02), Some("p")),
+      LocalLoad("o", "m", BigInt(0x01), MemoryAccessOrder("m", 0)),
+      LocalStore("i", "mi", BigInt(0x02), Some("p"), MemoryAccessOrder("m", 1)),
       SetValue("mi", BigInt(0x12123)),
       Mux("x", "sel", "xi", "xi")
     )

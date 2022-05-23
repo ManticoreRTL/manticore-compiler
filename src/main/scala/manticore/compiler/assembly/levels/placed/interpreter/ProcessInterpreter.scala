@@ -143,12 +143,12 @@ trait ProcessInterpreter extends InterpreterBase {
   def interpret(instruction: Instruction): Unit = instruction match {
     case i: BinaryArithmetic  => interpret(i)
     case i: CustomInstruction => interpret(i)
-    case LocalLoad(rd, base, offset, _) =>
+    case LocalLoad(rd, base, offset, _, _) =>
       val base_val = read(base)
       val addr = offset + base_val
       val rd_val = lload(addr)
       write(rd, rd_val)
-    case LocalStore(rs, base, offset, predicate, annons) =>
+    case LocalStore(rs, base, offset, predicate, _, annons) =>
       val wen = predicate match {
         case Some(p) =>
           val pred_val = read(p)

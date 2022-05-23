@@ -120,16 +120,16 @@ trait AssemblyNameChecker extends Flavored {
               } else {
                 acc :+ ((rd -> inst))
               }
-            case LocalLoad(rd, base, offset, annons) =>
-              acc ++ Seq(rd, base).collect {
+            case LocalLoad(rd, base, offset, order, annons) =>
+              acc ++ Seq(rd, base, order.memory).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
             case AddC(rd, co, rs1, rs2, ci, annons) =>
               acc ++ Seq(rd, co, rs1, rs2, ci).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
-            case LocalStore(rs, base, offset, predicate, annons) =>
-              acc ++ (Seq(rs, base) ++ predicate.toSeq).collect {
+            case LocalStore(rs, base, offset, predicate, order, annons) =>
+              acc ++ (Seq(rs, base, order.memory) ++ predicate.toSeq).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
             case ClearCarry(carry, annons) =>
@@ -266,7 +266,7 @@ trait AssemblyNameChecker extends Flavored {
               assigns + (rd -> (assigns(rd) :+ inst))
             case SetCarry(rd, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
-            case LocalLoad(rd, _, _, _) =>
+            case LocalLoad(rd, _, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
             case Recv(rd, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))

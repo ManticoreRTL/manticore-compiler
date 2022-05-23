@@ -45,21 +45,23 @@ trait CanRename extends Flavored {
             ),
             predicate = predicate.map(renaming)
           )
-        case i @ LocalStore(rs, base, offset, predicate, _) =>
+        case i @ LocalStore(rs, base, offset, predicate, order, _) =>
           i.copy(
             rs = renaming(rs),
             base = renaming(base),
-            predicate = predicate.map(renaming)
+            predicate = predicate.map(renaming),
+            order = order.withMemory(renaming(order.memory))
           )
         case i @ Send(rd, rs, dest_id, _) =>
           ctx.logger.error("Can not rename instruction", i)
           i
         case i @ CustomInstruction(func, rd, rss, _) =>
           i.copy(rsx = rss.map { renaming })
-        case i @ LocalLoad(rd, base, offset, _) =>
+        case i @ LocalLoad(rd, base, offset, order, _) =>
           i.copy(
             rd = renaming(rd),
-            base = renaming(base)
+            base = renaming(base),
+            order = order.withMemory(renaming(order.memory))
           )
         case i @ ClearCarry(carry, _) =>
           i.copy(

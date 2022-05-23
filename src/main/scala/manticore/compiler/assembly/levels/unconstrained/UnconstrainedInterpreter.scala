@@ -197,30 +197,7 @@ object UnconstrainedInterpreter
       val ctx: AssemblyContext
   ) extends InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter] {
 
-    private def handleMemoryAccess(base: Name, instruction: Instruction)(
-        handler: (BlockRam, Option[Int]) => Unit
-    ): Unit = {
 
-      // get the Memblock annotation
-      val memblock = instruction.annons.collectFirst { case x: Memblock =>
-        x
-      }
-      memblock match {
-        case Some(annon: Memblock) =>
-          val block_name =
-            annon.getStringValue(AssemblyAnnotationFields.Block).get
-          val index: Option[Int] = annon.getIntValue(
-            AssemblyAnnotationFields.Index
-          ) // sub-word index, only present if width conversion if performed
-          val block_object = state.memory_blocks(block_name)
-          handler(block_object, index)
-        case _ =>
-          ctx.logger.error(
-            "Could not resolve memory access block, ensure @MEMBLOCK is present",
-            instruction
-          )
-      }
-    }
     // A table for looking up name definitions
     val definitions: Map[Name, DefReg] = proc.registers.map { r =>
       r.variable.name -> r
@@ -477,103 +454,30 @@ object UnconstrainedInterpreter
       case i: BinaryArithmetic => interpret(i)
       case i: CustomInstruction =>
         ctx.logger.error("Custom instruction can not be interpreted yet!", i)
-      case LocalLoad(rd, base, offset, _) =>
-        // this is wrong, need to somehow infer the address mode (i.e., short-word or arbitrary-word)
-        handleMemoryAccess(base, instruction) {
-          (resolved_block: BlockRam, subword_index: Option[Int]) =>
-            val addr_val = state.register_file(base) + offset
-            val block_cap = resolved_block.capacity
-            if (block_cap == 0) {
-              ctx.logger.error(
-                "Can not handle LD from memory with capacity 0!",
-                instruction
-              )
-            } else {
-              val block_index: BigInt =
-                addr_val & nextPower2BitMask(block_cap.toInt)
-              val rd_val =
-                if (block_index.toInt >= resolved_block.content.length) {
-                  ctx.logger.error(
-                    s"Index out of bound! ${block_index.toInt} >= ${resolved_block.content.length}",
-                    instruction
-                  )
-                  BigInt(0)
-                } else {
-                  resolved_block.content(block_index.toInt)
-                }
-              // if there is a debug symbol index, we need to shift the word to
-              // the right and only extract the relevant bits
+      case LocalLoad(rd, base, offset, MemoryAccessOrder(m, _), _) =>
 
-              val rd_val_actual = subword_index match {
-                case Some(index) =>
-                  // the original word was large word and is now broken into
-                  // 16-bit words, the index indicates the sub-word position
-                  // for instance, index 1 means the part we are actually concerned
-                  // with is the bits [16 : 31]
-                  val rd_val_shifted = rd_val >> (16 * index)
-                  val rd_val_masked =
-                    rd_val_shifted & 0xffff // keep only 16 bits
-                  rd_val_masked
-                case _ =>
-                  rd_val
-              }
-              update(rd, rd_val_actual)
-
-            }
-        }
-      case LocalStore(rs, base, offset, predicate, annons) =>
-        handleMemoryAccess(base, instruction) {
-          (resolved_block: BlockRam, subword_index: Option[Int]) =>
-            val addr_val = state.register_file(base) + offset
-            val block_cap: Int = resolved_block.capacity
-            if (block_cap == 0) {
-              ctx.logger.error(
-                "Can not ST from  memory with capacity 0!",
-                instruction
-              )
-            } else {
-              val block_index: BigInt =
-                addr_val & nextPower2BitMask(block_cap.toInt)
-              val rs_val = state.register_file(rs)
-              val pred_val = predicate
-                .map { x => state.register_file(x) == 1 }
-                .getOrElse(state.predicate)
-
-              if (pred_val) {
-                assert(
-                  block_index.isValidInt,
-                  "Something went wrong handling ST"
-                )
-
-                val rs_val_actual = subword_index match {
-                  case Some(index) =>
-                    // since the debug symbol is augmented with index, then
-                    // the original memory has gone through width conversion
-                    // and we need to only store a sub-word (it could be a full
-                    // word iff the original memory width was 16 bits)
-                    // therefore we first need to read from the memory and then
-                    // write a modified wide word to it.
-                    val old_val = resolved_block.content(block_index.toInt)
-                    val rs_val_shifted = rs_val << (16 * index)
-                    val mask: BigInt = ((BigInt(
-                      1
-                    ) << resolved_block.width) - 1) - (BigInt(
-                      0xffff
-                    ) << (16 * index))
-                    val old_val_masked = old_val & mask
-                    val new_val = old_val_masked | rs_val_shifted
-                    new_val
-                  case _ =>
-                    // no valid index, so no need to handle sub-word stores
-                    rs_val
-
-                }
-                resolved_block.content(block_index.toInt) = rs_val_actual
-              }
-
-            }
+        val address = state.register_file(base) + offset;
+        val memory = state.memory_blocks(m)
+        if (address >= memory.capacity) {
+          ctx.logger.warn("Index out of bound")
+          update(rd, BigInt(0))
+        } else {
+          val loaded = memory.content(address.toInt)
+          update(rd, loaded)
         }
 
+      case LocalStore(rs, base, offset, predicate, MemoryAccessOrder(m, _), annons) =>
+        val address = state.register_file(base) + offset;
+        val memory = state.memory_blocks(m)
+        if (address >= memory.capacity) {
+          ctx.logger.warn(s"Index out of bound, ignoring write to ${m} at address ${address} >= ${memory.capacity}")
+        } else {
+          val wen = predicate.map(state.register_file(_) == 1).getOrElse(state.predicate)
+          if (wen) {
+            val rsv = state.register_file(rs)
+            memory.content(address.toInt) = rsv
+          }
+        }
       case GlobalLoad(rd, base, annons) =>
         ctx.logger.error("Can handle global memory access", instruction)
         state.exception_occurred = Some(InterpretationFailure)

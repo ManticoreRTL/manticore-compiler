@@ -225,6 +225,7 @@ object InitializerProgram
                       rs = tmp.variable.name,
                       base = mvr.name,
                       offset = UInt16(ix),
+                      order = MemoryAccessOrder("", 0),
                       predicate = None
                     )
                   }

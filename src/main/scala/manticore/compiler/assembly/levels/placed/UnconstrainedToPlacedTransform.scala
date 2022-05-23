@@ -134,21 +134,23 @@ object UnconstrainedToPlacedTransform
       )
     }
 
-    val res = T.DefProcess(
-      id = proc_map(proc.id),
-      registers = proc.registers.map(convert),
-      // UnconstrainedIR does not have any custom functions, so there is nothing to lower.
-      functions = Seq.empty,
-      body = proc.body.map(convert(_, proc_map)),
-      labels = proc.labels.map { lblgrp =>
-        T.DefLabelGroup(
-          lblgrp.memory,
-          lblgrp.indexer.map { case (v, l) => (UInt16(v.toInt), l) },
-          lblgrp.default
-        )
-      },
-      annons = proc.annons
-    ).setPos(proc.pos)
+    val res = T
+      .DefProcess(
+        id = proc_map(proc.id),
+        registers = proc.registers.map(convert),
+        // UnconstrainedIR does not have any custom functions, so there is nothing to lower.
+        functions = Seq.empty,
+        body = proc.body.map(convert(_, proc_map)),
+        labels = proc.labels.map { lblgrp =>
+          T.DefLabelGroup(
+            lblgrp.memory,
+            lblgrp.indexer.map { case (v, l) => (UInt16(v.toInt), l) },
+            lblgrp.default
+          )
+        },
+        annons = proc.annons
+      )
+      .setPos(proc.pos)
     res
   }
 
@@ -302,12 +304,25 @@ object UnconstrainedToPlacedTransform
         T.ExceptionIdImpl(id = UInt16(-1), msg = error_id, kind = kind),
         annons
       )
-    case S.LocalLoad(rd, base, offset, annons) =>
+    case S.LocalLoad(rd, base, offset, order, annons) =>
       val new_offset: Int = computeOffset(inst, offset)
-      T.LocalLoad(rd, base, UInt16(new_offset), annons)
-    case S.LocalStore(rs, base, offset, p, annons) =>
+      T.LocalLoad(
+        rd,
+        base,
+        UInt16(new_offset),
+        T.MemoryAccessOrder(order.memory, order.value),
+        annons
+      )
+    case S.LocalStore(rs, base, offset, p, order, annons) =>
       val new_offset: Int = computeOffset(inst, offset)
-      T.LocalStore(rs, base, UInt16(new_offset), p, annons)
+      T.LocalStore(
+        rs,
+        base,
+        UInt16(new_offset),
+        p,
+        T.MemoryAccessOrder(order.memory, order.value),
+        annons
+      )
     case S.GlobalLoad(rd, base, annons) =>
       T.GlobalLoad(rd, base, annons)
     case S.GlobalStore(rs, base, p, annons) =>
@@ -417,12 +432,12 @@ object UnconstrainedToPlacedTransform
       val bodyConvertible = p.body
         .map { i =>
           i match {
-            case S.LocalLoad(_, _, offset, _) =>
+            case S.LocalLoad(_, _, offset, _, _) =>
               if (offset >= (1 << 16)) {
                 ctx.logger.error(s"invalid offset in ${i.serialized}")
                 false
               } else true
-            case S.LocalStore(_, _, offset, _, _) =>
+            case S.LocalStore(_, _, offset, _, _, _) =>
               if (offset >= (1 << 16)) {
                 ctx.logger.error(s"invalid offset in ${i.serialized}")
                 false
@@ -439,10 +454,11 @@ object UnconstrainedToPlacedTransform
         }
         .forall(_ == true)
 
-        regsConvertible && bodyConvertible
+      regsConvertible && bodyConvertible
     }
 
-    val programConvertible = asm.processes.map(p => processIsConvertible(p)).forall(_ == true)
+    val programConvertible =
+      asm.processes.map(p => processIsConvertible(p)).forall(_ == true)
     programConvertible
   }
 

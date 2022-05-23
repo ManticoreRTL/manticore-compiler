@@ -2136,7 +2136,7 @@ object WidthConversionCore
       builder: Builder
   ): Seq[Instruction] = instruction match {
     case i: BinaryArithmetic                => convertBinaryArithmetic(i)
-    case i @ LocalLoad(rd, base, offset, _) =>
+    case i @ LocalLoad(rd, base, offset, _, _) =>
       /** Memories with wide words are translated into multiple parallel
         * memories with short-words where the for instance a 10 deep 33 wide
         * memory is translate into 3 memories that are 10 deep and each 16-bit
@@ -2191,7 +2191,7 @@ object WidthConversionCore
         }
       }
 
-    case i @ LocalStore(rs, base, offset, predicate, _) =>
+    case i @ LocalStore(rs, base, offset, predicate, _, _) =>
       val ConvertedWire(rs_uint16_array, _) = builder.getConversion(rs)
       val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
       val pred_uint16 = predicate.map { p =>
