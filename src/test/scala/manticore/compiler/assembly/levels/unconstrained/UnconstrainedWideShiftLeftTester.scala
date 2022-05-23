@@ -4,7 +4,7 @@ import manticore.compiler.UnitTest
 
 import manticore.compiler.assembly.parser.UnconstrainedAssemblyParser
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR._
-import manticore.compiler.assembly.levels.UnconstrainedAssemblyParserTester
+
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.parser.AssemblyParser
 import manticore.compiler.CompilationFailureException

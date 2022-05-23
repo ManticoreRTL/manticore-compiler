@@ -2135,8 +2135,8 @@ object WidthConversionCore
       ctx: AssemblyContext,
       builder: Builder
   ): Seq[Instruction] = instruction match {
-    case i: BinaryArithmetic                => convertBinaryArithmetic(i)
-    case i @ LocalLoad(rd, base, offset, _, _) =>
+    case i: BinaryArithmetic                       => convertBinaryArithmetic(i)
+    case i @ LocalLoad(rd, base, offset, order, _) =>
       /** Memories with wide words are translated into multiple parallel
         * memories with short-words where the for instance a 10 deep 33 wide
         * memory is translate into 3 memories that are 10 deep and each 16-bit
@@ -2146,112 +2146,86 @@ object WidthConversionCore
         */
       val memory = builder.originalDef(base)
       if (!memory.variable.isInstanceOf[MemoryVariable]) {
-        ctx.logger.error("Invalid instruction, expected memory type as base!", i)
+        ctx.logger.error(
+          "Invalid instruction, expected memory type as base!",
+          i
+        )
+        Nil
       } else {
         val memVar = memory.variable.asInstanceOf[MemoryVariable]
         val wordWidth = memVar.width
+        val addressBits = log2ceil(memVar.size)
+        assert(
+          builder.originalWidth(offset) == addressBits,
+          s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
+        )
+        if (memVar.size >= ctx.max_local_memory) {
+          // promote to global memory
+          ctx.logger.error(s"Can not handle large memories yet!", i)
+          Nil
+        } else {
+
+          val offsetArray = builder.getConversion(offset).parts
+          val rdArray = builder.getConversion(rd).parts
+          val baseArray = builder.getConversion(base).parts
+          assert(baseArray.length == rdArray.length, "something is up!")
+          assert(offsetArray.length == 1)
+          rdArray.zip(baseArray).map { case(newRd, newBase) =>
+            i.copy(
+              rd = newRd,
+              base = newBase,
+              order = order.withMemory(newBase),
+              address = offsetArray.head
+            ).setPos(i.pos)
+          }
+        }
       }
-      ???
-      // val ConvertedWire(rd_uint16_array, rd_mask) = builder.getConversion(rd)
-      // val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
-      // // ensure the memory can fit in a physical BRAM
-      // val orig_mblock = i.annons.collectFirst { case m: Memblock =>
-      //   m
-      // }
 
-      // val num_shorts = orig_mblock match {
-      //   case Some(mblock) =>
-      //     val width = mblock.getIntValue(AssemblyAnnotationFields.Width).get
-      //     val capacity = mblock.getIntValue(AssemblyAnnotationFields.Width).get
-      //     val shorts = (width - 1) / 16 + 1
-      //     (shorts * capacity)
-      //   case _ =>
-      //     ctx.logger.error("Could not find Memblock annotation", instruction)
-      //     0
-      // }
+    case i @ LocalStore(rs, base, offset, predicate, order, _) =>
+      val memory = builder.originalDef(base)
+      if (!memory.variable.isInstanceOf[MemoryVariable]) {
+        ctx.logger.error(
+          "Invalid instruction, expected memory type as base!",
+          i
+        )
+        Nil
+      } else {
+        val memVar = memory.variable.asInstanceOf[MemoryVariable]
+        val wordWidth = memVar.width
+        val addressBits = log2ceil(memVar.size)
+        assert(
+          builder.originalWidth(offset) == addressBits,
+          s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
+        )
+        if (memVar.size >= ctx.max_local_memory) {
+          // promote to global memory
+          ctx.logger.error(s"Can not handle large memories yet!", i)
+          Nil
+        } else {
 
-      // if (num_shorts > ctx.max_local_memory) {
-      //   ctx.logger.error(
-      //     s"Can not handle large memories yet with ${num_shorts} short words!"
-      //   )
-      //   // TODO: promote to global access
-      //   Seq(i)
-      // } else {
-      //   val base_uint16_head = base_uint16_array.head
-      //   // here we discard the highest bits of base_uint16 because a valid
-      //   // program should not access those. In fact we have a wide base registers
-      //   // because of PADZERO instructions and the fact that we don't shrink
-      //   // on ADD, but only expand.
-      //   if (offset != 0) {
-      //     ctx.logger.warn(
-      //       "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
-      //       i
-      //     )
-      //   }
-
-      //   rd_uint16_array.zipWithIndex.map { case (rd_16, index) =>
-      //     i.copy(
-      //       rd = rd_16,
-      //       base = base_uint16_head,
-      //       offset = offset,
-      //       annons = appendIndexToMemblock(i, orig_mblock, index)
-      //     ).setPos(i.pos)
-      //   }
-      // }
-
-    case i @ LocalStore(rs, base, offset, predicate, _, _) =>
-
-      ???
-      // val ConvertedWire(rs_uint16_array, _) = builder.getConversion(rs)
-      // val ConvertedWire(base_uint16_array, _) = builder.getConversion(base)
-      // val pred_uint16 = predicate.map { p =>
-      //   val conv = builder.getConversion(p).parts
-      //   if (conv.length != 1) {
-      //     ctx.logger.error("LST predicate should be single-bit!")
-      //   }
-      //   conv.head
-      // }
-      // val orig_mblock = instruction.annons.collectFirst { case x: Memblock =>
-      //   x
-      // }
-
-      // val num_shorts = orig_mblock match {
-      //   case Some(mblock) =>
-      //     val width = mblock.getIntValue(AssemblyAnnotationFields.Width).get
-      //     val capacity = mblock.getIntValue(AssemblyAnnotationFields.Width).get
-      //     val shorts = (width - 1) / 16 + 1
-      //     (shorts * capacity)
-      //   case _ =>
-      //     ctx.logger.error("Could not find Memblock annotation", instruction)
-      //     0
-      // }
-
-      // if (num_shorts > ctx.max_local_memory) {
-      //   ctx.logger.error(
-      //     s"Can not handle large memories yet with ${num_shorts} short words!"
-      //   )
-      //   // TODO: promote to global access
-      //   Seq(i)
-      // } else {
-      //   val base_uint16_head = base_uint16_array.head
-
-      //   if (offset != 0) {
-      //     ctx.logger.error(
-      //       "Thyrio is supposed to use offset zero at all times, are you not using Thyrio?",
-      //       i
-      //     )
-      //   }
-      //   rs_uint16_array.zipWithIndex.map { case (rs_16, index) =>
-      //     i.copy(
-      //       rs = rs_16,
-      //       base = base_uint16_head,
-      //       offset = offset,
-      //       predicate = pred_uint16,
-      //       annons = appendIndexToMemblock(i, orig_mblock, index)
-      //     ).setPos(i.pos)
-      //   }
-      // }
-
+          val offsetArray = builder.getConversion(offset).parts
+          val rsArray = builder.getConversion(rs).parts
+          val baseArray = builder.getConversion(base).parts
+          val newPred = predicate.map { p =>
+              val t = builder.getConversion(p).parts
+              if (t.length != 1) {
+                ctx.logger.error(s"Bad predicate!", i)
+              }
+              t.head
+          }
+          assert(baseArray.length == rsArray.length, "something is up!")
+          assert(offsetArray.length == 1)
+          rsArray.zip(baseArray).map { case(newRd, newBase) =>
+            i.copy(
+              rs = newRd,
+              base = newBase,
+              predicate = newPred,
+              order = order.withMemory(newBase),
+              address = offsetArray.head
+            ).setPos(i.pos)
+          }
+        }
+      }
     case i @ Expect(ref, got, _, _) =>
       val ConvertedWire(ref_uint16_array, _) = builder.getConversion(ref)
       val ConvertedWire(got_uint16_array, _) = builder.getConversion(got)

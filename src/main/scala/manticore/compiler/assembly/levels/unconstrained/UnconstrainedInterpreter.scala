@@ -83,35 +83,12 @@ object UnconstrainedInterpreter
         memInit: MemInit,
         capacity: Int
     ): Array[BigInt] = {
-      import java.nio.file.{Files, Path}
-      val path = Path.of(memInit.getFileName())
-      val extension = path.getFileName().toString.split("\\.").last
-      val radix = extension match {
-        case "hex" => 16
-        case "bin" => 2
-        case "dat" => 10
-        case _ =>
-          ctx.logger.warn(s"Parsing file ${path.toString()} as decimal")
-          10
-      }
 
-      val count = memInit.getCount()
-      try {
-        scala.io.Source
-          .fromFile(path.toAbsolutePath.toString())
-          .getLines()
-          .slice(0, count)
-          .map {
-            BigInt(_, radix)
-          }
-          .toArray[BigInt] ++ Array.fill(capacity - count)(BigInt(0))
-      } catch {
-        case e: Exception =>
-          ctx.logger.error(
-            s"Could not read file ${path.toAbsolutePath()}"
-          )
-          Array.fill(capacity)(BigInt(0))
-      }
+      val fileContent = memInit.readFile()
+      fileContent.toArray ++ Array.fill(capacity - fileContent.length)(
+        BigInt(0)
+      )
+
     }
     val memory_blocks = proc.registers.collect {
       case DefReg(MemoryVariable(name, width, size, initialValues), _, annons)

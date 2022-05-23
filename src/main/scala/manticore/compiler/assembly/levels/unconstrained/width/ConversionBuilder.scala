@@ -2,14 +2,18 @@ package manticore.compiler.assembly.levels.unconstrained.width
 
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.ConstType
+import manticore.compiler.assembly.levels.WireType
+import manticore.compiler.assembly.levels.CarryType
+import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.annotations.{Reg => RegAnnotation}
 
 import manticore.compiler.assembly.levels.Flavored
-import manticore.compiler.assembly.levels.WireType
-import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.AssemblyContext
+import manticore.compiler.assembly.levels.VariableType
+import manticore.compiler.assembly.annotations.MemInit
+import manticore.compiler.assembly.annotations.Memblock
 
 /** A helper trait as the base of [[WidthConversion]]. It contains the
   * implementation of a mutable Builder class that lazily converts every
@@ -221,15 +225,20 @@ trait ConversionBuilder extends Flavored {
           Some(mask_const)
         } else None
 
-        val uint16_vars = Seq.tabulate(array_size) { i =>
-          LogicVariable(
-            freshName(original + s"_$i"),
-            // if (i == array_size - 1) mask_bits else 16,
-            16, // we make every variable 16 bit and mask the computation results
-            // explicitly if necessary
-            orig_def.variable.varType
-          )
-        }
+        val uint16_vars =
+          if (orig_def.variable.isInstanceOf[MemoryVariable]) {
+            createMemoryVariables(
+              original,
+              array_size,
+              orig_def.variable.asInstanceOf[MemoryVariable].size
+            )
+          } else {
+            createLogicVariables(
+              original,
+              orig_def.variable.varType,
+              array_size
+            )
+          }
 
         val values: Seq[Option[BigInt]] = orig_def.value match {
           case None => Seq.fill(array_size)(None)
@@ -278,17 +287,27 @@ trait ConversionBuilder extends Flavored {
               x.withIndex(ix)
             }.toSeq
 
+            val memblock_annon = orig_def.annons.collect { case x: Memblock =>
+              x.withIndex(ix)
+            }
+
             val other_annons = orig_def.annons.filter {
               case _: DebugSymbol   => false
               case _: RegAnnotation => false
-              case _                => true
+              case _: MemInit =>
+                false // remove memory init since we store them internally from now on
+              case _: Memblock => false
+              case _           => true
             }
 
             orig_def
               .copy(
                 variable = cvar,
                 value = cval,
-                annons = other_annons ++ reg_annon :+ dbgsym.withCount(uint16_vars.length)
+                annons = other_annons ++ memblock_annon ++ reg_annon :+ dbgsym
+                  .withCount(
+                    uint16_vars.length
+                  )
               )
               .setPos(orig_def.pos)
 
@@ -305,6 +324,50 @@ trait ConversionBuilder extends Flavored {
         converted
       }
     } ensuring (r => r.parts.length > 0)
+
+    def createLogicVariables(oldName: Name, tpe: VariableType, count: Int) = {
+      require(tpe != MemoryType)
+
+      Seq.tabulate(count) { i =>
+        LogicVariable(
+          freshName(s"${oldName}_${i}"),
+          16,
+          tpe
+        )
+      }
+    }
+
+    private def createMemoryVariables(
+        oldName: Name,
+        count: Int,
+        memorySize: Int
+    ) = {
+
+      // get any initial values (if any)
+      val initialValues = originalDef(oldName).annons
+        .collectFirst { case mi: MemInit => mi }
+        .map { mi =>
+          mi.readFile()
+            .map { bigWord =>
+              Seq.tabulate(count) { index =>
+                val shifted = bigWord >> (index * 16)
+                val masked = shifted & 0xffff
+                masked
+              }
+            }
+            .toSeq
+            .transpose
+        }
+        .getOrElse(Seq.empty)
+      Seq.tabulate(count) { i =>
+        MemoryVariable(
+          name = freshName(s"${oldName}_${i}"),
+          width = 16,
+          size = memorySize,
+          content = if (initialValues.nonEmpty) initialValues(i) else Seq.empty
+        )
+      }
+    }
 
     /** get the conversion of a given name of a wire/reg
       *
@@ -326,5 +389,7 @@ trait ConversionBuilder extends Flavored {
 
     def isConstant(original_name: Name): Boolean =
       m_old_defs(original_name).variable.varType == ConstType
+    def isMemory(original: Name): Boolean =
+      m_old_defs(original).variable.varType == MemoryType
   }
 }
