@@ -75,111 +75,59 @@ object UnconstrainedInterpreter
 
     // a container to map block names to their allocated interpreter
     // memory blocks (one to one)
-    val memory_blocks =
-      scala.collection.mutable.Map.empty[String, BlockRam]
+    private def isLabelMem(mem: Name): Boolean = proc.labels.exists {
+      case DefLabelGroup(rs, _, _, _) => rs == mem
+    }
+
+    private def loadContentFromFile(
+        memInit: MemInit,
+        capacity: Int
+    ): Array[BigInt] = {
+      import java.nio.file.{Files, Path}
+      val path = Path.of(memInit.getFileName())
+      val extension = path.getFileName().toString.split("\\.").last
+      val radix = extension match {
+        case "hex" => 16
+        case "bin" => 2
+        case "dat" => 10
+        case _ =>
+          ctx.logger.warn(s"Parsing file ${path.toString()} as decimal")
+          10
+      }
+
+      val count = memInit.getCount()
+      try {
+        scala.io.Source
+          .fromFile(path.toAbsolutePath.toString())
+          .getLines()
+          .slice(0, count)
+          .map {
+            BigInt(_, radix)
+          }
+          .toArray[BigInt] ++ Array.fill(capacity - count)(BigInt(0))
+      } catch {
+        case e: Exception =>
+          ctx.logger.error(
+            s"Could not read file ${path.toAbsolutePath()}"
+          )
+          Array.fill(capacity)(BigInt(0))
+      }
+    }
+    val memory_blocks = proc.registers.collect {
+      case DefReg(MemoryVariable(name, width, size, initialValues), _, annons)
+          if !isLabelMem(name) =>
+        val content = if (initialValues.nonEmpty) {
+          initialValues.toArray
+        } else {
+          annons
+            .collectFirst { case x: MemInit => loadContentFromFile(x, size) }
+            .getOrElse(Array.fill(size) { BigInt(0) })
+
+        }
+        name -> BlockRam(content, width, size, name)
+    }.toMap
 
     // a container to map .mem names to their allocated block ram (possibly many to one)
-    val memory: Map[Name, BlockRam] = {
-
-      // go through the list of registers, filter out the memory ones, and
-      // see if the memory block is already initialized in the or not. If not
-      // initialized, read the init files or zero out the memory and establish
-      // a mapping from register name to the BlockRam case class
-      def isLabelMem(mem: Name): Boolean = proc.labels.exists {
-        case DefLabelGroup(rs, _, _, _) => rs == mem
-      }
-      proc.registers
-        .collect {
-          case m @ DefReg(LogicVariable(nm, _, MemoryType), _, _)
-              if !isLabelMem(nm) =>
-            m
-        }
-        .map { m =>
-          val block_name: String = m.findAnnotation(Memblock.name) match {
-            case Some(block_annon) =>
-              block_annon.getStringValue(
-                AssemblyAnnotationFields.Block
-              ) match {
-                case Some(n: String) => n
-                case _ =>
-                  ctx.logger.error(s"missing block field in MEMBLOCK", m)
-                  ""
-              }
-            case _ =>
-              ctx.logger.error(s"missing MEMBLOCK annotation", m)
-              ""
-          }
-          if (memory_blocks contains block_name) {
-            m.variable.name -> memory_blocks(block_name)
-          } else {
-            val memblock_cap = m.findAnnotationValue(
-              Memblock.name,
-              AssemblyAnnotationFields.Capacity
-            )
-            val cap = memblock_cap match {
-              case Some(IntValue(v)) =>
-                if (v == 0) {
-                  ctx.logger.error(
-                    s"memory capacity 0! Please make sure all memories are less than 4 GiBs."
-                  )
-                }
-                v
-              case _ =>
-                ctx.logger.error(s"missing memory block capacity!", m)
-                0
-            }
-            val memblock_width = m.findAnnotationValue(
-              Memblock.name,
-              AssemblyAnnotationFields.Width
-            )
-            val width = memblock_width match {
-              case Some(IntValue(v)) => v
-              case _ =>
-                ctx.logger.error(s"missing memory block width!", m)
-                0
-            }
-            val meminit: Array[BigInt] = m.findAnnotation(MemInit.name) match {
-              case Some(meminit_annon) =>
-                // this is not safe from Scala compilers perspective, but it is safe
-                // from our perspective because of the way we construct the
-                // annotation fields, i.e., the result is never [[None]]
-                val Some(file_name: String) =
-                  meminit_annon.getStringValue(AssemblyAnnotationFields.File)
-                val Some(count: Int) =
-                  meminit_annon.getIntValue(AssemblyAnnotationFields.Count)
-                if (count > cap) {
-                  ctx.logger.error("init file overflows memory!", m)
-                }
-                import java.nio.file.{Files, Path}
-                val file_path = Path.of(file_name)
-
-                try {
-                  scala.io.Source
-                    .fromFile(file_name)
-                    .getLines()
-                    .slice(0, count)
-                    .map {
-                      BigInt(_)
-                    }
-                    .toArray[BigInt] ++ Array.fill(cap - count)(BigInt(0))
-                } catch {
-                  case e: Exception =>
-                    ctx.logger.error(
-                      s"Could not read file ${file_path.toAbsolutePath()}"
-                    )
-                    Array.fill(cap)(BigInt(0))
-                }
-              case _ =>
-                Array.fill(cap)(BigInt(0))
-
-            }
-            val new_block = BlockRam(meminit, width, cap, block_name)
-            memory_blocks += (block_name -> new_block)
-            m.variable.name -> new_block
-          }
-        }
-        .toMap
-    }
     var predicate: Boolean = false
     var carry: Boolean = false
     var select: Boolean = false
@@ -196,7 +144,6 @@ object UnconstrainedInterpreter
   )(implicit
       val ctx: AssemblyContext
   ) extends InterpreterMonitor.CanUpdateMonitor[ProcessInterpreter] {
-
 
     // A table for looking up name definitions
     val definitions: Map[Name, DefReg] = proc.registers.map { r =>
@@ -454,28 +401,31 @@ object UnconstrainedInterpreter
       case i: BinaryArithmetic => interpret(i)
       case i: CustomInstruction =>
         ctx.logger.error("Custom instruction can not be interpreted yet!", i)
-      case LocalLoad(rd, base, offset, MemoryAccessOrder(m, _), _) =>
-
-        val address = state.register_file(base) + offset;
-        val memory = state.memory_blocks(m)
-        if (address >= memory.capacity) {
+      case LocalLoad(rd, base, addr, _, _) =>
+        val addrValue = state.register_file(addr);
+        val memory = state.memory_blocks(base)
+        if (addrValue >= memory.capacity) {
           ctx.logger.warn("Index out of bound")
           update(rd, BigInt(0))
         } else {
-          val loaded = memory.content(address.toInt)
+          val loaded = memory.content(addrValue.toInt)
           update(rd, loaded)
         }
 
-      case LocalStore(rs, base, offset, predicate, MemoryAccessOrder(m, _), annons) =>
-        val address = state.register_file(base) + offset;
-        val memory = state.memory_blocks(m)
-        if (address >= memory.capacity) {
-          ctx.logger.warn(s"Index out of bound, ignoring write to ${m} at address ${address} >= ${memory.capacity}")
+      case LocalStore(rs, base, addr, predicate, _, annons) =>
+        val addrValue = state.register_file(addr);
+        val memory = state.memory_blocks(base)
+        if (addrValue >= memory.capacity) {
+          ctx.logger.warn(
+            s"Index out of bound, ignoring write to ${base} at address ${addrValue} >= ${memory.capacity}"
+          )
         } else {
-          val wen = predicate.map(state.register_file(_) == 1).getOrElse(state.predicate)
+          val wen = predicate
+            .map(state.register_file(_) == 1)
+            .getOrElse(state.predicate)
           if (wen) {
             val rsv = state.register_file(rs)
-            memory.content(address.toInt) = rsv
+            memory.content(addrValue.toInt) = rsv
           }
         }
       case GlobalLoad(rd, base, annons) =>

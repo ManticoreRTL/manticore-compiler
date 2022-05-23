@@ -305,11 +305,11 @@ trait ManticoreAssemblyIR {
   case class LocalLoad(
       rd: Name,
       base: Name,
-      offset: Constant,
+      address: Name,
       order: MemoryAccessOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends DataInstruction with ExplicitlyOrderedInstruction {
-    override def toString: String = s"LLD ${rd}, ${base}[${offset}]"
+    override def toString: String = s"LLD ${rd}, ${base}[${address}]"
 
   }
 
@@ -317,13 +317,13 @@ trait ManticoreAssemblyIR {
   case class LocalStore(
       rs: Name,
       base: Name,
-      offset: Constant,
+      address: Name,
       predicate: Option[Name],
       order: MemoryAccessOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends DataInstruction
       with ExplicitlyOrderedInstruction {
-    override def toString: String = s"LST ${rs}, ${base}[${offset}] ${predicate
+    override def toString: String = s"LST ${rs}, ${base}[${address}], ${predicate
       .map(", " + _.toString())
       .getOrElse("")}"
   }

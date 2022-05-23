@@ -19,23 +19,39 @@ import manticore.compiler.assembly.levels.HasVariableType
   */
 object UnconstrainedIR extends ManticoreAssemblyIR {
 
+  trait UnconstrainedIRVariable extends Named[UnconstrainedIRVariable] with HasSerialized with HasVariableType with HasWidth
   // case class ConstVariable(name: String, )
   case class LogicVariable(
       name: String,
       width: Int,
       tpe: VariableType
-  ) extends Named[LogicVariable]
-      with HasSerialized
-      with HasVariableType
-      with HasWidth {
+  ) extends UnconstrainedIRVariable {
+    require(tpe != MemoryType)
     def serialized: String = s"${tpe.typeName} ${name} ${width}"
     def varType = tpe
 
     def withName(n: Name): LogicVariable = this.copy(name = n)
   }
 
+  case class MemoryVariable(
+    name: String,
+    width: Int,
+    size: Int,
+    content: Seq[BigInt] = Seq()
+  ) extends UnconstrainedIRVariable {
+
+    override def withName(new_name: Name): UnconstrainedIRVariable = copy(name = new_name)
+
+    override def serialized: String = s"${varType.typeName} ${name} ${width} ${size}"
+
+    override def varType: VariableType = MemoryType
+
+
+
+  }
+
   type Constant = BigInt // unlimited bits
-  type Variable = LogicVariable
+  type Variable = UnconstrainedIRVariable
   // UnconstrainedIR does not support custom functions. Only lower IRs use such optimizations.
   type CustomFunction = Nothing
   type Name = String

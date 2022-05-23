@@ -33,9 +33,11 @@ trait YosysUnitTest {
   def code: TestCode
   def testDir: Path
 
+  def dumpAll: Boolean = false
+
   final def run(): Unit = {
 
-    implicit val ctx = defaultContext(false)
+    implicit val ctx = defaultContext(dumpAll)
 
     try {
       // copy the unit test verilog files to test directory
@@ -50,11 +52,18 @@ trait YosysUnitTest {
       // get the reference results by simulating using Verilator
       val reference = verilate(Seq(filename, tbFilename))
 
+      if (dumpAll) {
+        dump("reference.txt", reference.mkString("\n"))
+      }
       // compile the circuit and its test bench using yosys
 
       val manticore = yosysCompile(Seq(filename, tbFilename), ctx.dump_all)
 
       val results = interpret(manticore)
+
+      if (dumpAll) {
+        dump("results.txt", results.mkString("\n"))
+      }
 
       val numLines = reference.length min results.length
       implicit val loggerId = new HasLoggerId { val id = "result-check" }
@@ -89,8 +98,10 @@ trait YosysUnitTest {
       assert(reference.length > 0)
       check(0)
       if (ctx.logger.countErrors() > 0) {
-        dump("results.txt", results.mkString("\n"))
-        dump("reference.txt", reference.mkString("\n"))
+        if (!dumpAll) {
+          dump("results.txt", results.mkString("\n"))
+          dump("reference.txt", reference.mkString("\n"))
+        }
         ctx.logger.fail("encountered error(s)!")
       }
     } catch {
@@ -98,6 +109,7 @@ trait YosysUnitTest {
         println(
           s"Failed the test because: ${e.getMessage()}\nin: ${testDir.toString()}"
         )
+        e.printStackTrace()
         ctx.logger.flush()
         throw new CompilationFailureException("test failed")
     }

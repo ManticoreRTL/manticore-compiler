@@ -238,9 +238,9 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         DefReg(LogicVariable(name.chars, w.toInt, OutputType), None, a)
     }
   def def_mem: Parser[DefReg] =
-    (annotations ~ keyword(".mem") ~ ident ~ const_value <~ opt(";")) ^^ {
-      case a ~ _ ~ name ~ w =>
-        DefReg(LogicVariable(name.chars, w.toInt, MemoryType), None, a)
+    (annotations ~ keyword(".mem") ~ ident ~ const_value ~ const_value <~ opt(";")) ^^ {
+      case a ~ _ ~ name ~ w ~ sz =>
+        DefReg(MemoryVariable(name.chars, w.toInt, sz.toInt), None, a)
     }
 
   def def_pair_input: Parser[(Token, Option[Constant])] =
@@ -309,18 +309,18 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def lload_inst: Parser[LocalLoad] =
     (annotations ~ memory_order ~ (keyword(
       "LLD"
-    ) | keyword("LD")) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]") ^^ {
-      case (a ~ order ~ _ ~ rd ~ _ ~ base ~ _ ~ offset ~ _) =>
-        LocalLoad(rd.chars, base.chars, offset, order, a)
+    ) | keyword("LD")) ~ ident ~ "," ~ ident ~ "[" ~ ident ~ "]") ^^ {
+      case (a ~ order ~ _ ~ rd ~ _ ~ base ~ _ ~ addr ~ _) =>
+        LocalLoad(rd.chars, base.chars, addr.chars, order, a)
     }
 
   def lstore_inst: Parser[LocalStore] =
     (annotations ~ memory_order ~ (keyword(
       "LST"
-    ) | keyword("ST")) ~ ident ~ "," ~ ident ~ "[" ~ const_value ~ "]" ~ opt(
+    ) | keyword("ST")) ~ ident ~ "," ~ ident ~ "[" ~ ident ~ "]" ~ opt(
       "," ~> ident
-    )) ^^ { case (a ~ order ~ _ ~ rs ~ _ ~ base ~ _ ~ offset ~ _ ~ p) =>
-      LocalStore(rs.chars, base.chars, offset, p.map(_.chars), order, a)
+    )) ^^ { case (a ~ order ~ _ ~ rs ~ _ ~ base ~ _ ~ addr ~ _ ~ p) =>
+      LocalStore(rs.chars, base.chars, addr.chars, p.map(_.chars), order, a)
     }
 
   def gstore_inst: Parser[GlobalStore] =

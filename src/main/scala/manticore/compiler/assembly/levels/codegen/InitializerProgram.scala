@@ -221,13 +221,14 @@ object InitializerProgram
                 // perform the actual store (predicate is set to 1 before)
                 initializer_body ++=
                   zipped_window.map { case ((value, ix), tmp) =>
-                    LocalStore(
-                      rs = tmp.variable.name,
-                      base = mvr.name,
-                      offset = UInt16(ix),
-                      order = MemoryAccessOrder("", 0),
-                      predicate = None
-                    )
+                    ???
+                    // LocalStore(
+                    //   rs = tmp.variable.name,
+                    //   base = mvr.name,
+                    //   offset = UInt16(ix),
+                    //   order = MemoryAccessOrder("", 0),
+                    //   predicate = None
+                    // )
                   }
 
               }

@@ -246,7 +246,7 @@ object UnconstrainedToPlacedTransform
         T.ValueVariable(
           name = r.variable.name,
           id = -1, // to indicate unallocated registers
-          tpe = r.variable.tpe
+          tpe = r.variable.varType
         )
     }
     val value: Option[UInt16] = r.value match {
@@ -304,21 +304,21 @@ object UnconstrainedToPlacedTransform
         T.ExceptionIdImpl(id = UInt16(-1), msg = error_id, kind = kind),
         annons
       )
-    case S.LocalLoad(rd, base, offset, order, annons) =>
-      val new_offset: Int = computeOffset(inst, offset)
+    case S.LocalLoad(rd, base, addr, order, annons) =>
+      // val new_offset: Int = computeOffset(inst, offset)
       T.LocalLoad(
         rd,
         base,
-        UInt16(new_offset),
+        addr,
         T.MemoryAccessOrder(order.memory, order.value),
         annons
       )
-    case S.LocalStore(rs, base, offset, p, order, annons) =>
-      val new_offset: Int = computeOffset(inst, offset)
+    case S.LocalStore(rs, base, addr, p, order, annons) =>
+      // val new_offset: Int = computeOffset(inst, addr)
       T.LocalStore(
         rs,
         base,
-        UInt16(new_offset),
+        addr,
         p,
         T.MemoryAccessOrder(order.memory, order.value),
         annons
@@ -432,16 +432,6 @@ object UnconstrainedToPlacedTransform
       val bodyConvertible = p.body
         .map { i =>
           i match {
-            case S.LocalLoad(_, _, offset, _, _) =>
-              if (offset >= (1 << 16)) {
-                ctx.logger.error(s"invalid offset in ${i.serialized}")
-                false
-              } else true
-            case S.LocalStore(_, _, offset, _, _, _) =>
-              if (offset >= (1 << 16)) {
-                ctx.logger.error(s"invalid offset in ${i.serialized}")
-                false
-              } else true
             case S.SetValue(_, value, _) =>
               if (value >= (1 << 16)) {
                 ctx.logger.error(
