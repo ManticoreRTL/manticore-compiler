@@ -31,6 +31,7 @@ trait AssemblyContext {
   val max_instructions_threshold: Int // the threshold number of instructions for merging processes
   val max_custom_instructions: Int // maximum number of custom instructions a process can host
   val max_custom_instruction_inputs: Int // maximum number of inputs a custom instruction can use
+  val optimize_common_custom_functions: Boolean // whether common custom functions should be identified and merged
   val max_cycles: Int // maximum number of cycles to interpret before erroring out
   val quiet: Boolean // do not print info messages
   val max_dimx: Int // maximum dimension in X
@@ -66,6 +67,7 @@ object AssemblyContext {
       val max_instructions_threshold: Int,
       val max_custom_instructions: Int,
       val max_custom_instruction_inputs: Int,
+      val optimize_common_custom_functions: Boolean,
       val max_cycles: Int,
       val quiet: Boolean,
       val max_dimx: Int,
@@ -102,6 +104,7 @@ object AssemblyContext {
       max_instructions_threshold: Int = 4096 - 128,
       max_custom_instructions: Int = 32,
       max_custom_instruction_inputs: Int = 4,
+      optimize_common_custom_functions: Boolean = false,
       max_cycles: Int = 1000,
       quiet: Boolean = false,
       max_dimx: Int = 2,
@@ -128,6 +131,7 @@ object AssemblyContext {
       max_instructions_threshold = max_instructions_threshold,
       max_custom_instructions = max_custom_instructions,
       max_custom_instruction_inputs = max_custom_instruction_inputs,
+      optimize_common_custom_functions = optimize_common_custom_functions,
       max_cycles = max_cycles,
       quiet = quiet,
       max_dimx = max_dimx,

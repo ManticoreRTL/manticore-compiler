@@ -131,8 +131,8 @@ trait ProcessInterpreter extends InterpreterBase {
     // at the current cycle.
     val substMap = rsx.zipWithIndex.map { case (rs, idx) =>
       val rsVal = read(rs)
-      AtomArg(idx) -> AtomConst(rsVal)
-    }.toMap
+      PositionalArg(idx) -> AtomConst(rsVal)
+    }.toMap[AtomArg, Atom]
 
     val exprWithArgs = substitute(func.expr)(substMap)
     val rdVal = evaluate(exprWithArgs)

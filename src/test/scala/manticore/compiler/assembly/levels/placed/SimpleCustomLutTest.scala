@@ -23,6 +23,8 @@ class SimpleCustomLutTester extends UnitFixtureTest {
 
   behavior of "custom lut insertion transform"
 
+  // Creates a program that reverses the order of bits in a 16-bit constant and
+  // checks if the result is correct.
   def mkProgram(f: FixtureParam): (String, AssemblyContext) = {
     val regs = ArrayBuffer.empty[String]
     val wires = ArrayBuffer.empty[String]
@@ -231,24 +233,35 @@ class SimpleCustomLutTester extends UnitFixtureTest {
       UnconstrainedMakeDebugSymbols followedBy
       UnconstrainedToPlacedTransform
 
+    val programPlaced = lowerCompiler(programOrigUnconstrained, ctx)._1
+    f.dump(
+      s"placed_human.masm",
+      PlacedIRDebugSymbolRenamer.makeHumanReadable(programPlaced)(ctx).serialized
+    )
+
     val lutCompiler =
       CustomLutInsertion followedBy
       PlacedIRDeadCodeElimination
 
-    val programPlaced = lowerCompiler(programOrigUnconstrained, ctx)._1
-    // println(programPlaced.serialized)
+    withClue("The program without LUTs should successfully run:") {
+      // Interpret the placed program to ensure it does not fail.
+      // If it crashes, then the program is ill-formed.
+      AtomicInterpreter(programPlaced, ctx)
+    }
 
-    // Interpret the placed program to ensure it does not fail.
-    // If it crashes, then the program is ill-formed.
-    AtomicInterpreter(programPlaced, ctx)
+    withClue("The program with LUTs should successfully run:") {
+      val placedProgramWithLuts = lutCompiler(programPlaced, ctx)._1
+      f.dump(
+        s"lut_human.masm",
+        PlacedIRDebugSymbolRenamer.makeHumanReadable(placedProgramWithLuts)(ctx).serialized
+      )
 
-    val placedProgramWithLuts = lutCompiler(programPlaced, ctx)._1
-    // println(placedProgramWithLuts.serialized)
+      // Interpret the optimized program to ensure it does not fail.
+      // If it crashes, then the program is incorrect (as the previous lowered program
+      // is correct if we reached this point)
+      AtomicInterpreter(placedProgramWithLuts, ctx)
+    }
 
-    // Interpret the optimized program to ensure it does not fail.
-    // If it crashes, then the program is incorrect (as the previous lowered program
-    // is correct if we reached this point)
-    AtomicInterpreter(placedProgramWithLuts, ctx)
   }
 
 }
