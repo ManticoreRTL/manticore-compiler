@@ -27,6 +27,7 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.annotations.Reg
 import manticore.compiler.HasLoggerId
+import manticore.compiler.FormatString
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -379,11 +380,18 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         Interrupt(FinishInterrupt, rs.chars, order, a)
     }
 
+  def fmt_string: Parser[FormatString] = (stringLit ^^ {
+    case str =>
+      FormatString.parse(str.chars)
+  }) >> {
+    case Left(error) => err(s"Invalid fmt: $error")
+    case Right(fmt) => success(fmt)
+  }
   def flush_inst: Parser[Interrupt] =
     (annotations ~ syscall_order ~ keyword(
       "FLUSH"
-    ) ~ stringLit ~ "," ~ ident) ^^ { case (a ~ order ~ _ ~ fmt ~ _ ~ cond) =>
-      Interrupt(SerialInterrupt(fmt.chars), cond.chars, order, a)
+    ) ~ fmt_string ~ "," ~ ident) ^^ { case (a ~ order ~ _ ~ fmt ~ _ ~ cond) =>
+      Interrupt(SerialInterrupt(fmt), cond.chars, order, a)
     }
 
   def interrupt_inst: Parser[Interrupt] =

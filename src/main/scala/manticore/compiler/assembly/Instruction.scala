@@ -9,6 +9,7 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotation
 import manticore.compiler.assembly.annotations.AnnotationValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.FieldName
 import manticore.compiler.assembly.annotations.Sourceinfo
+import manticore.compiler.FormatString
 
 /** Base classes for the various IR flavors.
   * @author
@@ -538,7 +539,7 @@ trait ManticoreAssemblyIR {
   case object FinishInterrupt extends InterruptAction
   case object StopInterrupt extends InterruptAction
   case object AssertionInterrupt extends InterruptAction
-  case class SerialInterrupt(fmt: String) extends InterruptAction
+  case class SerialInterrupt(fmt: FormatString) extends InterruptAction
 
   // other things such as function calls are also interrupts and should be
   // defined here

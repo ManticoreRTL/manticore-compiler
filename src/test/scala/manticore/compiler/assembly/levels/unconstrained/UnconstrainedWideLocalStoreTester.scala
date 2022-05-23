@@ -27,8 +27,7 @@ class UnconstrainedWideLocalStoreTester extends UnconstrainedWideTest {
     s"""
     .prog:
     .proc proc_0_0:
-    ${memblock}
-    .mem block_base_ptr ${addr_bits}
+    .mem mem_base ${width} ${capacity}
     ${init_vals.zipWithIndex map { case (x, ix) =>
       s".const mvalue_${ix} ${width} ${x}"
     } mkString "\n"}
@@ -37,21 +36,18 @@ class UnconstrainedWideLocalStoreTester extends UnconstrainedWideTest {
     .wire mrdata ${width}
     .const const_1 ${addr_bits} 1
     .const const_0 ${addr_bits} 0
-    ADD index, block_base_ptr, const_0;
+    .wire matches 1
     ${init_vals.zipWithIndex.map { case (x, ix) =>
       Seq(
-        s"${memblock}",
-        s"LST mvalue_${ix}, index[0], const_1;",
-        s"${memblock}",
-        "LLD mrdata, index[0];",
-        "@TRAP [type = \"\\fail\"]",
-        s"EXPECT mvalue_${ix}, mrdata, [\"e2_${ix}\"];",
+        s"(mem_base, ${2 *ix})       LST mvalue_${ix}, mem_base[index], const_1;",
+        s"(mem_base, ${2 * ix + 1}) LLD mrdata, mem_base[index];",
+        s"SEQ matches, mvalue_${ix}, mrdata;",
+        s"($ix) ASSERT matches;",
         s"ADD index, index, const_1;"
       ) mkString ("\n")
 
     } mkString ("\n")}
-    @TRAP [type = "\\stop"]
-    EXPECT const_1, const_0, ["end"];
+    (${init_vals.length}) FINISH const_1;
     """
 
   }
@@ -62,6 +58,7 @@ class UnconstrainedWideLocalStoreTester extends UnconstrainedWideTest {
     // the test may print warnings about Thyrio that do not matter
     Range(0, 10).foreach { i =>
       val prog_txt = mkProgram(s"st_test_${i}")
+      f.dump("main.masm", prog_txt)
       val prog = AssemblyParser(prog_txt, f.ctx)
 
       backend(prog, f.ctx)

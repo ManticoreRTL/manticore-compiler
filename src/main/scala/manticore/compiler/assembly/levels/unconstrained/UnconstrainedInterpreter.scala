@@ -22,6 +22,11 @@ import manticore.compiler.assembly.levels.ValueChangeWriterBase
 import scalax.collection.edge.LDiEdge
 import scalax.collection.Graph
 import manticore.compiler.assembly.levels.InterpreterMonitor
+import manticore.compiler.FormatString
+import manticore.compiler.FormatString.FmtBin
+import manticore.compiler.FormatString.FmtConcat
+import manticore.compiler.FormatString.FmtDec
+import manticore.compiler.FormatString.FmtHex
 
 /** Simple interpreter for unconstrained flavored programs with a single process
   * @author
@@ -433,75 +438,53 @@ object UnconstrainedInterpreter
             case FinishInterrupt =>
               ctx.logger.info(s"Finished.", intr)
               state.exception_occurred = Some(InterpretationFinish)
-            case SerialInterrupt(fmt) =>
-              // split the string by % but also keep the delimiter see:
-              // https://stackoverflow.com/questions/2206378/how-to-split-a-string-but-also-keep-the-delimiters
-              val parts = fmt.split("(?=%)")
-              val fmtSpec = raw"%(0?)([1-9][0-9]*)([dbhDBH])(.*)".r
-
-              val builder = new StringBuilder
-              for (p <- parts) {
-                p match {
-                  case fmtSpec(z, w, t, msg) =>
-                    val v = if (state.serial_queue.isEmpty) {
-                      ctx.logger.error(
-                        s"invalid Flush, missing serial value!",
-                        instruction
-                      )
-                      BigInt(0)
-                    } else {
-                      state.serial_queue.dequeue()
-                    }
-                    def truncated(
-                        vString: String,
-                        width: Int,
-                        filler: String
-                    ) = {
-
-                      val truncated = if (vString.length > width) {
-                        vString.takeRight(width)
-                      } else {
-                        (filler * (width - vString.length)) ++ vString
-                      }
-                      truncated
-                    }
-                    val bitWidth = w.toInt
-                    val fmtValue = t match {
-                      case "d" | "D" =>
-                        val decWidth =
-                          ((BigInt(1) << bitWidth) - 1).toString().length
-                        truncated(
-                          v.toString(),
-                          decWidth,
-                          if (z.nonEmpty) "0" else " "
-                        )
-                      case "h" | "H" =>
-                        val vString =
-                          if (t == "H") v.toString(16).toUpperCase()
-                          else v.toString(4)
-                        val hexWidth =
-                          ((BigInt(1) << bitWidth) - 1).toString(16).length
-                        truncated(vString, hexWidth, "0")
-                      case "b" | "B" =>
-                        truncated(v.toString(2), bitWidth, "0")
-                      case _ =>
-                        ctx.logger.error(s"invalid format type %${t}!")
-                        ""
-                    }
-                    builder ++= fmtValue
-                    builder ++= msg
-                  case _ =>
-                    builder ++= p
-                }
-              }
-              serial match {
-                case None =>
-                  ctx.logger.info(s"[SERIAL]\n ${builder.toString()}")
-                case Some(printer) => printer(builder.toString())
-              }
             case StopInterrupt =>
-              ctx.logger.info(s"Stopped!", intr)
+              ctx.logger.error(s"Stopped!", intr)
               state.exception_occurred = Some(InterpretationFailure)
+            case SerialInterrupt(fmt) =>
+              def fillHole(
+                  holes: Seq[FormatString.FmtArg],
+                  res: FormatString
+              ): FormatString = if (
+                state.serial_queue.nonEmpty && holes.nonEmpty
+              ) {
+                val h = holes.head
+                h match {
+                  case b: FormatString.FmtAtomArg =>
+                    val asLit = b.toLit(state.serial_queue.dequeue())
+                    fillHole(holes.tail, res.consume(asLit))
+                  case FormatString.FmtConcat(args) =>
+                    if (state.serial_queue.length < args.length) {
+                      ctx.logger.error(
+                        "Could not substitute format string, not enough arguments!",
+                        intr
+                      )
+                      res
+                    } else {
+                      val newRes = args.foldLeft(res) { case (r, a) =>
+                        val asLit = a.toLit(state.serial_queue.dequeue())
+                        res.consume(asLit)
+                      }
+                      fillHole(holes.tail, newRes)
+                    }
+                }
+              } else {
+                res
+              }
+
+              val resolved = fillHole(fmt.holes, fmt)
+
+              if (resolved.isLit) {
+                serial match {
+                  case None =>
+                    ctx.logger.info(s"[SERIAL]\n ${resolved.toString()}")
+                  case Some(printer) => printer(resolved.toString())
+                }
+              } else {
+                ctx.logger.error(
+                  s"Could not fill up the serial line: ${resolved.toString()}"
+                )
+              }
           }
         }
       case Expect(ref, got, error_id, annons) =>

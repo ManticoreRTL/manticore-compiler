@@ -2170,7 +2170,7 @@ object WidthConversionCore
           val baseArray = builder.getConversion(base).parts
           assert(baseArray.length == rdArray.length, "something is up!")
           assert(offsetArray.length == 1)
-          rdArray.zip(baseArray).map { case(newRd, newBase) =>
+          rdArray.zip(baseArray).map { case (newRd, newBase) =>
             i.copy(
               rd = newRd,
               base = newBase,
@@ -2207,15 +2207,15 @@ object WidthConversionCore
           val rsArray = builder.getConversion(rs).parts
           val baseArray = builder.getConversion(base).parts
           val newPred = predicate.map { p =>
-              val t = builder.getConversion(p).parts
-              if (t.length != 1) {
-                ctx.logger.error(s"Bad predicate!", i)
-              }
-              t.head
+            val t = builder.getConversion(p).parts
+            if (t.length != 1) {
+              ctx.logger.error(s"Bad predicate!", i)
+            }
+            t.head
           }
           assert(baseArray.length == rsArray.length, "something is up!")
           assert(offsetArray.length == 1)
-          rsArray.zip(baseArray).map { case(newRd, newBase) =>
+          rsArray.zip(baseArray).map { case (newRd, newBase) =>
             i.copy(
               rs = newRd,
               base = newBase,
@@ -2225,6 +2225,21 @@ object WidthConversionCore
             ).setPos(i.pos)
           }
         }
+      }
+    case intr @ Interrupt(action, condition, order, _) =>
+      val condArray = builder.getConversion(condition).parts
+      assert(condArray.length == 1)
+      action match {
+        case StopInterrupt | AssertionInterrupt | FinishInterrupt =>
+          Seq(
+            intr
+              .copy(
+                condition = condArray.head
+              )
+              .setPos(intr.pos)
+          )
+        case SerialInterrupt(fmt) =>
+          ???
       }
     case i @ Expect(ref, got, _, _) =>
       val ConvertedWire(ref_uint16_array, _) = builder.getConversion(ref)
