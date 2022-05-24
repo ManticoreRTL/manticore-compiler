@@ -187,20 +187,20 @@ object UnconstrainedJumpTableConstruction
   override def uniqueLabel(ctx: AssemblyContext): Label =
     s"L${ctx.uniqueNumber()}"
 
-  override def mkMemory(width: Int)(implicit ctx: AssemblyContext) = {
+  override def mkMemory(width: Int, size: Int)(implicit ctx: AssemblyContext) = {
     val name = s"%m${ctx.uniqueNumber()}"
     DefReg(
-      LogicVariable(
+      MemoryVariable(
         name,
         width,
-        MemoryType
+        size
       ),
       None,
       Seq(
         Memblock(
           Map(
             AssemblyAnnotationFields.Block.name -> StringValue(name),
-            AssemblyAnnotationFields.Capacity.name -> IntValue(1 << width),
+            AssemblyAnnotationFields.Capacity.name -> IntValue(size),
             AssemblyAnnotationFields.Width.name -> IntValue(width)
           )
         )

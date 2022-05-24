@@ -121,35 +121,35 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
     }
   }
 
-  "ALU" should "work correctly without optimizations and without a JumpTable" in {
-    fixture =>
-      AluTestCommons.doTest(false, false, fixture)
-  }
-  "ALU" should "work correctly with optimizations and without a JumpTable" in {
-    fixture =>
-      AluTestCommons.doTest(true, false, fixture)
-  }
-  "ALU" should "work correctly with a sub-optimal JumpTable" in { fixture =>
-    AluTestCommons.doTest(false, true, fixture)
-  }
-  "ALU" should "work correctly with an optimal JumpTable" in { fixture =>
-    AluTestCommons.doTest(true, true, fixture)
-  }
-  "ALU" should "work correctly with an optimal JumpTable in PlacedIR" in {
-    fixture =>
-      val ctx = Commons.context(fixture)
-      val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
+  // "ALU" should "work correctly without optimizations and without a JumpTable" in {
+  //   fixture =>
+  //     AluTestCommons.doTest(false, false, fixture)
+  // }
+  // "ALU" should "work correctly with optimizations and without a JumpTable" in {
+  //   fixture =>
+  //     AluTestCommons.doTest(true, false, fixture)
+  // }
+  // "ALU" should "work correctly with a sub-optimal JumpTable" in { fixture =>
+  //   AluTestCommons.doTest(false, true, fixture)
+  // }
+  // "ALU" should "work correctly with an optimal JumpTable" in { fixture =>
+  //   AluTestCommons.doTest(true, true, fixture)
+  // }
+  // "ALU" should "work correctly with an optimal JumpTable in PlacedIR" in {
+  //   fixture =>
+  //     val ctx = Commons.context(fixture)
+  //     val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
 
-      val compiler =
-        Commons.frontend(optimize = true, useJump = true) followedBy
-          UnconstrainedToPlacedTransform followedBy JumpTableNormalizationTransform followedBy
-          JumpLabelAssignmentTransform followedBy PlacedIRCloseSequentialCycles
-      val (transformed, _) = compiler(program, ctx)
-      val instMemory =
-        TaggedInstruction.indexedTaggedBlock(transformed.processes.head)(ctx)
-      AtomicInterpreter(transformed, ctx)
+  //     val compiler =
+  //       Commons.frontend(optimize = true, useJump = true) followedBy
+  //         UnconstrainedToPlacedTransform followedBy JumpTableNormalizationTransform followedBy
+  //         JumpLabelAssignmentTransform followedBy PlacedIRCloseSequentialCycles
+  //     val (transformed, _) = compiler(program, ctx)
+  //     val instMemory =
+  //       TaggedInstruction.indexedTaggedBlock(transformed.processes.head)(ctx)
+  //     AtomicInterpreter(transformed, ctx)
 
-  }
+  // }
 
   "JumpTable" should "should work with AtomicInterpreter and PlacedIRInterpreterMonitor" in {
     fixture =>

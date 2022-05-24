@@ -28,7 +28,7 @@ trait JumpTableConstruction
   val Zero: Constant
   def uniqueLabel(ctx: AssemblyContext): Label
   def indexSequence(to: Int): Seq[Constant]
-  def mkMemory(width: Int)(implicit ctx: AssemblyContext): DefReg
+  def mkMemory(width: Int, size: Int)(implicit ctx: AssemblyContext): DefReg
   def mkWire(width: Int)(implicit ctx: AssemblyContext): DefReg
   def mkConstant(width: Int, value: Constant)(implicit
       ctx: AssemblyContext
@@ -93,8 +93,8 @@ trait JumpTableConstruction
 
     /** Performs a backward DFS to find all the instruction that can be put
       * together in one case block of a jump table. The given node should be Nth
-      * choice of a ParMux.The returned sequence can be readily used to construct
-      * the case body (is ordered)
+      * choice of a ParMux.The returned sequence can be readily used to
+      * construct the case body (is ordered)
       * @param node
       * @return
       */
@@ -118,7 +118,7 @@ trait JumpTableConstruction
             !inst.isInstanceOf[ParMux] && !inst.isInstanceOf[JumpTable]
           if (isLocal && isNotParMux && postDominated(inst)) {
             visited += currentNode
-            for(predecessor <- currentNode.diPredecessors) {
+            for (predecessor <- currentNode.diPredecessors) {
               doDfs(predecessor)
             }
             resultStack push inst
@@ -229,7 +229,7 @@ trait JumpTableConstruction
           s"Did not expect such a wide ParMux ${pmux}"
         )
         val constDefs = labelIndices.map(mkConstant(memoryAddressWidth, _))
-        val memDef = mkMemory(memoryAddressWidth)
+        val memDef = mkMemory(memoryAddressWidth, labelIndices.length)
         val instr = ArrayBuffer.empty[Instruction]
         val wires = ArrayBuffer.empty[DefReg]
         val lookupValue = (pmux.choices
@@ -292,8 +292,9 @@ trait JumpTableConstruction
           constCompares.tail.forall(p => p.get._1 == constCompares.head.get._1)
         // we also check if all the constants are different, this is more of a
         // sanity check to make sure the original ParMux was correct one
+        val distinctValues = constCompares.distinctBy(_.get._2).length
         val distinctConstants =
-          constCompares.distinctBy(_.get._2).length == constCompares.length
+          distinctValues == constCompares.length
 
         if (!distinctConstants && sameNames) {
           ctx.logger.error(
@@ -312,17 +313,23 @@ trait JumpTableConstruction
             CanNotLookup
           } else {
 
+            val numPossibleCases = (1 << compareValue.variable.width)
             // create a memory
-            val memory = mkMemory(compareValue.variable.width)
+            val memory = mkMemory(16, numPossibleCases)
 
             val indexAddress = mkWire(compareValue.variable.width)
 
             val index = mkWire(compareValue.variable.width)
 
+            if (distinctValues == numPossibleCases) {
+              ctx.logger.warn("Default case can never happen.", pmux)
+            }
             val labelGroup = DefLabelGroup(
               memory = memory.variable.name,
               indexer = constCompares.map { x => x.get._2 -> uniqueLabel(ctx) },
-              default = Some(uniqueLabel(ctx))
+              default =
+                if (distinctValues == numPossibleCases) None
+                else Some(uniqueLabel(ctx))
             ).setPos(pmux.pos)
 
             val jumpTargetComputation = Seq[Instruction](
@@ -363,15 +370,22 @@ trait JumpTableConstruction
             results = Seq(
               Phi(
                 pmux.rd,
-                (labelGroup.default.get +: labelGroup.indexer.map(_._2))
-                  .zip(pmux.default +: pmux.choices.map(_.choice))
+                labelGroup.default match {
+                  case None =>
+                    labelGroup.indexer.map(_._2).zip(pmux.choices.map(_.choice))
+                  case Some(defaultGrp) =>
+                    (defaultGrp +: labelGroup.indexer.map(_._2))
+                      .zip(pmux.default +: pmux.choices.map(_.choice))
+                }
               )
             ),
-            blocks = (labelGroup.default.get +: labelGroup.indexer.map(_._2))
-              .zip(
-                defaultCaseBody +: conditionalCaseBodies
-              )
-              .map { case (l, b) => JumpCase(l, b.toSeq) }
+            blocks = (labelGroup.default match {
+              case None =>
+                labelGroup.indexer.map(_._2).zip(conditionalCaseBodies)
+              case Some(defaultGrp) =>
+                (defaultGrp +: labelGroup.indexer.map(_._2))
+                  .zip(defaultCaseBody +: conditionalCaseBodies)
+            }).map { case (l, b) => JumpCase(l, b.toSeq) }
           ).setPos(pmux.pos),
           defs,
           labelGroup,
