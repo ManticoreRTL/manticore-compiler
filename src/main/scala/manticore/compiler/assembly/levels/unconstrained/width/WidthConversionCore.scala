@@ -2154,7 +2154,7 @@ object WidthConversionCore
       } else {
         val memVar = memory.variable.asInstanceOf[MemoryVariable]
         val wordWidth = memVar.width
-        val addressBits = log2ceil(memVar.size)
+        val addressBits = if (memVar.size == 1) 1 else log2ceil(memVar.size)
         assert(
           builder.originalWidth(offset) == addressBits,
           s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
@@ -2234,7 +2234,8 @@ object WidthConversionCore
           Seq(
             intr
               .copy(
-                condition = condArray.head
+                condition = condArray.head,
+                action = action
               )
               .setPos(intr.pos)
           )

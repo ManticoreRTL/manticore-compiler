@@ -27,57 +27,51 @@ class UnconstrainedWideSubTester extends UnconstrainedWideTest {
 
     val addr_width = log2Ceil(count)
 
-    val rs1_mb =
-      s"@MEMBLOCK[block = \"rs1\", capacity = ${count}, width = ${width}]"
-    val rs2_mb =
-      s"@MEMBLOCK[block = \"rs2\", capacity = ${count}, width = ${width}]"
-    val rd_mb =
-      s"@MEMBLOCK[block = \"rd\", capacity = ${count}, width = ${width}]"
-    s"""
+
+        s"""
     .prog:
         .proc proc_0_0:
 
             @MEMINIT[file = "${rs1_fp}", count = ${count}, width = ${width}]
-            ${rs1_mb}
-            .mem rs1_ptr ${addr_width}
+            .mem rs1_ptr ${width} ${count}
 
             @MEMINIT[file = "${rs2_fp}", count = ${count}, width = ${width}]
-            ${rs2_mb}
-            .mem rs2_ptr ${addr_width}
+            .mem rs2_ptr ${width} ${count}
 
             @MEMINIT[file = "${rd_fp}", count = ${count}, width = ${width}]
-            ${rd_mb}
-            .mem rd_ptr ${addr_width}
+            .mem rd_ptr ${width} ${count}
 
-            .wire counter 16 0
+
+            .wire counter ${addr_width} 0
             .const const_0 16 0
             .const const_1 16 1
-            .const const_ptr_inc ${addr_width} 1
-            .const const_max 16 ${count}
-            .wire   done  1 0
+            .const counter_incr ${addr_width} 1
+            .const counter_max ${addr_width} ${count - 1}
+            .wire done  1
+            .wire matches 1
 
             .wire rs1_v ${width}
             .wire rs2_v ${width}
             .wire rd_v ${width}
             .wire rd_ref ${width}
 
-            ${rs1_mb}
-            LD rs1_v, rs1_ptr[0];
-            ${rs2_mb}
-            LD rs2_v, rs2_ptr[0];
-            SUB rd_v, rs1_v, rs2_v;
-            ${rd_mb}
-            LD rd_ref, rd_ptr[0];
-            @TRAP [type = "\\fail"]
-            EXPECT rd_ref, rd_v, ["failed"];
 
-            ADD rs1_ptr, rs1_ptr, const_ptr_inc;
-            ADD rs2_ptr, rs2_ptr, const_ptr_inc;
-            ADD rd_ptr, rd_ptr, const_ptr_inc;
-            ADD counter, counter, const_1;
-            SEQ done, counter, const_max;
-            @TRAP [type = "\\stop"]
-            EXPECT done, const_0, ["stopped"];
+            (rs1_ptr, 0) LD rs1_v, rs1_ptr[counter];
+
+            (rs2_ptr, 0) LD rs2_v, rs2_ptr[counter];
+
+            SUB rd_v, rs1_v, rs2_v;
+
+            (rd_ptr, 0) LD rd_ref, rd_ptr[counter];
+
+            SEQ matches, rd_ref, rd_v;
+
+            (0) ASSERT matches;
+
+            SEQ done, counter, counter_max;
+            (1) FINISH done;
+            ADD counter, counter, counter_incr;
+
 
     """
   }

@@ -29,17 +29,19 @@ class UnconstrainedWideMuxTester extends UnconstrainedWideTest {
             .const const_0 16 0
             .const const_1 16 1
             .const const_wide_0 ${width} 0
-            .const const_bool_0 1 0
+            .const const_false 1 0
+            .const const_true 1 1
+            .wire matches 1
             .wire res ${width}
 
             ADD rs1_u, v1, const_wide_0;
             ADD rs2_u, v2, const_wide_0;
-            ADD sel, v3, const_bool_0;
+            ADD sel, v3, const_false;
             MUX res, sel, rs1_u, rs2_u;
-            @TRAP [type = "\\fail"]
-            EXPECT expected, res, ["mismatch"];
-            @TRAP [type = "\\stop"]
-            EXPECT const_1, const_0, ["stopped"];
+            SEQ matches, res, expected;
+            (0) ASSERT matches;
+            (1) FINISH const_true;
+
 
     """
   }

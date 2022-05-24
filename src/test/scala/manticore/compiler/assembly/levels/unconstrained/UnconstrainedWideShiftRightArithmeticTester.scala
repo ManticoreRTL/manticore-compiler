@@ -43,8 +43,7 @@ class UnconstrainedWideShiftRightArithmeticTester
     val expected_fp =
       f.dump(s"expected_${width_rd}_${width_rs}_${pos}.dat", expected_vals)
 
-    val memblock =
-      s"@MEMBLOCK [block = \"expected\", width = ${width_rd}, capacity = ${expected_vals.length}]"
+
 
     val addr_width = log2Ceil(expected_vals.length)
 
@@ -52,12 +51,14 @@ class UnconstrainedWideShiftRightArithmeticTester
     .prog:
     .proc proc_0_0:
 
-    ${memblock}
+
     @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width_rd}]
-    .mem res_ref_ptr ${addr_width}
+    .mem res_ref_ptr ${width_rd} ${expected_vals.length}
+    .wire counter ${addr_width} 0
     .const const_ptr_inc ${addr_width} 1
     .wire sh_amount 16 0
     .wire done 1 0
+    .wire matches 1
 
     .const const_0 16 0
     .const const_1 16 1
@@ -71,19 +72,22 @@ class UnconstrainedWideShiftRightArithmeticTester
 
 
     SRA shifted, init_val, sh_amount;
-    ${memblock}
-    LLD shifted_ref, res_ref_ptr[0];
+
+    (res_ref_ptr, 0) LLD shifted_ref, res_ref_ptr[counter];
+
+
     @TRAP [type = "\\fail"]
     // @ECHO
     EXPECT shifted_ref, shifted, ["results mismatch"];
+    SEQ matches, shifted_ref, shifted;
 
-    ADD res_ref_ptr, res_ref_ptr, const_ptr_inc;
+    (0) ASSERT matches;
 
     ADD sh_amount, sh_amount, const_1;
     SEQ done, sh_amount, sh_amount_max;
+    (1) FINISH done;
 
-    @TRAP [type = "\\stop"]
-    EXPECT done, const_0, ["stopped"];
+    ADD counter, counter, const_ptr_inc;
     """
   }
 

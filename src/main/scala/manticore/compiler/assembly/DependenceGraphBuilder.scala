@@ -227,51 +227,53 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       // the dependence graph in DFS manner, keeping a set of visited nodes and
       // a set of nodes that contribute to a system call
       val memoryGroups = groups.filter(_._1 != "$syscall")
-      val syscallGroup = groups("$syscall").sortBy(_.order)
 
-      val hasDependencyToSyscall =
-        scala.collection.mutable.Map.empty[Instruction, Boolean]
+      if (groups.contains("$syscall")) {
+        val syscallGroup = groups("$syscall").sortBy(_.order)
+        val hasDependencyToSyscall =
+          scala.collection.mutable.Map.empty[Instruction, Boolean]
 
-      def visitGraph(n: MutableGraph[Instruction, LDiEdge]#NodeT): Unit = {
-        if (!hasDependencyToSyscall.contains(n.toOuter)) {
-          n.toOuter match {
-            case syscall: SystemCallOrder =>
-              hasDependencyToSyscall += (n.toOuter -> true)
-            case inst =>
-              n.diSuccessors.foreach(visitGraph)
-              val isConnectedToSyscall =
-                n.diSuccessors.exists(hasDependencyToSyscall(_) == true)
-              hasDependencyToSyscall += (n.toOuter -> isConnectedToSyscall)
-          }
-        }
-      }
-
-      // Let's visit the graph and see which memory ops should come before
-      // systemcalls. Note that this never going to be the case for actual programs
-      // since by construction syscalls should appear at the beginning of a cycle
-      // not in the middle. We do this for hand-written program that may have
-      // memory loads before systemcalls that actually need to be scheduled
-      // before systemcalls
-      memoryGroups.foreach { case (_, blk) =>
-        blk.foreach { memop =>
-          if (syscallGroup.nonEmpty) {
-            visitGraph(raw_dependence_graph.get(memop))
-            if (!hasDependencyToSyscall(memop)) {
-              // create the dependency artificially
-              raw_dependence_graph += LDiEdge(syscallGroup.last, memop)(
-                label(syscallGroup.last, memop)
-              )
+        def visitGraph(n: MutableGraph[Instruction, LDiEdge]#NodeT): Unit = {
+          if (!hasDependencyToSyscall.contains(n.toOuter)) {
+            n.toOuter match {
+              case syscall: SystemCallOrder =>
+                hasDependencyToSyscall += (n.toOuter -> true)
+              case inst =>
+                n.diSuccessors.foreach(visitGraph)
+                val isConnectedToSyscall =
+                  n.diSuccessors.exists(hasDependencyToSyscall(_) == true)
+                hasDependencyToSyscall += (n.toOuter -> isConnectedToSyscall)
             }
           }
         }
+
+        // Let's visit the graph and see which memory ops should come before
+        // systemcalls. Note that this never going to be the case for actual programs
+        // since by construction syscalls should appear at the beginning of a cycle
+        // not in the middle. We do this for hand-written program that may have
+        // memory loads before systemcalls that actually need to be scheduled
+        // before systemcalls
+        memoryGroups.foreach { case (_, blk) =>
+          blk.foreach { memop =>
+            if (syscallGroup.nonEmpty) {
+              visitGraph(raw_dependence_graph.get(memop))
+              if (!hasDependencyToSyscall(memop)) {
+                // create the dependency artificially
+                raw_dependence_graph += LDiEdge(syscallGroup.last, memop)(
+                  label(syscallGroup.last, memop)
+                )
+              }
+            }
+          }
+        }
+        // Finally go though all the groups and create dependencies within each
+        syscallGroup.sliding(2).foreach { case Seq(prev, next) =>
+          raw_dependence_graph += LDiEdge(prev, next)(
+            label(prev, next)
+          )
+        }
       }
 
-      // Finally go though all the groups and create dependencies within each
-      syscallGroup.sliding(2).foreach { case Seq(prev, next) =>
-        raw_dependence_graph += LDiEdge(prev, next)(
-          label(prev, next)
-        )
-      }
       memoryGroups.foreach { case (_, blk) =>
         blk.sliding(2).foreach { case Seq(prev, next) =>
           raw_dependence_graph += LDiEdge(prev, next)(
@@ -279,7 +281,6 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
           )
         }
       }
-
 
       // and we are done!
       raw_dependence_graph

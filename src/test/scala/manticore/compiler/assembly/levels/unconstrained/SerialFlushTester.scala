@@ -24,9 +24,9 @@ class SerialFlushTester extends UnitFixtureTest with UnitTestMatchers {
                 .const v1 32 1231241
                 .const v2 14 13
                 .const true 1 1
-                (0, 1) PUT v1, true;
-                (0, 2) PUT v2, true;
-                (0, 3) FLUSH "#OUT# v1 is %032d and v2 is %14b", true;
+                (1) PUT v1, true;
+                (2) PUT v2, true;
+                (3) FLUSH "#OUT# v1 is %032d and v2 is %14b", true;
         """
 
         implicit val ctx = fixture.ctx

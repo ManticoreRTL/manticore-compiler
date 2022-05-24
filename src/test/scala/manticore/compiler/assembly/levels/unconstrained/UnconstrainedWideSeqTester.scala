@@ -16,9 +16,9 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
     val rd_refs = rs1_vals.zip(rs2_vals).map { case (x, y) =>
       if (x == y) BigInt(1) else BigInt(0)
     }
-    val rs1_fp = f.dump("rs1", rs1_vals)
-    val rs2_fp = f.dump("rs2", rs2_vals)
-    val rd_fp = f.dump("rd", rd_refs)
+    val rs1_fp = f.dump("rs1.dat", rs1_vals)
+    val rs2_fp = f.dump("rs2.dat", rs2_vals)
+    val rd_fp = f.dump("rd.dat", rd_refs)
     def mkMb(n: String, w: Int): String =
       s"@MEMBLOCK [ block = \"${n}\", capacity = ${count}, width = ${w} ]"
     def mkMemInit(p: Path): String =
@@ -31,22 +31,21 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
     .prog:
         .proc p00:
             ${mkMemInit(rs1_fp)}
-            ${rs1_mb}
-            .mem rs1_ptr ${addr_width}
+            .mem rs1_ptr ${width} ${count}
             ${mkMemInit(rs2_fp)}
-            ${rs2_mb}
-            .mem rs2_ptr ${addr_width}
+            .mem rs2_ptr ${width} ${count}
             ${mkMemInit(rd_fp)}
-            ${rd_mb}
-            .mem rd_ptr ${addr_width}
+            .mem rd_ptr 1 ${count}
 
-            .wire counter 16 0
+            .wire counter ${addr_width} 0
             .const const_1 16 1
             .const const_0 16 0
             .const const_1_wide ${width} 1
             .const const_ptr_inc ${addr_width} 1
-            .const const_max 16 ${count}
+            .const const_max ${addr_width} ${count - 1}
             .wire done 1 0
+            .const false 1 0
+            .const true 1 1
 
             .wire rs1_v ${width}
             .wire rs1_u ${width}
@@ -55,38 +54,35 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
             .wire rd_ref 1
 
             ${rs1_mb}
-            LLD rs1_v, rs1_ptr[0];
+            (rs1_ptr, 0) LLD rs1_v, rs1_ptr[counter];
             ${rs1_mb}
-            LLD rs1_u, rs1_ptr[0];
+            (rs1_ptr, 1) LLD rs1_u, rs1_ptr[counter];
             ${rs2_mb}
-            LLD rs2_v, rs2_ptr[0];
+            (rs2_ptr, 0) LLD rs2_v, rs2_ptr[counter];
             ${rd_mb}
-            LLD rd_ref, rd_ptr[0];
+            (rd_ptr, 0) LLD rd_ref, rd_ptr[counter];
 
             // check that reading the same value always yields true
+
             SEQ cmp_res, rs1_v, rs1_u;
-            @TRAP [type = "\\fail"]
-            EXPECT const_1, cmp_res, ["expected equals!"];
+            (0) ASSERT cmp_res;
 
 
 
             // check that comparing different values always yields false
             ADD rs1_u, rs1_u, const_1_wide;
             SEQ cmp_res, rs1_v, rs1_u;
-            @TRAP [type = "\\fail"]
-            EXPECT const_0, cmp_res, ["expected not equals!"];
+            XOR cmp_res, cmp_res, true;
+            (1) ASSERT cmp_res;
 
             SEQ cmp_res, rs1_v, rs2_v;
-            @TRAP [type = "\\fail"]
-            EXPECT cmp_res, rd_ref, ["reference not matched!"];
+            SEQ cmp_res, rd_ref, cmp_res;
+            (2) ASSERT cmp_res;
 
-            ADD rs1_ptr, rs1_ptr, const_ptr_inc;
-            ADD rs2_ptr, rs2_ptr, const_ptr_inc;
-            ADD rd_ptr, rd_ptr, const_ptr_inc;
-            ADD counter, counter, const_1;
             SEQ done, counter, const_max;
-            @TRAP [type = "\\stop"]
-            EXPECT done, const_0, ["stopped"];
+            (3) FINISH done;
+
+            ADD counter, counter, const_ptr_inc;
 
     """
 

@@ -430,63 +430,64 @@ object UnconstrainedInterpreter
         }
       case intr @ Interrupt(action, condition, _, _) =>
         val cond_val = state.register_file(condition)
-        if (cond_val == 1) {
-          action match {
-            case AssertionInterrupt =>
-              ctx.logger.error(s"Assertion failed!", intr)
-              state.exception_occurred = Some(InterpretationFailure)
-            case FinishInterrupt =>
-              ctx.logger.info(s"Finished.", intr)
-              state.exception_occurred = Some(InterpretationFinish)
-            case StopInterrupt =>
-              ctx.logger.error(s"Stopped!", intr)
-              state.exception_occurred = Some(InterpretationFailure)
-            case SerialInterrupt(fmt) =>
-              def fillHole(
-                  holes: Seq[FormatString.FmtArg],
-                  res: FormatString
-              ): FormatString = if (
-                state.serial_queue.nonEmpty && holes.nonEmpty
-              ) {
-                val h = holes.head
-                h match {
-                  case b: FormatString.FmtAtomArg =>
-                    val asLit = b.toLit(state.serial_queue.dequeue())
-                    fillHole(holes.tail, res.consume(asLit))
-                  case FormatString.FmtConcat(args) =>
-                    if (state.serial_queue.length < args.length) {
-                      ctx.logger.error(
-                        "Could not substitute format string, not enough arguments!",
-                        intr
-                      )
-                      res
-                    } else {
-                      val newRes = args.foldLeft(res) { case (r, a) =>
-                        val asLit = a.toLit(state.serial_queue.dequeue())
-                        res.consume(asLit)
-                      }
-                      fillHole(holes.tail, newRes)
+        val fires = cond_val == 1
+        action match {
+          case AssertionInterrupt if !fires =>
+            ctx.logger.error(s"Assertion failed!", intr)
+            state.exception_occurred = Some(InterpretationFailure)
+          case FinishInterrupt if fires =>
+            ctx.logger.info(s"Finished.", intr)
+            state.exception_occurred = Some(InterpretationFinish)
+          case StopInterrupt if fires =>
+            ctx.logger.error(s"Stopped!", intr)
+            state.exception_occurred = Some(InterpretationFailure)
+          case SerialInterrupt(fmt) if fires =>
+            def fillHole(
+                holes: Seq[FormatString.FmtArg],
+                res: FormatString
+            ): FormatString = if (
+              state.serial_queue.nonEmpty && holes.nonEmpty
+            ) {
+              val h = holes.head
+              h match {
+                case b: FormatString.FmtAtomArg =>
+                  val asLit = b.toLit(state.serial_queue.dequeue())
+                  fillHole(holes.tail, res.consume(asLit))
+                case FormatString.FmtConcat(args) =>
+                  if (state.serial_queue.length < args.length) {
+                    ctx.logger.error(
+                      "Could not substitute format string, not enough arguments!",
+                      intr
+                    )
+                    res
+                  } else {
+                    val newRes = args.foldLeft(res) { case (r, a) =>
+                      val asLit = a.toLit(state.serial_queue.dequeue())
+                      res.consume(asLit)
                     }
-                }
-              } else {
-                res
+                    fillHole(holes.tail, newRes)
+                  }
               }
+            } else {
+              res
+            }
 
-              val resolved = fillHole(fmt.holes, fmt)
+            val resolved = fillHole(fmt.holes, fmt)
 
-              if (resolved.isLit) {
-                serial match {
-                  case None =>
-                    ctx.logger.info(s"[SERIAL]\n ${resolved.toString()}")
-                  case Some(printer) => printer(resolved.toString())
-                }
-              } else {
-                ctx.logger.error(
-                  s"Could not fill up the serial line: ${resolved.toString()}"
-                )
+            if (resolved.isLit) {
+              serial match {
+                case None =>
+                  ctx.logger.info(s"[SERIAL]\n ${resolved.toString()}")
+                case Some(printer) => printer(resolved.toString())
               }
-          }
+            } else {
+              ctx.logger.error(
+                s"Could not fill up the serial line: ${resolved.toString()}"
+              )
+            }
+          case _ => // nothing to do
         }
+
       case Expect(ref, got, error_id, annons) =>
         val ref_val = state.register_file(ref)
         val got_val = state.register_file(got)

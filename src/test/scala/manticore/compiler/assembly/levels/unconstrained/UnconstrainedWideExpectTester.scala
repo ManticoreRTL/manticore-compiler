@@ -35,10 +35,10 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
         .const second ${width} ${different}
         .const true 1 1
         .const false 1 0
-        @TRAP [type = "\\fail"]
-        EXPECT first, second, ["failed"];
-        @TRAP [type = "\\stop"]
-        EXPECT true, false, ["stop"];
+        .wire matches 1
+        SEQ matches, first, second;
+        (0) ASSERT matches;
+        (1) FINISH true;
     """
   }
   def passingProgram() = {
@@ -52,10 +52,10 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
         .const second ${width} ${got}
         .const true 1 1
         .const false 1 0
-        @TRAP [type = "\\fail"]
-        EXPECT first, second, ["failed"];
-        @TRAP [type = "\\stop"]
-        EXPECT true, false, ["stop"];
+        .wire matches 1
+        SEQ matches, first, second;
+        (0) ASSERT matches;
+        (1) FINISH true;
     """
   }
 
@@ -63,8 +63,6 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
 
 
 
-  // do not move the passing test downwards, otherwise the checker will fail
-  // unless the logger errors are cleared
   it should "not fail any expect instructions" taggedAs Tags.WidthConversion in { f =>
 
     for (ix <- 0 until 20) {
@@ -76,7 +74,7 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
     }
   }
 
-  it should "catch expect failures" taggedAs Tags.WidthConversion in { f =>
+  it should "catch user failures" taggedAs Tags.WidthConversion in { f =>
 
     for (ix <- 0 until 20) {
       println("Generating failing program")

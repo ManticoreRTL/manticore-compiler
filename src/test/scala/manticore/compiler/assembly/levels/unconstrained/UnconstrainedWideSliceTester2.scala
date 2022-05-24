@@ -28,8 +28,10 @@ class UnconstrainedWideSliceTester2 extends UnconstrainedWideTest {
     def declareSlice(rd: String, rs: String, offset: Int, length: Int) = s"SLICE ${rd}, ${rs}, ${offset}, ${length};"
     def declareExpect(ref: String, got: String, message: String) = {
       Seq(
-        "@TRAP [type = \"\\fail\"]",
-        s"EXPECT ${ref}, ${got}, [\"${message}\"];"
+        s"SEQ matches, ${ref}, ${got};",
+        s"(0) ASSERT matches;"
+        // "@TRAP [type = \"\\fail\"]",
+        // s"EXPECT ${ref}, ${got}, [\"${message}\"];"
       ).mkString("\n")
     }
 
@@ -64,7 +66,7 @@ class UnconstrainedWideSliceTester2 extends UnconstrainedWideTest {
     val inputDecl = declareConst(input_name, constWidth, constVal)
 
     val expectedDecls = sliceOffsets.zip(sliceLengths).zip(res).zipWithIndex.map { case (((offset, length), res), idx) =>
-      declareConst(expected_name(idx), constWidth, res)
+      declareConst(expected_name(idx), length, res)
     }.mkString("\n")
 
     val computedWireDecls = sliceOffsets.zip(sliceLengths).zip(res).zipWithIndex.map { case (((offset, length), res), idx) =>
@@ -89,14 +91,16 @@ class UnconstrainedWideSliceTester2 extends UnconstrainedWideTest {
 
             ${declareConst(const_zero_name, 1, 0)}
             ${declareConst(const_one_name, 1, 1)}
+            .wire matches 1
             ${inputDecl}
             ${expectedDecls}
             ${computedWireDecls}
             ${sliceDecls}
             ${expectDecls}
 
-            @TRAP [type = "\\stop"]
-            EXPECT ${const_zero_name}, ${const_one_name}, ["stopped"];
+            (1) FINISH ${const_one_name};
+            // @TRAP [type = "\\stop"]
+            // EXPECT ${const_zero_name}, ${const_one_name}, ["stopped"];
     """
   }
 
@@ -104,6 +108,7 @@ class UnconstrainedWideSliceTester2 extends UnconstrainedWideTest {
 
   it should "correctly handle the slice" taggedAs Tags.WidthConversion in { f =>
     val prog_text = mkProgram(f, 1000, 90)
+
     val parsed = AssemblyParser(prog_text, f.ctx)
     // println(parsed.serialized)
     // println(UnconstrainedIRDebugSymbolRenamer.makeHumanReadable(parsed)(f.ctx).serialized)

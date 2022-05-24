@@ -8,8 +8,9 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR._
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.parser.AssemblyParser
 import manticore.compiler.CompilationFailureException
+import org.scalatest.CancelAfterFailure
 
-class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
+class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest with CancelAfterFailure {
 
   behavior of "Unconstrained wide SLL conversion"
 
@@ -35,9 +36,10 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     .prog:
     .proc proc_0_0:
 
-    ${memblock}
+
     @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width_rd}]
-    .mem res_ref_ptr ${addr_width}
+    .mem res_ref_ptr ${width_rd} ${expected_vals.length}
+    .wire counter ${addr_width} 0
     .const const_ptr_inc ${addr_width} 1
     .wire sh_amount 16 0
     .wire done 1 0
@@ -46,6 +48,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     .const const_1 16 1
     .const sh_amount_max 16 ${expected_vals.length}
 
+    .wire matches 1
     .wire shifted ${width_rd}
 
     .const init_val ${width_rs} ${initial_value}
@@ -53,19 +56,20 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
 
 
     SLL shifted, init_val, sh_amount;
-    ${memblock}
-    LLD shifted_ref, res_ref_ptr[0];
-    @TRAP [type = "\\fail"]
-    // @ECHO
-    EXPECT shifted_ref, shifted, ["results mismatch"];
 
-    ADD res_ref_ptr, res_ref_ptr, const_ptr_inc;
+    (res_ref_prt, 0) LLD shifted_ref, res_ref_ptr[counter];
+    @TRAP [type = "\\fail"]
+
+    SEQ matches, shifted_ref, shifted;
+    (0) ASSERT matches;
 
     ADD sh_amount, sh_amount, const_1;
     SEQ done, sh_amount, sh_amount_max;
 
-    @TRAP [type = "\\stop"]
-    EXPECT done, const_0, ["stopped"];
+    (1) FINISH done;
+
+    ADD counter, counter, const_ptr_inc;
+
     """
   }
 
@@ -118,8 +122,6 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
       s"input_value_${width_rd}_${width_rs}.dat",
       Array(initial_value)
     )
-    val memblock =
-      s"@MEMBLOCK [block = \"input_value\", width = ${width_rs}, capacity = 1]"
 
     s"""
     .prog:
@@ -129,22 +131,23 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     .const ref_result ${width_rd} ${expected_result}
     .wire shifted ${width_rd}
 
-    ${memblock}
+
      @MEMINIT [file = "${input_fp}", count = 1, width = ${width_rs}]
-    .mem input_ptr 1
+    .mem input_ptr ${width_rs} 1
     .wire dyn_rs ${width_rs}
     .const const_0 1 0
     .const const_1 1 1
+    .wire matches 1
 
-    ${memblock}
-    LLD dyn_rs, input_ptr[0];
+
+
+    (input_prt, 0) LLD dyn_rs, input_ptr[const_0];
     SLL shifted, dyn_rs, const_sh_amount;
 
-    @TRAP[type = "\\fail"]
-    EXPECT ref_result, shifted, ["fail"];
+    SEQ matches, shifted, ref_result;
+    (0) ASSERT matches;
 
-    @TRAP[type = "\\stop"]
-    EXPECT const_0, const_1, ["stop"];
+    (1) FINISH const_1;
     """
   }
 
@@ -157,7 +160,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
   }
 
   val static_test_cases = Seq
-    .fill(8000) {
+    .fill(2000) {
       val rd_width = randgen.nextInt(70) + 1
       val rs_width = randgen.nextInt(70) + 1
       val shift_amount = randgen.nextInt(rs_width + 1)
@@ -165,7 +168,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest {
     }
     .distinct
 
-  println(s"Generated ${static_test_cases.length} static test cases")
+
 
   static_test_cases.foreach { case (rd_width, rs_width, shift_amount) =>
     it should s"handle static SLL w${rd_width}, w${rs_width}, ${shift_amount}" taggedAs Tags.WidthConversion in {

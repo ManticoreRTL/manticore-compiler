@@ -239,9 +239,10 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         DefReg(LogicVariable(name.chars, w.toInt, OutputType), None, a)
     }
   def def_mem: Parser[DefReg] =
-    (annotations ~ keyword(".mem") ~ ident ~ const_value ~ const_value <~ opt(";")) ^^ {
-      case a ~ _ ~ name ~ w ~ sz =>
-        DefReg(MemoryVariable(name.chars, w.toInt, sz.toInt), None, a)
+    (annotations ~ keyword(".mem") ~ ident ~ const_value ~ const_value <~ opt(
+      ";"
+    )) ^^ { case a ~ _ ~ name ~ w ~ sz =>
+      DefReg(MemoryVariable(name.chars, w.toInt, sz.toInt), None, a)
     }
 
   def def_pair_input: Parser[(Token, Option[Constant])] =
@@ -374,18 +375,17 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     case v1 => SystemCallOrder(v1.toInt)
   }
 
-  def control_syscall(n: String): Parser[Interrupt] =
+  def control_syscall(n: String, action: InterruptAction): Parser[Interrupt] =
     (annotations ~ syscall_order ~ keyword(n) ~ ident) ^^ {
       case (a ~ order ~ _ ~ rs) =>
-        Interrupt(FinishInterrupt, rs.chars, order, a)
+        Interrupt(action, rs.chars, order, a)
     }
 
-  def fmt_string: Parser[FormatString] = (stringLit ^^ {
-    case str =>
-      FormatString.parse(str.chars)
+  def fmt_string: Parser[FormatString] = (stringLit ^^ { case str =>
+    FormatString.parse(str.chars)
   }) >> {
     case Left(error) => err(s"Invalid fmt: $error")
-    case Right(fmt) => success(fmt)
+    case Right(fmt)  => success(fmt)
   }
   def flush_inst: Parser[Interrupt] =
     (annotations ~ syscall_order ~ keyword(
@@ -395,8 +395,12 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     }
 
   def interrupt_inst: Parser[Interrupt] =
-    control_syscall("FINISH") | control_syscall("STOP") | control_syscall(
-      "ASSERT"
+    control_syscall("FINISH", FinishInterrupt) | control_syscall(
+      "STOP",
+      StopInterrupt
+    ) | control_syscall(
+      "ASSERT",
+      AssertionInterrupt
     ) | flush_inst
 
   def put_inst: Parser[PutSerial] =

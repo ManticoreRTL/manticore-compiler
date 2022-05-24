@@ -27,10 +27,10 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
     s"""
     .prog:
     .proc proc_0_0:
-    ${memblock}
+
     @MEMINIT  [file="${fp
       .toAbsolutePath()}", count = ${init_count}, width =${width}]
-    .mem block_base_ptr ${addr_bits}
+    .mem mem_base ${width} ${capacity}
     ${init_vals.zipWithIndex map { case (x, ix) =>
       s".const mvalue_${ix} ${width} ${x}"
     } mkString "\n"}
@@ -38,23 +38,18 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
     .wire mdata ${width}
     .const const_1 ${addr_bits} 1
     .const const_0 ${addr_bits} 0
-    ADD index, block_base_ptr, const_0;
+    .wire matches 1
     ${init_vals.zipWithIndex map { case (x, ix) =>
       Seq(
         s"${memblock}",
-        s"LLD mdata, block_base_ptr[${ix}];",
-        "@TRAP [type = \"\\fail\"]",
-        s"EXPECT mdata, mvalue_${ix}, [\"e1_${ix}\"];",
-        s"${memblock}",
-        "LLD mdata, index[0];",
-        "@TRAP [type = \"\\fail\"]",
-        s"EXPECT mdata, mvalue_${ix}, [\"e2_${ix}\"];",
+        s"(mem_base, ${ix}) LLD mdata, mem_base[index];",
+        s"SEQ matches, mdata, mvalue_${ix};",
+        s"(${ix}) ASSERT matches;",
         s"ADD index, index, const_1;"
       ) mkString ("\n")
 
     } mkString ("\n")}
-    @TRAP [type = "\\stop"]
-    EXPECT const_1, const_0, ["end"];
+    (${init_vals.length}) FINISH const_1;
     """
 
   }

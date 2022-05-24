@@ -34,16 +34,19 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
     .prog:
     .proc proc_0_0:
 
-    ${memblock}
+
     @MEMINIT [file = "${expected_fp}", count = ${expected_vals.length}, width = ${width_rd}]
-    .mem res_ref_ptr ${addr_width}
+    .mem res_ref_ptr ${width_rd} ${expected_vals.length}
+    .wire counter ${addr_width} 0
     .const const_ptr_inc ${addr_width} 1
     .wire sh_amount 16 0
     .wire done 1 0
+    .wire matches 1
 
     .const const_0 16 0
     .const const_1 16 1
     .const sh_amount_max 16 ${expected_vals.length}
+
 
     .wire shifted ${width_rd}
 
@@ -52,19 +55,22 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
 
 
     SRL shifted, init_val, sh_amount;
-    ${memblock}
-    LLD shifted_ref, res_ref_ptr[0];
+
+    (res_ref_ptr, 0) LLD shifted_ref, res_ref_ptr[counter];
+
+
     @TRAP [type = "\\fail"]
     // @ECHO
     EXPECT shifted_ref, shifted, ["results mismatch"];
+    SEQ matches, shifted_ref, shifted;
 
-    ADD res_ref_ptr, res_ref_ptr, const_ptr_inc;
+    (0) ASSERT matches;
 
     ADD sh_amount, sh_amount, const_1;
     SEQ done, sh_amount, sh_amount_max;
+    (1) FINISH done;
 
-    @TRAP [type = "\\stop"]
-    EXPECT done, const_0, ["stopped"];
+    ADD counter, counter, const_ptr_inc;
     """
   }
 
@@ -105,45 +111,43 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
   def mkStaticProgram(
       width_rd: Int,
       width_rs: Int,
-      init_val: BigInt,
+      initial_value: BigInt,
       sh_amount: Int
   )(f: FixtureParam): String = {
 
-    val expected_val =
-      (init_val >> sh_amount) & ((BigInt(1) << width_rd) - 1)
+    val expected_result =
+      (initial_value >> sh_amount) & ((BigInt(1) << width_rd) - 1)
 
-    // need to place the shift operand value in file to make it dynamic
     val input_fp = f.dump(
-      s"input_value_${init_val}.dat",
-      Array(init_val)
+      s"input_value_${width_rd}_${width_rs}.dat",
+      Array(initial_value)
     )
-    val memblock =
-      s"@MEMBLOCK [block = \"input_value\", width = ${width_rs}, capacity = 1]"
 
     s"""
     .prog:
-      .proc proc_0_0:
-        .const const_sh_amount 16 ${sh_amount}
-        .const ref_result ${width_rs} ${expected_val}
-        .wire shifted ${width_rd}
+    .proc proc_0_0:
 
-        ${memblock}
-        @MEMINIT [file = "${input_fp}", count = 1, width = ${width_rs}]
-        .mem rs_ptr 1
-        .wire dyn_rs ${width_rs}
+    .const const_sh_amount 16 ${sh_amount}
+    .const ref_result ${width_rd} ${expected_result}
+    .wire shifted ${width_rd}
 
-        .const const_0 1 0
-        .const const_1 1 1
 
-        ${memblock}
-        LLD dyn_rs, rs_ptr[0];
-        SRL shifted, dyn_rs, const_sh_amount;
+     @MEMINIT [file = "${input_fp}", count = 1, width = ${width_rs}]
+    .mem input_ptr ${width_rs} 1
+    .wire dyn_rs ${width_rs}
+    .const const_0 1 0
+    .const const_1 1 1
+    .wire matches 1
 
-        @TRAP [type = "\\fail"]
-        EXPECT ref_result, shifted, ["fail"];
 
-        @TRAP[type = "\\stop"]
-        EXPECT const_0, const_1, ["stop"];
+
+    (input_prt, 0) LLD dyn_rs, input_ptr[const_0];
+    SRL shifted, dyn_rs, const_sh_amount;
+
+    SEQ matches, shifted, ref_result;
+    (0) ASSERT matches;
+
+    (1) FINISH const_1;
     """
   }
 
@@ -162,7 +166,7 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
   }
 
   val static_test_cases = Seq
-    .fill(8000) {
+    .fill(2000) {
       val rd_width = randgen.nextInt(70) + 1
       val rs_width = randgen.nextInt(70) + 1
       val shift_amount = randgen.nextInt(rs_width + 1)
@@ -170,7 +174,7 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
     }
     .distinct
 
-  println(s"Generated ${static_test_cases.length} static test cases")
+  // println(s"Generated ${static_test_cases.length} static test cases")
 
   static_test_cases.foreach { case (rd_width, rs_width, shift_amount) =>
     it should s"handle static SRL w${rd_width}, w${rs_width}, ${shift_amount}" taggedAs Tags.WidthConversion in {
