@@ -225,7 +225,16 @@ object CustomLutInsertion
       Map[PositionalArg, NamedArg]
     ) = {
 
+      // Two-way mapping is needed as we may see the same name twice in the expression
+      // and we must assign the same positional argument to each. Example:
+      //
+      //     coneId xxx -> {arity = 2, root = Right(OR	%w1401, %w1049, %w667), func = ((%w702 & 1) | ((%w897 & 1) & (%w702 ^ 1)))
+      //                                                                                 ^^^^^          ^^^^^         ^^^^^
+      //                                                                      PositionalArg(0)     PositionalArg(1)   PositionalArg(0)
+
       val posArgToNamedArg = MHashMap.empty[PositionalArg, NamedArg]
+      val namedArgToPosArg = MHashMap.empty[NamedArg, PositionalArg]
+
       def nextPos() = posArgToNamedArg.size
 
       def makeExpr(v: DepVertex): CustomFunctionImpl.ExprTree = {
@@ -236,11 +245,22 @@ object CustomLutInsertion
                 IdExpr(AtomConst(const))
 
               case None =>
-                val pos = nextPos()
-                val posArg = PositionalArg(pos)
-                val namedArg = NamedArg(name)
-                posArgToNamedArg += posArg -> namedArg
-                IdExpr(posArg)
+                namedArgToPosArg.get(NamedArg(name)) match {
+                  case None =>
+                    // This named argument has not been seen before, so we
+                    // create a new positional argument for it.
+                    val pos = nextPos()
+                    val posArg = PositionalArg(pos)
+                    val namedArg = NamedArg(name)
+                    posArgToNamedArg += posArg -> namedArg
+                    namedArgToPosArg += namedArg -> posArg
+                    IdExpr(posArg)
+
+                  case Some(posArg) =>
+                    // This named argument has been seen before. We reuse
+                    // the previously-assigned positional argument to it.
+                    IdExpr(posArg)
+                }
             }
 
           case Right(instr) =>
