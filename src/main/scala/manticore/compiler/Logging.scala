@@ -19,6 +19,9 @@ trait HasLoggerId {
   val id: String
   override def toString(): String = id
 }
+object LoggerId {
+  def apply(name: String) = new HasLoggerId {val id = name }
+}
 /** Fully self-contained reported class
   */
 

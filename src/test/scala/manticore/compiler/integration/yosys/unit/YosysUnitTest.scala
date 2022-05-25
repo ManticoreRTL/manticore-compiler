@@ -131,6 +131,7 @@ trait YosysUnitTest {
     "opt_reduce",
     "opt_demorgan",
     "opt_clean",
+    "check -assert",
     "memory_collect",
     "memory_unpack",
     "write_rtlil original.rtl"
