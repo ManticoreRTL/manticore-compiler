@@ -39,6 +39,7 @@ class DffTester extends FlipFlopTester {
         |   input wire clk,
         |   input wire [$width - 1 : 0] din,
         |   output reg [$width - 1 : 0] dout);
+        |   initial begin dout = ${randGen.nextInt()}; end
         |   always @(posedge clk) dout <= din;
         |endmodule
         |""".stripMargin
@@ -61,6 +62,8 @@ class SynchResetDffTester extends FlipFlopTester {
             |   input      [$width - 1 : 0] din_n,
             |   output reg [$width - 1 : 0] dout_n
             |);
+            |   initial begin dout = ${randGen.nextInt()}; end
+            |   initial begin dout_n = ${randGen.nextInt()}; end
             |   always @(posedge clk) begin
             |       if (srst == 1'b1) dout <= ${randGen.nextInt((1 << 31) - 1)};
             |       else dout <= din;
@@ -93,6 +96,10 @@ class SyncResetWriteEnableDffTester extends FlipFlopTester {
             |   input      [$width - 1 : 0] din_nn,
             |   output reg [$width - 1 : 0] dout_nn
             |);
+            |   initial begin dout_pp = ${randGen.nextInt()}; end
+            |   initial begin dout_pn = ${randGen.nextInt()}; end
+            |   initial begin dout_np = ${randGen.nextInt()}; end
+            |   initial begin dout_nn = ${randGen.nextInt()}; end
             |   always @(posedge clk) begin
             |       if (srst == 1'b1)
             |           dout_pp <= ${randGen.nextInt((1 << 31) - 1)};
@@ -139,6 +146,10 @@ class SyncResetChipEnableDffTester extends FlipFlopTester {
             |   input      [$width - 1 : 0] din_nn,
             |   output reg [$width - 1 : 0] dout_nn
             |);
+            |   initial begin dout_pp = ${randGen.nextInt()}; end
+            |   initial begin dout_pn = ${randGen.nextInt()}; end
+            |   initial begin dout_np = ${randGen.nextInt()}; end
+            |   initial begin dout_nn = ${randGen.nextInt()}; end
             |   always @(posedge clk) begin
             |       if  (en == 1'b1) begin
             |           if (srst == 1'b1)
@@ -188,6 +199,8 @@ class AsyncResetDffTester extends FlipFlopTester {
             |   input      [$width - 1 : 0] din_n,
             |   output reg [$width - 1 : 0] dout_n
             |);
+            |   initial begin dout = ${randGen.nextInt()}; end
+            |   initial begin dout_n = ${randGen.nextInt()}; end
             |   always @(posedge clk or posedge arst) begin
             |       if (arst == 1'b1) dout <= ${randGen.nextInt((1 << 31) - 1)};
             |       else dout <= din;

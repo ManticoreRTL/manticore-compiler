@@ -86,7 +86,7 @@ trait YosysUnitTest {
           } else {
             if (reference(index) != results(index)) {
               ctx.logger.error(
-                s"line ${index} does not match:\ngot:${results(index)}\nref:${reference(index)}"
+                s"line ${index + 1} does not match:\ngot:${results(index)}\nref:${reference(index)}"
               )
             } else {
               check(index + 1)

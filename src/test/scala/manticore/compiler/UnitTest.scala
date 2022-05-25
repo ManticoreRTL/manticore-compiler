@@ -60,7 +60,7 @@ trait UnitFixtureTest extends FixtureAnyFlatSpec with HasRootTestDirectory {
 
   protected def withFixture(test: OneArgTest) = {
     val test_dir =
-      root_dir.resolve(test.name.replace(" ", "_").replace("/", "_/_"))
+      root_dir.resolve(test.name.replaceAll(" ", "_").replaceAll("\\W+", ""))
     val ctx = AssemblyContext(
       dump_all = false,
       dump_dir = Some(test_dir.toFile),

@@ -29,7 +29,7 @@ object RandomUtils {
     sh.slice(0, n)
   }
 
-  def genExpr(vars: Seq[String], depth: Int = 5)(implicit randGen: scala.util.Random): String = {
+  def genExpr(vars: Seq[String], depth: Int = 8)(implicit randGen: scala.util.Random): String = {
     sealed trait ExprKind
     case object BinOpExpr extends ExprKind
     case object UnaryOpExpr extends ExprKind
@@ -119,9 +119,11 @@ final class RandomFsmGenerator(seed: Int) {
         }
         .mkString("\n")
 
-      s"""|
+      s"""  |/* verilator lint_off UNSIGNED */ /* verilator lint_off CMPCONST */
             |x <= ${genExpr(vars)};
+            |/* verilator lint_off UNSIGNED */ /* verilator lint_off CMPCONST */
             |y <= ${genExpr(vars)};
+            |/* verilator lint_off UNSIGNED */ /* verilator lint_off CMPCONST */
             |z <= ${genExpr(vars)};
             |${next}
             |""".stripMargin
@@ -189,7 +191,7 @@ class RandomFsmTester extends UnitFixtureTest {
 
     val generator = new RandomFsmGenerator(1234)
 
-    for (i <- 0 to 10) {
+    for (i <- 0 to 20) {
 
       s"random FSM $i" should "match verilator's output" in {f =>
 
