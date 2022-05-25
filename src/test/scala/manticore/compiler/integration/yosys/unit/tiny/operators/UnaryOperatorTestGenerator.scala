@@ -32,10 +32,16 @@ trait UnaryOperatorTestGenerator extends UnaryOperatorTestGeneratorBase {
     val text = s"""|
                       |module UnaryOpTestCase(
                       |    input wire [$widthIn - 1 : 0] a,
+                      |    input wire signed [$widthIn - 1 : 0] sa,
                       |    output wire [$widthOut - 1 : 0] u_b,
-                      |    output wire [$widthOut - 1 : 0] s_b);
+                      |    output wire [$widthOut - 1 : 0] s_b,
+                      |    output wire [$widthOut - 1 : 0] ub,
+                      |    output wire signed [$widthOut - 1 : 0] sb
+                      |);
                       |    assign u_b = $operator a;
                       |    assign s_b = $operator $$signed(a);
+                      |    assign ub = $operator sa;
+                      |    assign sb = $operator sa;
                       |endmodule
                       |""".stripMargin
 

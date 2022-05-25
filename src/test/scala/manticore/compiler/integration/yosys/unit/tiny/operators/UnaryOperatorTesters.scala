@@ -31,6 +31,8 @@ class UnaryReduceXnorTester extends UnaryOperatorTestGenerator {
   override def operator = "~^"
 }
 
+
+
 class UnaryConditionalOperatorsTester extends UnaryOperatorTestGeneratorBase {
 
   override def operator: String = "conditional operators"
@@ -40,12 +42,17 @@ class UnaryConditionalOperatorsTester extends UnaryOperatorTestGeneratorBase {
     val text = s"""|
                        |module UnaryOpTestCase(
                        |    input wire [$widthIn - 1   : 0] a,
+                       |    input wire signed [$widthIn - 1 : 0] as,
                        |    output wire [0             : 0] logic_not_bit,
+                       |    output wire signed [0             : 0] logic_not_bit_signed,
                        |    output wire [$widthOut - 1 : 0] logic_not_word,
+                       |    output wire signed [$widthOut - 1 : 0] logic_not_word_signed,
                        |    output wire [0             : 0] reduce_bool_bit,
                        |    output wire [$widthOut - 1 : 0] reduce_bool_word);
-                       |    assign logic_not_bit = !a ? a : ~a;
-                       |    assign logic_not_word = !a ? a : ~a;
+                       |    assign logic_not_bit = !a;
+                       |    assign logic_not_word = !a;
+                       |    assign logic_not_word_signed = !as;
+                       |    assign logic_not_bit_signed = !as;
                        |    assign reduce_bool_bit = a ? a : ~a;
                        |    assign reduce_bool_word = a ? a : ~a;
                        |endmodule

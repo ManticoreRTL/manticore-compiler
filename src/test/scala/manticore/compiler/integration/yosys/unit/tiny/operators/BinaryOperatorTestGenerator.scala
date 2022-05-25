@@ -27,15 +27,25 @@ trait BinaryOperatorTestGenerator extends UnitFixtureTest with CancelAfterFailur
                        |module BinaryOperatorTestCase(
                        |    input wire [$widthIn1 - 1 : 0] a,
                        |    input wire [$widthIn2 - 1 : 0] b,
+                       |    input wire signed [$widthIn1 - 1 : 0] sa,
+                       |    input wire signed [$widthIn2 - 1 : 0] sb,
                        |    output wire [$widthOut - 1 : 0] c_uu, // unsigned unsigned
                        |    output wire [$widthOut - 1 : 0] c_su, //   signed unsigned
                        |    output wire [$widthOut - 1 : 0] c_us, // unsigned   signed
-                       |    output wire [$widthOut - 1 : 0] c_ss  //   signed   signed
+                       |    output wire [$widthOut - 1 : 0] c_ss,  //   signed   signed
+
+                       |    output wire [$widthOut - 1 : 0] suc, //   signed unsigned
+                       |    output wire [$widthOut - 1 : 0] usc, // unsigned   signed
+                       |    output wire [$widthOut - 1 : 0] ssc  //   signed   signed
                        |);
                        |    assign c_uu = a $op b;
                        |    assign c_su = $$signed(a) $op b;
                        |    assign c_us = a $op $$signed(b);
                        |    assign c_ss = $$signed(a) $op $$signed(b);
+                       |
+                       |    assign suc = sa $op b;
+                       |    assign usc = a $op sb;
+                       |    assign ssc = sa $op sb;
                        |endmodule
                        |""".stripMargin
 
