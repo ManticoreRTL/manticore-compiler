@@ -6,7 +6,7 @@ trait ManticoreTransform[-S, +T] {
   def andThen[R](next: ManticoreTransform[T, R]): ManticoreTransform[S, R] = {
     val current = this
     new ManticoreTransform[S, R] {
-      def apply(program: S)(implicit ctx: AssemblyContext): R = next.apply(current.apply(program))
+      def apply(source: S)(implicit ctx: AssemblyContext): R = next.apply(current.apply(source))
     }
   }
 

@@ -20,6 +20,11 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedInterpreter
 import scala.io.BufferedSource
 import manticore.compiler.HasLoggerId
 import scala.annotation.tailrec
+import manticore.compiler.frontend.yosys.Yosys
+import manticore.compiler.frontend.yosys.YosysPass
+import manticore.compiler.frontend.yosys.YosysRunner
+import utest.test
+import manticore.compiler.frontend.yosys.YosysVerilogReader
 
 sealed trait TestCode
 case class CodeText(src: String) extends TestCode
@@ -123,30 +128,19 @@ trait YosysUnitTest {
       max_cycles = testIterations + 1000
     )
 
-  def yosysSelectPasses: Seq[String] = Nil
-  private def yosysDefaultPasses = Seq(
-    s"hierarchy -auto-top -check",
-    "proc",
-    "opt",
-    "opt_reduce",
-    "opt_demorgan",
-    "opt_clean",
-    "check -assert",
-    "memory_collect",
-    "memory_unpack",
-    "write_rtlil original.rtl"
-  ) ++ yosysSelectPasses ++ Seq(
-    "manticore_init", // do basic stuff such as setting track attributes
-    "flatten", // flatten the design
-    "manticore_meminit", // remove $meminit cells
-    "opt", // optimize the flattened design, maybe too expensive if the design is large
-    "manticore_dff", // turn every state element into a $dff and fail if not possible
-    "manticore_opt_replicate", // optimize bit-replication SigSpecs for code generation
-    "manticore_subword", // remove any subword assignment on lhs of connections and output of cells
-    "write_rtlil main.rtl", // print the final result
-    "manticore_check", // check for existence of a unique clock
-    "manticore_writer main.masm" // write manticore assembly
-  )
+  def yosysSelection: Seq[YosysPass] = Nil
+  private def yosysRunnables = {
+    val prelim = Yosys.PreparationPasses
+    val lowering = Yosys.LoweringPasses
+    if (yosysSelection.nonEmpty) {
+      yosysSelection.foldLeft(prelim) { case (agg, p) =>
+        agg andThen p
+      } andThen lowering
+    } else {
+      prelim andThen lowering
+    }
+  }
+
   private final def dump(filename: String, text: String): Path = {
     val fp = testDir.resolve(filename)
     val printer = new PrintWriter(fp.toFile)
@@ -237,31 +231,11 @@ trait YosysUnitTest {
       dump: Boolean = false
   )(implicit ctx: AssemblyContext): String = {
 
-    implicit val loggerId = new HasLoggerId { val id = "Yosys" }
-    val reads = verilog.map { f => s"read_verilog -sv -masm  $f" }
-    val script = (if (dump) {
-                    reads ++ yosysDefaultPasses.zipWithIndex.flatMap {
-                      case (p, ix) =>
-                        Seq(
-                          p,
-                          s"write_rtlil after_$ix.rtl"
-                        )
-                    }
-                  } else {
-                    reads ++ yosysDefaultPasses
-                  }).mkString("; ")
-    val cmd = s"yosys -p \"$script\" -Q -T"
-    ctx.logger.info(s"Running command: ${cmd}")
-    val ret = Process(
-      command = cmd,
-      cwd = testDir.toFile
-    ) ! ProcessLogger(ctx.logger.info(_))
+    val yosysCompiler =
+      YosysVerilogReader andThen yosysRunnables andThen YosysRunner
+        .withDirectory(testDir)
 
-    if (ret != 0) {
-      ctx.logger.fail("Failed compiling with Yosys")
-    }
-
-    "main.masm"
+    yosysCompiler(verilog.map(testDir.resolve(_))).toAbsolutePath().toString()
 
   }
 

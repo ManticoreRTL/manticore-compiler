@@ -1,8 +1,8 @@
 package manticore.compiler.integration.yosys.unit.tiny.memories
 
 import manticore.compiler.UnitFixtureTest
-import manticore.compiler.integration.yosys.unit.YosysUnitTest
 import manticore.compiler.integration.yosys.unit.CodeText
+import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
 class SimpleOutOfBoundAddressTester extends UnitFixtureTest {
 

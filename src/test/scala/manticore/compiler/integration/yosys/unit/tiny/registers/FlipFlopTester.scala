@@ -4,6 +4,7 @@ import manticore.compiler.integration.yosys.unit.TestCode
 import manticore.compiler.integration.yosys.unit.CodeText
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 import org.scalatest.CancelAfterFailure
+import manticore.compiler.frontend.yosys.Yosys
 
 trait FlipFlopTester extends UnitFixtureTest with CancelAfterFailure {
 
@@ -16,13 +17,14 @@ trait FlipFlopTester extends UnitFixtureTest with CancelAfterFailure {
     (Seq(1, 2, 3, 15, 16, 17) ++ Seq.fill(4) { randGen.nextInt(70) }).distinct
   randomWidth.foreach { w =>
     s"$name[$w - 1 : 0]" should "match verilator resutls" in { f =>
+      import manticore.compiler.frontend.yosys.Implicits._
       new YosysUnitTest {
         val testIterations = 300
         val code = generate(w)
         val testDir = f.test_dir
 
-        override def yosysSelectPasses = Seq(
-          s"select -assert-any t:$name"
+        override def yosysSelection = Seq(
+          Yosys.Select << "-asser-any" << s"t:$name"
         )
       }.run()
     }
