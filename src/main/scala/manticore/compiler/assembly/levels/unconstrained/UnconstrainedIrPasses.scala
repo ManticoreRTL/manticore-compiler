@@ -31,13 +31,12 @@ import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 
 object UnconstrainedNameChecker
     extends AssemblyNameChecker
-    with AssemblyChecker[UnconstrainedIR.DefProgram] {
+    with UnconstrainedIRChecker {
   val flavor = UnconstrainedIR
   import flavor._
   override def check(
-      program: DefProgram,
-      context: AssemblyContext
-  ): Unit = {
+      program: DefProgram
+  )(implicit context: AssemblyContext): Unit = {
 
     program.processes.foreach { case process =>
       NameCheck.checkUniqueDefReg(process) { case (sec, fst) =>
@@ -72,10 +71,7 @@ object UnconstrainedNameChecker
 
 object UnconstrainedRenameVariables
     extends RenameTransformation
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
   import flavor._
@@ -99,35 +95,27 @@ object UnconstrainedRenameVariables
       case OutputType => s"%o${id}"
       case CarryType  => s"%s${id}"
     }
-  override def transform(p: DefProgram, ctx: AssemblyContext) =
+  override def transform(p: DefProgram)(implicit ctx: AssemblyContext) =
     do_transform(p, ctx)
 }
 object UnconstrainedOrderInstructions
     extends OrderInstructions
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
   val flavor = UnconstrainedIR
   import flavor._
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = do_transform(source, context)
 }
 
 object UnconstrainedDeadCodeElimination
     extends DeadCodeElimination
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
   val flavor = UnconstrainedIR
   import flavor._
   override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+      source: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
     source
       .copy(processes = source.processes.map { doDce(_)(context) })
       .setPos(source.pos)
@@ -136,17 +124,13 @@ object UnconstrainedDeadCodeElimination
 
 object UnconstrainedCloseSequentialCycles
     extends CloseSequentialCycles
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
 
   import flavor._
 
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = do_transform(source)(context)
 
@@ -154,19 +138,15 @@ object UnconstrainedCloseSequentialCycles
 
 object UnconstrainedBreakSequentialCycles
     extends BreakSequentialCycles
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
 
   import flavor._
 
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
-  ): DefProgram = do_transform(source)(context)
+  ): DefProgram = do_transform(source)
 
 }
 
@@ -175,10 +155,7 @@ object UnconstrainedPrinter
 
 object UnconstrainedJumpTableConstruction
     extends JumpTableConstruction
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
 
@@ -187,7 +164,9 @@ object UnconstrainedJumpTableConstruction
   override def uniqueLabel(ctx: AssemblyContext): Label =
     s"L${ctx.uniqueNumber()}"
 
-  override def mkMemory(width: Int, size: Int)(implicit ctx: AssemblyContext) = {
+  override def mkMemory(width: Int, size: Int)(implicit
+      ctx: AssemblyContext
+  ) = {
     val name = s"%m${ctx.uniqueNumber()}"
     DefReg(
       MemoryVariable(
@@ -226,19 +205,15 @@ object UnconstrainedJumpTableConstruction
     LogicVariable(s"%c${ctx.uniqueNumber()}", width, ConstType),
     Some(value)
   )
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
-  ): DefProgram = do_transform(source)(context)
+  ): DefProgram = do_transform(source)
 
 }
 
 object UnconstrainedIRParMuxDeconstructionTransform
     extends ParMuxDeconstruction
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
   val flavor = UnconstrainedIR
   import flavor._
 
@@ -253,12 +228,11 @@ object UnconstrainedIRParMuxDeconstructionTransform
     ).setPos(orig.pos)
 
   override def transform(
-      program: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
 
     program.copy(processes = program.processes.map { proc =>
-      do_transform(proc)(context)
+      do_transform(proc)
     })
 
   }

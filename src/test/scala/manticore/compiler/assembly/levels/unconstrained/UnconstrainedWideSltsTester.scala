@@ -88,7 +88,7 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
             (1) FINISH done;
 
             ADD counter, counter, const_ptr_inc;
-            
+
 
     """
   }
@@ -102,8 +102,8 @@ class UnconstrainedWideSltsTester extends UnconstrainedWideTest {
 
     it should s"should hanle SLTS $w" taggedAs Tags.WidthConversion in { f =>
       val prog = mkProgram(f, w)
-      val parsed = AssemblyParser(prog, f.ctx)
-      backend(parsed, f.ctx)
+
+      backend(prog)(f.ctx)
     }
   }
 

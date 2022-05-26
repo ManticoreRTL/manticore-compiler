@@ -147,15 +147,16 @@ class ADDCARRYTester
   }
 
   def compiler =
-    ManticorePasses.frontend followedBy
-      ManticorePasses.middleend followedBy
-      UnconstrainedToPlacedTransform followedBy
-      ManticorePasses.BackendLowerEnd followedBy
+    AssemblyParser andThen
+    ManticorePasses.frontend andThen
+      ManticorePasses.middleend andThen
+      UnconstrainedToPlacedTransform andThen
+      ManticorePasses.BackendLowerEnd andThen
       ScheduleChecker
 
   def compile(source: String, context: AssemblyContext): PlacedIR.DefProgram = {
-    val parsed = AssemblyParser(source, context)
-    val program = compiler.apply(parsed, context)._1
+
+    val program = compiler.apply(source)(context)
     program
   }
 
@@ -179,7 +180,7 @@ class ADDCARRYTester
     val source = createProgram(32, context, fixture)
     val program = compile(source, context)
 
-    ManticorePasses.BackendInterpreter(true)(program, context)
+    ManticorePasses.BackendInterpreter(true)(program)(context)
 
     val assembled = MachineCodeGenerator.assembleProgram(program)(context)
 

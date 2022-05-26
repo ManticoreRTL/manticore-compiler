@@ -7,7 +7,8 @@ import java.nio.file.Path
 import java.io.PrintWriter
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversionCore
 import manticore.compiler.UnitFixtureTest
-trait UnconstrainedWideTest extends UnitFixtureTest  with UnconstrainedTags {
+import manticore.compiler.assembly.parser.AssemblyParser
+trait UnconstrainedWideTest extends UnitFixtureTest with UnconstrainedTags {
 
   lazy val randgen = new scala.util.Random(0)
   def mkWideRand(w: Int): BigInt = {
@@ -38,9 +39,10 @@ trait UnconstrainedWideTest extends UnitFixtureTest  with UnconstrainedTags {
     BigInt(x - 1).bitLength
   }
 
-  def repeat(times: Int)(gen: Int => Unit): Unit = Range(0, times) foreach { i => gen(i) }
+  def repeat(times: Int)(gen: Int => Unit): Unit = Range(0, times) foreach {
+    i => gen(i)
+  }
 
-  val backend =
-    WidthConversionCore followedBy UnconstrainedInterpreter
+  val backend = AssemblyParser andThen
+    WidthConversionCore andThen UnconstrainedInterpreter
 }
-

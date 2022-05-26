@@ -10,23 +10,18 @@ import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.ConstType
 
-/**
-  * Constant folding pass for PlacedIR
+/** Constant folding pass for PlacedIR
   *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object PlacedIRConstantFolding
     extends ConstantFolding
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
-
-
-
-
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import BinaryOperator._
   import flavor._
-
 
   type ConcreteConstant = UInt16
 
@@ -35,7 +30,6 @@ object PlacedIRConstantFolding
 
   // PlacedIR uses UInt16 with its width being trivially 16, so Constant = ConcreteConstant
   override def asConcrete(v: UInt16)(w: => Int) = v
-
 
   private def shftAmount(v: UInt16): Int = {
     v.toInt & 0xf
@@ -89,14 +83,13 @@ object PlacedIRConstantFolding
         }
       }
     // evaluate if only one of the operands is constant
-    case (ADD, Right(UInt16(0)), Left(n2))      => Left(n2)
-    case (ADD, Left(n1), Right(UInt16(0)))      => Left(n1)
+    case (ADD, Right(UInt16(0)), Left(n2)) => Left(n2)
+    case (ADD, Left(n1), Right(UInt16(0))) => Left(n1)
 
-    case (SUB, Left(n1), Right(UInt16(0)))      => Left(n1)
+    case (SUB, Left(n1), Right(UInt16(0))) => Left(n1)
 
     case (AND, Left(n1), Right(UInt16(0xffff))) => Left(n1)
     case (AND, Right(UInt16(0xffff)), Left(n2)) => Left(n2)
-
 
     case (OR | XOR, Left(n1), Right(UInt16(0))) => Left(n1)
     case (OR | XOR, Right(UInt16(0)), Left(n2)) => Left(n2)
@@ -118,9 +111,9 @@ object PlacedIRConstantFolding
   }
 
   def sliceEvaluator(
-    const: ConcreteConstant,
-    offset: Int,
-    length: Int
+      const: ConcreteConstant,
+      offset: Int,
+      length: Int
   ): ConcreteConstant = {
     val shifted = const >> offset
     // In PlacedIR length is guaranteed to be less than 16
@@ -144,8 +137,7 @@ object PlacedIRConstantFolding
     )
   }
 
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram =
     do_transform(source)(context)

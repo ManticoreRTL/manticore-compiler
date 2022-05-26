@@ -14,7 +14,11 @@ import java.io.StringWriter
 import java.nio.file.{Files, Paths}
 import java.util.function.Function
 import scala.collection.immutable.{BitSet => Cut}
-import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, HashSet => MHashSet}
+import scala.collection.mutable.{
+  ArrayBuffer,
+  HashMap => MHashMap,
+  HashSet => MHashSet
+}
 import scala.jdk.CollectionConverters._
 import com.google.ortools.Loader
 import com.google.ortools.linearsolver.{MPSolver, MPVariable}
@@ -42,7 +46,7 @@ object GraphDump {
   // Note that a mutable graph (MSGraph) is constructed, but we return a graph of the
   // "interface" type (SGraph) as the DOT exporter only supports this parent interface.
   private def jg2sc[V](
-    jg: Graph[V, DefaultEdge]
+      jg: Graph[V, DefaultEdge]
   ): SGraph[V, DiEdge] = {
     val sg = MSGraph.empty[V, DiEdge]
 
@@ -62,16 +66,16 @@ object GraphDump {
   private def quote(s: String): String = s"\"${s}\""
 
   def apply[V](
-    g: Graph[V, DefaultEdge],
-    clusters: Map[
-      Int, // Cluster ID
-      Set[V] // Vertices in cluster
-    ] = Map.empty[Int, Set[V]],
-    clusterColorMap: Map[
-      Int, // Cluster ID
-      String // Color to be assigned to cluster
-    ] = Map.empty[Int, String],
-    vNameMap: Map[V, String] = Map.empty[V, String],
+      g: Graph[V, DefaultEdge],
+      clusters: Map[
+        Int, // Cluster ID
+        Set[V] // Vertices in cluster
+      ] = Map.empty[Int, Set[V]],
+      clusterColorMap: Map[
+        Int, // Cluster ID
+        String // Color to be assigned to cluster
+      ] = Map.empty[Int, String],
+      vNameMap: Map[V, String] = Map.empty[V, String]
   ): String = {
     val sg = jg2sc(g)
 
@@ -89,11 +93,13 @@ object GraphDump {
     }
 
     def edgeTransform(
-      iedge: scalax.collection.Graph[V, DiEdge]#EdgeT
-    ): Option[(
-      DotGraph, // The graph/subgraph to which this edge belongs.
-      DotEdgeStmt // Statements to modify the edge's representation.
-    )] = {
+        iedge: scalax.collection.Graph[V, DiEdge]#EdgeT
+    ): Option[
+      (
+          DotGraph, // The graph/subgraph to which this edge belongs.
+          DotEdgeStmt // Statements to modify the edge's representation.
+      )
+    ] = {
       iedge.edge match {
         case DiEdge(source, target) =>
           Some(
@@ -115,32 +121,39 @@ object GraphDump {
     }
 
     def nodeTransformer(
-      inode: scalax.collection.Graph[V, DiEdge]#NodeT
-    ): Option[(
-      DotGraph, // The graph/subgraph to which this node belongs.
-      DotNodeStmt // Statements to modify the node's representation.
-    )] = {
+        inode: scalax.collection.Graph[V, DiEdge]#NodeT
+    ): Option[
+      (
+          DotGraph, // The graph/subgraph to which this node belongs.
+          DotNodeStmt // Statements to modify the node's representation.
+      )
+    ] = {
       val clusterId = clusters
         .find { case (clusterId, vertices) =>
           vertices.contains(inode.toOuter)
-        }.map { case (clusterId, vertices) =>
+        }
+        .map { case (clusterId, vertices) =>
           clusterId
         }
 
       // If the vertex is part of a cluster, select the corresponding subgraph.
       // Otherwise add the vertex to the root graph.
-      val dotGraph = clusterId.map { id =>
-        dotSubgraphs(id)
-      }.getOrElse(dotRoot)
+      val dotGraph = clusterId
+        .map { id =>
+          dotSubgraphs(id)
+        }
+        .getOrElse(dotRoot)
 
       val v = inode.toOuter
       val vLabel = vNameMap.getOrElse(v, v.toString())
 
       // If the vertex is part of a cluster, select its corresponding color.
       // Otherwise use white as the default color.
-      val vColor = clusterId.map { id =>
-        clusterColorMap(id)
-      }.getOrElse("white")
+      val vColor = clusterId
+        .map { id =>
+          clusterColorMap(id)
+        }
+        .getOrElse("white")
 
       Some(
         (
@@ -169,7 +182,7 @@ object GraphDump {
 
 object CustomLutInsertion
     extends DependenceGraphBuilder
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
@@ -184,13 +197,13 @@ object CustomLutInsertion
   // Represents a rooted cone of vertices in a graph.
   // The constructor is private as I want to force callers to go through the factory method in the Cone object.
   class Cone private (
-    // // Contains the vertices of the root *and* the primary inputs (i.e., g.vertexSet = vertices ++ primaryInputs)
-    // val g: AsUnmodifiableGraph[DepVertex, DefaultEdge],
-    val root: DepVertex,
-    val vertices: Set[DepVertex],
-    val primaryInputs: Set[DepVertex],
-    val func: CustomFunctionImpl,
-    val posArgToNamedArg: Map[PositionalArg, NamedArg]
+      // // Contains the vertices of the root *and* the primary inputs (i.e., g.vertexSet = vertices ++ primaryInputs)
+      // val g: AsUnmodifiableGraph[DepVertex, DefaultEdge],
+      val root: DepVertex,
+      val vertices: Set[DepVertex],
+      val primaryInputs: Set[DepVertex],
+      val func: CustomFunctionImpl,
+      val posArgToNamedArg: Map[PositionalArg, NamedArg]
   ) {
 
     def size: Int = vertices.size
@@ -207,7 +220,9 @@ object CustomLutInsertion
 
     override def toString(): String = {
       val nonRootVertices = vertices - root
-      val funcStr = CustomFunctionImpl.substitute(func.expr)(posArgToNamedArg.toMap[AtomArg, NamedArg]).toString
+      val funcStr = CustomFunctionImpl
+        .substitute(func.expr)(posArgToNamedArg.toMap[AtomArg, NamedArg])
+        .toString
       s"{arity = ${arity}, root = ${root}, func = ${funcStr}"
     }
   }
@@ -215,14 +230,14 @@ object CustomLutInsertion
   object Cone {
 
     private def createExpr(
-      root: DepVertex,
-      vertices: Set[DepVertex],
-      primaryInputs: Set[DepVertex],
-      nameToInstrMap: Map[Name, Instruction],
-      vToConstMap: Map[DepVertex, Constant]
+        root: DepVertex,
+        vertices: Set[DepVertex],
+        primaryInputs: Set[DepVertex],
+        nameToInstrMap: Map[Name, Instruction],
+        vToConstMap: Map[DepVertex, Constant]
     ): (
-      ExprTree,
-      Map[PositionalArg, NamedArg]
+        ExprTree,
+        Map[PositionalArg, NamedArg]
     ) = {
 
       // Two-way mapping is needed as we may see the same name twice in the expression
@@ -267,24 +282,28 @@ object CustomLutInsertion
             instr match {
               case BinaryArithmetic(operator, rd, rs1, rs2, _) =>
                 val rs1Expr = nameToInstrMap.get(rs1) match {
-                  case None => makeExpr(Left(rs1))
+                  case None           => makeExpr(Left(rs1))
                   case Some(rs1Instr) => makeExpr(Right(rs1Instr))
                 }
                 val rs2Expr = nameToInstrMap.get(rs2) match {
-                  case None => makeExpr(Left(rs2))
+                  case None           => makeExpr(Left(rs2))
                   case Some(rs2Instr) => makeExpr(Right(rs2Instr))
                 }
 
                 operator match {
                   case AND => AndExpr(rs1Expr, rs2Expr)
-                  case OR => OrExpr(rs1Expr, rs2Expr)
+                  case OR  => OrExpr(rs1Expr, rs2Expr)
                   case XOR => XorExpr(rs1Expr, rs2Expr)
                   case _ =>
-                    throw new IllegalArgumentException(s"Unexpected non-logic operator ${operator}.")
+                    throw new IllegalArgumentException(
+                      s"Unexpected non-logic operator ${operator}."
+                    )
                 }
 
               case _ =>
-                throw new IllegalArgumentException(s"Expected to see a logic instruction, but saw \"${instr}\" instead.")
+                throw new IllegalArgumentException(
+                  s"Expected to see a logic instruction, but saw \"${instr}\" instead."
+                )
             }
         }
       }
@@ -293,10 +312,10 @@ object CustomLutInsertion
     }
 
     def apply(
-      g: DepGraph,
-      root: DepVertex,
-      primaryInputs: Set[DepVertex],
-      vToConstMap: Map[DepVertex, Constant]
+        g: DepGraph,
+        root: DepVertex,
+        primaryInputs: Set[DepVertex],
+        vToConstMap: Map[DepVertex, Constant]
     ): Cone = {
 
       // Backtracks from the root until (and including) the primary inputs.
@@ -308,7 +327,10 @@ object CustomLutInsertion
         def backtrack(v: DepVertex): Unit = {
           coneVertices += v
           if (!primaryInputs.contains(v)) {
-            Graphs.predecessorListOf(g, v).asScala.foreach(pred => backtrack(pred))
+            Graphs
+              .predecessorListOf(g, v)
+              .asScala
+              .foreach(pred => backtrack(pred))
           }
         }
 
@@ -327,7 +349,8 @@ object CustomLutInsertion
         case _ =>
           None
       }.toMap
-      val (expr, posArgToNamedArg) = createExpr(root, vertices, primaryInputs, nameToInstrMap, vToConstMap)
+      val (expr, posArgToNamedArg) =
+        createExpr(root, vertices, primaryInputs, nameToInstrMap, vToConstMap)
       val func = CustomFunctionImpl(expr)
 
       new Cone(root, vertices, primaryInputs, func, posArgToNamedArg)
@@ -337,20 +360,18 @@ object CustomLutInsertion
   // We want vertices for every element that could be used as a primary input. The highest-level names are not generated
   // by instructions, so we store `Name` directly for those. For all other vertices we store the `Instruction`.
   def createDependenceGraph(
-    proc: DefProcess
-  )(
-    implicit ctx: AssemblyContext
+      proc: DefProcess
+  )(implicit
+      ctx: AssemblyContext
   ): DepGraph = {
     val g: DepGraph = new DirectedAcyclicGraph(classOf[DefaultEdge])
 
-    val instrRegDefs = proc.body
-      .flatMap { instr =>
-        val regDefs = DependenceAnalysis.regDef(instr)
-        regDefs.map { regDef =>
-          regDef -> instr
-        }
+    val instrRegDefs = proc.body.flatMap { instr =>
+      val regDefs = DependenceAnalysis.regDef(instr)
+      regDefs.map { regDef =>
+        regDef -> instr
       }
-      .toMap
+    }.toMap
 
     proc.body.foreach { instr =>
       // Add a vertex for every instruction.
@@ -385,21 +406,22 @@ object CustomLutInsertion
   def isLogicInstr(instr: Instruction): Boolean = {
     instr match {
       case BinaryArithmetic(AND | OR | XOR, _, _, _, _) => true
-      case _ => false
+      case _                                            => false
     }
   }
 
   def findLogicClusters(
-    g: DepGraph
+      g: DepGraph
   ): Set[Set[DepVertex]] = {
     // We use Union-Find to cluster logic instructions together.
     val uf = new UnionFind(g.vertexSet())
 
-    val logicVertices = g.vertexSet()
+    val logicVertices = g
+      .vertexSet()
       .asScala
       .filter {
         case Right(instr) if isLogicInstr(instr) => true
-        case _ => false
+        case _                                   => false
       }
       .toSet
 
@@ -427,29 +449,31 @@ object CustomLutInsertion
   }
 
   def getFanoutFreeCones(
-    dependenceGraph: DepGraph,
-    logicVertices: Set[DepVertex],
-    maxCutSize: Int,
-    vToConstMap: Map[DepVertex, Constant],
-  )(
-    implicit ctx: AssemblyContext
+      dependenceGraph: DepGraph,
+      logicVertices: Set[DepVertex],
+      maxCutSize: Int,
+      vToConstMap: Map[DepVertex, Constant]
+  )(implicit
+      ctx: AssemblyContext
   ): Iterable[Cone] = {
     // Returns a subgraph of the dependence graph containing the logic vertices *and* their inputs
     // (which are not logic vertices by definition). The inputs are needed to perform cut enumeration
     // as otherwise we would not know the in-degree of the first logic vertices in the graph.
     def logicSubgraphWithInputs(): (
-      DepGraph,
-      Set[DepVertex] // inputs
+        DepGraph,
+        Set[DepVertex] // inputs
     ) = {
       // The inputs are vertices *outside* the given set of vertices that are connected
       // to vertices *inside* the cluster. Some of these "inputs" are constants, but
       // constants are known at compile time and do not affect the runtime behavior of
       // a function. We therefore do not count them as inputs and filter them out.
-      val inputs = logicVertices.flatMap { vLogic =>
-        Graphs.predecessorListOf(dependenceGraph, vLogic).asScala
-      }.filter { vAnywhere =>
-        !logicVertices.contains(vAnywhere) && !vToConstMap.contains(vAnywhere)
-      }
+      val inputs = logicVertices
+        .flatMap { vLogic =>
+          Graphs.predecessorListOf(dependenceGraph, vLogic).asScala
+        }
+        .filter { vAnywhere =>
+          !logicVertices.contains(vAnywhere) && !vToConstMap.contains(vAnywhere)
+        }
 
       val subgraphVertices = inputs ++ logicVertices
       val subgraph = new AsSubgraph(dependenceGraph, subgraphVertices.asJava)
@@ -461,21 +485,24 @@ object CustomLutInsertion
     val (gLswi, primaryInputs) = logicSubgraphWithInputs()
 
     ctx.logger.dumpArtifact(
-      s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_logicSubgraphWithInputs.dot"
+      s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_logicSubgraphWithInputs.dot"
     ) {
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).
-      val nameMap = gLswi.vertexSet()
+      val nameMap = gLswi
+        .vertexSet()
         .asScala
-        .map { v => v match {
-          case Left(name) => v -> name
-          case Right(instr) => v -> instr.toString()
-        }}
+        .map { v =>
+          v match {
+            case Left(name)   => v -> name
+            case Right(instr) => v -> instr.toString()
+          }
+        }
         .toMap
 
       GraphDump(
         gLswi,
-        vNameMap=nameMap
+        vNameMap = nameMap
       )
     }
 
@@ -505,7 +532,8 @@ object CustomLutInsertion
       val nonRootSuccessors = nonRootVertices.flatMap { v =>
         Graphs.successorListOf(gLswi, v).asScala
       }
-      val hasEdgeToExternalVertex = nonRootSuccessors.exists(v => !cone.contains(v))
+      val hasEdgeToExternalVertex =
+        nonRootSuccessors.exists(v => !cone.contains(v))
       !hasEdgeToExternalVertex
     }
 
@@ -517,28 +545,31 @@ object CustomLutInsertion
   // The input argument mapping between a cone and its representative is returned
   // as the 2nd element of the result.
   def identifyCommonFunctions(
-    cones: Map[
-      Int, // Cone ID
-      Cone
-    ],
-  ): (
-    UnionFind[Int], // Clusters of cones that compute the same function.
-    Map[
-      Int, // Cone ID
-      Map[
-        PositionalArg, // Cone primary input idx
-        PositionalArg  // Representative primary input idx. The representative of a cluster is the result of uf.find(coneId)
+      cones: Map[
+        Int, // Cone ID
+        Cone
       ]
-    ]
+  ): (
+      UnionFind[Int], // Clusters of cones that compute the same function.
+      Map[
+        Int, // Cone ID
+        Map[
+          PositionalArg, // Cone primary input idx
+          PositionalArg // Representative primary input idx. The representative of a cluster is the result of uf.find(coneId)
+        ]
+      ]
   ) = {
 
     val exprToEquCache = MHashMap.empty[ExprTree, Seq[BigInt]]
 
     def fullFuncEqualityCheck(
-      f1: CustomFunction,
-      f2: CustomFunction
+        f1: CustomFunction,
+        f2: CustomFunction
     ): Option[ // Returns None if the functions are not equal.
-      Map[PositionalArg, PositionalArg] // Maps arg indices in f1 to arg indices in f2.
+      Map[
+        PositionalArg,
+        PositionalArg
+      ] // Maps arg indices in f1 to arg indices in f2.
     ] = {
       assert(
         f1.arity == f2.arity,
@@ -561,29 +592,33 @@ object CustomLutInsertion
       // We use Iterator.find() so we can exit the expensive permutation generation as
       // soon as we find a valid input permutation (instead of computing all permutations
       // and filtering them afterwards, which is very expensive).
-      val matchingPermutation = (0 until f1.arity)
-        .view // @TODO (skashani: Check if using `.view` helps performance).
-        .permutations
-        .map { inputPermutation =>
-          val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
-            PositionalArg(inputIdx) -> PositionalArg(idx)
+      val matchingPermutation =
+        (0 until f1.arity).view // @TODO (skashani: Check if using `.view` helps performance).
+          .permutations
+          .map { inputPermutation =>
+            val subst = inputPermutation.zipWithIndex.map {
+              case (inputIdx, idx) =>
+                PositionalArg(inputIdx) -> PositionalArg(idx)
+            }
+            subst.toMap
           }
-          subst.toMap
-        }
-        .find { subst =>
-          val f1NewExpr = CustomFunctionImpl.substitute(f1.expr)(subst.toMap[AtomArg, AtomArg])
-          val f1NewFunc = CustomFunctionImpl(f1NewExpr)
-          // Cache the substituted expression and equation to save execution time in future calls.
-          val f1NewEqu = exprToEquCache.getOrElseUpdate(f1NewExpr, f1NewFunc.equation)
-          f1NewEqu == equ2
-        }
+          .find { subst =>
+            val f1NewExpr = CustomFunctionImpl.substitute(f1.expr)(
+              subst.toMap[AtomArg, AtomArg]
+            )
+            val f1NewFunc = CustomFunctionImpl(f1NewExpr)
+            // Cache the substituted expression and equation to save execution time in future calls.
+            val f1NewEqu =
+              exprToEquCache.getOrElseUpdate(f1NewExpr, f1NewFunc.equation)
+            f1NewEqu == equ2
+          }
 
       matchingPermutation
     }
 
     def isHomogeneousResource(
-      f1: CustomFunction,
-      f2: CustomFunction
+        f1: CustomFunction,
+        f2: CustomFunction
     ): Boolean = {
       val f1Ops = f1.resources.keySet
       val f2Ops = f2.resources.keySet
@@ -622,9 +657,11 @@ object CustomLutInsertion
     }
 
     groupedCones.foreach { case ((arity, resources), coneGroup) =>
-      val identityArgMap = Seq.tabulate(arity) { idx =>
-        PositionalArg(idx) -> PositionalArg(idx)
-      }.toMap
+      val identityArgMap = Seq
+        .tabulate(arity) { idx =>
+          PositionalArg(idx) -> PositionalArg(idx)
+        }
+        .toMap
 
       // A cone is equal to itself.
       coneGroup.foreach { case (coneId, cone) =>
@@ -638,7 +675,7 @@ object CustomLutInsertion
         val (c1Id, c1) = sortedConeFuncs(i)
 
         // Do not compare (j, i) as we would have already compared (i, j).
-        (i+1 until sortedConeFuncs.size).foreach { j =>
+        (i + 1 until sortedConeFuncs.size).foreach { j =>
           val (c2Id, c2) = sortedConeFuncs(j)
 
           if (isHomogeneousResource(c1.func, c2.func)) {
@@ -654,7 +691,7 @@ object CustomLutInsertion
             // Need to try a more expensive check to determine if the functions are identical.
             fullFuncEqualityCheck(c1.func, c2.func) match {
               case None =>
-                // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
+              // No permutation of the inputs was found such that f1 == f2, so we don't keep track of anything.
               case Some(arg1ToArg2Map) =>
                 // We found some mapping from f1's inputs to f2's input such that their equations are equal.
                 equalCones += (c1Id, c2Id) -> arg1ToArg2Map
@@ -686,21 +723,21 @@ object CustomLutInsertion
   // Note that this function returns the cones used and not the function categories
   // used as these are already known to the caller.
   def findOptimalConeCover[V](
-    cones: Map[
-      Int, // Cone ID
-      Cone // Cone
-    ],
-    // Groups cones that compute the same function together. We don't care about
-    // what they are computing, just that they are computing the same function
-    // and therefore don't need an additional custom function to model if already
-    // chosen.
-    coneIdToReprId: Map[
-      Int, // Cone ID
-      Int  // Category
-    ],
-    maxNumConeTypes: Int
-  )(
-    implicit ctx: AssemblyContext
+      cones: Map[
+        Int, // Cone ID
+        Cone // Cone
+      ],
+      // Groups cones that compute the same function together. We don't care about
+      // what they are computing, just that they are computing the same function
+      // and therefore don't need an additional custom function to model if already
+      // chosen.
+      coneIdToReprId: Map[
+        Int, // Cone ID
+        Int // Category
+      ],
+      maxNumConeTypes: Int
+  )(implicit
+      ctx: AssemblyContext
   ): Set[Int] = {
     // We want to maximize the number of instructions we can remove from the program.
     // The cones must be non-overlapping as otherwise a vertex *outside* the cone uses an intermediate
@@ -837,7 +874,8 @@ object CustomLutInsertion
     //
     //         0 <= sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
-    val maxNumConesConstraint = solver.makeConstraint(0, maxNumConeTypes, s"maxNumConeTypes_constraint")
+    val maxNumConesConstraint =
+      solver.makeConstraint(0, maxNumConeTypes, s"maxNumConeTypes_constraint")
     categoryVars.keys.foreach { category =>
       val categoryVar = categoryVars(category)
       maxNumConesConstraint.setCoefficient(categoryVar, 1)
@@ -855,7 +893,8 @@ object CustomLutInsertion
     //
     conesPerCategory.foreach { case (category, coneIds) =>
       coneIds.foreach { coneId =>
-        val constraint = solver.makeConstraint(0, 1, s"y_${category} >= x_${coneId}")
+        val constraint =
+          solver.makeConstraint(0, 1, s"y_${category} >= x_${coneId}")
         val coneVar = coneVars(coneId)
         val categoryVar = categoryVars(category)
         constraint.setCoefficient(categoryVar, 1)
@@ -874,7 +913,11 @@ object CustomLutInsertion
     //        0 <= (sum_{C_i \in C : C_i \in CT_i} x_i) - yi <= sum_{C_i \in C : C_i \in CT_i} 1
     //
     conesPerCategory.foreach { case (category, coneIds) =>
-      val constraint = solver.makeConstraint(0, coneIds.size, s"y_${category} <= ${coneIds.size}")
+      val constraint = solver.makeConstraint(
+        0,
+        coneIds.size,
+        s"y_${category} <= ${coneIds.size}"
+      )
       coneIds.foreach { coneId =>
         val coneVar = coneVars(coneId)
         constraint.setCoefficient(coneVar, 1)
@@ -912,27 +955,32 @@ object CustomLutInsertion
       }.keySet
 
       // The "types" of custom functions used.
-      val customFuncsUsed = categoryVars.filter { case (category, categoryVar) =>
-        categoryVar.solutionValue.toInt > 0
+      val customFuncsUsed = categoryVars.filter {
+        case (category, categoryVar) =>
+          categoryVar.solutionValue.toInt > 0
       }.keySet
 
       ctx.logger.info {
-        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective.value().toInt} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
+        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective
+          .value()
+          .toInt} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
       }
 
       conesUsed.toSet
 
     } else {
-      ctx.logger.fail(s"Could not optimally solve cone cover problem (resultStatus = ${resultStatus}).")
+      ctx.logger.fail(
+        s"Could not optimally solve cone cover problem (resultStatus = ${resultStatus})."
+      )
       // We return the empty set to signal that no logic instructions could be fused together.
       Set.empty
     }
   }
 
   def onProcess(
-    proc: DefProcess
-  )(
-    implicit ctx: AssemblyContext
+      proc: DefProcess
+  )(implicit
+      ctx: AssemblyContext
   ): DefProcess = {
     val dependenceGraph = createDependenceGraph(proc)
 
@@ -949,15 +997,18 @@ object CustomLutInsertion
 
     // Identify logic clusters in the graph.
     val logicClusters = findLogicClusters(dependenceGraph)
-      .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
+      .filter(cluster =>
+        cluster.size > 1
+      ) // No point in creating a LUT vector to replace a single instruction.
 
     ctx.logger.debug {
-      val clusterSizesStr = logicClusters
-        .toSeq
+      val clusterSizesStr = logicClusters.toSeq
         .sortBy(cluster => cluster.size)(Ordering[Int].reverse)
-        .zipWithIndex.map { case (cluster, idx) =>
+        .zipWithIndex
+        .map { case (cluster, idx) =>
           s"cluster_${idx} -> ${cluster.size} instructions"
-        }.mkString("\n")
+        }
+        .mkString("\n")
 
       s"Covering ${logicClusters.size} logic clusters in ${proc.id} with sizes:\n${clusterSizesStr}"
     }
@@ -969,81 +1020,86 @@ object CustomLutInsertion
         dependenceGraph,
         logicClusters.flatten,
         ctx.max_custom_instruction_inputs,
-        vToConstMap,
+        vToConstMap
       ).filter { cone =>
         // We don't care about cones that consist of a single instruction as there
         // is no benefit in doing so (we will not reduce the instruction count).
         cone.size > 1
-      }
-      .toSeq
-      .sortBy { cone =>
-        (cone.arity, cone.size)
-      }
-      .zipWithIndex.map { case (cone, idx) =>
-        idx -> cone
-      }.toMap
+      }.toSeq
+        .sortBy { cone =>
+          (cone.arity, cone.size)
+        }
+        .zipWithIndex
+        .map { case (cone, idx) =>
+          idx -> cone
+        }
+        .toMap
     }
 
     ctx.logger.debug {
-      val conesStr = cones
-        .toSeq
+      val conesStr = cones.toSeq
         .sortBy { case (coneId, cone) =>
           coneId
         }
         .map { case (coneId, cone) =>
           s"coneId ${coneId} -> ${cone.toString()}"
-        }.mkString("\n")
+        }
+        .mkString("\n")
 
       s"There are ${cones.size} fanout-free cones.\n${conesStr}"
     }
 
-    val (coneIdToReprId, coneToReprArgMap) = if (ctx.optimize_common_custom_functions) {
-      // Cluster cones that compute the same function together. Cones that compute
-      // the same function do so under a permutation of their inputs. This permutation
-      // is computed between every cone and its representative cone (not between
-      // all cones).
+    val (coneIdToReprId, coneToReprArgMap) =
+      if (ctx.optimize_common_custom_functions) {
+        // Cluster cones that compute the same function together. Cones that compute
+        // the same function do so under a permutation of their inputs. This permutation
+        // is computed between every cone and its representative cone (not between
+        // all cones).
 
-      val (ufCones, coneToReprArgMap) = ctx.stats.recordRunTime("identifyCommonFunctions")(identifyCommonFunctions(cones))
-      val coneIdToReprId = cones.keys.map { coneId =>
-        coneId -> ufCones.find(coneId)
-      }.toMap
+        val (ufCones, coneToReprArgMap) = ctx.stats.recordRunTime(
+          "identifyCommonFunctions"
+        )(identifyCommonFunctions(cones))
+        val coneIdToReprId = cones.keys.map { coneId =>
+          coneId -> ufCones.find(coneId)
+        }.toMap
 
-      ctx.logger.debug {
-        s"The cones are clustered into ${ufCones.numberOfSets()} function groups."
+        ctx.logger.debug {
+          s"The cones are clustered into ${ufCones.numberOfSets()} function groups."
+        }
+
+        (coneIdToReprId, coneToReprArgMap)
+
+      } else {
+        // Consider all cones to be in distinct categories of their own.
+
+        // If all cones are distinct, then their arguments are unique and we don't
+        // need to compute whether they are a permutation of another cone's inputs.
+        // We use the "identity permutation" as the resulting mapping between the
+        // cone's inputs and the representative's (itself) inputs.
+        val coneToReprArgMap = cones.keys.map { coneId =>
+          val cone = cones(coneId)
+          val argMap = Seq
+            .tabulate(cone.arity) { idx =>
+              PositionalArg(idx) -> PositionalArg(idx)
+            }
+            .toMap
+          coneId -> argMap
+        }.toMap
+
+        // A cone is its own representative.
+        val coneIdToReprId = cones.keys.map { coneId =>
+          coneId -> coneId
+        }.toMap
+
+        (coneIdToReprId, coneToReprArgMap)
       }
 
-      (coneIdToReprId, coneToReprArgMap)
-
-    } else {
-      // Consider all cones to be in distinct categories of their own.
-
-      // If all cones are distinct, then their arguments are unique and we don't
-      // need to compute whether they are a permutation of another cone's inputs.
-      // We use the "identity permutation" as the resulting mapping between the
-      // cone's inputs and the representative's (itself) inputs.
-      val coneToReprArgMap = cones.keys.map { coneId =>
-        val cone = cones(coneId)
-        val argMap = Seq.tabulate(cone.arity) { idx =>
-          PositionalArg(idx) -> PositionalArg(idx)
-        }.toMap
-        coneId -> argMap
-      }.toMap
-
-      // A cone is its own representative.
-      val coneIdToReprId = cones.keys.map { coneId =>
-        coneId -> coneId
-      }.toMap
-
-      (coneIdToReprId, coneToReprArgMap)
-    }
-
     ctx.logger.debug {
-      coneIdToReprId
-        .toSeq
-        .sorted
+      coneIdToReprId.toSeq.sorted
         .map { case (coneId, reprId) =>
           s"cone ${coneId} -> representative ${reprId}"
-        }.mkString("\n")
+        }
+        .mkString("\n")
     }
 
     // We know which cones compute the same function. We can now solve an optimization
@@ -1068,7 +1124,8 @@ object CustomLutInsertion
         }
         .map { case (coneId, cone) =>
           s"coneId ${coneId} -> ${cone.toString()}"
-        }.mkString("\n")
+        }
+        .mkString("\n")
 
       s"Selected cones:\n${conesStr}"
     }
@@ -1076,7 +1133,7 @@ object CustomLutInsertion
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
     // showing each cone category with a different color.
     ctx.logger.dumpArtifact(
-      s"dependence_graph_${ctx.logger.countProgress()}_${phase_id}_${proc.id}_selectedCustomInstructionCones.dot"
+      s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_selectedCustomInstructionCones.dot"
     ) {
       val reprIds = coneIdToReprId.values.toSet
 
@@ -1085,12 +1142,10 @@ object CustomLutInsertion
         .zip(CyclicColorGenerator(reprIds.size))
         .toMap
 
-      val clusters = bestConeIds
-        .map { coneId =>
-          // We use the ID of the cone as the ID of the cluster.
-          coneId -> cones(coneId).vertices
-        }
-        .toMap
+      val clusters = bestConeIds.map { coneId =>
+        // We use the ID of the cone as the ID of the cluster.
+        coneId -> cones(coneId).vertices
+      }.toMap
 
       // Color all vertices of a cone with its color.
       val clusterColorMap = clusters.keys.map { clusterId =>
@@ -1101,8 +1156,8 @@ object CustomLutInsertion
 
       GraphDump(
         dependenceGraph,
-        clusters=clusters,
-        clusterColorMap=clusterColorMap,
+        clusters = clusters,
+        clusterColorMap = clusterColorMap
       )
     }
 
@@ -1129,7 +1184,9 @@ object CustomLutInsertion
             val rdCone = cone.root match {
               case Left(name) =>
                 // Should not happen as a root is an instruction that computes something. It cannot be name.
-                throw new IllegalArgumentException(s"Root ${cone.root} of cone ${cone} should have been an instruction, not a name!")
+                throw new IllegalArgumentException(
+                  s"Root ${cone.root} of cone ${cone} should have been an instruction, not a name!"
+                )
               case Right(i) =>
                 DependenceAnalysis.regDef(i).head
             }
@@ -1179,9 +1236,8 @@ object CustomLutInsertion
   }
 
   override def transform(
-    program: DefProgram,
-    context: AssemblyContext
-  ): DefProgram = {
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
     val newProcesses = program.processes.map(proc => onProcess(proc)(context))
     program.copy(processes = newProcesses)
   }

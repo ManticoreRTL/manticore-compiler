@@ -6,7 +6,7 @@ import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.ConstType
-import manticore.compiler.assembly.levels.AssemblyChecker
+import manticore.compiler.assembly.levels.placed.PlacedIRChecker
 import manticore.compiler.assembly.levels.placed.interpreter.PlacedValueChangeWriter
 import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.InputType
@@ -22,7 +22,7 @@ import manticore.compiler.assembly.levels.placed.TaggedInstruction.PhiSource
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-object AtomicInterpreter extends AssemblyChecker[DefProgram] {
+object AtomicInterpreter extends PlacedIRChecker {
 
   case class AtomicMessage(
       source_id: ProcessId,
@@ -44,7 +44,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       val ctx: AssemblyContext
   ) extends ProcessInterpreter {
 
-    implicit val phase_id: TransformationID = TransformationID(
+    override implicit val transformId: TransformationID = TransformationID(
       s"interp.${proc.id}"
     )
 
@@ -335,7 +335,7 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
       ctx: AssemblyContext
   ) extends ProgramInterpreter {
 
-    override implicit val phase_id: TransformationID = TransformationID(
+    override implicit val transformId: TransformationID = TransformationID(
       "atomic_interpreter"
     )
 
@@ -426,7 +426,9 @@ object AtomicInterpreter extends AssemblyChecker[DefProgram] {
   )(implicit ctx: AssemblyContext): AtomicProgramInterpreter =
     new AtomicProgramInterpreter(program, vcd, monitor, expectedCycles)
 
-  override def check(source: DefProgram, context: AssemblyContext): Unit = {
+  override def check(
+      source: DefProgram
+  )(implicit context: AssemblyContext): Unit = {
 
     val vcd = context.dump_dir.map(_ =>
       PlacedValueChangeWriter(source, "atomic_trace.vcd")(context)

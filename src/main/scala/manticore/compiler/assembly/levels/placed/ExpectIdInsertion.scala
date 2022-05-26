@@ -5,12 +5,11 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.UInt16
 
 object ExpectIdInsertion
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    extends PlacedIRTransformer {
 
   import PlacedIR._
 
-  override def transform(
-      program: DefProgram,
+  override def transform(program: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = {
 

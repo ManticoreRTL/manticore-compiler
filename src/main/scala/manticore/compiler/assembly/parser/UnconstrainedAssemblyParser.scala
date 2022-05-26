@@ -15,7 +15,7 @@ import scala.collection.mutable
 
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import java.io.File
-import manticore.compiler.assembly.levels.Transformation
+
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.AssemblyContext
@@ -116,7 +116,7 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
   protected def delim: Parser[Token] = _delim
 }
 
-private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
+private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   type Tokens = AssemblyTokens
   val lexical: UnconstrainedAssemblyLexer = new UnconstrainedAssemblyLexer()
   import lexical._
@@ -492,25 +492,4 @@ private[this] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
 }
 
-object AssemblyParser extends HasTransformationID {
 
-  def apply(
-      source: String,
-      context: AssemblyContext
-  ): UnconstrainedIR.DefProgram = {
-    context.logger.info("Parsing from string input")
-    UnconstrainedAssemblyParser(source, context)
-  }
-
-  def apply(
-      source: File,
-      context: AssemblyContext
-  ): UnconstrainedIR.DefProgram = {
-    context.logger.info("Parsing from file input")
-    UnconstrainedAssemblyParser(
-      scala.io.Source.fromFile(source).mkString(""),
-      context
-    )
-  }
-
-}

@@ -10,6 +10,8 @@ import manticore.compiler.assembly.levels.AssemblyPrinter
 import java.math.BigInteger
 import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
 import manticore.compiler.assembly.BinaryOperator
+import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.levels.AssemblyChecker
 
 /** IR level with placed processes and allocated registers.
   *
@@ -453,6 +455,10 @@ object LatencyAnalysis {
     manhattan
   }
 }
+
+
+trait PlacedIRTransformer extends AssemblyTransformer[PlacedIR.DefProgram] {}
+trait PlacedIRChecker extends AssemblyChecker[PlacedIR.DefProgram] {}
 
 object PlacedIRPrinter extends AssemblyPrinter[PlacedIR.DefProgram] {}
 

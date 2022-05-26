@@ -1,11 +1,11 @@
 package manticore.compiler.frontend.yosys
 
-import manticore.compiler.ManticoreTransform
+import manticore.compiler.FunctionalTransformation
 import manticore.compiler.AssemblyContext
 import scala.language.implicitConversions
 
 
-trait YosysPass extends ManticoreTransform[YosysResultProxy, YosysResultProxy] {
+trait YosysPass extends FunctionalTransformation[YosysResultProxy, YosysResultProxy] {
 
   protected def passProxy(implicit ctx: AssemblyContext): YosysPassProxy
   override def apply(current: YosysResultProxy)(implicit

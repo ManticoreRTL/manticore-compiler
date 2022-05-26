@@ -1,6 +1,6 @@
 package manticore.compiler.assembly.levels.placed.lowering
 
-import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.ConstType
@@ -21,12 +21,12 @@ import manticore.compiler.assembly.levels.placed.LatencyAnalysis
   * @author Mahyar Emami <mahyar.emami@epfl.ch>
   */
 private[lowering] object RegisterAllocationTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    extends PlacedIRTransformer {
   import PlacedIR._
 
   override def transform(
-      source: DefProgram,
-      context: AssemblyContext
+      source: DefProgram)(
+      implicit context: AssemblyContext
   ): DefProgram = {
 
     val processes = source.processes.map(transform(_)(context))

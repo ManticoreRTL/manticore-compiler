@@ -101,10 +101,11 @@ class DeadCodeEliminationTest extends UnitFixtureTest with UnitTestMatchers{
           """
 
       val compiler =
-        UnconstrainedNameChecker followedBy
-          UnconstrainedMakeDebugSymbols followedBy
-          UnconstrainedDeadCodeElimination followedBy
-          WidthConversion.transformation followedBy
+        AssemblyParser andThen
+        UnconstrainedNameChecker andThen
+          UnconstrainedMakeDebugSymbols andThen
+          UnconstrainedDeadCodeElimination andThen
+          WidthConversion.transformation andThen
           UnconstrainedCloseSequentialCycles
 
       // implicit val ctx = AssemblyContext(
@@ -115,9 +116,9 @@ class DeadCodeEliminationTest extends UnitFixtureTest with UnitTestMatchers{
       //   debug_message = true
       // )
       implicit val ctx = fixture.ctx
-      val parsed = AssemblyParser(source, ctx)
 
-      val compiled = compiler(parsed, ctx)._1
+
+      val compiled = compiler(source)
       implicit val testId = new HasLoggerId {
         val id: String = "Monitor Callback"
       }

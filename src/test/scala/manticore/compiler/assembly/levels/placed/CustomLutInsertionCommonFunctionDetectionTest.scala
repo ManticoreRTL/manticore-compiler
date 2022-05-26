@@ -34,26 +34,27 @@ class CustomLutInsertionCommonFunctionDetectionTest extends UnitFixtureTest with
     )
 
     val lowerCompiler =
-      ManticorePasses.frontend followedBy
-      ManticorePasses.middleend followedBy
-      UnconstrainedToPlacedTransform followedBy
-      PlacedIRConstantFolding followedBy
+      AssemblyParser andThen
+      ManticorePasses.frontend andThen
+      ManticorePasses.middleend andThen
+      UnconstrainedToPlacedTransform andThen
+      PlacedIRConstantFolding andThen
       PlacedIRCommonSubExpressionElimination
 
     val lutCompiler =
-      CustomLutInsertion followedBy
+      CustomLutInsertion andThen
       PlacedIRDeadCodeElimination
 
     val prog = XorReduce(fixture)
-    val parsed = AssemblyParser(prog, ctx)
-    val lowered = lowerCompiler(parsed, ctx)._1
+
+    val lowered = lowerCompiler(prog)
 
     fixture.dump(
       s"before_luts_human.masm",
       PlacedIRDebugSymbolRenamer.makeHumanReadable(lowered).serialized
     )
 
-    val loweredWithLuts = lutCompiler(lowered, ctx)._1
+    val loweredWithLuts = lutCompiler(lowered)
 
     fixture.dump(
       s"after_luts_human.masm",
@@ -72,6 +73,6 @@ class CustomLutInsertionCommonFunctionDetectionTest extends UnitFixtureTest with
     // Note that we must close sequential cycles before running the interpreter as we have not
     // scheduled the code and sequential cycles are open (InputType registers never get updated
     // between cycles).
-    (PlacedIRCloseSequentialCycles followedBy AtomicInterpreter)(loweredWithLuts, ctx)
+    (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(loweredWithLuts)
   }
 }

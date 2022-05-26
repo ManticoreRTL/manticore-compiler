@@ -226,31 +226,32 @@ class SimpleCustomLutTester extends UnitFixtureTest {
 
   it should "correctly identify LUTs" in { f =>
     val (programOrig, ctx) = mkProgram(f)
-    val programOrigUnconstrained = AssemblyParser(programOrig, ctx)
+
+    val programOrigUnconstrained = AssemblyParser(programOrig)(ctx)
 
     val lowerCompiler =
-      UnconstrainedNameChecker followedBy
-      UnconstrainedMakeDebugSymbols followedBy
+      UnconstrainedNameChecker andThen
+      UnconstrainedMakeDebugSymbols andThen
       UnconstrainedToPlacedTransform
 
-    val programPlaced = lowerCompiler(programOrigUnconstrained, ctx)._1
+    val programPlaced = lowerCompiler(programOrigUnconstrained)(ctx)
     f.dump(
       s"placed_human.masm",
       PlacedIRDebugSymbolRenamer.makeHumanReadable(programPlaced)(ctx).serialized
     )
 
     val lutCompiler =
-      CustomLutInsertion followedBy
+      CustomLutInsertion andThen
       PlacedIRDeadCodeElimination
 
     withClue("The program without LUTs should successfully run:") {
       // Interpret the placed program to ensure it does not fail.
       // If it crashes, then the program is ill-formed.
-      AtomicInterpreter(programPlaced, ctx)
+      AtomicInterpreter(programPlaced)(ctx)
     }
 
     withClue("The program with LUTs should successfully run:") {
-      val placedProgramWithLuts = lutCompiler(programPlaced, ctx)._1
+      val placedProgramWithLuts = lutCompiler(programPlaced)(ctx)
       f.dump(
         s"lut_human.masm",
         PlacedIRDebugSymbolRenamer.makeHumanReadable(placedProgramWithLuts)(ctx).serialized
@@ -259,7 +260,7 @@ class SimpleCustomLutTester extends UnitFixtureTest {
       // Interpret the optimized program to ensure it does not fail.
       // If it crashes, then the program is incorrect (as the previous lowered program
       // is correct if we reached this point)
-      AtomicInterpreter(placedProgramWithLuts, ctx)
+      AtomicInterpreter(placedProgramWithLuts)(ctx)
     }
 
   }

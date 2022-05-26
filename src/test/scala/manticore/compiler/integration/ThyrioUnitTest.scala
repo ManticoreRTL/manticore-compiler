@@ -2,7 +2,7 @@ package manticore.compiler.integration
 
 import manticore.compiler.UnitTest
 import manticore.compiler.integration.thyrio.ExternalTool
-import manticore.compiler.assembly.levels.Transformation
+
 import manticore.compiler.UnitFixtureTest
 
 trait ThyrioUnitTest extends UnitFixtureTest {

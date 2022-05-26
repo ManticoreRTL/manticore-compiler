@@ -244,13 +244,13 @@ trait YosysUnitTest {
   )(implicit ctx: AssemblyContext): ArrayBuffer[String] = {
 
     val parsed =
-      AssemblyParser(testDir.resolve(filename).toFile(), ctx)
+      AssemblyParser(testDir.resolve(filename).toFile())
     val compiler =
-      UnconstrainedNameChecker followedBy
-        UnconstrainedMakeDebugSymbols followedBy
-        UnconstrainedOrderInstructions followedBy
+      UnconstrainedNameChecker andThen
+        UnconstrainedMakeDebugSymbols andThen
+        UnconstrainedOrderInstructions andThen
         UnconstrainedCloseSequentialCycles
-    val program = compiler(parsed, ctx)._1
+    val program = compiler(parsed)
     val out = ArrayBuffer.empty[String]
     val interp = UnconstrainedInterpreter.instance(
       program = program,

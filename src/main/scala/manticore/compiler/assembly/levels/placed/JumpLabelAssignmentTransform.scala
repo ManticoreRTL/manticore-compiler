@@ -17,15 +17,13 @@ import manticore.compiler.assembly.levels.UInt16
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-object JumpLabelAssignmentTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+object JumpLabelAssignmentTransform extends PlacedIRTransformer {
   import PlacedIR._
   import TaggedInstruction._
 
   override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = source
+      source: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = source
     .copy(
       processes = source.processes.map { assignLabels(_)(context) }
     )
@@ -82,7 +80,10 @@ object JumpLabelAssignmentTransform
               newBody :+ setBreakTargets(head, targets.head)
             )
           } else {
-            ctx.logger.error("JumpTable can not be last instruction in a process", head)
+            ctx.logger.error(
+              "JumpTable can not be last instruction in a process",
+              head
+            )
             assert(next == Nil)
             // the last instruction in a taggedBlock is a JumpTable, so we need
             // to jump to the beginning, but we can no jump backwards. So this is

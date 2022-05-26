@@ -22,7 +22,7 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRCommonSub
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRParMuxDeconstructionTransform
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.ManticoreAssemblyIR
-import manticore.compiler.assembly.levels.Transformation
+
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
@@ -35,14 +35,15 @@ import manticore.compiler.assembly.levels.placed.interpreter.PlacedIRInterpreter
 import manticore.compiler.assembly.levels.InterpreterMonitor
 import manticore.compiler.assembly.levels.placed.PlacedIRDebugSymbolRenamer
 import manticore.compiler.assembly.levels.placed.PlacedIR
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRTransformer
 
 class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
   behavior of "JumpTable extraction"
 
   object Commons {
-    val Optimizations = UnconstrainedIRConstantFolding followedBy
-      UnconstrainedIRCommonSubExpressionElimination followedBy
+    val Optimizations = UnconstrainedIRConstantFolding andThen
+      UnconstrainedIRCommonSubExpressionElimination andThen
       UnconstrainedDeadCodeElimination
     def context(fixture: FixtureParam) = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
@@ -54,22 +55,21 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
     )
 
     def frontend(optimize: Boolean, useJump: Boolean) =
-      UnconstrainedNameChecker followedBy
-        UnconstrainedMakeDebugSymbols followedBy
-        UnconstrainedRenameVariables followedBy
-        UnconstrainedOrderInstructions followedBy
-        Transformation.predicated(optimize)(Optimizations) followedBy
-        Transformation.predicated(useJump)(
-          UnconstrainedJumpTableConstruction followedBy
-            UnconstrainedNameChecker
-        ) followedBy
-        UnconstrainedIRParMuxDeconstructionTransform followedBy
-        WidthConversion.transformation followedBy
-        Transformation.predicated(optimize)(Optimizations)
+      AssemblyParser andThen
+      UnconstrainedNameChecker andThen
+        UnconstrainedMakeDebugSymbols andThen
+        UnconstrainedRenameVariables andThen
+        UnconstrainedOrderInstructions andThen
+        Optimizations.withCondition(optimize) andThen
+        UnconstrainedJumpTableConstruction.withCondition(useJump) andThen
+        UnconstrainedNameChecker.withCondition(useJump) andThen
+        UnconstrainedIRParMuxDeconstructionTransform andThen
+        WidthConversion.transformation andThen
+        Optimizations.withCondition(optimize)
     def backend =
-      UnconstrainedToPlacedTransform followedBy
-        PlacedIRCloseSequentialCycles followedBy
-        JumpTableNormalizationTransform followedBy
+      UnconstrainedToPlacedTransform andThen
+        PlacedIRCloseSequentialCycles andThen
+        JumpTableNormalizationTransform andThen
         JumpLabelAssignmentTransform
   }
   object AluTestCommons {
@@ -100,14 +100,14 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
     }
 
     def doTest(optimize: Boolean, useJump: Boolean, fixture: FixtureParam) = {
-      val ctx = Commons.context(fixture)
-      val program = AssemblyParser(AluTestCommons.getAluSource(fixture), ctx)
+      implicit val ctx = Commons.context(fixture)
+      val programText = AluTestCommons.getAluSource(fixture)
 
-      def compiler = Commons.frontend(optimize, useJump) followedBy
-        UnconstrainedCloseSequentialCycles followedBy
+      def compiler = Commons.frontend(optimize, useJump) andThen
+        UnconstrainedCloseSequentialCycles andThen
         UnconstrainedInterpreter
 
-      val (transformed, _) = compiler(program, ctx)
+      val transformed = compiler(programText)
       val hasJumpTable = transformed.processes.head.body.exists {
         _.isInstanceOf[UnconstrainedIR.JumpTable]
       }
@@ -198,16 +198,16 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
             PARMUX resnext, c12 ? l12, c13 ? l13, c14 ? l14, l15;
 
       """
-      val ctx = Commons.context(fixture)
+      implicit val ctx = Commons.context(fixture)
 
-      val parsed = AssemblyParser(source, ctx)
+
 
       val compiler = Commons.frontend(
         true,
         true
-      ) followedBy Commons.backend
+      ) andThen Commons.backend
 
-      val converted = compiler(parsed, ctx)._1
+      val converted = compiler(source)
 
       val monitor = PlacedIRInterpreterMonitor(
         converted
@@ -338,12 +338,12 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
         }
       }
 
-      val compiler = Commons.frontend(true, true) followedBy Commons.backend
+      val compiler = Commons.frontend(true, true) andThen Commons.backend
 
-      val ctx = Commons.context(fixture)
+      implicit val ctx = Commons.context(fixture)
 
-      val parsed = AssemblyParser(source, ctx)
-      val compiled = compiler(parsed, ctx)._1
+
+      val compiled = compiler(source)
 
       val hasNoJumpTable = compiled.processes.head.body.forall(inst =>
         !inst.isInstanceOf[PlacedIR.JumpTable]
@@ -488,12 +488,13 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
         source
       )
 
-      val compiler = Commons.frontend(true, true) followedBy Commons.backend
+      implicit val ctx = Commons.context(fixture)
 
-      val ctx = Commons.context(fixture)
+      val compiler = Commons.frontend(true, true) andThen Commons.backend
 
-      val parsed = AssemblyParser(source, ctx)
-      val compiled = compiler(parsed, ctx)._1
+
+
+      val compiled = compiler(source)
 
       val hasNoJumpTable = compiled.processes.head.body.forall(inst =>
         !inst.isInstanceOf[PlacedIR.JumpTable]
@@ -642,12 +643,10 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
     """
 
-      val compiler = Commons.frontend(true, true) followedBy Commons.backend
+      implicit val ctx = Commons.context(fixture)
+      val compiler = Commons.frontend(true, true) andThen Commons.backend
 
-      val ctx = Commons.context(fixture)
-
-      val parsed = AssemblyParser(text, ctx)
-      val compiled = compiler(parsed, ctx)._1
+      val compiled = compiler(text)
 
       val hasJumpTable = compiled.processes.head.body.exists(inst =>
         inst.isInstanceOf[PlacedIR.JumpTable]

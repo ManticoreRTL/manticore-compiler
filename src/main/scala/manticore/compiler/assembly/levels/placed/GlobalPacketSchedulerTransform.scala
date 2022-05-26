@@ -19,15 +19,14 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
 import manticore.compiler.assembly.annotations.{Layout => LayoutAnnotation}
 object GlobalPacketSchedulerTransform
     extends DependenceGraphBuilder
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
   val flavor = PlacedIR
   import flavor._
 
   import manticore.compiler.assembly.levels.placed.LatencyAnalysis
   override def transform(
-      program: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
 
     val dimx = context.max_dimx
     val dimy = context.max_dimy
@@ -348,7 +347,9 @@ object GlobalPacketSchedulerTransform
 
         context.logger.debug {
           val cp = recv_to_sched.clone().dequeueAll
-          s"RECVs in ${p.id}:\n${cp.map { i => s"${i._1}: ${i._2}" } mkString "\n"}"
+          s"RECVs in ${p.id}:\n${cp.map { i =>
+            s"${i._1}: ${i._2}"
+          } mkString "\n"}"
         }
 
         while (recv_to_sched.nonEmpty) {

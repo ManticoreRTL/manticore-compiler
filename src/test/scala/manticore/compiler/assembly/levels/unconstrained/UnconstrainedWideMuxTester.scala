@@ -54,9 +54,7 @@ class UnconstrainedWideMuxTester extends UnconstrainedWideTest {
     repeat(100) { i =>
       val prog_text = mkProgram(f)
 
-      val parsed = AssemblyParser(prog_text, f.ctx)
-
-      backend(parsed, f.ctx)
+      backend(prog_text)(f.ctx)
     }
 
   }

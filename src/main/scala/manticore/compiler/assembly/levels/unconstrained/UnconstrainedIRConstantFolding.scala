@@ -9,15 +9,11 @@ import manticore.compiler.assembly.levels.ConstType
 
 object UnconstrainedIRConstantFolding
     extends ConstantFolding
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
   import flavor._
   import BinaryOperator._
-
 
   type ConcreteConstant = UIntWide
 
@@ -105,9 +101,9 @@ object UnconstrainedIRConstantFolding
   }
 
   def sliceEvaluator(
-    const: ConcreteConstant,
-    offset: Int,
-    length: Int
+      const: ConcreteConstant,
+      offset: Int,
+      length: Int
   ): ConcreteConstant = {
     val shifted = (const >> offset).toBigInt
     val mask = ((BigInt(1) << length) - 1)
@@ -127,10 +123,9 @@ object UnconstrainedIRConstantFolding
     )
   }
 
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram =
-    do_transform(source)(context)
+    do_transform(source)
 
 }

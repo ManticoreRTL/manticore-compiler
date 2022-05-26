@@ -76,8 +76,7 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
 
   private def test(width_rd: Int, width_rs: Int)(f: FixtureParam): Unit = {
     val prog_txt = mkProgram(width_rd, width_rs)(f)
-    val program = AssemblyParser(prog_txt, f.ctx)
-    backend.apply(program, f.ctx)
+    backend.apply(prog_txt)(f.ctx)
   }
 
   it should "handle width(rd) == width(rs) correctly" taggedAs Tags.WidthConversion in {
@@ -160,8 +159,7 @@ class UnconstrainedWideShiftRightLogicalTester extends UnconstrainedWideTest {
       BigInt(1) << (width_rs - 1),
       shift_amount
     )(f)
-    val prog = AssemblyParser(txt, f.ctx)
-    backend.apply(prog, f.ctx)
+    backend.apply(txt)(f.ctx)
 
   }
 

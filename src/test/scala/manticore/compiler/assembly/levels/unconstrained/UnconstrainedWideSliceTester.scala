@@ -75,12 +75,12 @@ class UnconstrainedWideSliceTester extends UnitFixtureTest with UnitTestMatchers
       log_file = Some(fixture.test_dir.resolve("output.log").toFile()),
     )
     def frontend =
-      ManticorePasses.frontend followedBy
-      ManticorePasses.middleend followedBy
+      ManticorePasses.frontend andThen
+      ManticorePasses.middleend andThen
       UnconstrainedCloseSequentialCycles
 
-    val parsed = AssemblyParser(text, ctx)
-    val compiled = frontend(parsed, ctx)._1
+    val parsed = AssemblyParser(text)
+    val compiled = frontend(parsed)
 
     fixture.dump(
       s"human.masm",

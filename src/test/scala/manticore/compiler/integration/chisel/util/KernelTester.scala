@@ -29,7 +29,7 @@ trait KernelTester
     val program = compile(source, context)
 
     // interpret to ensure our expectations are met before RTL simulation is run
-    AtomicInterpreter(program, context)
+    AtomicInterpreter(program)(context)
 
     val assembled_program =
       MachineCodeGenerator.assembleProgram(program)(context)

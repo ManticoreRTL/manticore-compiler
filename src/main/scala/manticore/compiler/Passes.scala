@@ -30,46 +30,46 @@ import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElim
 object ManticorePasses {
 
   def FrontendInterpreter(cond: Boolean = true) =
-    UnconstrainedCloseSequentialCycles followedBy
-      UnconstrainedInterpreter.guard(cond) followedBy
+    UnconstrainedCloseSequentialCycles andThen
+      UnconstrainedInterpreter.withCondition(cond) andThen
       UnconstrainedBreakSequentialCycles
 
-  val frontend = UnconstrainedNameChecker followedBy
-    UnconstrainedMakeDebugSymbols followedBy
-    UnconstrainedOrderInstructions followedBy
-    UnconstrainedIRConstantFolding followedBy
-    UnconstrainedDeadCodeElimination followedBy
+  val frontend = UnconstrainedNameChecker andThen
+    UnconstrainedMakeDebugSymbols andThen
+    UnconstrainedOrderInstructions andThen
+    UnconstrainedIRConstantFolding andThen
+    UnconstrainedDeadCodeElimination andThen
     UnconstrainedRenameVariables
 
   val middleend =
-    WidthConversion.transformation followedBy
-      UnconstrainedIRConstantFolding followedBy
+    WidthConversion.transformation andThen
+      UnconstrainedIRConstantFolding andThen
       UnconstrainedDeadCodeElimination
 
   def BackendInterpreter(cond: Boolean = true) =
-    AtomicInterpreter.guard(cond)
+    AtomicInterpreter.withCondition(cond)
 
   val ExtractParallelism = // do not call DCE in the middle
-    ProcessSplittingTransform followedBy
-      PlacedIROrderInstructions followedBy
-      ProcessMergingTransform followedBy
-      PlacedIROrderInstructions followedBy
+    ProcessSplittingTransform andThen
+      PlacedIROrderInstructions andThen
+      ProcessMergingTransform andThen
+      PlacedIROrderInstructions andThen
       RoundRobinPlacerTransform
   val BackendLowerEnd =
-      LocalMemoryAllocation followedBy
-      SendInsertionTransform followedBy
-      PlacedIRDeadCodeElimination followedBy
-      ListSchedulerTransform followedBy
-      PredicateInsertionTransform followedBy
-      GlobalPacketSchedulerTransform followedBy
-      RegisterAllocationTransform followedBy
+      LocalMemoryAllocation andThen
+      SendInsertionTransform andThen
+      PlacedIRDeadCodeElimination andThen
+      ListSchedulerTransform andThen
+      PredicateInsertionTransform andThen
+      GlobalPacketSchedulerTransform andThen
+      RegisterAllocationTransform andThen
       ExpectIdInsertion
 
   def backend =
-    UnconstrainedToPlacedTransform followedBy
-    PlacedIRConstantFolding followedBy
-    PlacedIRCommonSubExpressionElimination followedBy
-    ExtractParallelism followedBy
+    UnconstrainedToPlacedTransform andThen
+    PlacedIRConstantFolding andThen
+    PlacedIRCommonSubExpressionElimination andThen
+    ExtractParallelism andThen
     BackendLowerEnd
 
 }

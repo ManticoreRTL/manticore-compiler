@@ -6,16 +6,15 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.ManticoreAssemblyIR
 
 object PlacedIRCommonSubExpressionElimination
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram]
+    extends PlacedIRTransformer
     with CommonSubExpressionElimination {
 
   override val flavor = PlacedIR
   import flavor._
 
   override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram =
+      source: DefProgram
+  )(implicit context: AssemblyContext): DefProgram =
     do_transform(source)(context)
 
 }

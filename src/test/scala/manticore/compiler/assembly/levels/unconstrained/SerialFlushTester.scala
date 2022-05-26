@@ -11,10 +11,10 @@ class SerialFlushTester extends UnitFixtureTest with UnitTestMatchers {
 
     def compile(text: String)(implicit ctx: AssemblyContext) = {
         println(text)
-        val parsed = AssemblyParser(text, ctx)
-        val compiler = UnconstrainedNameChecker followedBy
+        val parsed = AssemblyParser(text)
+        val compiler = UnconstrainedNameChecker andThen
           UnconstrainedMakeDebugSymbols
-        compiler(parsed, ctx)._1
+        compiler(parsed)
     }
     "Flush" should "send a formatted message over serial" in { fixture =>
 

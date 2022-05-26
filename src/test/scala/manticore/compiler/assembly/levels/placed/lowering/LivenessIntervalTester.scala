@@ -26,19 +26,20 @@ class LivenessIntervalTester extends UnitFixtureTest {
 
   behavior of "Lifetime interval"
 
-  val compiler = UnconstrainedNameChecker followedBy
-    UnconstrainedMakeDebugSymbols followedBy
-    UnconstrainedRenameVariables followedBy
-    UnconstrainedJumpTableConstruction followedBy
-    WidthConversion.transformation followedBy
-    UnconstrainedIRConstantFolding followedBy
-    UnconstrainedIRCommonSubExpressionElimination followedBy
-    UnconstrainedDeadCodeElimination followedBy
-    UnconstrainedToPlacedTransform followedBy
-    JumpTableNormalizationTransform followedBy
-    ProgramSchedulingTransform followedBy
-    JumpLabelAssignmentTransform followedBy
-    LocalMemoryAllocation followedBy
+  val compiler = AssemblyParser andThen
+    UnconstrainedNameChecker andThen
+    UnconstrainedMakeDebugSymbols andThen
+    UnconstrainedRenameVariables andThen
+    UnconstrainedJumpTableConstruction andThen
+    WidthConversion.transformation andThen
+    UnconstrainedIRConstantFolding andThen
+    UnconstrainedIRCommonSubExpressionElimination andThen
+    UnconstrainedDeadCodeElimination andThen
+    UnconstrainedToPlacedTransform andThen
+    JumpTableNormalizationTransform andThen
+    ProgramSchedulingTransform andThen
+    JumpLabelAssignmentTransform andThen
+    LocalMemoryAllocation andThen
     RegisterAllocationTransform
 
   it should "do something" in { fixture =>
@@ -128,8 +129,8 @@ class LivenessIntervalTester extends UnitFixtureTest {
       debug_message = true
       // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
     )
-    val parsed = AssemblyParser(text, ctx)
-    val compiled = compiler(parsed, ctx)._1
+
+    val compiled = compiler(text)
     fixture.dump(
       "human_readable.masm",
       PlacedIRDebugSymbolRenamer.makeHumanReadable(compiled)(ctx).serialized

@@ -35,7 +35,7 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
   */
 object ListSchedulerTransform
     extends DependenceGraphBuilder
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
@@ -120,7 +120,7 @@ object ListSchedulerTransform
     }
 
     ctx.logger.dumpArtifact(
-      s"dependence_graph_${phase_id}_${proc.id.id}_${ctx.logger.countProgress()}.dot"
+      s"dependence_graph_${transformId}_${proc.id.id}_${ctx.logger.countProgress()}.dot"
     ) {
 
       import scalax.collection.io.dot._
@@ -376,8 +376,7 @@ object ListSchedulerTransform
 
   }
 
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = {
 

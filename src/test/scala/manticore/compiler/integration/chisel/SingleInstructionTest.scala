@@ -203,7 +203,7 @@ trait SingleInstructionTest
       compile(mkProgram(context, op1, op2, expected_results), context)
     // interpret the program to make sure it is correct before trying it
     // out on Verilator
-    ManticorePasses.BackendInterpreter(true)(program, context)
+    ManticorePasses.BackendInterpreter(true)(program)(context)
 
     // now we need to generate machine code and give it to verilator
     // we should also keep a list of all the messages we expect to observe

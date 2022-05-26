@@ -7,20 +7,20 @@ import manticore.compiler.AssemblyContext
   * @author
   *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
-object RoundRobinPlacerTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+object RoundRobinPlacerTransform extends PlacedIRTransformer {
   import PlacedIR._
   override def transform(
-      program: DefProgram,
-      ctx: AssemblyContext
-  ): DefProgram = {
+      program: DefProgram
+  )(implicit ctx: AssemblyContext): DefProgram = {
     val places = Range(0, ctx.max_dimx).flatMap { x =>
       Range(0, ctx.max_dimy).map { y => (x, y) }
     }
 
     val placed_processes =
       program.processes
-        .sortBy { p => p.body.count(_.isInstanceOf[Expect]) } { Ordering[Int].reverse }
+        .sortBy { p => p.body.count(_.isInstanceOf[Expect]) } {
+          Ordering[Int].reverse
+        }
         .zip(places)
         .map { case (proc, (x, y)) =>
           proc

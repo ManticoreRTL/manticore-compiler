@@ -32,8 +32,7 @@ import manticore.compiler.FormatString.FmtHex
   * @author
   *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
-object UnconstrainedInterpreter
-    extends AssemblyChecker[UnconstrainedIR.DefProgram] {
+object UnconstrainedInterpreter extends UnconstrainedIRChecker {
   val flavor = UnconstrainedIR
   import flavor._
   // wrapper class for memory state
@@ -780,8 +779,7 @@ object UnconstrainedInterpreter
   /** @param source
     * @param context
     */
-  override def check(
-      source: UnconstrainedIR.DefProgram,
+  override def check(source: UnconstrainedIR.DefProgram)(implicit
       context: AssemblyContext
   ): Unit = {
 

@@ -90,7 +90,6 @@ class UnconstrainedWideSeqTester extends UnconstrainedWideTest {
 
 
   it should "correctly compute wide SEQ" taggedAs Tags.WidthConversion in { f =>
-    val prog = AssemblyParser(mkProgram(f), f.ctx)
-    backend(prog, f.ctx)
+    backend(mkProgram(f))(f.ctx)
   }
 }

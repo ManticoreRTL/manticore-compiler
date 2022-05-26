@@ -68,9 +68,8 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
     for (ix <- 0 until 20) {
       println("Generating passing program")
       val passing = passingProgram()
-      println(passing)
-      val parsed = AssemblyParser(passing, f.ctx)
-      backend(parsed, f.ctx)
+
+      backend(passing)(f.ctx)
     }
   }
 
@@ -80,9 +79,9 @@ class UnconstrainedWideExpectTester extends UnconstrainedWideTest {
       println("Generating failing program")
       val failing = failingProgram()
 
-      val parsed = AssemblyParser(failing, f.ctx)
+
       assertThrows[CompilationFailureException] {
-        backend(parsed, f.ctx)
+        backend(failing)(f.ctx)
 
       }
     }

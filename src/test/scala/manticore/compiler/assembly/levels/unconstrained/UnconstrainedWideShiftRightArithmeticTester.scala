@@ -95,8 +95,7 @@ class UnconstrainedWideShiftRightArithmeticTester
       f: FixtureParam
   ): Unit = {
     val prog_txt = mkProgram(width_rd, width_rs, pos)(f)
-    val program = AssemblyParser(prog_txt, f.ctx)
-    backend.apply(program, f.ctx)
+    backend.apply(prog_txt)(f.ctx)
   }
 
   it should "handle width(rd) = width(rs) < 16 and rs < 0" taggedAs Tags.WidthConversion in {

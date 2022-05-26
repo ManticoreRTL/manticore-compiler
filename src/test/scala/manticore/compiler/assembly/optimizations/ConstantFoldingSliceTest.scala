@@ -105,15 +105,15 @@ class ConstantFoldingSliceTest  extends UnitFixtureTest with UnitTestMatchers {
 
   it should "correctly remove the slice" in { f =>
     val prog_text = mkProgram(f)
-    val parsed = AssemblyParser(prog_text, f.ctx)
+    val parsed = AssemblyParser(prog_text)(f.ctx)
 
     println(parsed.serialized)
 
     val compiler =
-      UnconstrainedIRConstantFolding followedBy
+      UnconstrainedIRConstantFolding andThen
       UnconstrainedCloseSequentialCycles
 
-    val lowered = compiler(parsed, f.ctx)._1
+    val lowered = compiler(parsed)(f.ctx)
     println(lowered.serialized)
 
     // There is only 1 proc.
@@ -137,6 +137,6 @@ class ConstantFoldingSliceTest  extends UnitFixtureTest with UnitTestMatchers {
       numExpectedConsts > 0
     }
 
-    UnconstrainedInterpreter(lowered, f.ctx)
+    UnconstrainedInterpreter(lowered)(f.ctx)
   }
 }

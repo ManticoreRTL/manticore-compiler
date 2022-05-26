@@ -13,7 +13,7 @@ import manticore.compiler.assembly.levels.InterpreterMonitor
 import manticore.compiler.assembly.levels.InterpreterMonitorCompanion
 
 trait InterpreterBase {
-  implicit val phase_id: TransformationID
+  implicit val transformId: TransformationID
 
   // implicit val ctx: AssemblyContext
 }

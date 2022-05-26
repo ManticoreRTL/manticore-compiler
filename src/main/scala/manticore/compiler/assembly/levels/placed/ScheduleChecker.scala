@@ -7,19 +7,17 @@ import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.HasLoggerId
+import manticore.compiler.LoggerId
 
-object ScheduleChecker
-    extends DependenceGraphBuilder
-    with AssemblyChecker[PlacedIR.DefProgram] {
+object ScheduleChecker extends DependenceGraphBuilder with PlacedIRChecker {
   val flavor = PlacedIR
 
   import flavor._
 
   override def check(
-      program: PlacedIR.DefProgram,
-      context: AssemblyContext
-  ): Unit = {
-    program.processes.map(check(_)(context))
+      program: PlacedIR.DefProgram
+  )(implicit context: AssemblyContext): Unit = {
+    program.processes.map(check)
   }
 
   def check(proc: PlacedIR.DefProcess)(implicit ctx: AssemblyContext): Unit = {
@@ -34,7 +32,7 @@ object ScheduleChecker
       }
 
     // Inputs, constants, and base pointer are already defined at cycle 0
-    val logger_id = new HasLoggerId { val id = phase_id.id + s": ${proc.id}" }
+    val logger_id = LoggerId(transformId.id + s": ${proc.id}")
 
     var expect_stop_reached = false
     proc.body.zipWithIndex.foreach { case (inst, cycle) =>

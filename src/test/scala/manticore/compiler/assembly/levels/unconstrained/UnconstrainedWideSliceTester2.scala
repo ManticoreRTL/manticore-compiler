@@ -109,10 +109,10 @@ class UnconstrainedWideSliceTester2 extends UnconstrainedWideTest {
   it should "correctly handle the slice" taggedAs Tags.WidthConversion in { f =>
     val prog_text = mkProgram(f, 1000, 90)
 
-    val parsed = AssemblyParser(prog_text, f.ctx)
+
     // println(parsed.serialized)
     // println(UnconstrainedIRDebugSymbolRenamer.makeHumanReadable(parsed)(f.ctx).serialized)
-    val lowered = backend(parsed, f.ctx)._1
+    val lowered = backend(prog_text)(f.ctx)
     // println(lowered.serialized)
     // println(UnconstrainedIRDebugSymbolRenamer.makeHumanReadable(lowered)(f.ctx).serialized)
   }

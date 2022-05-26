@@ -13,6 +13,8 @@ import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.HasWidth
 import manticore.compiler.assembly.HasSerialized
 import manticore.compiler.assembly.levels.HasVariableType
+import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.levels.AssemblyChecker
 
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
@@ -60,3 +62,6 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
 
   type Label = String
 }
+
+trait UnconstrainedIRTransformer extends AssemblyTransformer[UnconstrainedIR.DefProgram] {}
+trait UnconstrainedIRChecker extends AssemblyChecker[UnconstrainedIR.DefProgram] {}

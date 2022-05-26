@@ -128,7 +128,7 @@ object Main {
         sys.error("Failed parsing cli args")
     }
 
-    val ctx: AssemblyContext =
+    implicit val ctx: AssemblyContext =
       AssemblyContext(
         debug_message = cfg.debug_en,
         print_tree = cfg.print_tree,
@@ -148,15 +148,15 @@ object Main {
       import ManticorePasses._
 
       val phases =
-        frontend followedBy
-          middleend followedBy
-          FrontendInterpreter(cfg.interpret) followedBy
-          backend followedBy
+        frontend andThen
+          middleend andThen
+          FrontendInterpreter(cfg.interpret) andThen
+          backend andThen
           BackendInterpreter(cfg.interpret)
 
-      val (result, _) = phases(prg, ctx)
-      MachineCodeGenerator(result, ctx)
-      InitializerProgram(result, ctx)
+      val result = phases(prg)
+      // MachineCodeGenerator(result)
+      // InitializerProgram(result)
       cfg.report match {
         case Some(report_file) =>
           val printer = new PrintWriter(report_file)
@@ -168,7 +168,7 @@ object Main {
       }
     }
 
-    val parsed = AssemblyParser(cfg.input_file.get, ctx)
+    val parsed = AssemblyParser(cfg.input_file.get)
     runPhases(parsed)
 
   }

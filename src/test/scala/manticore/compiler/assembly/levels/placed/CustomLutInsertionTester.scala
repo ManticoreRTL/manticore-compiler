@@ -33,12 +33,12 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
     PicoRv32Circuit,
     Swizzle,
     XorReduce,
-    Xormix32,
+    Xormix32
   )
 
   val dims = Seq(
     (1, 1),
-    (4, 4),
+    (4, 4)
   )
 
   val numLutInputs = Seq(
@@ -46,7 +46,7 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
     3,
     4,
     5,
-    6,
+    6
   )
 
   val shareCustomFuncs = Seq(
@@ -54,74 +54,85 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
     true
   )
 
-  val lowerCompiler = ManticorePasses.frontend followedBy
-    ManticorePasses.middleend followedBy
-    UnconstrainedToPlacedTransform followedBy
-    PlacedIRConstantFolding followedBy
-    PlacedIRCommonSubExpressionElimination followedBy
-    ManticorePasses.ExtractParallelism followedBy
+  val lowerCompiler = AssemblyParser andThen ManticorePasses.frontend andThen
+    ManticorePasses.middleend andThen
+    UnconstrainedToPlacedTransform andThen
+    PlacedIRConstantFolding andThen
+    PlacedIRCommonSubExpressionElimination andThen
+    ManticorePasses.ExtractParallelism andThen
     SendInsertionTransform
 
   sources.foreach { source =>
     dims.foreach { case (dimx, dimy) =>
       numLutInputs.foreach { numCustomInstrInputs =>
         shareCustomFuncs.foreach { shareLuts =>
+          it should s"reduce virtual cycle lengths for (${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, shareLuts = ${shareLuts})" in {
+            f =>
+              implicit val ctx = AssemblyContext(
+                dump_all = true,
+                dump_dir = Some(f.test_dir.toFile()),
+                debug_message = false,
+                max_custom_instructions = 32,
+                max_custom_instruction_inputs = numCustomInstrInputs,
+                optimize_common_custom_functions = shareLuts,
+                max_dimx = dimx,
+                max_dimy = dimy,
+                max_cycles = 200,
+                log_file = Some(f.test_dir.resolve("output.log").toFile())
+              )
 
-          it should s"reduce virtual cycle lengths for (${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, shareLuts = ${shareLuts})" in { f =>
+              val progLowered = lowerCompiler(source(f))
 
-            implicit val ctx = AssemblyContext(
-              dump_all = true,
-              dump_dir = Some(f.test_dir.toFile()),
-              debug_message = false,
-              max_custom_instructions = 32,
-              max_custom_instruction_inputs = numCustomInstrInputs,
-              optimize_common_custom_functions = shareLuts,
-              max_dimx = dimx,
-              max_dimy = dimy,
-              max_cycles = 200,
-              log_file = Some(f.test_dir.resolve("output.log").toFile())
-            )
+              // Sanity check that the program interprets correctly without LUTs
+              (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
+                progLowered
+              )
 
-            val progOrig = AssemblyParser(source(f), ctx)
-            val progLowered = lowerCompiler(progOrig, ctx)._1
+              val progWithLuts = CustomLutInsertion(progLowered)
 
-            // Sanity check that the program interprets correctly without LUTs
-            (PlacedIRCloseSequentialCycles followedBy AtomicInterpreter)(progLowered, ctx)
+              // Sanity check that the program interprets correctly with LUTs.
+              (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
+                progWithLuts
+              )
 
-            val progWithLuts = CustomLutInsertion(progLowered, ctx)._1
+              // Since processes might be split, we need to insert Send instructions for correctness.
+              val progWithLutsDce =
+                PlacedIRDeadCodeElimination(progWithLuts)
 
-            // Sanity check that the program interprets correctly with LUTs.
-            (PlacedIRCloseSequentialCycles followedBy AtomicInterpreter)(progWithLuts, ctx)
+              // Sanity check that the program interprets correctly without LUTs
+              (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
+                progWithLutsDce
+              )
 
-            // Since processes might be split, we need to insert Send instructions for correctness.
-            val progWithLutsDce = PlacedIRDeadCodeElimination(progWithLuts, ctx)._1
+              def computeVirtualCycle(prog: DefProgram): Int = {
+                prog.processes.map(proc => proc.body.length).max
+              }
 
-            // Sanity check that the program interprets correctly without LUTs
-            (PlacedIRCloseSequentialCycles followedBy AtomicInterpreter)(progWithLutsDce, ctx)
+              def computePercentDelta(before: Int, after: Int): String = {
+                val delta = (after - before).toDouble
+                val absPercentDelta = (math.abs(delta) / before) * 100
+                val sign = if (delta > 0) "+" else "-"
+                s"${sign} %.2f %%".format(absPercentDelta)
+              }
 
-            def computeVirtualCycle(prog: DefProgram): Int = {
-              prog.processes.map(proc => proc.body.length).max
-            }
+              val vCyclesBefore = computeVirtualCycle(progLowered)
+              val vCyclesAfter = computeVirtualCycle(progWithLutsDce)
+              val percentDeltaStr =
+                computePercentDelta(vCyclesBefore, vCyclesAfter)
 
-            def computePercentDelta(before: Int, after: Int): String = {
-              val delta = (after - before).toDouble
-              val absPercentDelta = (math.abs(delta) / before) * 100
-              val sign = if (delta > 0) "+" else "-"
-              s"${sign} %.2f %%".format(absPercentDelta)
-            }
+              val numCustFuncsPerCore = progWithLutsDce.processes.map { proc =>
+                proc.functions.size
+              }.sorted
+              val numCustFuncsTotal = numCustFuncsPerCore.sum
+              println(
+                s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, share LUTs = ${shareLuts}, vCycle ${vCyclesBefore} -> ${vCyclesAfter} (${percentDeltaStr}) using ${numCustFuncsPerCore
+                  .mkString("+")} = ${numCustFuncsTotal} custom functions"
+              )
+              // assert(vCyclesBefore >= vCyclesAfter)
 
-            val vCyclesBefore = computeVirtualCycle(progLowered)
-            val vCyclesAfter = computeVirtualCycle(progWithLutsDce)
-            val percentDeltaStr = computePercentDelta(vCyclesBefore, vCyclesAfter)
-
-            val numCustFuncsPerCore = progWithLutsDce.processes.map { proc => proc.functions.size }.sorted
-            val numCustFuncsTotal = numCustFuncsPerCore.sum
-            println(s"${source.name}, ${dimx} x ${dimy}, ${numCustomInstrInputs}-LUT, share LUTs = ${shareLuts}, vCycle ${vCyclesBefore} -> ${vCyclesAfter} (${percentDeltaStr}) using ${numCustFuncsPerCore.mkString("+")} = ${numCustFuncsTotal} custom functions")
-            // assert(vCyclesBefore >= vCyclesAfter)
-
-            ctx.logger.dumpArtifact("stats.yaml") {
-              ctx.stats.asYaml
-            }(new HasLoggerId {val id = "stats_file"})
+              ctx.logger.dumpArtifact("stats.yaml") {
+                ctx.stats.asYaml
+              }(new HasLoggerId { val id = "stats_file" })
           }
         }
       }

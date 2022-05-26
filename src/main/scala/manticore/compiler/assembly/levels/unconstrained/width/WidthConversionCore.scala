@@ -15,7 +15,7 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVariables
 import scala.collection.mutable.ArrayBuffer
-
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRTransformer
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
   *
@@ -204,10 +204,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object WidthConversionCore
     extends ConversionBuilder
-    with AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    with UnconstrainedIRTransformer {
 
   import flavor._
 
@@ -2479,11 +2476,10 @@ object WidthConversionCore
     }
     builder.buildFrom(insts)
   }
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = source.copy(processes = source.processes.map { p =>
-    convert(p)(context)
+    convert(p)
   })
 
 }

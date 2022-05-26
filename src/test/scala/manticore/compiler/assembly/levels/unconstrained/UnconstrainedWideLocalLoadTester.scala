@@ -59,9 +59,7 @@ class UnconstrainedWideLocalLoadTester extends UnconstrainedWideTest {
     // the test may print warnings about Thyrio that do not matter
     Range(0, 10).foreach { i =>
       val prog_txt = mkProgram(s"ld_test_${i}")(f)
-      val prog = AssemblyParser(prog_txt, f.ctx)
-
-      backend(prog, f.ctx)
+      backend(prog_txt)(f.ctx)
     }
 
 

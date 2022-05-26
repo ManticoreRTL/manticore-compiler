@@ -50,16 +50,17 @@ trait ProgramTester {
   }
 
   def compiler =
-    ManticorePasses.frontend followedBy
-      ManticorePasses.middleend followedBy
-      UnconstrainedToPlacedTransform followedBy
-      ManticorePasses.BackendLowerEnd followedBy
-      ScheduleChecker followedBy
+
+    ManticorePasses.frontend andThen
+      ManticorePasses.middleend andThen
+      UnconstrainedToPlacedTransform andThen
+      ManticorePasses.BackendLowerEnd andThen
+      ScheduleChecker andThen
       LinkUtilizationChecker
 
   def compile(source: String, context: AssemblyContext): PlacedIR.DefProgram = {
-    val parsed = AssemblyParser(source, context)
-    compiler(parsed, context)._1
+    (AssemblyParser andThen compiler)(source)(context)
+
   }
 
 

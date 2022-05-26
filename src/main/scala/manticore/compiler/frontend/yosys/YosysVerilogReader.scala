@@ -2,13 +2,13 @@ package manticore.compiler.frontend.yosys
 
 import manticore.compiler.AssemblyContext
 import manticore.compiler.LoggerId
-import manticore.compiler.ManticoreTransform
+import manticore.compiler.FunctionalTransformation
 
 import java.nio.file.Path
 
 
 object YosysVerilogReader
-    extends ManticoreTransform[Iterable[Path], YosysResultProxy] {
+    extends FunctionalTransformation[Iterable[Path], YosysResultProxy] {
 
   implicit val loggerId = LoggerId("VerilogReader")
   override def apply(files: Iterable[Path])(implicit

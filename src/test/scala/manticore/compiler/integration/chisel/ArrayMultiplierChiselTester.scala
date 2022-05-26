@@ -8,16 +8,17 @@ import manticore.compiler.assembly.levels.placed.ScheduleChecker
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.levels.placed.LinkUtilizationChecker
+import manticore.compiler.assembly.parser.AssemblyParser
 
 class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
 
   behavior of "Array Multiplier in Chisel"
 
   override def compiler =
-    ManticorePasses.frontend followedBy
-      ManticorePasses.middleend followedBy
-      ManticorePasses.backend followedBy
-      ScheduleChecker followedBy LinkUtilizationChecker
+    ManticorePasses.frontend andThen
+      ManticorePasses.middleend andThen
+      ManticorePasses.backend andThen
+      ScheduleChecker andThen LinkUtilizationChecker
 
   Seq(
     (1, 1),

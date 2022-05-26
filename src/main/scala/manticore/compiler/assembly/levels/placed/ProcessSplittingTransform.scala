@@ -29,7 +29,7 @@ import scala.collection.immutable
   */
 object ProcessSplittingTransform
     extends DependenceGraphBuilder
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
@@ -242,7 +242,7 @@ object ProcessSplittingTransform
     val proct_roots = timed("Extracting parallel processes") {
       val res = sink_nodes.map { createConstraints }
       ctx.logger.dumpArtifact(
-        s"constraint_graph${ctx.logger.countProgress()}_${phase_id}_${proc.id}.dot"
+        s"constraint_graph${ctx.logger.countProgress()}_${transformId}_${proc.id}.dot"
       ) {
 
         import scalax.collection.io.dot._
@@ -366,15 +366,22 @@ object ProcessSplittingTransform
     def createProcess(block: Iterable[Instruction], index: Int): DefProcess = {
 
       val referenced = DependenceAnalysis.referencedNames(block)
-      val defRegs = proc.registers.filter { r => referenced.contains(r.variable.name) }
-      val defLabels = proc.labels.filter { lgrp => referenced.contains(lgrp.memory) }
+      val defRegs = proc.registers.filter { r =>
+        referenced.contains(r.variable.name)
+      }
+      val defLabels = proc.labels.filter { lgrp =>
+        referenced.contains(lgrp.memory)
+      }
 
-      proc.copy(
-        body = block.toSeq,
-        registers = defRegs,
-        labels = defLabels,
-        id = ProcessIdImpl(s"${proc.id}_${index}", proc.id.x, proc.id.y + index)
-      ).setPos(proc.pos)
+      proc
+        .copy(
+          body = block.toSeq,
+          registers = defRegs,
+          labels = defLabels,
+          id =
+            ProcessIdImpl(s"${proc.id}_${index}", proc.id.x, proc.id.y + index)
+        )
+        .setPos(proc.pos)
 
     }
     // create new processes
@@ -391,9 +398,8 @@ object ProcessSplittingTransform
     result
   }
   override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+      source: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
     val splitted = source.processes.flatMap { p =>
       extractIndependentInstructionSequences(p)(context)
     }

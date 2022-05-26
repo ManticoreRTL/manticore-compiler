@@ -27,9 +27,9 @@ object WidthConversion {
 
   val core = WidthConversionCore
   val transformation =
-    UnconstrainedCloseSequentialCycles followedBy
-      core followedBy
-      UnconstrainedBreakSequentialCycles followedBy
+    UnconstrainedCloseSequentialCycles andThen
+      core andThen
+      UnconstrainedBreakSequentialCycles andThen
       UnconstrainedRenameVariables
 
 }

@@ -15,50 +15,46 @@ import manticore.compiler.assembly.levels.CanRename
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
   override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = source
+      source: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = source
     .copy(processes = source.processes.map { doDce(_)(context) })
     .setPos(source.pos)
 }
 
 object PlacedIROrderInstructions
     extends OrderInstructions
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = do_transform(source, context)
 }
 
 object PlacedIRCloseSequentialCycles
     extends CloseSequentialCycles
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = do_transform(source)(context)
 }
 
 object PlacedIRBreakSequentialCycles
     extends BreakSequentialCycles
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram = do_transform(source)(context)
 }
@@ -77,12 +73,11 @@ object PlacedIRDebugSymbolRenamer extends CanRenameToDebugSymbols {
 }
 
 object PlacedIRStatisticCollector extends CanCollectProgramStatistics {
-    val flavor = PlacedIR
+  val flavor = PlacedIR
 }
 
 object PlacedIRRenamer extends CanRename {
 
   val flavor = PlacedIR
-
 
 }

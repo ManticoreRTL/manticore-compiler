@@ -4,7 +4,7 @@ import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGra
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
 import manticore.compiler.assembly.levels.placed.PlacedIRRenamer.Rename
 import manticore.compiler.assembly.levels.placed.PlacedIR
-import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 import manticore.compiler.AssemblyContext
 import scalax.collection.mutable.{Graph => MutableGraph}
 import scalax.collection.Graph
@@ -19,25 +19,27 @@ import manticore.compiler.assembly.levels.placed.lowering.util.Processor
 import manticore.compiler.assembly.levels.placed.lowering.util.ScheduleContext
 import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
 import manticore.compiler.assembly.levels.placed.lowering.util.RecvEvent
-/**
- * Program scheduler pass
- *
- * A List scheduling inspired scheduling algorithm that performs:
- * 1. Nop insertion, to handle instruction latencies
- * 2. Send scheduling, to handle flow-control NoC traffic
- * 3. Predicate insertion, to have explicit store predicates
- * 4. JumpTable optimization, to fill in the Nop gaps inside jump cases
- *
- * @author Mahyar Emami <mahyar.emami@epfl.ch>
- */
-private[lowering] object ProgramSchedulingTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
-  import PlacedIR._
 
+/** Program scheduler pass
+  *
+  * A List scheduling inspired scheduling algorithm that performs:
+  *   1. Nop insertion, to handle instruction latencies 2. Send scheduling, to
+  *      handle flow-control NoC traffic 3. Predicate insertion, to have
+  *      explicit store predicates 4. JumpTable optimization, to fill in the Nop
+  *      gaps inside jump cases
+  *
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
+  */
+private[lowering] object ProgramSchedulingTransform
+    extends PlacedIRTransformer {
+  import PlacedIR._
 
   private val jumpDelaySlotSize = 2
   private val breakDelaySlotSize = 2
-  def transform(program: DefProgram, context: AssemblyContext): DefProgram = {
+  def transform(
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
 
     val prepared = context.stats.recordRunTime("preparing processes") {
       program.copy(
@@ -418,19 +420,24 @@ private[lowering] object ProgramSchedulingTransform
     val usedNames = scala.collection.mutable.Set.empty[Name]
     val namesToRemove = scala.collection.mutable.Set.empty[Name]
 
-    val newBody = process.body.reverseIterator.map {
-      case jtb: JumpTable =>
-        val (toKeep, toRemove) = jtb.results.partition { case Phi(rd, _) =>
-          usedNames(rd)
-        }
-        namesToRemove ++= toRemove.map(_.rd)
-        jtb.copy(results = toKeep)
-      case inst => // nothing to do
-        usedNames ++= DependenceAnalysis.regUses(inst)
-        inst
-    }.toSeq.reverse
+    val newBody = process.body.reverseIterator
+      .map {
+        case jtb: JumpTable =>
+          val (toKeep, toRemove) = jtb.results.partition { case Phi(rd, _) =>
+            usedNames(rd)
+          }
+          namesToRemove ++= toRemove.map(_.rd)
+          jtb.copy(results = toKeep)
+        case inst => // nothing to do
+          usedNames ++= DependenceAnalysis.regUses(inst)
+          inst
+      }
+      .toSeq
+      .reverse
 
-    val usedDefs = process.registers.filter { r => !namesToRemove(r.variable.name) }
+    val usedDefs = process.registers.filter { r =>
+      !namesToRemove(r.variable.name)
+    }
 
     process.copy(
       body = newBody,
@@ -505,7 +512,6 @@ private[lowering] object ProgramSchedulingTransform
 
   }
 
-
   def createDotDependenceGraph(
       graph: Graph[Instruction, GraphEdge.DiEdge]
   )(implicit ctx: AssemblyContext): String = {
@@ -567,7 +573,7 @@ private[lowering] object ProgramSchedulingTransform
         createDependenceGraph(process.body, definingInstruction)
       }
 
-    ctx.logger.dumpArtifact(s"scheduler_${phase_id}_${process.id}.dot") {
+    ctx.logger.dumpArtifact(s"scheduler_${process.id}.dot") {
       createDotDependenceGraph(dependenceGraph)
     }
 

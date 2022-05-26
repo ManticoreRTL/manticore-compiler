@@ -44,17 +44,18 @@ class ProgramScheduleTransformTester
       debug_message = true
       // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
     )
-    val parsed = AssemblyParser(text, ctx)
-    val compiler = UnconstrainedNameChecker followedBy
-      UnconstrainedMakeDebugSymbols followedBy
-      UnconstrainedRenameVariables followedBy
-      UnconstrainedOrderInstructions followedBy
-      UnconstrainedToPlacedTransform followedBy
-      PlacedIRCloseSequentialCycles followedBy
-      ProgramSchedulingTransform followedBy
+
+    val compiler = AssemblyParser andThen
+      UnconstrainedNameChecker andThen
+      UnconstrainedMakeDebugSymbols andThen
+      UnconstrainedRenameVariables andThen
+      UnconstrainedOrderInstructions andThen
+      UnconstrainedToPlacedTransform andThen
+      PlacedIRCloseSequentialCycles andThen
+      ProgramSchedulingTransform andThen
       PlacedIRCloseSequentialCycles
 
-    val compiled = compiler(parsed, ctx)._1
+    val compiled = compiler(text)
 
     val monitor = PlacedIRInterpreterMonitor(
       compiled

@@ -18,8 +18,8 @@ class ShiftRegFifofTest extends KernelTester {
   behavior of "ShiftRegFifo"
 
   override def compiler =
-    ManticorePasses.frontend followedBy
-      ManticorePasses.middleend followedBy
+    ManticorePasses.frontend andThen
+      ManticorePasses.middleend andThen
       ManticorePasses.backend
   it should "shift values in a shift register using a single core" in {
     fixture =>

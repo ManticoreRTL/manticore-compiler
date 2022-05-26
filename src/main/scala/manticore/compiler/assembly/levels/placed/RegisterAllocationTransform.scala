@@ -1,6 +1,5 @@
 package manticore.compiler.assembly.levels.placed
 
-import manticore.compiler.assembly.levels.Transformation
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.ConstType
@@ -21,7 +20,7 @@ import manticore.compiler.assembly.levels.CarryType
 
 object RegisterAllocationTransform
     extends DependenceGraphBuilder
-    with AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+    with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import PlacedIR._
@@ -182,7 +181,7 @@ object RegisterAllocationTransform
       ctx.logger.error(
         s"The can not allocate ${num_eternals} constant and input registers into ${max_registers} machine registers in process ${process.id}"
       )
-      ctx.logger.fail(s"Aborting ${phase_id}")
+      ctx.logger.fail(s"Aborting ${transformId}")
     }
 
     eternals
@@ -323,12 +322,11 @@ object RegisterAllocationTransform
 
   }
   override def transform(
-      source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+      source: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
 
     source.copy(
-      processes = source.processes.map(allocateRegisters(_)(context))
+      processes = source.processes.map(allocateRegisters)
     )
 
   }

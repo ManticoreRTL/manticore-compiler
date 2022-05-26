@@ -8,22 +8,18 @@ import manticore.compiler.assembly.annotations.{Reg => RegAnnotation}
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.OutputType
 
-
-/**
-  * Insert send instructions between processes, should be executed once
-  * after the processes are merged.
+/** Insert send instructions between processes, should be executed once after
+  * the processes are merged.
   * @author
-  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
-object SendInsertionTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+object SendInsertionTransform extends PlacedIRTransformer {
 
   import PlacedIR._
 
   override def transform(
-      program: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
 
     // to insert send instructions, we first need to create a mapping from
     // output registers---that are produced only in a single process---to
@@ -76,10 +72,16 @@ object SendInsertionTransform
               // get the input registers that need this output register
               current_registers.get(uid) match {
                 case Some(dest_queue) =>
-                  dest_queue.filter { dest => dest.p != proc }.map {
-                    case SendDest(dest_reg, dest_proc) =>
-                      Send(dest_reg.variable.name, r.variable.name, dest_proc.id)
-                  }.toSeq
+                  dest_queue
+                    .filter { dest => dest.p != proc }
+                    .map { case SendDest(dest_reg, dest_proc) =>
+                      Send(
+                        dest_reg.variable.name,
+                        r.variable.name,
+                        dest_proc.id
+                      )
+                    }
+                    .toSeq
                 case None =>
                   context.logger.warn(s"Output register is never used", r)
                   Seq.empty[Send]
@@ -92,13 +94,17 @@ object SendInsertionTransform
               Seq.empty[Send]
           }
         }
-      proc.copy(
+      proc
+        .copy(
           body = proc.body ++ sends
-      ).setPos(proc.pos)
+        )
+        .setPos(proc.pos)
     }
 
-    program.copy(
+    program
+      .copy(
         processes = program.processes.map(withSend)
-    ).setPos(program.pos)
+      )
+      .setPos(program.pos)
   }
 }

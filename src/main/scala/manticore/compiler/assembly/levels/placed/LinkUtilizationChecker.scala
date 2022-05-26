@@ -3,11 +3,13 @@ package manticore.compiler.assembly.levels.placed
 import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.AssemblyContext
 
-object LinkUtilizationChecker extends AssemblyChecker[PlacedIR.DefProgram] {
+object LinkUtilizationChecker extends PlacedIRChecker {
 
   import PlacedIR._
 
-  override def check(program: DefProgram, context: AssemblyContext): Unit = {
+  override def check(
+      program: DefProgram
+  )(implicit context: AssemblyContext): Unit = {
     if (
       !(context.max_dimx == 1 && context.max_dimy == 1) || program.processes.length == 1
     ) {
@@ -85,7 +87,7 @@ object LinkUtilizationChecker extends AssemblyChecker[PlacedIR.DefProgram] {
         }
       recv_cycles match {
         case Seq() => 0
-        case _ => recv_cycles.max
+        case _     => recv_cycles.max
       }
     }.max
 

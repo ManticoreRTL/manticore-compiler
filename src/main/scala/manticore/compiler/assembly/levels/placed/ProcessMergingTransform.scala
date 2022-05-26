@@ -10,23 +10,17 @@ import scala.collection.mutable.{
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.MemoryType
 
-
-/**
-  * Shrink the number of processes to the available number of cores
+/** Shrink the number of processes to the available number of cores
   * @author
-  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
-object ProcessMergingTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+object ProcessMergingTransform extends PlacedIRTransformer {
 
   import PlacedIR._
 
   override def transform(
-      program: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
-
-
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
 
     class ProcessWrapper(
         val body: MSet[Instruction] = MSet.empty[Instruction],
@@ -64,7 +58,9 @@ object ProcessMergingTransform
         MPriorityQueue.empty[DefProcess](
           DefProcessOrdering
         ) ++ program.processes
-      context.logger.info(s"Trying to shrink processes count from ${program.processes.length} into ${num_processors} by merging")
+      context.logger.info(
+        s"Trying to shrink processes count from ${program.processes.length} into ${num_processors} by merging"
+      )
       var failed = false
 
       while (to_merge.nonEmpty && !failed) {

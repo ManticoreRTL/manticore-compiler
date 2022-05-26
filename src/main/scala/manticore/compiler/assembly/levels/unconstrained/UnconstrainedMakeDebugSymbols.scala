@@ -14,14 +14,11 @@ import manticore.compiler.assembly.levels.ConstType
   *   Mahyar Emami   <mahyar.emami@eplf.ch>
   */
 object UnconstrainedMakeDebugSymbols
-    extends AssemblyTransformer[
-      UnconstrainedIR.DefProgram,
-      UnconstrainedIR.DefProgram
-    ] {
+    extends UnconstrainedIRTransformer {
 
   import UnconstrainedIR._
 
-  private def transform(proc: DefProcess, ctx: AssemblyContext): DefProcess = {
+  private def transform(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
 
     val regs = proc.registers.map { r =>
       r.variable.varType match {
@@ -70,11 +67,10 @@ object UnconstrainedMakeDebugSymbols
   }
   override def transform(
       source: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+  )(implicit ctx: AssemblyContext): DefProgram = {
 
     source
-      .copy(processes = source.processes.map { transform(_, context) })
+      .copy(processes = source.processes.map { transform })
       .setPos(source.pos)
   }
 }

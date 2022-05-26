@@ -83,9 +83,7 @@ class UnconstrainedWideAddTester extends UnconstrainedWideTest {
       Range(0, 100) foreach { i =>
         val prog_text = mkProgram(f)
 
-        val parsed = AssemblyParser(prog_text, f.ctx)
-
-        backend(parsed, f.ctx)
+        backend(prog_text)(f.ctx)
       }
 
   }

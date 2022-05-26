@@ -6,15 +6,12 @@ import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import scala.collection.parallel.CollectionConverters._
 
-
-/**
-  * Inserts Predicate instruction before stores and sets the store instruction
+/** Inserts Predicate instruction before stores and sets the store instruction
   * predicate field to [[None]].
   * @author
-  *   Mahyar Emami   <mahyar.emami@eplf.ch>
+  *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
-object PredicateInsertionTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram] {
+object PredicateInsertionTransform extends PlacedIRTransformer {
 
   import PlacedIR._
   import scala.collection.mutable.{Queue => MutableQueue}
@@ -55,9 +52,8 @@ object PredicateInsertionTransform
   }
 
   override def transform(
-      program: DefProgram,
-      context: AssemblyContext
-  ): DefProgram = {
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram = {
 
     program.copy(
       processes = program.processes.par.map { p =>

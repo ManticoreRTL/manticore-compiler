@@ -28,15 +28,15 @@ class UnconstrainedWidthConversionShouldCloseSeqCyclesTester
     """
 
   val compiler =
-    UnconstrainedNameChecker followedBy
-      UnconstrainedMakeDebugSymbols followedBy
-      WidthConversion.transformation followedBy
+    UnconstrainedNameChecker andThen
+      UnconstrainedMakeDebugSymbols andThen
+      WidthConversion.transformation andThen
       UnconstrainedCloseSequentialCycles
 
   "WidthConversion" should "take a program with its sequential cycles " +
     "closed, otherwise it may remove live registers" in { fixture =>
-      val parsed = AssemblyParser(text, fixture.ctx)
-      val compiled = compiler(parsed, fixture.ctx)._1
+      val parsed = AssemblyParser(text)(fixture.ctx)
+      val compiled = compiler(parsed)(fixture.ctx)
       // we have to make sure the signal marked as tracked is still left in the compiler
       def hasDebSym(r: UnconstrainedIR.DefReg): Boolean =
         r.annons.collectFirst { case x: DebugSymbol =>

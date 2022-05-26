@@ -2,7 +2,7 @@ package manticore.compiler.integration.chisel
 
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.levels.UInt16
-import manticore.compiler.assembly.levels.Transformation
+
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.ManticorePasses
@@ -13,10 +13,9 @@ class SLTSTester extends SingleInstructionTest {
 
   // can not do width conversion with this instruction because the
   // WidthConversion assume the second operand is constant 0
-  override def compiler
-      : Transformation[UnconstrainedIR.DefProgram, PlacedIR.DefProgram] =
-    ManticorePasses.frontend followedBy
-      UnconstrainedToPlacedTransform followedBy
+  override def compiler =
+    ManticorePasses.frontend andThen
+      UnconstrainedToPlacedTransform andThen
       ManticorePasses.BackendLowerEnd
 
 

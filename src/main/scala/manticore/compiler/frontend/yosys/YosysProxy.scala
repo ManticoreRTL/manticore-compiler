@@ -3,7 +3,7 @@ package manticore.compiler.frontend.yosys
 import manticore.compiler.AssemblyContext
 import manticore.compiler.HasLoggerId
 import manticore.compiler.LoggerId
-import manticore.compiler.ManticoreTransform
+import manticore.compiler.FunctionalTransformation
 import manticore.compiler.assembly.levels.TransformationID
 
 import java.io.File

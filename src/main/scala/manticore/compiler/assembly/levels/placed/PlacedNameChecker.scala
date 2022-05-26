@@ -3,13 +3,10 @@ import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.assembly.levels.AssemblyNameChecker
 import manticore.compiler.AssemblyContext
 
-object PlacedNameChecker
-    extends AssemblyNameChecker
-    with AssemblyChecker[PlacedIR.DefProgram] {
+object PlacedNameChecker extends AssemblyNameChecker with PlacedIRChecker {
   val flavor = PlacedIR
   import flavor._
-  override def check(
-      program: DefProgram,
+  override def check(program: DefProgram)(implicit
       context: AssemblyContext
   ): Unit = {
 

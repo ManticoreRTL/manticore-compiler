@@ -47,7 +47,7 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
         "Dependence graph is not acyclic, can not order instruction!"
       )
 
-      ctx.logger.dumpArtifact(s"cyclic_dependence_graph_${phase_id}.dot") {
+      ctx.logger.dumpArtifact(s"cyclic_dependence_graph_${transformId}.dot") {
         import scalax.collection.io.dot._
         import scalax.collection.io.dot.implicits._
         val dotRoot = DotRootGraph(

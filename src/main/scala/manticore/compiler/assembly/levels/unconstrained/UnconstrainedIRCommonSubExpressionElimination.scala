@@ -5,14 +5,13 @@ import manticore.compiler.assembly.levels.CommonSubExpressionElimination
 import manticore.compiler.AssemblyContext
 
 object UnconstrainedIRCommonSubExpressionElimination
-    extends AssemblyTransformer[UnconstrainedIR.DefProgram, UnconstrainedIR.DefProgram]
+    extends UnconstrainedIRTransformer
     with CommonSubExpressionElimination {
 
   override val flavor = UnconstrainedIR
   import flavor._
 
-  override def transform(
-      source: DefProgram,
+  override def transform(source: DefProgram)(implicit
       context: AssemblyContext
   ): DefProgram =
     do_transform(source)(context)

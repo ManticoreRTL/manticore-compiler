@@ -71,15 +71,16 @@ class ConstantFoldingTest extends UnitFixtureTest with UnitTestMatchers {
 
     implicit val ctx = fixture.ctx
     def frontend =
-      UnconstrainedNameChecker followedBy
-        UnconstrainedMakeDebugSymbols followedBy
-        UnconstrainedRenameVariables followedBy
-        UnconstrainedOrderInstructions followedBy
-        UnconstrainedIRConstantFolding followedBy
+      AssemblyParser andThen
+      UnconstrainedNameChecker andThen
+        UnconstrainedMakeDebugSymbols andThen
+        UnconstrainedRenameVariables andThen
+        UnconstrainedOrderInstructions andThen
+        UnconstrainedIRConstantFolding andThen
         UnconstrainedCloseSequentialCycles
 
-    val parsed = AssemblyParser(text, ctx)
-    val compiled = frontend(parsed, ctx)._1
+
+    val compiled = frontend(text)
 
     val monitor = UnconstrainedIRInterpreterMonitor(compiled)
 

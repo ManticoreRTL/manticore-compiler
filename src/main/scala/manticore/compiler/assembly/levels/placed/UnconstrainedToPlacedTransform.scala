@@ -1,7 +1,7 @@
 package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
-import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.levels.AssemblyTranslator
 
 import manticore.compiler.assembly.levels.unconstrained.{UnconstrainedIR => S}
 import manticore.compiler.assembly.levels.placed.{PlacedIR => T}
@@ -36,16 +36,14 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object UnconstrainedToPlacedTransform
-    extends AssemblyTransformer[
+    extends AssemblyTranslator[
       UnconstrainedIR.DefProgram,
       PlacedIR.DefProgram
     ] {
 
   override def transform(
-      asm: S.DefProgram,
-      context: AssemblyContext
-  ): T.DefProgram = {
-    implicit val ctx = context
+      asm: S.DefProgram
+  )(implicit ctx: AssemblyContext): T.DefProgram = {
 
     if (isConvertible(asm) == false) {
       ctx.logger.fail(

@@ -78,8 +78,8 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest with Cancel
   private def test(width_rd: Int, width_rs: Int)(f: FixtureParam): Unit = {
 
     val prog_text = mkProgram(width_rd, width_rs)(f)
-    val program = AssemblyParser(prog_text, f.ctx)
-    backend.apply(program, f.ctx)
+
+    backend.apply(prog_text)(f.ctx)
   }
   it should "handle width(rd) == width(rs), dynamic SLL" taggedAs Tags.WidthConversion in {
     f =>
@@ -155,8 +155,7 @@ class UnconstrainedWideShiftLeftTester extends UnconstrainedWideTest with Cancel
       f: FixtureParam
   ): Unit = {
     val prog_text = mkStaticProgram(width_rd, width_rs, 1, shift_amount)(f)
-    val prog = AssemblyParser(prog_text, f.ctx)
-    backend(prog, f.ctx)
+    backend.apply(prog_text)(f.ctx)
   }
 
   val static_test_cases = Seq

@@ -13,7 +13,7 @@ import manticore.compiler.assembly.levels.WireType
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 object JumpTableNormalizationTransform
-    extends AssemblyTransformer[PlacedIR.DefProgram, PlacedIR.DefProgram]
+    extends PlacedIRTransformer
     with DependenceGraphBuilder
     with AssemblyNameChecker {
   val flavor = PlacedIR
@@ -183,18 +183,20 @@ object JumpTableNormalizationTransform
         case i              => i
       }
 
-      val flatSubst = scopedSubst.groupMap { case ((lbl, orig) -> alias) =>
-        orig
-      } { case (_, alias) => alias }.withDefault(_ => Seq.empty)
+      val flatSubst = scopedSubst
+        .groupMap { case ((lbl, orig) -> alias) =>
+          orig
+        } { case (_, alias) => alias }
+        .withDefault(_ => Seq.empty)
 
       // scopedSubst.groupb
       def hasAlias(orig: Name): Boolean = flatSubst.exists { orig == _._1 }
       val newRegs = process.registers.flatMap { r =>
         val itsCopy = flatSubst(r.variable.name).map { alias =>
-            DefReg(
-              ValueVariable(alias, -1, WireType),
-              None
-            ).setPos(r.pos)
+          DefReg(
+            ValueVariable(alias, -1, WireType),
+            None
+          ).setPos(r.pos)
         }.toSeq
 
         itsCopy :+ r
@@ -209,9 +211,8 @@ object JumpTableNormalizationTransform
   }
 
   override def transform(
-      program: DefProgram,
-      context: AssemblyContext
-  ): DefProgram =
+      program: DefProgram
+  )(implicit context: AssemblyContext): DefProgram =
     program.copy(processes = program.processes.map(p => normalize(p)(context)))
 
 }
