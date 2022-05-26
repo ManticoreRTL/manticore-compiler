@@ -1,21 +1,23 @@
 package manticore.compiler.assembly.levels.unconstrained.width
 
 import manticore.compiler.AssemblyContext
-
+import manticore.compiler.FormatString
 import manticore.compiler.assembly.BinaryOperator
-import manticore.compiler.assembly.levels.ConstType
-import manticore.compiler.assembly.levels.WireType
+import manticore.compiler.assembly.annotations.AssemblyAnnotation
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.annotations.Memblock
 import manticore.compiler.assembly.annotations.{Reg => RegAnnotation}
-import manticore.compiler.assembly.annotations.AssemblyAnnotation
-import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
 import manticore.compiler.assembly.levels.AssemblyTransformer
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.MemoryType
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVariables
-import scala.collection.mutable.ArrayBuffer
+import manticore.compiler.assembly.levels.WireType
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRTransformer
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVariables
+
+import scala.collection.mutable.ArrayBuffer
+
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
   *
@@ -2223,6 +2225,23 @@ object WidthConversionCore
           }
         }
       }
+    case put @ PutSerial(rs, pred, order, _) =>
+      val predArray = builder.getConversion(pred).parts
+      assert(predArray.length == 1)
+      val rsArray = builder.getConversion(rs).parts
+
+      // rsArray holds the value of a potentially wide value in little-endian
+      // order
+      val orders = builder.putSerial(rsArray) // tell the builder there is
+      rsArray.zip(orders).map { case (rs16, ord) =>
+        put
+          .copy(
+            rs = rs16,
+            pred = predArray.head,
+            order = order.withValue(ord)
+          )
+          .setPos(put.pos)
+      }
     case intr @ Interrupt(action, condition, order, _) =>
       val condArray = builder.getConversion(condition).parts
       assert(condArray.length == 1)
@@ -2237,7 +2256,41 @@ object WidthConversionCore
               .setPos(intr.pos)
           )
         case SerialInterrupt(fmt) =>
-          ???
+          val (ord, args) = builder.flushSerial()
+          val holes = fmt.holes
+          if (holes.length != args.length) {
+            ctx.logger.error(
+              s"Bad serial, expected ${fmt.holes.length} arguments but have ${args.length}."
+            )
+          }
+          if (holes.exists(!_.isInstanceOf[FormatString.FmtAtomArg])) {
+            ctx.logger.error(
+              "Can not have non-atom format arguments before " +
+                "width conversion! Did you try to run width conversion multiple times?",
+              intr
+            )
+          }
+          val changes: Map[FormatString.FmtArg, FormatString.FmtArg] =
+            holes
+              .zip(args)
+              .collect {
+                case (hole: FormatString.FmtAtomArg, multiArg)
+                    if multiArg.length > 1 =>
+                  val holeWidth = hole.width
+                  hole -> FormatString.FmtConcat(
+                    multiArg.map(_ => hole.withWidth(16)),
+                    holeWidth
+                  )
+              }
+              .toMap
+          val newFmt = fmt.updated(changes)
+          Seq(
+            intr.copy(
+              condition = condArray.head,
+              action = SerialInterrupt(newFmt)
+            )
+          )
+
       }
     case i @ Expect(ref, got, _, _) =>
       val ConvertedWire(ref_uint16_array, _) = builder.getConversion(ref)

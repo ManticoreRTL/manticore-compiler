@@ -40,6 +40,8 @@ trait ConversionBuilder extends Flavored {
   ) {
 
     private var m_name_id = 0
+    private var m_syscall_order = 0
+    private var m_serial_queue = scala.collection.mutable.Queue.empty[Seq[Name]]
     // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
     private val m_wires = scala.collection.mutable.Map.empty[Name, DefReg]
     private val m_carries = scala.collection.mutable.Queue.empty[DefReg]
@@ -55,6 +57,20 @@ trait ConversionBuilder extends Flavored {
     private val m_old_defs = proc.registers.map { r =>
       r.variable.name -> r
     }.toMap
+
+    def putSerial(ns: Seq[Name]): Seq[Int] = {
+      val res = m_syscall_order
+      m_serial_queue += ns
+      m_syscall_order += ns.length
+      ns.indices.map(_ + m_syscall_order)
+    }
+
+    def flushSerial(): (Int, Seq[Seq[Name]]) = {
+      val res = m_syscall_order
+      m_syscall_order += 1
+      (res, m_serial_queue.dequeueAll(_ => true))
+
+    }
 
     /** Build the converted process from the given sequence of instructions
       *

@@ -2,9 +2,10 @@ package manticore.compiler
 
 class FormatString private (val parts: Seq[FormatString.Fmt]) {
 
-  def holes = parts.collect { case x: FormatString.FmtArg => x }
+  lazy val holes = parts.collect { case x: FormatString.FmtArg => x }
 
   def isLit = holes.length == 0
+
   override def toString = parts.mkString("")
 
   // replace the first argument with the given literal
@@ -36,34 +37,43 @@ class FormatString private (val parts: Seq[FormatString.Fmt]) {
 object FormatString {
 
   sealed trait Fmt
-  sealed trait FmtArg extends Fmt
+  sealed trait FmtArg extends Fmt { def width: Int }
   sealed trait FmtAtomArg extends FmtArg {
     def toLit(v: BigInt): FmtLit
+    def withWidth(w: Int): FmtAtomArg
   }
 
   case class FmtLit(chars: String) extends Fmt {
     override def toString = chars
   }
   case class FmtHex(width: Int) extends FmtAtomArg {
+    val hexWidth =
+                  ((BigInt(1) << width) - 1).toString(16).length
     def toLit(v: BigInt) = FmtLit(truncated(v.toString(16), width, "0"))
     override def toString: String = s"%${width}h"
+    def withWidth(w: Int): FmtAtomArg = copy(w)
   }
   case class FmtBin(width: Int) extends FmtAtomArg {
     def toLit(v: BigInt) = FmtLit(truncated(v.toString(2), width, "0"))
     override def toString: String = s"%${width}b"
+    def withWidth(w: Int): FmtAtomArg = copy(w)
   }
   case class FmtDec(width: Int, fillZero: Boolean = false) extends FmtAtomArg {
+    val decWidth = ((BigInt(1) << width) - 1).toString().length
     def toLit(v: BigInt) = FmtLit(
-      truncated(v.toString(), width, if (fillZero) "0" else " ")
+      truncated(v.toString(), decWidth, if (fillZero) "0" else " ")
     )
     override def toString: String = if (fillZero) {
       s"%0${width}d"
     } else {
       s"%${width}d"
     }
+    def withWidth(w: Int): FmtAtomArg = copy(w)
   }
 
-  case class FmtConcat[A <: FmtAtomArg](atoms: Seq[A]) extends FmtArg
+
+  case class FmtConcat[A <: FmtAtomArg](atoms: Seq[A], width: Int) extends FmtArg
+
 
   case class FmtParseError(error: String)
 
@@ -90,13 +100,9 @@ object FormatString {
             val lit = if (msgLit.nonEmpty) FmtLit(msgLit) +: Nil else Nil
             tpe match {
               case "d" | "D" =>
-                val decWidth =
-                  ((BigInt(1) << bitWidth) - 1).toString().length
-                Right((builder :+ FmtDec(decWidth, z.nonEmpty)) ++ lit)
+                Right((builder :+ FmtDec(bitWidth, z.nonEmpty)) ++ lit)
               case "h" | "H" =>
-                val hexWidth =
-                  ((BigInt(1) << bitWidth) - 1).toString(16).length
-                Right((builder :+ FmtHex(hexWidth)) ++ lit)
+                Right((builder :+ FmtHex(bitWidth)) ++ lit)
               case "b" | "B" =>
                 Right((builder :+ FmtBin(bitWidth)) ++ lit)
               case _ =>

@@ -452,19 +452,40 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
                 case b: FormatString.FmtAtomArg =>
                   val asLit = b.toLit(state.serial_queue.dequeue())
                   fillHole(holes.tail, res.consume(asLit))
-                case FormatString.FmtConcat(args) =>
-                  if (state.serial_queue.length < args.length) {
+                case FormatString.FmtConcat(atoms, width) =>
+                  if (state.serial_queue.length < atoms.length) {
                     ctx.logger.error(
                       "Could not substitute format string, not enough arguments!",
                       intr
                     )
                     res
                   } else {
-                    val newRes = args.foldLeft(res) { case (r, a) =>
-                      val asLit = a.toLit(state.serial_queue.dequeue())
-                      res.consume(asLit)
+
+                    def concatenate(
+                        substLeft: Seq[(FormatString.FmtAtomArg, BigInt)],
+                        offset: Int = 0
+                    ): BigInt = {
+                      substLeft match {
+                        case (atm, vlu) +: tail =>
+                          val mask = ((BigInt(1) << atm.width)) - 1
+                          val masked = vlu & mask
+                          (masked << offset) | concatenate(
+                            tail,
+                            offset + atm.width
+                          )
+                        case Nil =>
+                          BigInt(0)
+                      }
                     }
-                    fillHole(holes.tail, newRes)
+                    val usedValues = for (i <- 0 until atoms.length) yield {
+                      state.serial_queue.dequeue()
+                    }
+
+                    val concatValue = concatenate(atoms zip usedValues)
+                    // note that we kind of know by construction that all atoms
+                    // have the exact same type (i.e., dec or hex)
+                    val litConcatValue = atoms.head.withWidth(width).toLit(concatValue)
+                    fillHole(holes.tail, res.consume(litConcatValue))
                   }
               }
             } else {

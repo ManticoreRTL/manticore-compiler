@@ -80,7 +80,7 @@ final class YosysRunner private (runDir: Path)
     }
 
     ctx.logger.info(yosysLog.toString())
-    ctx.logger.info(s"Yosys took ${duration}%.3f ms")
+    ctx.logger.info(f"Yosys took ${duration}%.3f ms")
 
     if (retCode != 0) {
       ctx.logger.fail(s"Failed compiling with Yosys! (err ${retCode})")

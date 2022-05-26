@@ -527,7 +527,7 @@ trait ManticoreAssemblyIR {
   case class PutSerial(
       rs: Name,
       pred: Name,
-      order: ExecutionOrder,
+      order: SystemCallOrder,
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends PrivilegedInstruction
       with ExplicitlyOrderedInstruction {
