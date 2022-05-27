@@ -164,18 +164,24 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
             }
           }
           // Finally go though all the groups and create dependencies within each
-          syscallGroup.sliding(2).foreach { case Seq(prev, next) =>
-            antiDependenceEdge.foreach { edgeBuilder =>
-              graph add edgeBuilder(prev, next)
-            }
+          syscallGroup.sliding(2).foreach {
+            case Seq(prev, next) =>
+              antiDependenceEdge.foreach { edgeBuilder =>
+                graph add edgeBuilder(prev, next)
+              }
+            case _ => // nothing to do because there is a single instruction in
+            // this group
           }
         }
 
         memoryGroups.foreach { case (_, blk) =>
-          blk.sliding(2).foreach { case Seq(prev, next) =>
-            antiDependenceEdge.foreach { edgeBuilder =>
-              graph add edgeBuilder(prev, next)
-            }
+          blk.sliding(2).foreach {
+            case Seq(prev, next) =>
+              antiDependenceEdge.foreach { edgeBuilder =>
+                graph add edgeBuilder(prev, next)
+              }
+            case _ => // nothing to do because there is a single instruction
+            // in this group (i.e., read/write-only memory)
           }
         }
       }
