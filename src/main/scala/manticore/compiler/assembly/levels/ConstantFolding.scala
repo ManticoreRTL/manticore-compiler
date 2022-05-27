@@ -184,7 +184,7 @@ trait ConstantFolding
       inst match {
         case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore |
             _: GlobalStore | _: PadZero | _: SetCarry | _: ClearCarry |
-            _: Predicate | _: PadZero | _: Lookup) =>
+            _: Predicate | _: PadZero | _: Lookup | _: PutSerial | _: Interrupt) =>
           builder.keep(i)
         case Nop =>
           // don't keep

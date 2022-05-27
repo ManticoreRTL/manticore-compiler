@@ -139,6 +139,20 @@ trait CanRename extends Flavored {
             }
           )
         case brk @ BreakCase(_, _) =>  brk
+        case put @ PutSerial(rs, pred, _, _) =>
+          put.copy(renaming(rs), renaming(pred))
+        case intr@ Interrupt(action, rs, _, _) =>
+          action match {
+            // although a pattern match is not needed, I do it in case we add
+            // new actions that may have a name in their action. This way
+            // make the pattern match throw an error and save ourselves some
+            // headache of debugging.
+            case AssertionInterrupt | FinishInterrupt | StopInterrupt =>
+              intr.copy(condition = renaming(rs))
+            case SerialInterrupt(fmt) =>
+              intr.copy(condition = renaming(rs))
+
+          }
       }
       renamed_inst.setPos(inst.pos)
     }
