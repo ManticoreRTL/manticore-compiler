@@ -50,7 +50,12 @@ trait CanCollectProgramStatistics extends Flavored {
         "LOOKUP" -> 0,
         "SWITCH" -> 0,
         "SLICE" -> 0,
-        "BREAK" -> 0
+        "BREAK" -> 0,
+        "PUT" -> 0,
+        "FINISH" -> 0,
+        "FLUSH" -> 0,
+        "STOP" -> 0,
+        "ASSERT" -> 0
       ) ++ Seq
         .tabulate(BinaryOperator.maxId) { i => BinaryOperator(i) }
         .filter { k =>
@@ -81,6 +86,7 @@ trait CanCollectProgramStatistics extends Flavored {
             case SRA  => incr("SRA")
             case SEQ  => incr("SEQ")
             case SLTS => incr("SLTS")
+            case SLT  => incr("SLT")
             case _ =>
               ctx.logger.error(s"invalid operator ${op}!")
               0
@@ -118,6 +124,14 @@ trait CanCollectProgramStatistics extends Flavored {
           }
           vcycle += dslotInsts
           numInsts + dslotInsts
+        case Interrupt(action, _, _, _) =>
+          action match {
+            case AssertionInterrupt => incr("ASSERT")
+            case FinishInterrupt => incr("FINISH")
+            case SerialInterrupt(fmt) => incr("FLUSH")
+            case StopInterrupt => incr("STOP")
+          }
+        case _: PutSerial => incr("PUT")
       }
 
       vcycle += proc.body.length

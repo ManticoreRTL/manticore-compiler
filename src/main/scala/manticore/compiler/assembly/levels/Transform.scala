@@ -80,6 +80,7 @@ trait AssemblyTransformer[T <: ManticoreAssemblyIR#DefProgram]
   def andThen(other: AssemblyTransformer[T]) = {
     val thisTransform = this
     new AssemblyTransformer[T] {
+      override implicit val transformId: TransformationID = other.transformId
       override def transform(program: T)(implicit ctx: AssemblyContext): T =
         other.transform(program)
       override def apply(t: T)(implicit ctx: AssemblyContext): T = {
@@ -92,6 +93,7 @@ trait AssemblyTransformer[T <: ManticoreAssemblyIR#DefProgram]
   final def withCondition(cond: => Boolean) = {
     val thisTransform = this
     new AssemblyTransformer[T] {
+      override implicit val transformId: TransformationID = thisTransform.transformId
       override def transform(p: T)(implicit ctx: AssemblyContext) = {
         if (cond) {
           thisTransform.transform(p)
@@ -141,6 +143,7 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
   def andThen(other: AssemblyChecker[T]) = {
     val thisTransform = this
     new AssemblyChecker[T] {
+      override implicit val transformId: TransformationID = other.transformId
       override def check(source: T)(implicit context: AssemblyContext): Unit =
         other.check(source)
       override def apply(t: T)(implicit ctx: AssemblyContext): T = {

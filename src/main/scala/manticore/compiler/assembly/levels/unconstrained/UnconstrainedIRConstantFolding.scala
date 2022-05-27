@@ -69,6 +69,12 @@ object UnconstrainedIRConstantFolding
           Right(UIntWide(0, 1))
         }
       }
+    case (SLT, Right(c1), Right(c2)) =>
+      if (c1 < c2) {
+        Right(UIntWide(1, 1))
+      } else {
+        Right(UIntWide(0, 1))
+      }
     // partial evaluation
 
     case (ADD, Right(c1), Left(n2)) if (c1 == 0) => Left(n2)
