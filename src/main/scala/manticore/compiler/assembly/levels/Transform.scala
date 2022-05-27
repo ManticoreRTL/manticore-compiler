@@ -103,6 +103,7 @@ trait AssemblyTransformer[T <: ManticoreAssemblyIR#DefProgram]
   }
 }
 
+
 // base trait for changing flavor
 trait AssemblyTranslator[
     S <: ManticoreAssemblyIR#DefProgram,

@@ -7,18 +7,13 @@ import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
 import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 
-object LoweringTransform extends PlacedIRTransformer {
+object Lowering {
 
-  private val Impl =
+  val Transformation =
     JumpTableNormalizationTransform andThen
       ProgramSchedulingTransform andThen
       JumpLabelAssignmentTransform andThen
       LocalMemoryAllocation andThen
       RegisterAllocationTransform
-  override def transform(source: PlacedIR.DefProgram)(implicit
-      context: AssemblyContext
-  ): PlacedIR.DefProgram = {
-    Impl(source)
-  }
 
 }

@@ -34,7 +34,7 @@ trait CanOrderInstructions extends CanBuildDependenceGraph {
         DiEdge(source, target)
       def graphNode(inst: Instruction) = inst
 
-      val dependence_graph = GraphBuilder.build(instructionBlock)(
+      val dependence_graph = GraphBuilder(instructionBlock)(
         graphNode,
         readAfterWriteEdge,
         Some(antiDependenceEdge(_, _))
@@ -110,7 +110,7 @@ trait CanOrderInstructions extends CanBuildDependenceGraph {
 
 }
 
-/** This transform sorts instructions based on their depenencies.
+/** This transform sorts instructions based on their dependencies.
   */
 trait OrderInstructions extends CanOrderInstructions {
 

@@ -8,11 +8,12 @@ import manticore.compiler.assembly.BinaryOperator
 
 import scalax.collection.Graph
 import scalax.collection.mutable.{Graph => MutableGraph}
-import scalax.collection.GraphEdge
-import scalax.collection.edge.LDiEdge
+
+import scalax.collection.GraphEdge.DiEdge
 import javax.xml.crypto.Data
 import manticore.compiler.assembly.annotations.Memblock
 import manticore.compiler.assembly.annotations.Track
+import manticore.compiler.assembly.CanBuildDependenceGraph
 
 /** Construct JumpTables from ParMux instructions where it is beneficial
   *
@@ -21,6 +22,7 @@ import manticore.compiler.assembly.annotations.Track
   */
 trait JumpTableConstruction
     extends CanComputeNameDependence
+    with CanBuildDependenceGraph
     with CanCollectInputOutputPairs {
 
   import flavor._
@@ -52,7 +54,7 @@ trait JumpTableConstruction
 
   def mkJumpTable(
       pmux: ParMux,
-      dataDependenceGraph: Graph[Instruction, LDiEdge],
+      dataDependenceGraph: Graph[Instruction, DiEdge],
       definingInstructions: Map[Name, Instruction],
       constants: Map[Name, Constant],
       registers: Map[Name, DefReg],
@@ -439,8 +441,7 @@ trait JumpTableConstruction
   )(implicit ctx: AssemblyContext): DefProcess = {
 
     import scalax.collection.mutable.{Graph => MutableGraph}
-    val dataDependenceGraph = ???
-      // DependenceAnalysis.build(process = proc, label = (_, _) => None)
+    val dataDependenceGraph = GraphBuilder.rawGraph(proc.body)
 
     val postDominators = computePostDominators(proc)
 
@@ -534,25 +535,16 @@ trait JumpTableConstruction
     val definingInstructions =
       NameDependence.definingInstruction(process.body)
     val statePairs = InputOutputPairs.createInputOutputPairs(process)
-    val reverseDataflowGraph = MutableGraph.empty[Vertex, GraphEdge.DiEdge]
+
 
     val indexOf = process.body.zipWithIndex.toMap andThen { _ + 2 }
+    val reverseDataflowGraph = GraphBuilder[Vertex, DiEdge](process.body)(
+      graphNode = inst => InstrV(inst, indexOf(inst)),
+      readAfterWriteEdge = (source, target) => DiEdge(
+        InstrV(target, indexOf(target)), InstrV(source, indexOf(source))
+      )
+    )
 
-    for (instr <- process.body) {
-
-      reverseDataflowGraph += InstrV(instr, indexOf(instr))
-
-      for (use <- NameDependence.regUses(instr)) {
-        for (defInst <- definingInstructions.get(use)) {
-          reverseDataflowGraph += GraphEdge.DiEdge(
-            InstrV(instr, indexOf(instr)) -> InstrV(
-              defInst,
-              indexOf(defInst)
-            )
-          )
-        }
-      }
-    }
 
     val bottomInstrs = reverseDataflowGraph.nodes.collect {
       case n if n.inDegree == 0 => n.toOuter
@@ -560,7 +552,7 @@ trait JumpTableConstruction
 
     for (iVertex <- bottomInstrs) {
 
-      reverseDataflowGraph += GraphEdge.DiEdge(EntryV, iVertex)
+      reverseDataflowGraph += DiEdge(EntryV, iVertex)
 
     }
 
@@ -570,7 +562,7 @@ trait JumpTableConstruction
 
     for (iVertex <- topInstrs) {
 
-      reverseDataflowGraph += GraphEdge.DiEdge(iVertex, ExitV)
+      reverseDataflowGraph += DiEdge(iVertex, ExitV)
 
     }
 
@@ -586,9 +578,9 @@ trait JumpTableConstruction
     postDominators(EntryV.index) = BitSet(EntryV.index)
 
     val visited =
-      scala.collection.mutable.Set.empty[Graph[Vertex, GraphEdge.DiEdge]#NodeT]
+      scala.collection.mutable.Set.empty[Graph[Vertex, DiEdge]#NodeT]
 
-    def dfsLikeTraversal(node: Graph[Vertex, GraphEdge.DiEdge]#NodeT): Unit = {
+    def dfsLikeTraversal(node: Graph[Vertex, DiEdge]#NodeT): Unit = {
 
       if (!visited(node)) {
         visited += node

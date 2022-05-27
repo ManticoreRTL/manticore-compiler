@@ -248,7 +248,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeN
     import scalax.collection.GraphPredef.EdgeLikeIn
     import scalax.collection.GraphEdge.DiEdge
 
-
+    @deprecated("Please use CanBuildDependenceGraph.GraphBuilder instead")
     def build[L](
         process: DefProcess,
         label: (Instruction, Instruction) => L
@@ -256,8 +256,6 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeN
         ctx: AssemblyContext
     ): MutableGraph[Instruction, LDiEdge] = {
 
-
-      val builder = new DefaultGraphBuilder(flavor)
 
       // A map from registers to the instruction defining it (if any), useful for back tracking
       val def_instructions = NameDependence.definingInstructionMap(process)

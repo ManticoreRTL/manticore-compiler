@@ -12,6 +12,8 @@ import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.AssemblyChecker
+import manticore.compiler.assembly.CanBuildDependenceGraph
+import manticore.compiler.assembly.CanComputeNameDependence
 
 /** IR level with placed processes and allocated registers.
   *
@@ -50,8 +52,12 @@ object PlacedIR extends ManticoreAssemblyIR {
     def withId(new_id: Int): PlacedVariable = this.copy(id = new_id)
   }
 
-  case class MemoryVariable(name: Name, size: Int, id: Int, initialContent: Seq[UInt16] = Nil)
-      extends PlacedVariable {
+  case class MemoryVariable(
+      name: Name,
+      size: Int,
+      id: Int,
+      initialContent: Seq[UInt16] = Nil
+  ) extends PlacedVariable {
     def withName(n: Name) = this.copy(name = n)
     override def varType: VariableType = MemoryType
     def withId(new_id: Int) = this.copy(id = new_id)
@@ -108,7 +114,7 @@ object PlacedIR extends ManticoreAssemblyIR {
         .map { case (constOrOp, cnt) =>
           constOrOp match {
             case Left(const) => s"$$${const} -> ${cnt}"
-            case Right(op) => s"${op} -> ${cnt}"
+            case Right(op)   => s"${op} -> ${cnt}"
           }
         }
         .toSeq
@@ -154,10 +160,11 @@ object PlacedIR extends ManticoreAssemblyIR {
       override def toString(): String = {
         id match {
           case AtomConst(v) => v.toString()
-          case arg: AtomArg => arg match {
-            case PositionalArg(v) => s"%${v}"
-            case NamedArg(v) => v
-          }
+          case arg: AtomArg =>
+            arg match {
+              case PositionalArg(v) => s"%${v}"
+              case NamedArg(v)      => v
+            }
         }
       }
     }
@@ -220,7 +227,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
       val argsArePositional = args.forall {
         case _: PositionalArg => true
-        case _ => false
+        case _                => false
       } && {
         val foundPositions = args.collect { case PositionalArg(pos) => pos }
         val expectedPositions = Set.tabulate(arity)(idx => idx)
@@ -229,7 +236,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
       val argsAreNamed = args.forall {
         case _: NamedArg => true
-        case _ => false
+        case _           => false
       }
 
       assert(
@@ -241,15 +248,16 @@ object PlacedIR extends ManticoreAssemblyIR {
     }
 
     private def computeResources(
-      tree: ExprTree
+        tree: ExprTree
     ): Map[
       Either[Constant, BinaryOperator.BinaryOperator],
       Int
     ] = {
 
       def accumulate(
-        expr: ExprTree,
-        acc: Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = Map.empty.withDefaultValue(0)
+          expr: ExprTree,
+          acc: Map[Either[Constant, BinaryOperator.BinaryOperator], Int] =
+            Map.empty.withDefaultValue(0)
       ): Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = {
         expr match {
           case OrExpr(op1, op2) =>
@@ -367,8 +375,9 @@ object PlacedIR extends ManticoreAssemblyIR {
         val lutOutputs = inputCombinations.map { inputCombination =>
           // The expression tree has arguments that are mapped to indices starting from 0.
           // We replace these indices with constants (defined by the LUT's current input combination).
-          val subst: Map[AtomArg, Atom] = inputCombination.zipWithIndex.map { case (const, idx) =>
-            PositionalArg(idx) -> AtomConst(const)
+          val subst: Map[AtomArg, Atom] = inputCombination.zipWithIndex.map {
+            case (const, idx) =>
+              PositionalArg(idx) -> AtomConst(const)
           }.toMap
 
           val resFullDatapath = evaluate(substitute(expr)(subst))
@@ -456,17 +465,26 @@ object LatencyAnalysis {
   }
 }
 
-
 trait PlacedIRTransformer extends AssemblyTransformer[PlacedIR.DefProgram] {}
 trait PlacedIRChecker extends AssemblyChecker[PlacedIR.DefProgram] {}
 
 object PlacedIRPrinter extends AssemblyPrinter[PlacedIR.DefProgram] {}
 
+@deprecated("Use Helpers instead")
 object PlacedIRDependencyDependenceGraphBuilder extends DependenceGraphBuilder {
   val flavor = PlacedIR
 }
 
+@deprecated("Use Helpers instead")
 object PlacedIRInputOutputCollector extends CanCollectInputOutputPairs {
   val flavor = PlacedIR
 
 }
+object Helpers
+    extends CanBuildDependenceGraph
+    with CanCollectInputOutputPairs
+    with CanComputeNameDependence {
+  val flavor = PlacedIR
+
+}
+

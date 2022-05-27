@@ -7,8 +7,8 @@ import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
-import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
-import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.NameDependence
+import manticore.compiler.assembly.levels.placed.Helpers.InputOutputPairs
+import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import manticore.compiler.assembly.levels.CarryType

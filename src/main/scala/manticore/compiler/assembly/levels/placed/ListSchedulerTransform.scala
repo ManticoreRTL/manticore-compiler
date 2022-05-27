@@ -33,6 +33,7 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
   * @author
   *   Mahyar emami <mahyar.emami@epfl.ch>
   */
+@deprecated("This transformation is defunct. Do not use it anymore.")
 object ListSchedulerTransform
     extends DependenceGraphBuilder
     with PlacedIRTransformer {
