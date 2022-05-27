@@ -50,8 +50,10 @@ trait DeadCodeElimination
       body: Seq[Instruction]
   )(tracked: Name => Boolean)(implicit ctx: AssemblyContext): Set[Instruction] =
     body.collect {
-      case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send) => i
-      case inst if NameDependence.regDef(inst).exists(tracked)        => inst
+      case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send |
+          _: Interrupt | _: PutSerial) =>
+        i
+      case inst if NameDependence.regDef(inst).exists(tracked) => inst
     }.toSet
 
   /** Create a map from [[Name]]s to [[Instructions]]s that define them
