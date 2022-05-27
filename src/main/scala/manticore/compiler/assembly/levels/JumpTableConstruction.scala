@@ -148,8 +148,17 @@ trait JumpTableConstruction
         case None => Seq.empty // case body is empty
         case Some(defInst) =>
           val node = dataDependenceGraph get defInst
-          traverse(node) { predInst =>
-            postDomRelation.isDefined(defInst, predInst)
+          if (node.outDegree == 1) {
+            traverse(node) { predInst =>
+              postDomRelation.isDefined(defInst, predInst)
+            }
+          } else {
+            // the node provides a some computation to some other instruction,
+            // either in difference branches of the parmux or something other
+            // than that. In this case we should just create an empty case body
+            // or duplicate this instruction. For now we choose to just create
+            // and empty body
+            Nil
           }
       }
 
@@ -536,15 +545,15 @@ trait JumpTableConstruction
       NameDependence.definingInstruction(process.body)
     val statePairs = InputOutputPairs.createInputOutputPairs(process)
 
-
     val indexOf = process.body.zipWithIndex.toMap andThen { _ + 2 }
     val reverseDataflowGraph = GraphBuilder[Vertex, DiEdge](process.body)(
       graphNode = inst => InstrV(inst, indexOf(inst)),
-      readAfterWriteEdge = (source, target) => DiEdge(
-        InstrV(target, indexOf(target)), InstrV(source, indexOf(source))
-      )
+      readAfterWriteEdge = (source, target) =>
+        DiEdge(
+          InstrV(target, indexOf(target)),
+          InstrV(source, indexOf(source))
+        )
     )
-
 
     val bottomInstrs = reverseDataflowGraph.nodes.collect {
       case n if n.inDegree == 0 => n.toOuter
