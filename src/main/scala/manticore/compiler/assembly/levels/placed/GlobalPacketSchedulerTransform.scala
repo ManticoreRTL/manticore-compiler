@@ -4,7 +4,7 @@ import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import scala.collection.parallel.CollectionConverters._
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
   X => XField,
   Y => YField,
@@ -18,7 +18,7 @@ import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
 
 import manticore.compiler.assembly.annotations.{Layout => LayoutAnnotation}
 object GlobalPacketSchedulerTransform
-    extends DependenceGraphBuilder
+    extends CanComputeNameDependence
     with PlacedIRTransformer {
   val flavor = PlacedIR
   import flavor._
@@ -158,7 +158,7 @@ object GlobalPacketSchedulerTransform
         // size of the list + 1.
 
         proc.body.zipWithIndex.foreach { case (other_inst, cycle) =>
-          DependenceAnalysis
+          NameDependence
             .regDef(other_inst)
             .find(sends.contains) match {
             case Some(reg_to_send: Name) =>

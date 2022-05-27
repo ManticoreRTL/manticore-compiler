@@ -221,7 +221,7 @@ object MachineCodeGenerator
         }
         p.registers.foreach {
           case _ @DefReg(v: MemoryVariable, Some(UInt16(offset)), _) =>
-            v.block.initial_content.zipWithIndex.foreach { case (value, ix) =>
+            v.initialContent.zipWithIndex.foreach { case (value, ix) =>
               initial_mem_values(offset + ix) = value.toShort
             }
           case _ => // do nothing

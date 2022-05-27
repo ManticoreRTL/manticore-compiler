@@ -1,6 +1,6 @@
 package manticore.compiler.assembly.levels
 
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
 
 import manticore.compiler.AssemblyContext
@@ -20,7 +20,7 @@ import manticore.compiler.assembly.annotations.Track
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 trait JumpTableConstruction
-    extends DependenceGraphBuilder
+    extends CanComputeNameDependence
     with CanCollectInputOutputPairs {
 
   import flavor._
@@ -113,7 +113,7 @@ trait JumpTableConstruction
         if (!visited(currentNode)) {
           val inst = currentNode.toOuter
           val isLocal =
-            DependenceAnalysis.regDef(inst).forall(globallyScoped(_) == false)
+            NameDependence.regDef(inst).forall(globallyScoped(_) == false)
           val isNotParMux =
             !inst.isInstanceOf[ParMux] && !inst.isInstanceOf[JumpTable]
           if (isLocal && isNotParMux && postDominated(inst)) {
@@ -439,8 +439,8 @@ trait JumpTableConstruction
   )(implicit ctx: AssemblyContext): DefProcess = {
 
     import scalax.collection.mutable.{Graph => MutableGraph}
-    val dataDependenceGraph =
-      DependenceAnalysis.build(process = proc, label = (_, _) => None)
+    val dataDependenceGraph = ???
+      // DependenceAnalysis.build(process = proc, label = (_, _) => None)
 
     val postDominators = computePostDominators(proc)
 
@@ -449,7 +449,7 @@ trait JumpTableConstruction
 
     // A map of from uses to definitions
     val definingInstructions: Map[Name, Instruction] =
-      DependenceAnalysis.definingInstructionMap(proc)
+      NameDependence.definingInstructionMap(proc)
     val constants = proc.registers.collect {
       case DefReg(v, Some(x), _) if v.varType == ConstType => v.name -> x
     }.toMap
@@ -532,7 +532,7 @@ trait JumpTableConstruction
     case class InstrV(instr: Instruction, index: Int) extends Vertex
 
     val definingInstructions =
-      DependenceAnalysis.definingInstruction(process.body)
+      NameDependence.definingInstruction(process.body)
     val statePairs = InputOutputPairs.createInputOutputPairs(process)
     val reverseDataflowGraph = MutableGraph.empty[Vertex, GraphEdge.DiEdge]
 
@@ -542,7 +542,7 @@ trait JumpTableConstruction
 
       reverseDataflowGraph += InstrV(instr, indexOf(instr))
 
-      for (use <- DependenceAnalysis.regUses(instr)) {
+      for (use <- NameDependence.regUses(instr)) {
         for (defInst <- definingInstructions.get(use)) {
           reverseDataflowGraph += GraphEdge.DiEdge(
             InstrV(instr, indexOf(instr)) -> InstrV(

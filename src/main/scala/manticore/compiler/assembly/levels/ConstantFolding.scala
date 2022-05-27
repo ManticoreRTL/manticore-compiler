@@ -5,7 +5,7 @@ import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.Track
 import manticore.compiler.assembly.levels.CanRename
 import javax.xml.crypto.Data
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 import scala.collection.immutable.ListMap
 
 /** Base trait to implement a constant folding pass in
@@ -16,7 +16,7 @@ trait ConstantFolding
     extends Flavored
     with CanRename
     with CanCollectProgramStatistics
-    with DependenceGraphBuilder
+    with CanComputeNameDependence
     with CanCollectInputOutputPairs {
 
   import flavor._
@@ -461,7 +461,7 @@ trait ConstantFolding
     // now we need to remove any unused DefRegs
 
     val inputOutputPairs = InputOutputPairs.createInputOutputPairs(process)
-    val referenced = DependenceAnalysis.referencedNames(finalInstructions)
+    val referenced = NameDependence.referencedNames(finalInstructions)
     def isIo(r: DefReg): Boolean =
       r.variable.varType == InputType || r.variable.varType == OutputType
     // keep a def if it was referenced or it is an actual register, note that

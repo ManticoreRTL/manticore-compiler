@@ -4,19 +4,17 @@ import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.placed.lowering.util.Interval
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
-import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
+import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.NameDependence
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
 import manticore.compiler.HasLoggerId
 
-
-/**
-  * Lifetime computation utility
+/** Lifetime computation utility
   *
-  * @author Mahyar Emami
+  * @author
+  *   Mahyar Emami
   */
 
-/**
-  * an instruction tagged with position marker (position is basically the PC)
+/** an instruction tagged with position marker (position is basically the PC)
   *
   * @param instr
   * @param position
@@ -30,7 +28,6 @@ trait LifetimeAnalysis {
   def apply(name: Name): IntervalSet = of(name)
 
 }
-
 
 private[lowering] object LifetimeAnalysis {
 
@@ -220,7 +217,7 @@ private[lowering] object LifetimeAnalysis {
 
       // traverse the block body in reverse order
       for (operation <- codeBlock.body.reverseIterator) {
-        for (rd <- DependenceAnalysis.regDef(operation.instr)) {
+        for (rd <- NameDependence.regDef(operation.instr)) {
           // trim the start position of the live interval
           // Note that either:
           // 1. rd is not live in any of the successors
@@ -237,7 +234,7 @@ private[lowering] object LifetimeAnalysis {
           setFrom(rd, operation.position)
           codeBlock.liveIn -= rd
         }
-        for (rs <- DependenceAnalysis.regUses(operation.instr)) {
+        for (rs <- NameDependence.regUses(operation.instr)) {
           addInterval(rs, Interval(codeBlock.from, operation.position + 1))
           codeBlock.liveIn += rs
         }
@@ -276,5 +273,3 @@ private[lowering] object LifetimeAnalysis {
   }
 
 }
-
-

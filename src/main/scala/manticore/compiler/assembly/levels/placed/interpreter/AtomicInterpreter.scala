@@ -113,13 +113,13 @@ object AtomicInterpreter extends PlacedIRChecker {
           )
 
           val required = memories.map { m =>
-            m.variable.asInstanceOf[MemoryVariable].block.capacityInShorts()
+            m.variable.asInstanceOf[MemoryVariable].size
           }.sum
 
           val mem_with_offset = memories.foldLeft(0, Seq.empty[DefReg]) {
             case ((base, with_offset), m) =>
               val memvar = m.variable.asInstanceOf[MemoryVariable]
-              val new_base = base + memvar.block.capacityInShorts()
+              val new_base = base + memvar.size
               (new_base, with_offset :+ m.copy(value = Some(UInt16(base))))
           }
           if (required > max_avail) {
@@ -137,11 +137,7 @@ object AtomicInterpreter extends PlacedIRChecker {
       val underlying = Array.fill(mem_size) { UInt16(0) }
       memories.foreach {
         case m @ DefReg(
-              mvar @ MemoryVariable(
-                _,
-                _,
-                MemoryBlock(_, _, _, _, initial_content)
-              ),
+              mvar @ MemoryVariable(_, _, _, initialContent),
               offset_opt,
               _
             ) => ///
@@ -155,7 +151,7 @@ object AtomicInterpreter extends PlacedIRChecker {
               ctx.logger.error(s"memory not allocated", m)
               UInt16(0)
           }
-          initial_content.zipWithIndex.foreach { case (v, ix) =>
+          initialContent.zipWithIndex.foreach { case (v, ix) =>
             underlying(ix + offset.toInt) = v
           }
         case _ => // do nothing, does not happen

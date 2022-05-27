@@ -8,7 +8,7 @@ import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
-import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
+import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.NameDependence
 import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import manticore.compiler.assembly.levels.CarryType
@@ -432,7 +432,7 @@ private[lowering] object RegisterAllocationTransform
     def doIfMovNotElided(
         inst: Instruction
     )(action: (Name, Name) => Unit): Unit = {
-      for (rd <- DependenceAnalysis.regDef(inst)) {
+      for (rd <- NameDependence.regDef(inst)) {
         hints.alias(rd) match {
           case None         => // nothing to do
           case Some(realRd) =>

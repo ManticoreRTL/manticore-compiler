@@ -2,7 +2,7 @@ package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.AssemblyNameChecker
 import manticore.compiler.assembly.levels.WireType
 
@@ -14,7 +14,7 @@ import manticore.compiler.assembly.levels.WireType
   */
 object JumpTableNormalizationTransform
     extends PlacedIRTransformer
-    with DependenceGraphBuilder
+    with CanComputeNameDependence
     with AssemblyNameChecker {
   val flavor = PlacedIR
   import flavor._
@@ -29,7 +29,7 @@ object JumpTableNormalizationTransform
           jtb.blocks.forall { case JumpCase(l, blk) =>
             if (l == lbl)
               blk.exists { inst =>
-                DependenceAnalysis.regDef(inst).contains(rs)
+                NameDependence.regDef(inst).contains(rs)
               }
             else true
           }
@@ -95,7 +95,7 @@ object JumpTableNormalizationTransform
         def getAliases(jCase: JumpCase) = {
 
           val isDefineInCaseBody = jCase.block.foldLeft(Set.empty[Name]) {
-            _ ++ DependenceAnalysis.regDef(_)
+            _ ++ NameDependence.regDef(_)
           }
           // now for any rs in contributesToPhi(jCase.label)
           val definedOutSide = phiContributors(jCase.label).filter {

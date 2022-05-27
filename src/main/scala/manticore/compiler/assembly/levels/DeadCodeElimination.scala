@@ -3,11 +3,11 @@ package manticore.compiler.assembly.levels
 /** DeadCodeElimination.scala
   *
   * @author
-  * Sahand Kashani <sahand.kashani@epfl.ch>
-  * Mahyar Emami <mahyar.emami@epfl.ch>
+  *   Sahand Kashani <sahand.kashani@epfl.ch> Mahyar Emami
+  *   <mahyar.emami@epfl.ch>
   */
 
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.OutputType
@@ -25,7 +25,9 @@ import scala.annotation.tailrec
   * split processes that do not have their Send instructions because otherwise
   * useful code gets removed.
   */
-trait DeadCodeElimination extends DependenceGraphBuilder {
+trait DeadCodeElimination
+    extends CanComputeNameDependence
+    with CanCollectInputOutputPairs {
 
   import flavor._
 
@@ -49,7 +51,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
   )(tracked: Name => Boolean)(implicit ctx: AssemblyContext): Set[Instruction] =
     body.collect {
       case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send) => i
-      case inst if DependenceAnalysis.regDef(inst).exists(tracked)    => inst
+      case inst if NameDependence.regDef(inst).exists(tracked)        => inst
     }.toSet
 
   /** Create a map from [[Name]]s to [[Instructions]]s that define them
@@ -65,15 +67,15 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
       case jtb @ JumpTable(_, phis, blocks, delaySlot, _) =>
         phis.map { case Phi(rd, _) => rd -> jtb } ++
           delaySlot.flatMap { inst =>
-            DependenceAnalysis.regDef(inst).map { _ -> inst }
+            NameDependence.regDef(inst).map { _ -> inst }
           } ++
           blocks.flatMap { case JumpCase(_, blocks) =>
             blocks.flatMap { inst =>
-              DependenceAnalysis.regDef(inst).map { _ -> inst }
+              NameDependence.regDef(inst).map { _ -> inst }
             }
           }
       case inst =>
-        DependenceAnalysis.regDef(inst).map { _ -> inst }
+        NameDependence.regDef(inst).map { _ -> inst }
     }.toMap
 
   /** Create a data dependence graph between the instructions in the given block
@@ -95,7 +97,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
 
     block.foreach { inst =>
       graph += inst
-      DependenceAnalysis.regUses(inst).foreach { use =>
+      NameDependence.regUses(inst).foreach { use =>
         defInst.get(use) match {
           case Some(producer) =>
             graph += GraphEdge.DiEdge(producer, inst)
@@ -328,7 +330,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
             val filteredPhis = results.filter { case Phi(rd, _) =>
               globallyTrackedSet(rd) || depGraph.get(jtb).diSuccessors.exists {
                 succ =>
-                  DependenceAnalysis.regUses(succ).contains(rd)
+                  NameDependence.regUses(succ).contains(rd)
 
               }
             }
@@ -429,7 +431,7 @@ trait DeadCodeElimination extends DependenceGraphBuilder {
     // now we need to go through the optimized block and create a set of names
     // we are ought to keep, basically removing unused DefRegs
 
-    val namesToKeep = DependenceAnalysis.referencedNames(optBlock)
+    val namesToKeep = NameDependence.referencedNames(optBlock)
 
     ctx.logger.dumpArtifact(
       s"dce_${ctx.logger.countProgress()}_kept_names.txt"

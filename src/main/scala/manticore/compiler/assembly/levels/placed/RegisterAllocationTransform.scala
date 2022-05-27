@@ -8,7 +8,7 @@ import manticore.compiler.assembly.levels.UInt16
 import scala.collection.mutable.{Queue => MutableQueue}
 import scala.collection.mutable.{ArrayDeque => MutableDeque}
 import scala.collection.mutable.PriorityQueue
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.{ConstType, MemoryType, InputType}
 import manticore.compiler.assembly.levels.CarryType
@@ -19,7 +19,7 @@ import manticore.compiler.assembly.levels.CarryType
   */
 
 object RegisterAllocationTransform
-    extends DependenceGraphBuilder
+    extends CanComputeNameDependence
     with PlacedIRTransformer {
 
   val flavor = PlacedIR
@@ -66,7 +66,7 @@ object RegisterAllocationTransform
       */
 
     process.body.zipWithIndex.foreach { case (inst, cycle) =>
-      DependenceAnalysis.regDef(inst) match {
+      NameDependence.regDef(inst) match {
         case Seq() =>
         case rds @ _ =>
           rds.foreach { rd =>
@@ -83,7 +83,7 @@ object RegisterAllocationTransform
             }
           }
       }
-      DependenceAnalysis.regUses(inst).foreach { rs =>
+      NameDependence.regUses(inst).foreach { rs =>
         mortal_registers.get(rs) match {
           case Some(rsdef) =>
             if (!life_begin.contains(rsdef)) {

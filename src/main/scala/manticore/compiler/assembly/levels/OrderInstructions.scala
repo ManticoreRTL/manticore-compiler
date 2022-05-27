@@ -16,134 +16,108 @@ import scalax.collection.edge.LDiEdge
 import scalax.collection.Graph
 import scalax.collection.mutable.{Graph => MutableGraph}
 import scalax.collection.GraphEdge.DiEdge
+import manticore.compiler.assembly.CanBuildDependenceGraph
+
+// base trait for any transform that wants to be able to reorder instruction
+
+trait CanOrderInstructions extends CanBuildDependenceGraph {
+
+  object InstructionOrder {
+    import flavor._
+
+    private def dependenceGraph(
+        instructionBlock: Iterable[Instruction]
+    )(implicit ctx: AssemblyContext) = {
+      def readAfterWriteEdge(source: Instruction, target: Instruction) =
+        DiEdge(source, target)
+      def antiDependenceEdge(source: Instruction, target: Instruction) =
+        DiEdge(source, target)
+      def graphNode(inst: Instruction) = inst
+
+      val dependence_graph = GraphBuilder.build(instructionBlock)(
+        graphNode,
+        readAfterWriteEdge,
+        Some(antiDependenceEdge(_, _))
+      )
+      dependence_graph
+    }
+    def reorder(
+        instructionBlock: Iterable[Instruction]
+    )(implicit ctx: AssemblyContext): Iterable[Instruction] = {
+
+      val depGraph = dependenceGraph(instructionBlock)
+
+      if (depGraph.isCyclic) {
+        ctx.logger.error(
+          "Dependence graph is not acyclic, can not order instruction!"
+        )
+        ctx.logger.dumpArtifact(s"cyclic_dependence_graph_${transformId}.dot") {
+          GraphBuilder.toDotGraph(depGraph)
+        }
+        instructionBlock
+      } else {
+
+        // Alternative to performing DFS, we can use the topologicalSort visitor
+        // in the dependence_graph but that one is orders of magnitude slower than
+        // our simple DFS here, so don't use it :D
+        val schedule = scala.collection.mutable.Stack.empty[Instruction]
+
+        val to_schedule = depGraph.nodes.size
+
+        val scheduled_count = 0
+
+        val visited = scala.collection.mutable.Set.empty[depGraph.NodeT]
+        val unvisited = scala.collection.mutable.Queue
+          .empty[depGraph.NodeT] ++ depGraph.nodes
+
+        def visitNode(n: depGraph.NodeT): Unit = {
+          if (!visited.contains(n)) {
+
+            n.diSuccessors.foreach { succ =>
+              visitNode(succ)
+            }
+            visited += n
+            schedule push n.toOuter
+          }
+        }
+        while (unvisited.nonEmpty) {
+          val n = unvisited.dequeue()
+          visitNode(n)
+        }
+
+        // IMPORTANT, popAll in scala 2.13.7 is broken! if you downgrade
+        // the scala version this will break!
+
+        assert(
+          util.Properties.versionNumberString == "2.13.8",
+          "popAll requires care in scala earlier than 2.13.8"
+        )
+
+        val orderedBlock  = schedule.popAll()
+        orderedBlock
+      }
+    }
+
+
+    def reorder(process: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
+      val orderedBody = reorder(process.body)
+      process.copy(
+        body = orderedBody.toSeq
+      ).setPos(process.pos)
+    }
+  }
+
+
+}
 
 /** This transform sorts instructions based on their depenencies.
   */
-trait OrderInstructions extends DependenceGraphBuilder with Flavored {
+trait OrderInstructions extends CanOrderInstructions {
 
   // Object Impl is declared private so flavor does not escape its defining scope
   // (when flavor.<something> is returned from a method).
 
   import flavor._
-
-  def createDependenceGraph(proc: DefProcess)(implicit ctx: AssemblyContext) = {
-    val dependence_graph = DependenceAnalysis.build(proc, (_, _) => None)(ctx)
-    dependence_graph
-  }
-  def orderInstructions(
-      proc: DefProcess
-  )(implicit
-      ctx: AssemblyContext
-  ): DefProcess = {
-
-    // The value of the label doesn't matter for topological sorting.
-    // Must use Instruction instead of flavor.Instruction as GraphBuilder requires knowledge
-    // of the type itself and cannot use the instance variable flavor to infer the type.
-
-    val dependence_graph = createDependenceGraph(proc)
-
-    if (dependence_graph.isCyclic) {
-      ctx.logger.error(
-        "Dependence graph is not acyclic, can not order instruction!"
-      )
-
-      ctx.logger.dumpArtifact(s"cyclic_dependence_graph_${transformId}.dot") {
-        import scalax.collection.io.dot._
-        import scalax.collection.io.dot.implicits._
-        val dotRoot = DotRootGraph(
-          directed = true,
-          id = Some("List scheduling dependence graph")
-        )
-        val nodeIndex = dependence_graph.nodes.map(_.toOuter).zipWithIndex.toMap
-        def edgeTransform(
-            iedge: Graph[Instruction, LDiEdge]#EdgeT
-        ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
-          case LDiEdge(source, target, _) =>
-            Some(
-              (
-                dotRoot,
-                DotEdgeStmt(
-                  nodeIndex(source.toOuter).toString,
-                  nodeIndex(target.toOuter).toString
-                )
-              )
-            )
-          case t @ _ =>
-            ctx.logger.error(
-              s"An edge in the dependence could not be serialized! ${t}"
-            )
-            None
-        }
-        def nodeTransformer(
-            inode: Graph[Instruction, LDiEdge]#NodeT
-        ): Option[(DotGraph, DotNodeStmt)] =
-          Some(
-            (
-              dotRoot,
-              DotNodeStmt(
-                NodeId(nodeIndex(inode.toOuter)),
-                List(DotAttr("label", inode.toOuter.toString.trim.take(64)))
-              )
-            )
-          )
-
-        val dotExport: String = dependence_graph.toDot(
-          dotRoot = dotRoot,
-          edgeTransformer = edgeTransform,
-          cNodeTransformer = Some(nodeTransformer), // connected nodes
-          iNodeTransformer = Some(nodeTransformer) // isolated nodes
-        )
-        dotExport
-
-      }
-
-      proc
-    } else {
-
-      // Alternative to performing DFS, we can use the topologicalSort visitor
-      // in the dependence_graph but that one is orders of magnitude slower than
-      // our simple DFS here, so don't use it :D
-      val schedule = scala.collection.mutable.Stack.empty[Instruction]
-
-      val to_schedule = dependence_graph.nodes.size
-
-      val scheduled_count = 0
-
-      val visited = scala.collection.mutable.Set.empty[dependence_graph.NodeT]
-      val unvisited = scala.collection.mutable.Queue
-        .empty[dependence_graph.NodeT] ++ dependence_graph.nodes
-
-      def visitNode(n: dependence_graph.NodeT): Unit = {
-        if (!visited.contains(n)) {
-
-          n.diSuccessors.foreach { succ =>
-            visitNode(succ)
-          }
-          visited += n
-          schedule push n.toOuter
-        }
-      }
-      while (unvisited.nonEmpty) {
-        val n = unvisited.dequeue()
-        visitNode(n)
-      }
-
-      // IMPORTANT, popAll in scala 2.13.7 is broken! if you downgrade
-      // the scala version this will break!
-
-      assert(
-        util.Properties.versionNumberString == "2.13.8",
-        "popAll requires care in scala earlier than 2.13.8"
-      )
-      proc.copy(
-        body = schedule
-          .popAll()
-          .toSeq
-      )
-
-    }
-
-  }
 
   def do_transform(
       asm: DefProgram,
@@ -152,7 +126,7 @@ trait OrderInstructions extends DependenceGraphBuilder with Flavored {
     implicit val ctx = context
 
     val out = DefProgram(
-      processes = asm.processes.map(orderInstructions)
+      processes = asm.processes.map(InstructionOrder.reorder)
     )
 
     out

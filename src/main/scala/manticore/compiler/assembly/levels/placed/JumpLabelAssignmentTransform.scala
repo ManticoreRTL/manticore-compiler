@@ -2,7 +2,6 @@ package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.DependenceGraphBuilder
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import scala.util.Try
 import scala.util.Success
@@ -151,9 +150,9 @@ object JumpLabelAssignmentTransform extends PlacedIRTransformer {
           // we are guaranteed by the JumpTableConstructionTransform not to ever
           // lookup anything other than the labels defined in the indexer
           val cap = memories.collectFirst {
-            case MemoryVariable(n, _, block) if n == labelGroup.memory => block
+            case MemoryVariable(n, size, _, _) if n == labelGroup.memory => size
           } match {
-            case Some(block) => block.capacity
+            case Some(sz) => sz
             case None =>
               ctx.logger.error(
                 s"Failed resolving labels! Could not look up capacity of ${labelGroup.memory}.",
@@ -193,9 +192,7 @@ object JumpLabelAssignmentTransform extends PlacedIRTransformer {
           case Some(grp) =>
             val content = createMemoryContent(grp)
             r.copy(
-              variable = m.copy(
-                block = m.block.copy(initial_content = content)
-              )
+              variable = m.copy(initialContent = content)
             ).setPos(r.pos)
           case None => // normal memory
             r

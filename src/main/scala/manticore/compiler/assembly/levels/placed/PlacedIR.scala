@@ -50,30 +50,30 @@ object PlacedIR extends ManticoreAssemblyIR {
     def withId(new_id: Int): PlacedVariable = this.copy(id = new_id)
   }
 
-  case class MemoryVariable(name: Name, id: Int, block: MemoryBlock)
+  case class MemoryVariable(name: Name, size: Int, id: Int, initialContent: Seq[UInt16] = Nil)
       extends PlacedVariable {
     def withName(n: Name) = this.copy(name = n)
     override def varType: VariableType = MemoryType
     def withId(new_id: Int) = this.copy(id = new_id)
   }
 
-  case class MemoryBlock(
-      block_id: Name,
-      capacity: Int,
-      width: Int,
-      index: Option[Int] = None,
-      initial_content: Seq[UInt16] = Seq.empty[UInt16]
-  ) {
-    def capacityInShorts(): Int = {
-      capacity * numShortsPerWord()
-    }
-    def numShortsPerWord(): Int =
-      ((width - 1) / 16 + 1)
-  }
-  object MemoryBlock {
-    def fromAnnotation(a: MemblockAnnotation) =
-      MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth(), a.getIndex())
-  }
+  // case class MemoryBlock(
+  //     block_id: Name,
+  //     capacity: Int,
+  //     width: Int,
+  //     index: Option[Int] = None,
+  //     initial_content: Seq[UInt16] = Seq.empty[UInt16]
+  // ) {
+  //   def capacityInShorts(): Int = {
+  //     capacity * numShortsPerWord()
+  //   }
+  //   def numShortsPerWord(): Int =
+  //     ((width - 1) / 16 + 1)
+  // }
+  // object MemoryBlock {
+  //   def fromAnnotation(a: MemblockAnnotation) =
+  //     MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth(), a.getIndex())
+  // }
 
   case class ProcessIdImpl(id: String, x: Int, y: Int) {
 

@@ -22,9 +22,9 @@ object LocalMemoryAllocation extends PlacedIRTransformer {
       proc.registers.foldLeft((0, Seq.empty[DefReg])) {
         case ((base: Int, prev_regs: Seq[DefReg]), r: DefReg) =>
           r.variable match {
-            case MemoryVariable(_, _, block: MemoryBlock) =>
+            case MemoryVariable(_, size, _, _) =>
               val with_base = r.copy(value = Some(UInt16(base))).setPos(r.pos)
-              val next_base = base + block.capacityInShorts()
+              val next_base = base + size
               (next_base, prev_regs :+ with_base)
             case _ =>
               (base, prev_regs :+ r)

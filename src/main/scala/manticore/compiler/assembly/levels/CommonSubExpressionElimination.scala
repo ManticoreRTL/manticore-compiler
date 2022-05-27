@@ -4,7 +4,7 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator
 
 import manticore.compiler.assembly.levels.CanRename
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 /**
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
@@ -13,7 +13,7 @@ trait CommonSubExpressionElimination
     extends Flavored
     with CanRename
     with CanCollectProgramStatistics
-    with DependenceGraphBuilder {
+    with CanComputeNameDependence {
 
   import flavor._
 
@@ -169,7 +169,7 @@ trait CommonSubExpressionElimination
       Rename.asRenamed(_)(subst)
     }
 
-    val referenced = DependenceAnalysis.referencedNames(finalInstructions)
+    val referenced = NameDependence.referencedNames(finalInstructions)
 
     def isIo(r: DefReg): Boolean =
       r.variable.varType == InputType || r.variable.varType == OutputType

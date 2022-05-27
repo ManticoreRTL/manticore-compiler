@@ -96,8 +96,8 @@ object ListSchedulerTransform
     // of the form Mov(curr, next) that we are adding now.
 
     proc.body.foreach { inst =>
-      val uses = DependenceAnalysis.regUses(inst)
-      val defs = DependenceAnalysis.regDef(inst)
+      val uses = NameDependence.regUses(inst)
+      val defs = NameDependence.regDef(inst)
       defs.foreach { d =>
         // is this instruction defining the next value of a register?
         // If so create a RAW dependency

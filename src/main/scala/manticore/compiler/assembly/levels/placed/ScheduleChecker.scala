@@ -2,14 +2,14 @@ package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.HasLoggerId
 import manticore.compiler.LoggerId
 
-object ScheduleChecker extends DependenceGraphBuilder with PlacedIRChecker {
+object ScheduleChecker extends CanComputeNameDependence with PlacedIRChecker {
   val flavor = PlacedIR
 
   import flavor._
@@ -46,7 +46,7 @@ object ScheduleChecker extends DependenceGraphBuilder with PlacedIRChecker {
           expect_stop_reached = true
         case _ => // nothing to do
       }
-      DependenceAnalysis.regUses(inst).foreach { u =>
+      NameDependence.regUses(inst).foreach { u =>
         defined_names.get(u) match {
           case Some(def_cycle) =>
             if (cycle < def_cycle) {
@@ -66,7 +66,7 @@ object ScheduleChecker extends DependenceGraphBuilder with PlacedIRChecker {
         }
       }
 
-      DependenceAnalysis.regDef(inst).foreach { d =>
+      NameDependence.regDef(inst).foreach { d =>
         defined_names.get(d) match {
           case Some(def_cycle) =>
             if (def_cycle != 0) {

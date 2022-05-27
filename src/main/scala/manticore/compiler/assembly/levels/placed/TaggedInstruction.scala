@@ -17,7 +17,7 @@ case class TaggedInstruction(
 object TaggedInstruction {
 
   import PlacedIR._
-  import PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
+  import PlacedIRDependencyDependenceGraphBuilder.NameDependence
 
   def apply(inst: Instruction, tag: ExecutionTag): TaggedInstruction =
     TaggedInstruction(inst, Seq(tag))
@@ -91,7 +91,7 @@ object TaggedInstruction {
     ): IndexedSeq[TaggedInstruction] = {
 
       def phiSources(inst: Instruction): Seq[PhiSource] =
-        DependenceAnalysis.regDef(inst).collect {
+        NameDependence.regDef(inst).collect {
           case n if phis.contains((jcase.label, n)) =>
             PhiSource(phis((jcase.label, n)), n)
         }

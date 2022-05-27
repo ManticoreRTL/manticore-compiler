@@ -95,7 +95,7 @@ object ProcessSplittingTransform
 
     val sink_nodes = dependence_graph.nodes.filter { node =>
       val writes_to_output =
-        DependenceAnalysis.regDef(node.toOuter).exists(outputs.contains)
+        NameDependence.regDef(node.toOuter).exists(outputs.contains)
       val is_store = node.toOuter match {
         case _: LocalStore | _: GlobalStore => true
         case _: Expect                      => true
@@ -152,14 +152,14 @@ object ProcessSplittingTransform
     // Helper classes for building the constraint graph
 
     sealed abstract class SubProcess
-    case class MemBlockRoot(memblock: MemoryBlock) extends SubProcess {
-      override def toString(): String = memblock.block_id
+    case class MemBlockRoot(mem: Name) extends SubProcess {
+      override def toString(): String = mem
 
       override def equals(x: Any) = x match {
-        case mx: MemBlockRoot => (mx eq this) || (mx.memblock == memblock)
+        case mx: MemBlockRoot => (mx eq this) || (mem == mx.mem)
         case _                => false
       }
-      override def hashCode() = memblock.hashCode()
+      override def hashCode() = mem.hashCode()
 
     }
     case object SysCallRoot extends SubProcess {
@@ -203,19 +203,17 @@ object ProcessSplittingTransform
                 SysCallRoot,
                 local_root
               )
-            case i @ (_: LocalLoad | _: LocalStore) =>
-              i.annons.collectFirst { case annon: Memblock =>
-                annon
-              } match {
-                case None =>
-                  ctx.logger.error(s"Expected ${Memblock.name} annotation", i)
-                case Some(a) =>
-                  val mblock = MemBlockRoot(MemoryBlock.fromAnnotation(a))
-                  constraint_graph += GraphEdge.DiEdge(
-                    mblock,
-                    local_root
-                  )
-              }
+
+            case LocalStore(_, _, _, _, order, _) =>
+              constraint_graph += GraphEdge.DiEdge(
+                MemBlockRoot(order.memory),
+                local_root
+              )
+            case LocalLoad(_, _, _, order, _) =>
+              constraint_graph += GraphEdge.DiEdge(
+                MemBlockRoot(order.memory),
+                local_root
+              )
             case _ =>
             // do nothing for now
           }
@@ -365,7 +363,7 @@ object ProcessSplittingTransform
 
     def createProcess(block: Iterable[Instruction], index: Int): DefProcess = {
 
-      val referenced = DependenceAnalysis.referencedNames(block)
+      val referenced = NameDependence.referencedNames(block)
       val defRegs = proc.registers.filter { r =>
         referenced.contains(r.variable.name)
       }

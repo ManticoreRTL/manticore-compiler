@@ -74,12 +74,7 @@ object ProcessMergingTransform extends PlacedIRTransformer {
           if (processor_queue.nonEmpty) {
             val candidate_processor = processor_queue.dequeue()
             val mem_required = process.registers.collect {
-              case DefReg(m: MemoryVariable, _, _) =>
-                val capacity = m.block.capacity
-                val width = m.block.width
-                val num_shorts: Int = (width - 1) / 16 + 1
-                val mem_usage = capacity * num_shorts * (16 / 8)
-                mem_usage
+              case DefReg(m: MemoryVariable, _, _) => m.size
             }.sum
             if (candidate_processor.free_mem >= mem_required) {
               // merge the two processes

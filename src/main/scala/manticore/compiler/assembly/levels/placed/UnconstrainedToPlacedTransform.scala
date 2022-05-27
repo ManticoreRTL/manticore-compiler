@@ -173,73 +173,35 @@ object UnconstrainedToPlacedTransform
 
     val v = r.variable.varType match {
       case MemoryType =>
-        val mblock_annon_opt = r.annons.collectFirst { case m: Memblock => m }
-        if (mblock_annon_opt.isEmpty) {
-          ctx.logger.error(s"Expected @${Memblock.name} annotation", r)
-          ctx.logger.fail(s"failed transformation")
+
+
+        val memVar = r.variable.asInstanceOf[S.MemoryVariable]
+
+        def initValue(bigVal: BigInt): UInt16 =
+          if (bigVal > 0xffff) {
+            ctx.logger.error(s"invalid initial memory value ${bigVal}")
+            UInt16((bigVal & 0xffff).toInt)
+          } else {
+            UInt16(bigVal.toInt)
+          }
+        val initialContent = if (memVar.content.nonEmpty) {
+            memVar.content.map { initValue }
+
+        } else {
+          r.annons.collectFirst { case memInit : MemInit =>
+            memInit.readFile().map { initValue }.toSeq
+          }.getOrElse(Nil)
         }
 
-        val mblock = T.MemoryBlock.fromAnnotation(mblock_annon_opt.get)
 
-        val initial_content: Seq[UInt16] = r.annons.collectFirst {
-          case i: MemInit =>
-            i
-        } match {
-          case Some(init) =>
-            Try {
-              val count = init.getCount()
-              val width = init.getWidth()
-              if (width != mblock_annon_opt.get.getWidth()) {
-                ctx.logger.error(
-                  s"memory init width is different from the block width!"
-                )
-              }
-              val lines = scala.io.Source
-                .fromFile(init.getFileName())
-                .getLines()
-                .slice(0, count)
 
-              if (width <= 16) {
-                lines.map { l: String => UInt16(l.toInt) }.toSeq
-              } else {
-                // create an initial memory with
-                // least significant shorts first followed by
-                // most significant shorts
-                // [0xE 0xFFFF, 0x2 0x0001] becomes
-                // [0xFFFF, 0x0001, 0x000E, 0x0002]
-                lines
-                  .map { l: String =>
-                    val big_word = BigInt(l)
-
-                    val num_shorts = mblock.numShortsPerWord()
-                    Seq.tabulate(num_shorts) { sub_word_index =>
-                      val shifted = big_word >> (sub_word_index * 16)
-                      val masked = shifted & 0xffff
-                      UInt16(masked.toInt)
-                    }
-                  }
-                  .toSeq
-                  .transpose
-                  .flatten
-              }
-            } match {
-              case Failure(exception) =>
-                ctx.logger.error("could not initialize memory properly", r)
-                ctx.logger.error(
-                  s"Exception occurred while initializing memory: ${exception.getMessage()}"
-                )
-                Seq.empty[UInt16]
-              case Success(value) =>
-                value
-            }
-          case None =>
-            Seq.empty[UInt16]
-        }
         T.MemoryVariable(
           name = r.variable.name,
           id = -1, // to indicate an unallocated register
-          block = mblock.copy(initial_content = initial_content)
+          size = memVar.size,
+          initialContent = initialContent
         )
+
       case t @ _ =>
         T.ValueVariable(
           name = r.variable.name,

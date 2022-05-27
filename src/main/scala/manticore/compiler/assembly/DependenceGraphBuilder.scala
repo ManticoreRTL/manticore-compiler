@@ -20,16 +20,19 @@ import scala.util.Success
 import scala.util.Failure
 import manticore.compiler.assembly.levels.CloseSequentialCycles
 import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
+import scalax.collection.GraphEdge
 
 /** Generic dependence graph builder, to use it, mix this trait with your
   * transformation
   * @param flavor
   */
-trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
 
-  val flavor: ManticoreAssemblyIR
-  object DependenceAnalysis {
-    import flavor._
+trait CanComputeNameDependence extends Flavored {
+
+  import flavor._
+
+  object NameDependence {
+
 
     /** Extracts the registers read by the instruction.
       *
@@ -165,6 +168,71 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       }
     }
 
+    /** Collect all the referenced name in the given block of instructions (use
+      * or def)
+      *
+      * @param block
+      * @param ctx
+      * @return
+      */
+    def referencedNames(
+        block: Iterable[Instruction]
+    )(implicit ctx: AssemblyContext): Set[Name] = {
+
+      val namesToKeep = scala.collection.mutable.Set.empty[Name]
+
+      block.foreach { inst =>
+        namesToKeep ++= regDef(inst)
+        namesToKeep ++= regUses(inst)
+        inst match {
+          // handle jump tables differently, note that redDef on JumpTable
+          // only returns the value defined by Phi and no the ones inside since
+          // any value defined inside, unless used in the Phi operands should not
+          // reach outside
+          case JumpTable(target, results, blocks, dslot, annons) =>
+            blocks.foreach { case JumpCase(_, blk) =>
+              blk.foreach { i => namesToKeep ++= regDef(i) }
+            }
+            dslot.foreach { i => namesToKeep ++= regDef(i) }
+          case _ =>
+        }
+      }
+
+      namesToKeep.toSet
+    }
+    /** Create mapping from names to the instruction defining them (i.e.,
+      * instruction that have that name as the destination)
+      *
+      * @param proc
+      * @return
+      */
+    def definingInstructionMap(
+        proc: DefProcess
+    )(implicit ctx: AssemblyContext): Map[Name, Instruction] = {
+      val name_def_map = scala.collection.mutable.Map.empty[Name, Instruction]
+      proc.body.foreach { inst =>
+        name_def_map ++= NameDependence.regDef(inst) map { rd => rd -> inst }
+      }
+      name_def_map.toMap
+    }
+
+    def definingInstruction(
+        block: Iterable[Instruction]
+    )(implicit ctx: AssemblyContext): Map[Name, Instruction] = {
+      block.flatMap { inst =>
+        NameDependence.regDef(inst) map { _ -> inst }
+      }.toMap
+    }
+  }
+}
+
+
+trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeNameDependence {
+
+
+  object DependenceAnalysis {
+
+    import flavor._
     /** Build a dependence graph
       *
       * @param process
@@ -177,6 +245,10 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       *   An mutable dependence graph
       */
     import scalax.collection.mutable.{Graph => MutableGraph}
+    import scalax.collection.GraphPredef.EdgeLikeIn
+    import scalax.collection.GraphEdge.DiEdge
+
+
     def build[L](
         process: DefProcess,
         label: (Instruction, Instruction) => L
@@ -184,15 +256,18 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
         ctx: AssemblyContext
     ): MutableGraph[Instruction, LDiEdge] = {
 
+
+      val builder = new DefaultGraphBuilder(flavor)
+
       // A map from registers to the instruction defining it (if any), useful for back tracking
-      val def_instructions = definingInstructionMap(process)
+      val def_instructions = NameDependence.definingInstructionMap(process)
 
       val raw_dependence_graph = MutableGraph.empty[Instruction, LDiEdge]
 
       process.body.foreach { inst =>
         // create register to register dependencies
         raw_dependence_graph += inst
-        regUses(inst).foreach { use =>
+        NameDependence.regUses(inst).foreach { use =>
           def_instructions.get(use) match {
             case Some(pred) =>
               raw_dependence_graph += LDiEdge[Instruction, L](pred, inst)(
@@ -288,29 +363,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
       g.nodes.length == process.body.length
     }
 
-    /** Create mapping from names to the instruction defining them (i.e.,
-      * instruction that have that name as the destination)
-      *
-      * @param proc
-      * @return
-      */
-    def definingInstructionMap(
-        proc: DefProcess
-    )(implicit ctx: AssemblyContext): Map[Name, Instruction] = {
-      val name_def_map = scala.collection.mutable.Map.empty[Name, Instruction]
-      proc.body.foreach { inst =>
-        name_def_map ++= regDef(inst) map { rd => rd -> inst }
-      }
-      name_def_map.toMap
-    }
 
-    def definingInstruction(
-        block: Seq[Instruction]
-    )(implicit ctx: AssemblyContext): Map[Name, Instruction] = {
-      block.flatMap { inst =>
-        regDef(inst) map { _ -> inst }
-      }.toMap
-    }
 
     def extractBlock(
         n: Instruction
@@ -359,38 +412,7 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs {
 
     // }
 
-    /** Collect all the referenced name in the given block of instructions (use
-      * or def)
-      *
-      * @param block
-      * @param ctx
-      * @return
-      */
-    def referencedNames(
-        block: Iterable[Instruction]
-    )(implicit ctx: AssemblyContext): Set[Name] = {
 
-      val namesToKeep = scala.collection.mutable.Set.empty[Name]
-
-      block.foreach { inst =>
-        namesToKeep ++= regDef(inst)
-        namesToKeep ++= regUses(inst)
-        inst match {
-          // handle jump tables differently, note that redDef on JumpTable
-          // only returns the value defined by Phi and no the ones inside since
-          // any value defined inside, unless used in the Phi operands should not
-          // reach outside
-          case JumpTable(target, results, blocks, dslot, annons) =>
-            blocks.foreach { case JumpCase(_, blk) =>
-              blk.foreach { i => namesToKeep ++= regDef(i) }
-            }
-            dslot.foreach { i => namesToKeep ++= regDef(i) }
-          case _ =>
-        }
-      }
-
-      namesToKeep.toSet
-    }
   }
 
 }

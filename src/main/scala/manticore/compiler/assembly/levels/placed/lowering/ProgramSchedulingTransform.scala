@@ -1,5 +1,6 @@
 package manticore.compiler.assembly.levels.placed.lowering
 
+import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.NameDependence
 import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.DependenceAnalysis
 import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
 import manticore.compiler.assembly.levels.placed.PlacedIRRenamer.Rename
@@ -290,7 +291,7 @@ private[lowering] object ProgramSchedulingTransform
             }
             // need to rename the output of newInst to a fresh name in every
             // case block
-            val phiOutputs = DependenceAnalysis.regDef(newInst)
+            val phiOutputs = NameDependence.regDef(newInst)
             val phiInputs =
               for ((label, caseBlock) <- core.jtbBuilder.blocks) yield {
 
@@ -429,7 +430,7 @@ private[lowering] object ProgramSchedulingTransform
           namesToRemove ++= toRemove.map(_.rd)
           jtb.copy(results = toKeep)
         case inst => // nothing to do
-          usedNames ++= DependenceAnalysis.regUses(inst)
+          usedNames ++= NameDependence.regUses(inst)
           inst
       }
       .toSeq
@@ -567,7 +568,7 @@ private[lowering] object ProgramSchedulingTransform
       process: DefProcess
   )(implicit ctx: AssemblyContext): Processor = {
     val definingInstruction =
-      DependenceAnalysis.definingInstructionMap(process)
+      NameDependence.definingInstructionMap(process)
     val dependenceGraph =
       ctx.stats.recordRunTime("building process dependence graph") {
         createDependenceGraph(process.body, definingInstruction)
@@ -631,7 +632,7 @@ private[lowering] object ProgramSchedulingTransform
             false
           case _ =>
             if (
-              DependenceAnalysis.regDef(inst).exists(statePairs.contains(_))
+              NameDependence.regDef(inst).exists(statePairs.contains(_))
             ) {
               ctx.logger.error(
                 "unexpected write to input register, updates to state should be handled at register allocation time",
@@ -674,55 +675,55 @@ private[lowering] object ProgramSchedulingTransform
       case mb: Memblock => mb
     }
 
-    val blockStores: MemoryBlock => Seq[Instruction] = instructionBlock
-      .collect { case store @ (_: LocalStore | _: GlobalStore) =>
-        getMemoryBlock(store) match {
-          case None =>
-            ctx.logger.error(
-              s"missing a valid @${Memblock.name} annotation",
-              store
-            )
-            Option.empty[MemoryBlock] -> store
-          case Some(mblock) =>
-            Some(MemoryBlock.fromAnnotation(mblock)) -> store
-        }
-      }
-      .collect { case (Some(mb) -> store) => mb -> store }
-      .groupMap { case (mb -> store) => mb } { case (mb -> store) => store }
-      .withDefault(_ => Seq.empty[Instruction])
+    // val blockStores: MemoryBlock => Seq[Instruction] = instructionBlock
+    //   .collect { case store @ (_: LocalStore | _: GlobalStore) =>
+    //     getMemoryBlock(store) match {
+    //       case None =>
+    //         ctx.logger.error(
+    //           s"missing a valid @${Memblock.name} annotation",
+    //           store
+    //         )
+    //         Option.empty[MemoryBlock] -> store
+    //       case Some(mblock) =>
+    //         Some(MemoryBlock.fromAnnotation(mblock)) -> store
+    //     }
+    //   }
+    //   .collect { case (Some(mb) -> store) => mb -> store }
+    //   .groupMap { case (mb -> store) => mb } { case (mb -> store) => store }
+    //   .withDefault(_ => Seq.empty[Instruction])
 
     val dependenceGraph = MutableGraph.empty[Instruction, GraphEdge.DiEdge]
 
-    for (instruction <- instructionBlock) {
-      dependenceGraph += instruction
+    // for (instruction <- instructionBlock) {
+    //   dependenceGraph += instruction
 
-      // create register-to-register RAW dependencies
-      for (use <- DependenceAnalysis.regUses(instruction)) {
-        for (defInst <- definingInstruction.get(use)) {
+    //   // create register-to-register RAW dependencies
+    //   for (use <- DependenceAnalysis.regUses(instruction)) {
+    //     for (defInst <- definingInstruction.get(use)) {
 
-          dependenceGraph += GraphEdge.DiEdge(defInst -> instruction)
-        }
-      }
-      // create load-to-store dependencies, i.e., make stores dependent on load
-      // that access the same memory block
-      instruction match {
-        case load @ (_: LocalLoad | _: GlobalLoad) =>
-          getMemoryBlock(load) match {
-            case None =>
-              ctx.logger.error(
-                s"Missing a valid @${Memblock.name} annotation",
-                load
-              )
-            case Some(mb) =>
-              val mblock = MemoryBlock.fromAnnotation(mb)
-              for (store <- blockStores(mblock))
-                dependenceGraph += GraphEdge.DiEdge(load -> store)
-          }
-        case _ => // nothing else to do
-      }
-    }
+    //       dependenceGraph += GraphEdge.DiEdge(defInst -> instruction)
+    //     }
+    //   }
+    //   // create load-to-store dependencies, i.e., make stores dependent on load
+    //   // that access the same memory block
+    //   instruction match {
+    //     case load @ (_: LocalLoad | _: GlobalLoad) =>
+    //       getMemoryBlock(load) match {
+    //         case None =>
+    //           ctx.logger.error(
+    //             s"Missing a valid @${Memblock.name} annotation",
+    //             load
+    //           )
+    //         case Some(mb) =>
+    //           val mblock = MemoryBlock.fromAnnotation(mb)
+    //           for (store <- blockStores(mblock))
+    //             dependenceGraph += GraphEdge.DiEdge(load -> store)
+    //       }
+    //     case _ => // nothing else to do
+    //   }
+    // }
 
-    assert(dependenceGraph.isAcyclic)
+    // assert(dependenceGraph.isAcyclic)
     dependenceGraph
   }
 
@@ -803,7 +804,7 @@ private[lowering] object ProgramSchedulingTransform
     val scheduledBlocks = for (JumpCase(lbl, block) <- jtb.blocks) yield {
 
       val dependenceGraph = ctx.stats.recordRunTime(s"$lbl dependence graph") {
-        val definingInstruction = DependenceAnalysis.definingInstruction(block)
+        val definingInstruction = NameDependence.definingInstruction(block)
         createDependenceGraph(block, definingInstruction)
       }
       val priorities = ctx.stats.recordRunTime(s"$lbl estimating priorities") {

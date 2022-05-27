@@ -201,7 +201,7 @@ object InitializerProgram
       case r @ DefReg(mvr: MemoryVariable, offset_opt, _) =>
         offset_opt match {
           case Some(init @ UInt16(offset)) =>
-            mvr.block.initial_content.zipWithIndex
+            mvr.initialContent.zipWithIndex
               .grouped(mem_init_slider_size)
               .foreach { window =>
                 val zipped_window = window.zip(temp_regs)
