@@ -49,7 +49,7 @@ object FormatString {
   case class FmtHex(width: Int) extends FmtAtomArg {
     val hexWidth =
                   ((BigInt(1) << width) - 1).toString(16).length
-    def toLit(v: BigInt) = FmtLit(truncated(v.toString(16), width, "0"))
+    def toLit(v: BigInt) = FmtLit(truncated(v.toString(16), hexWidth, "0"))
     override def toString: String = s"%${width}h"
     def withWidth(w: Int): FmtAtomArg = copy(w)
   }
