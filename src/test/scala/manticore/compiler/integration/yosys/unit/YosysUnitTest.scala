@@ -212,7 +212,7 @@ trait YosysUnitTest {
     val tbname = s"tb_$filename"
     val tbGen = YosysBackendProxy(
       "manticore_tb",
-      Path.of(tbname)
+      testDir.resolve(tbname)
     ) << "-n" << s"$testIterations"
 
     val yosysCompiler = YosysVerilogReader andThen
