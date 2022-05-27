@@ -26,11 +26,125 @@ import manticore.compiler.frontend.yosys.YosysRunner
 
 import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.frontend.yosys.YosysBackendProxy
+import manticore.compiler.assembly.parser.AssemblyFileParser
+import manticore.compiler.LoggerId
 
 sealed trait TestCode
 case class CodeText(src: String) extends TestCode
 case class CodeResource(path: String) extends TestCode
 
+object YosysUnitTest {
+
+  def verilate(filenames: Seq[Path], timeOut: Int)(implicit
+      ctx: AssemblyContext
+  ): ArrayBuffer[String] = {
+    import scala.sys.process.{Process, ProcessLogger}
+
+    implicit val loggerId = new HasLoggerId { val id = "verilator-compile" }
+    val flags = Seq(
+      "-CFLAGS \"-DVL_USER_FINISH\"",
+      "-cc",
+      "--exe",
+      "--build",
+      "-Os",
+      "-x-assign 0",
+      "-Wno-WIDTH",
+      "--top-module Main"
+    ).mkString(" ")
+
+    val harnessPath = {
+      val tempDir = Files.createTempDirectory("verilator_harness")
+      val text =
+        scala.io.Source.fromResource("integration/yosys/VHarness.cpp").mkString
+      val tempFile = tempDir.resolve("VHarness.cpp")
+      val writer = new PrintWriter(tempFile.toFile())
+      writer.print(text)
+      writer.flush()
+      writer.close()
+      tempFile.toAbsolutePath().toString()
+    }
+
+    val verilteCmd =
+      s"verilator $flags ${filenames.map(_.toAbsolutePath()).mkString(" ")} ${harnessPath}"
+    ctx.logger.info(s"Running command:\n${verilteCmd}")
+    val ret = Process(
+      command = verilteCmd
+    ) ! ProcessLogger(msg => ctx.logger.info(msg))
+    if (ret != 0) {
+      if (ret != 0) {
+        ctx.logger.fail("Failed compiling with verilator")
+      }
+    }
+
+    // if we have been successful with verilator compilation, we should now
+    // run the simulation
+
+    val simCmd = s"obj_dir/VMain ${timeOut}"
+    val out = ArrayBuffer.empty[String]
+    val simRet = Process(
+      command = simCmd
+    ) ! ProcessLogger(out += _)
+    if (simRet != 0) {
+      println(out.mkString("\n"))
+      throw new CompilationFailureException(
+        s"Failed running reference simulation $simCmd: $ret"
+      )
+    }
+    out
+  }
+
+  def compare(reference: ArrayBuffer[String], results: ArrayBuffer[String])(
+      implicit ctx: AssemblyContext
+  ): Boolean = {
+    val numLines = reference.length min results.length
+    var ok = true
+    implicit val loggerId = new HasLoggerId { val id = "result-check" }
+
+    @tailrec
+    def check(index: Int): Unit = {
+      if (index == reference.length) {
+        if (results.length > reference.length) {
+          ctx.logger.error(
+            s"Too many results, expected ${reference.length} but got ${results.length} lines!"
+          )
+          ok = false
+        } else {
+          ctx.logger.info("Success")
+        }
+      } else {
+        if (index > results.length) {
+          ctx.logger.error(
+            s"Not enough results, expected ${reference.length} but got ${results.length} lines!"
+          )
+          ok = false
+        } else {
+          if (reference(index) != results(index)) {
+            ctx.logger.error(
+              s"line ${index + 1} does not match:\ngot:${results(index)}\nref:${reference(index)}"
+            )
+            ok = false
+          } else {
+            check(index + 1)
+          }
+        }
+
+      }
+    }
+    if (reference.length != 0) {
+      check(0)
+      ok
+    } else if (results.length != 0) {
+      ctx.logger.error(
+        s"Did not expect any results but have ${results.length} lines"
+      )
+      false
+    } else {
+      true
+    }
+
+  }
+
+}
 trait YosysUnitTest {
   import scala.sys.process.{Process, ProcessLogger}
 
@@ -71,45 +185,53 @@ trait YosysUnitTest {
         dump("results.txt", results.mkString("\n"))
       }
 
-      val numLines = reference.length min results.length
-      implicit val loggerId = new HasLoggerId { val id = "result-check" }
-
-      @tailrec
-      def check(index: Int): Unit = {
-        if (index == reference.length) {
-          if (results.length > reference.length) {
-            ctx.logger.error(
-              s"Too many results, expected ${reference.length} but got ${results.length} lines!"
-            )
-          } else {
-            ctx.logger.info("Success")
-          }
-        } else {
-          if (index > results.length) {
-            ctx.logger.error(
-              s"Not enough results, expected ${reference.length} but got ${results.length} lines!"
-            )
-          } else {
-            if (reference(index) != results(index)) {
-              ctx.logger.error(
-                s"line ${index + 1} does not match:\ngot:${results(index)}\nref:${reference(index)}"
-              )
-            } else {
-              check(index + 1)
-            }
-          }
-
-        }
-      }
-      assert(reference.length > 0)
-      check(0)
-      if (ctx.logger.countErrors() > 0) {
-        if (!dumpAll) {
+      if(!YosysUnitTest.compare(reference, results)) {
+         if (!dumpAll) {
           dump("results.txt", results.mkString("\n"))
           dump("reference.txt", reference.mkString("\n"))
         }
-        ctx.logger.fail("encountered error(s)!")
+
+        ctx.logger.fail("encountered error(s)!")(LoggerId("check"))
       }
+      // val numLines = reference.length min results.length
+      // implicit val loggerId = new HasLoggerId { val id = "result-check" }
+
+      // @tailrec
+      // def check(index: Int): Unit = {
+      //   if (index == reference.length) {
+      //     if (results.length > reference.length) {
+      //       ctx.logger.error(
+      //         s"Too many results, expected ${reference.length} but got ${results.length} lines!"
+      //       )
+      //     } else {
+      //       ctx.logger.info("Success")
+      //     }
+      //   } else {
+      //     if (index > results.length) {
+      //       ctx.logger.error(
+      //         s"Not enough results, expected ${reference.length} but got ${results.length} lines!"
+      //       )
+      //     } else {
+      //       if (reference(index) != results(index)) {
+      //         ctx.logger.error(
+      //           s"line ${index + 1} does not match:\ngot:${results(index)}\nref:${reference(index)}"
+      //         )
+      //       } else {
+      //         check(index + 1)
+      //       }
+      //     }
+
+      //   }
+      // }
+      // assert(reference.length > 0)
+      // check(0)
+      // if (ctx.logger.countErrors() > 0) {
+      //   if (!dumpAll) {
+      //     dump("results.txt", results.mkString("\n"))
+      //     dump("reference.txt", reference.mkString("\n"))
+      //   }
+      //   ctx.logger.fail("encountered error(s)!")
+      // }
     } catch {
       case e: Exception =>
         println(
@@ -155,52 +277,15 @@ trait YosysUnitTest {
     dump(filename, text)
   }
 
-  private final def verilate(filenames: Seq[String])(implicit
+  final def verilate(filenames: Seq[String])(implicit
       ctx: AssemblyContext
   ): ArrayBuffer[String] = {
 
-    implicit val loggerId = new HasLoggerId { val id = "verilator-compile" }
-    val flags = Seq(
-      "-CFLAGS \"-DVL_USER_FINISH\"",
-      "-cc",
-      "--exe",
-      "--build",
-      "-Os",
-      "-x-assign 0",
-      "-Wno-WIDTH",
-      "--top-module Main"
-    ).mkString(" ")
+    YosysUnitTest.verilate(
+      filenames.map(testDir.resolve(_)),
+      testIterations + 1000
+    )
 
-    copyResource("integration/yosys/VHarness.cpp")
-
-    val verilteCmd = s"verilator $flags ${filenames.mkString(" ")} VHarness.cpp"
-    ctx.logger.info(s"Running command:\n${verilteCmd}")
-    val ret = Process(
-      command = verilteCmd,
-      cwd = testDir.toFile
-    ) ! ProcessLogger(msg => ctx.logger.info(msg))
-    if (ret != 0) {
-      if (ret != 0) {
-        ctx.logger.fail("Failed compiling with verilator")
-      }
-    }
-
-    // if we have been successful with verilator compilation, we should now
-    // run the simulation
-
-    val simCmd = s"obj_dir/VMain ${testIterations + 1000}"
-    val out = ArrayBuffer.empty[String]
-    val simRet = Process(
-      command = simCmd,
-      cwd = testDir.toFile
-    ) ! ProcessLogger(out += _)
-    if (simRet != 0) {
-      println(out.mkString("\n"))
-      throw new CompilationFailureException(
-        s"Failed running reference simulation $simCmd: $ret"
-      )
-    }
-    out
   }
 
   private final def yosysTestbench(
@@ -236,12 +321,12 @@ trait YosysUnitTest {
 
   }
 
-  private final def interpret(
+  def interpret(
       filename: String
   )(implicit ctx: AssemblyContext): ArrayBuffer[String] = {
 
     val parsed =
-      AssemblyParser(testDir.resolve(filename).toFile())
+      AssemblyFileParser(testDir.resolve(filename))
     val compiler =
       UnconstrainedNameChecker andThen
         UnconstrainedMakeDebugSymbols andThen

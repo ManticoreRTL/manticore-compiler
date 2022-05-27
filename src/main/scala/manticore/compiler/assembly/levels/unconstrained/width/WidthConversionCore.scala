@@ -2154,10 +2154,10 @@ object WidthConversionCore
         val memVar = memory.variable.asInstanceOf[MemoryVariable]
         val wordWidth = memVar.width
         val addressBits = if (memVar.size == 1) 1 else log2ceil(memVar.size)
-        assert(
-          builder.originalWidth(offset) == addressBits,
-          s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
-        )
+        // assert(
+        //   builder.originalWidth(offset) == addressBits,
+        //   s"Expected ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
+        // )
         if (memVar.size >= ctx.max_local_memory) {
           // promote to global memory
           ctx.logger.error(s"Can not handle large memories yet!", i)
@@ -2192,10 +2192,10 @@ object WidthConversionCore
         val memVar = memory.variable.asInstanceOf[MemoryVariable]
         val wordWidth = memVar.width
         val addressBits = log2ceil(memVar.size)
-        assert(
-          builder.originalWidth(offset) == addressBits,
-          s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
-        )
+        // assert(
+        //   builder.originalWidth(offset) == addressBits,
+        //   s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
+        // )
         if (memVar.size >= ctx.max_local_memory) {
           // promote to global memory
           ctx.logger.error(s"Can not handle large memories yet!", i)

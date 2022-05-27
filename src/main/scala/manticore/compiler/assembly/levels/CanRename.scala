@@ -49,6 +49,7 @@ trait CanRename extends Flavored {
           i.copy(
             rs = renaming(rs),
             base = renaming(base),
+            address = renaming(offset),
             predicate = predicate.map(renaming),
             order = order.withMemory(renaming(order.memory))
           )
@@ -61,6 +62,7 @@ trait CanRename extends Flavored {
           i.copy(
             rd = renaming(rd),
             base = renaming(base),
+            address = renaming(offset),
             order = order.withMemory(renaming(order.memory))
           )
         case i @ ClearCarry(carry, _) =>

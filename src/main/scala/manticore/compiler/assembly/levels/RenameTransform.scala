@@ -100,15 +100,17 @@ trait RenameTransformation extends Flavored {
             i.copy(
               rsx = rsx.map(rs => subst(rs))
             ).copy(rd = outerRenamer(rd))
-          case i @ LocalLoad(rd, base, _, order, _) =>
+          case i @ LocalLoad(rd, base, offset, order, _) =>
             i.copy(
               base = subst(base),
+              address = subst(offset),
               order = order.withMemory(subst(order.memory))
             ).copy(rd = outerRenamer(rd))
-          case i @ LocalStore(rs, base, _, p, order, _) =>
+          case i @ LocalStore(rs, base, address, p, order, _) =>
             i.copy(
               rs = subst(rs),
               base = subst(base),
+              address = subst(address),
               order = order.withMemory(subst(order.memory)),
               predicate = p.map { subst }
             )
@@ -194,6 +196,15 @@ trait RenameTransformation extends Flavored {
               }
             )
           case i: BreakCase => i
+          case i @ PutSerial(rs, pred, _, _) =>
+            i.copy(rs = subst(rs), pred = subst(pred))
+          case i @ Interrupt(action, condition, _, _) =>
+            action match {
+              case AssertionInterrupt | FinishInterrupt | _: SerialInterrupt |
+                  StopInterrupt =>
+                i.copy(condition = subst(condition))
+
+            }
         }
         renamed.setPos(inst.pos)
       }
