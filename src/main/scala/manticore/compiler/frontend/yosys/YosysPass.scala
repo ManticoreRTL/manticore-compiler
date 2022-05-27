@@ -18,4 +18,5 @@ object Implicits {
   implicit def passProxyToTransformation(pass: YosysPassProxy) = new YosysPass {
     def passProxy(implicit ctx: AssemblyContext) = pass
   }
+  
 }

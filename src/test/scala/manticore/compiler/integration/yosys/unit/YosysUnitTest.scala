@@ -23,8 +23,9 @@ import scala.annotation.tailrec
 import manticore.compiler.frontend.yosys.Yosys
 import manticore.compiler.frontend.yosys.YosysPass
 import manticore.compiler.frontend.yosys.YosysRunner
-import utest.test
+
 import manticore.compiler.frontend.yosys.YosysVerilogReader
+import manticore.compiler.frontend.yosys.YosysBackendProxy
 
 sealed trait TestCode
 case class CodeText(src: String) extends TestCode
@@ -207,23 +208,20 @@ trait YosysUnitTest {
   )(implicit ctx: AssemblyContext): String = {
 
     implicit val loggerId = new HasLoggerId { val id = "Yosys-Auto-TB" }
+    import manticore.compiler.frontend.yosys.Implicits.passProxyToTransformation
     val tbname = s"tb_$filename"
-    val ysCmd = Seq(
-      s"read_verilog -sv -masm $filename",
-      s"hierarchy -auto-top -check",
-      s"proc",
-      s"manticore_tb -n $testIterations tb_$filename"
-    ).mkString("; ")
+    val tbGen = YosysBackendProxy(
+      "manticore_tb",
+      Path.of(tbname)
+    ) << "-n" << s"$testIterations"
 
-    val genCmd = s"yosys -p \"$ysCmd\" -Q -T"
-    ctx.logger.info(s"Running command:\n${genCmd}")
-    val ret = Process(
-      command = genCmd,
-      cwd = testDir.toFile
-    ) ! ProcessLogger(ctx.logger.info(_))
-    if (ret != 0) {
-      ctx.logger.fail("Failed creating testbench")
-    }
+    val yosysCompiler = YosysVerilogReader andThen
+      Yosys.Hierarchy << "-auto-top" << "-check" andThen
+      Yosys.Proc andThen
+      YosysRunner(testDir, tbGen)
+
+    yosysCompiler(Seq(testDir.resolve(filename)))
+
     tbname
   }
   private final def yosysCompile(
@@ -232,8 +230,7 @@ trait YosysUnitTest {
   )(implicit ctx: AssemblyContext): String = {
 
     val yosysCompiler =
-      YosysVerilogReader andThen yosysRunnables andThen YosysRunner
-        .withDirectory(testDir)
+      YosysVerilogReader andThen yosysRunnables andThen YosysRunner(testDir)
 
     yosysCompiler(verilog.map(testDir.resolve(_))).toAbsolutePath().toString()
 

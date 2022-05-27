@@ -7,25 +7,45 @@ import manticore.compiler.assembly.levels.TransformationID
 import java.nio.file.Files
 import java.nio.file.Path
 
-
-
 object YosysRunner extends FunctionalTransformation[YosysResultProxy, Path] {
 
   def apply(program: YosysResultProxy)(implicit ctx: AssemblyContext): Path = {
-    val runner = new YosysRunner(Files.createTempDirectory("yosys_runner"))
+    val runDir = Files.createTempDirectory("yosys_runner")
+    val backend =
+      YosysBackendProxy("manticore_writer", runDir.resolve("main.masm"))
+    val runner = new YosysRunner(runDir, backend)
     runner(program)
   }
 
-  def withDirectory(runDir: Path) = new YosysRunner(runDir)
+  def apply(runDir: Path, backend: YosysBackendProxy): YosysRunner = {
+    val runner = new YosysRunner(runDir, backend)
+    runner
+  }
+  def apply(runDir: Path): YosysRunner = {
+    val backend =
+      YosysBackendProxy("manticore_writer", runDir.resolve("main.masm"))
+    val runner = new YosysRunner(runDir, backend)
+    runner
+  }
+
+  def apply(backend: YosysBackendProxy): YosysRunner = {
+    val runDir = Files.createTempDirectory("yosys_runner")
+    val runner = new YosysRunner(runDir, backend)
+    runner
+  }
 
 }
 
-final class YosysRunner private (runDir: Path)
+final class YosysRunner private (runDir: Path, backend: YosysBackendProxy)
     extends FunctionalTransformation[YosysResultProxy, Path] {
 
   implicit private val loggerId = TransformationID("YosysRunner")
   import scala.sys.process.{ProcessLogger, Process}
   import java.nio.file.Files
+
+  def withDirectory(newRunDir: Path) = new YosysRunner(newRunDir, backend)
+  def withBackend(newBackend: YosysBackendProxy) =
+    new YosysRunner(runDir, newBackend)
 
   override def apply(
       resultProxy: YosysResultProxy
@@ -33,12 +53,11 @@ final class YosysRunner private (runDir: Path)
 
     ctx.logger.debug(s"Yosys run directory is ${runDir.toAbsolutePath()}")
 
-    val assemblyResultPath = runDir
-      .resolve("main.masm")
-      .toAbsolutePath()
-
     val manticoreWriter =
-      YosysPassProxy("manticore_writer") << assemblyResultPath.toString()
+      YosysPassProxy(
+        backend.command,
+        backend.args
+      ) << backend.filename.toAbsolutePath().toString()
 
     val allPasses = ctx.dump_dir match {
       case Some(dDir) if ctx.dump_all =>
@@ -86,7 +105,7 @@ final class YosysRunner private (runDir: Path)
       ctx.logger.fail(s"Failed compiling with Yosys! (err ${retCode})")
     }
 
-    assemblyResultPath
+    backend.filename
 
   }
 }

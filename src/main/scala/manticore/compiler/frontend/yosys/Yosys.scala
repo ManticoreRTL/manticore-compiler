@@ -27,6 +27,7 @@ object Yosys {
     "manticore_check"
   ) runsAfter (Flatten, ManticoreDff, MemoryUnpack)
 
+
   val PreparationPasses =
     (Hierarchy << "-auto-top" << "-check") andThen
       Proc andThen

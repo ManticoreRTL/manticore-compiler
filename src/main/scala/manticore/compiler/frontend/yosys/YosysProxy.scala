@@ -19,17 +19,22 @@ private[yosys] case class YosysPassProxy(
 
   def runsAfter(p: YosysPassProxy) =
     copy(dependencies = dependencies :+ p.command)
-  def runsAfter(p: YosysPassProxy*) = copy(dependencies = dependencies ++ p.map(_.command))
+  def runsAfter(p: YosysPassProxy*) =
+    copy(dependencies = dependencies ++ p.map(_.command))
   def addSwitch(s: String) = copy(args = args :+ s)
   def <<(s: String) = addSwitch(s)
 }
 
+case class YosysBackendProxy(
+    command: String,
+    filename: Path,
+    args: Seq[String] = Nil
+) {
+  def addSwitch(s: String) = copy(args = args :+ s)
+  def <<(s: String) = addSwitch(s)
+}
 private[yosys] case class YosysResultProxy private (
     passes: Seq[YosysPassProxy] = Nil
 ) {
   def :+(pass: YosysPassProxy) = new YosysResultProxy(passes :+ pass)
 }
-
-
-
-
