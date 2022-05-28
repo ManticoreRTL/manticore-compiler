@@ -21,6 +21,7 @@ import manticore.compiler.assembly.levels.placed.lowering.util.ScheduleContext
 import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
 import manticore.compiler.assembly.levels.placed.lowering.util.RecvEvent
 import manticore.compiler.assembly.CanBuildDependenceGraph
+import manticore.compiler.assembly.levels.OutputType
 
 /** Program scheduler pass
   *
@@ -419,7 +420,10 @@ private[lowering] object ProgramSchedulingTransform
     // created dead phi nodes. Now it is the time to go through all the dead
     // phi nodes and remove them.
 
-    val usedNames = scala.collection.mutable.Set.empty[Name]
+    val usedNames =
+      scala.collection.mutable.Set.empty[Name] ++ process.registers.collect {
+        case r: DefReg if r.variable.varType == OutputType => r.variable.name
+      }
     val namesToRemove = scala.collection.mutable.Set.empty[Name]
 
     val newBody = process.body.reverseIterator
@@ -571,7 +575,9 @@ private[lowering] object ProgramSchedulingTransform
     val definingInstruction =
       NameDependence.definingInstructionMap(process)
     val dependenceGraph =
-      ctx.stats.recordRunTime(s"building process ${process.id} dependence graph") {
+      ctx.stats.recordRunTime(
+        s"building process ${process.id} dependence graph"
+      ) {
         GraphBuilder.defaultGraph(process.body)
       }
 
@@ -632,9 +638,7 @@ private[lowering] object ProgramSchedulingTransform
             )
             false
           case _ =>
-            if (
-              NameDependence.regDef(inst).exists(statePairs.contains(_))
-            ) {
+            if (NameDependence.regDef(inst).exists(statePairs.contains(_))) {
               ctx.logger.error(
                 "unexpected write to input register, updates to state should be handled at register allocation time",
                 inst

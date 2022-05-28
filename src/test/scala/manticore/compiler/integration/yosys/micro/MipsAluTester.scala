@@ -261,7 +261,7 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
   }
 
   "ALU" should "work correctly after parsing" in { fixture =>
-    val testBench = generateTestBench(300)
+    val testBench = generateTestBench(200)
     val verilogCode = scala.io.Source
       .fromResource("integration/yosys/micro/alu.sv")
       .getLines()
@@ -283,7 +283,7 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
       CompilationStage.preparation
 
     val program1 = yosysCompiler(Seq(vFilePath))
-    val reference = ArrayBuffer[String]("Finished without errors at   299")
+    val reference = ArrayBuffer[String]("Finished without errors at   199")
     checkUnconstrained("yosys + ordering", program1, reference)
     val program2 = CompilationStage.unconstrainedOptimizations(program1)
     checkUnconstrained("prelim opts", program2, reference)
