@@ -6,6 +6,11 @@ import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.BinaryOperator
+import manticore.compiler.FormatString
+import manticore.compiler.FormatString.FmtBin
+import manticore.compiler.FormatString.FmtDec
+import manticore.compiler.FormatString.FmtHex
+import manticore.compiler.FormatString.FmtConcat
 
 trait ProcessInterpreter extends InterpreterBase {
 
@@ -42,6 +47,12 @@ trait ProcessInterpreter extends InterpreterBase {
 
   def dequeueTraps(): Seq[InterpretationTrap]
 
+  def enqueueSerial(value: UInt16): Unit
+
+  def flushSerial(): Seq[UInt16]
+
+  def printSerial(line: String): Unit
+
   def step(): Unit
 
   def roll(): Unit
@@ -71,7 +82,8 @@ trait ProcessInterpreter extends InterpreterBase {
 
       case SUB => rs1_val - rs2_val
       case OR  => rs1_val | rs2_val
-      case AND => rs1_val & rs2_val
+      case AND =>
+        rs1_val & rs2_val
       case XOR => rs1_val ^ rs2_val
       case SEQ =>
         val is_eq = rs1_val == rs2_val
@@ -86,7 +98,12 @@ trait ProcessInterpreter extends InterpreterBase {
       case SRA =>
         val shift_amount = shiftAmount(rs2_val)
         rs1_val >>> shift_amount
-
+      case SLT =>
+        if(rs1_val < rs2_val) {
+          UInt16(1)
+        } else {
+          UInt16(0)
+        }
       case SLTS =>
         val rs1_sign = (rs1_val >> 15) == UInt16(1)
         val rs2_sign = (rs2_val >> 15) == UInt16(1)
@@ -129,10 +146,12 @@ trait ProcessInterpreter extends InterpreterBase {
 
     // We must bind the arguments of the custom function to their concrete values
     // at the current cycle.
-    val substMap = rsx.zipWithIndex.map { case (rs, idx) =>
-      val rsVal = read(rs)
-      PositionalArg(idx) -> AtomConst(rsVal)
-    }.toMap[AtomArg, Atom]
+    val substMap = rsx.zipWithIndex
+      .map { case (rs, idx) =>
+        val rsVal = read(rs)
+        PositionalArg(idx) -> AtomConst(rsVal)
+      }
+      .toMap[AtomArg, Atom]
 
     val exprWithArgs = substitute(func.expr)(substMap)
     val rdVal = evaluate(exprWithArgs)
@@ -186,8 +205,36 @@ trait ProcessInterpreter extends InterpreterBase {
             trap(FailureTrap)
           case ExpectStop =>
             ctx.logger.info(s"Stop signal interpreted.", instruction)
-            trap(StopTrap)
+            trap(FinishTrap)
         }
+      }
+    case PutSerial(rs, pred, _, _) =>
+      val en = read(pred)
+      if (en == UInt16(1)) {
+        enqueueSerial(read(rs))
+      }
+    case intr @ Interrupt(action, condition, _, _) =>
+      val en = read(condition) == UInt16(1)
+      action match {
+        case AssertionInterrupt if !en =>
+          ctx.logger.error("Assertion failed!", intr)
+          trap(FailureTrap)
+        case FinishInterrupt if en =>
+          ctx.logger.info("Got finish!", intr)
+          trap(FinishTrap)
+        case StopInterrupt if en =>
+          ctx.logger.info("Got stop!", intr)
+          trap(FailureTrap)
+        case SerialInterrupt(fmt) if en =>
+
+          val values = flushSerial().map(x => BigInt(x.toInt))
+          val resolvedFmt = fmt.consume(values)
+          if (resolvedFmt.isLit == false) {
+            ctx.logger.error("Did not have enough value to in the serial queue!", intr)
+          }
+          printSerial(resolvedFmt.toString)
+
+        case _ => // nothing to do
       }
     case Predicate(rs, _) =>
       val rs_val = read(rs)
@@ -274,7 +321,7 @@ trait ProcessInterpreter extends InterpreterBase {
     case JumpTable(target, _, _, _, _) =>
       updatePc(read(target).toInt)
     case BreakCase(target, _) => updatePc(target)
-    case Nop => // nothing
+    case Nop                  => // nothing
 
     case _: GlobalStore | _: GlobalLoad | _: SetValue =>
       ctx.logger.error(s"can not handle", instruction)

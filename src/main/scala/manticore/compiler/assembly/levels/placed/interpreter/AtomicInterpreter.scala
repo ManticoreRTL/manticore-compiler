@@ -39,7 +39,8 @@ object AtomicInterpreter extends PlacedIRChecker {
   final class AtomicProcessInterpreter(
       proc: DefProcess,
       vcd: Option[PlacedValueChangeWriter],
-      monitor: Option[PlacedIRInterpreterMonitor]
+      monitor: Option[PlacedIRInterpreterMonitor],
+      serial: Option[String => Unit]
   )(implicit
       val ctx: AssemblyContext
   ) extends ProcessInterpreter {
@@ -163,6 +164,8 @@ object AtomicInterpreter extends PlacedIRChecker {
 
     private val inbox = scala.collection.mutable.Queue.empty[AtomicMessage]
 
+    private val serialQueue = scala.collection.mutable.Queue.empty[UInt16]
+
     private val missing_messages =
       scala.collection.mutable.Queue.empty[(Name, ProcessId)]
 
@@ -222,6 +225,14 @@ object AtomicInterpreter extends PlacedIRChecker {
       res
     }
 
+    override def enqueueSerial(v: UInt16): Unit = {
+      serialQueue += v
+    }
+    override def flushSerial(): Seq[UInt16] = serialQueue.dequeueAll(_ => true)
+    override def printSerial(line: String): Unit = serial match {
+      case None          => ctx.logger.info(s"[SERIAL] ${line}")
+      case Some(printer) => printer(line)
+    }
     override def getPred(): Boolean = pred
 
     override def setPred(v: Boolean): Unit = { pred = v }
@@ -326,7 +337,8 @@ object AtomicInterpreter extends PlacedIRChecker {
       program: DefProgram,
       vcd: Option[PlacedValueChangeWriter],
       monitor: Option[PlacedIRInterpreterMonitor],
-      expected_cycles: Option[Int]
+      expected_cycles: Option[Int],
+      serial: Option[String => Unit]
   )(implicit
       ctx: AssemblyContext
   ) extends ProgramInterpreter {
@@ -336,7 +348,7 @@ object AtomicInterpreter extends PlacedIRChecker {
     )
 
     val cores = program.processes.map { p =>
-      p.id -> new AtomicProcessInterpreter(p, vcd, monitor)(ctx)
+      p.id -> new AtomicProcessInterpreter(p, vcd, monitor, serial)(ctx)
     }.toMap
 
     val vcycle_length = cores.map { _._2.instructionMemory.length }.max
@@ -402,7 +414,7 @@ object AtomicInterpreter extends PlacedIRChecker {
       } else { // if (traps.nonEmpty) {
         val no_error = traps.forall {
           case FailureTrap | InternalTrap => false
-          case StopTrap                   => true
+          case FinishTrap                 => true
         }
         ctx.logger.info(
           s"Interpretation finished after ${vcycle - 1} virtual cycles " +
@@ -418,9 +430,10 @@ object AtomicInterpreter extends PlacedIRChecker {
       program: DefProgram,
       vcd: Option[PlacedValueChangeWriter] = None,
       monitor: Option[PlacedIRInterpreterMonitor] = None,
-      expectedCycles: Option[Int] = None
+      expectedCycles: Option[Int] = None,
+      serial: Option[String => Unit] = None
   )(implicit ctx: AssemblyContext): AtomicProgramInterpreter =
-    new AtomicProgramInterpreter(program, vcd, monitor, expectedCycles)
+    new AtomicProgramInterpreter(program, vcd, monitor, expectedCycles, serial)
 
   override def check(
       source: DefProgram

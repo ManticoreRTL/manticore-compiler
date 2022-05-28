@@ -28,7 +28,8 @@ trait MessageBase {
 
 sealed abstract class InterpretationTrap
 case object FailureTrap extends InterpretationTrap
-case object StopTrap extends InterpretationTrap
+case object FinishTrap extends InterpretationTrap
+// case object StopTrap extends InterpretationTrap
 case object InternalTrap extends InterpretationTrap
 
 trait PlacedValueChangeWriter extends ValueChangeWriterBase {

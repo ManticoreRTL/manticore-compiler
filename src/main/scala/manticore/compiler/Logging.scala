@@ -220,7 +220,7 @@ object Logger {
         case Some(dir) if dump_all =>
           Files.createDirectories(dir.toPath())
           val actualFileName = s"${countProgress()}_${phase_id}_${file_name}"
-          info(s"Dumping ${actualFileName} to ${dir.toPath.toAbsolutePath}")
+          info(s"Dumping ${dir.toPath.toAbsolutePath}/${actualFileName}")
           val xpath = dir.toPath().resolve(actualFileName)
           val writer = new PrintWriter(xpath.toFile)
           writer.print(gen)

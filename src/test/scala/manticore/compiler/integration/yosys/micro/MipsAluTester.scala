@@ -22,6 +22,14 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedJumpTableCo
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRParMuxDeconstructionTransform
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import scala.collection.mutable.ArrayBuffer
+import manticore.compiler.assembly.levels.placed.PlacedIR
+import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
+import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
+import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
+import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElimination
+import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
 
 object AluReference {
   sealed abstract class AluControl(val v: Int)
@@ -155,7 +163,7 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
 
   }
 
-  def interpret(
+  def interpretUnconstrained(
       program: UnconstrainedIR.DefProgram
   )(implicit
       ctx: AssemblyContext
@@ -169,13 +177,45 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
     interp.runCompletion()
     serialOut
   }
+  def interpretPlaced(program: PlacedIR.DefProgram)(implicit
+      ctx: AssemblyContext
+  ): ArrayBuffer[String] = {
+    val serialOut = ArrayBuffer.empty[String]
+    val closed =
+      (PlacedIRCloseSequentialCycles andThen
+        JumpTableNormalizationTransform andThen
+        JumpLabelAssignmentTransform)(program)
+    val interp = AtomicInterpreter.instance(
+      program = closed,
+      serial = Some(serialOut += _)
+    )
+    interp.interpretCompletion()
+    serialOut
+  }
 
-  def check(
+  def checkUnconstrained(
       clue: String,
       program: UnconstrainedIR.DefProgram,
       reference: ArrayBuffer[String]
   )(implicit ctx: AssemblyContext) = {
-    val got = interpret(program)
+    val got = interpretUnconstrained(program)
+    if (!YosysUnitTest.compare(reference, got)) {
+      ctx.logger.flush()
+      fail(s"${clue}: results did not match the reference")
+    }
+    if (ctx.logger.countErrors() > 0) {
+      ctx.logger.flush()
+      fail(s"${clue}: Errors occurred")
+    }
+  }
+
+  def checkPlaced(
+      clue: String,
+      program: PlacedIR.DefProgram,
+      reference: ArrayBuffer[String]
+  )(implicit ctx: AssemblyContext) = {
+
+    val got = interpretPlaced(program)
     if (!YosysUnitTest.compare(reference, got)) {
       ctx.logger.flush()
       fail(s"${clue}: results did not match the reference")
@@ -200,7 +240,7 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
         UnconstrainedDeadCodeElimination andThen
         UnconstrainedNameChecker
 
-    val controlOptimization =
+    val controlLowering =
       UnconstrainedJumpTableConstruction andThen
         UnconstrainedNameChecker andThen
         UnconstrainedIRParMuxDeconstructionTransform andThen
@@ -211,8 +251,13 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
         UnconstrainedIRConstantFolding andThen
         UnconstrainedDeadCodeElimination
 
-    val translation = UnconstrainedToPlacedTransform
+    val translation =
+      UnconstrainedToPlacedTransform
 
+    val placedOptimizations =
+      PlacedIRConstantFolding andThen
+        PlacedIRCommonSubExpressionElimination andThen
+        PlacedIRDeadCodeElimination
   }
 
   "ALU" should "work correctly after parsing" in { fixture =>
@@ -224,7 +269,7 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
     val vFilePath = fixture.dump("alu.sv", verilogCode)
 
     implicit val ctx = AssemblyContext(
-      dump_all = false,
+      dump_all = true,
       dump_dir = Some(fixture.test_dir.toFile),
       quiet = false,
       log_file = Some(fixture.test_dir.resolve("run.log").toFile())
@@ -239,15 +284,15 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
 
     val program1 = yosysCompiler(Seq(vFilePath))
     val reference = ArrayBuffer[String]("Finished without errors at   299")
-    check("yosys + ordering", program1, reference)
-
+    checkUnconstrained("yosys + ordering", program1, reference)
     val program2 = CompilationStage.unconstrainedOptimizations(program1)
-    check("prelim opts", program2, reference)
-    val program3 = CompilationStage.unconstrainedOptimizations(program2)
-    check("jump table", program3, reference)
+    checkUnconstrained("prelim opts", program2, reference)
+    val program3 = CompilationStage.controlLowering(program2)
+    checkUnconstrained("jump table", program3, reference)
     val program4 = CompilationStage.widthLowering(program3)
-    check("width conversion", program4, reference)
-
-
+    checkUnconstrained("width conversion", program4, reference)
+    val program5 = CompilationStage.translation(program4)
+    checkPlaced("translation", program5, reference)
+    val program6 = CompilationStage.placedOptimizations(program5)
   }
 }
