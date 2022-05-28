@@ -15,18 +15,17 @@ import manticore.compiler.assembly.levels.CarryType
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 
-/**
-  * Register allocation pass using a linear scan-like algorithm
+/** Register allocation pass using a linear scan-like algorithm
   *
-  * @author Mahyar Emami <mahyar.emami@epfl.ch>
+  * @author
+  *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 private[lowering] object RegisterAllocationTransform
     extends PlacedIRTransformer {
   import PlacedIR._
 
-  override def transform(
-      source: DefProgram)(
-      implicit context: AssemblyContext
+  override def transform(source: DefProgram)(implicit
+      context: AssemblyContext
   ): DefProgram = {
 
     val processes = source.processes.map(transform(_)(context))
@@ -459,7 +458,7 @@ private[lowering] object RegisterAllocationTransform
       inst match {
         case jtb: JumpTable =>
           for (delayedInst <- jtb.dslot) {
-            doIfMovNotElided(inst)(createMove)
+            doIfMovNotElided(delayedInst)(createMove)
           }
 
           for (JumpCase(_, block) <- jtb.blocks) {
@@ -476,9 +475,8 @@ private[lowering] object RegisterAllocationTransform
                 )
               }
             }
-
+            doIfMovNotElided(jtb)(createMove)
           }
-
         case _ =>
           doIfMovNotElided(inst)(createMove)
 
