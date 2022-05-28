@@ -35,7 +35,7 @@ object JumpLabelAssignmentTransform extends PlacedIRTransformer {
     val taggedBlock = Try(TaggedInstruction.indexedTaggedBlock(process)) match {
       case Success(result) => result
       case Failure(InstructionUntaggablException(msg)) =>
-        ctx.logger.error("msg")
+        ctx.logger.error(s"$msg")
         IndexedSeq.empty
       case Failure(exception) => throw exception
     }

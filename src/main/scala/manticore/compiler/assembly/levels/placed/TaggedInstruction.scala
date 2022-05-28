@@ -17,7 +17,7 @@ case class TaggedInstruction(
 object TaggedInstruction {
 
   import PlacedIR._
-  import PlacedIRDependencyDependenceGraphBuilder.NameDependence
+  import Helpers.NameDependence
 
   def apply(inst: Instruction, tag: ExecutionTag): TaggedInstruction =
     TaggedInstruction(inst, Seq(tag))
@@ -161,8 +161,8 @@ object TaggedInstruction {
         }
 
       case (builder, inst @ (_: BreakCase | _: ParMux)) =>
-        InstructionUntaggablException(
-          s"Can create indexedBlock with stranded control instruction ${inst}"
+        throw InstructionUntaggablException(
+          s"Can not create indexedBlock with stranded control instruction ${inst}"
         )
         builder
       case (builder, inst) =>
