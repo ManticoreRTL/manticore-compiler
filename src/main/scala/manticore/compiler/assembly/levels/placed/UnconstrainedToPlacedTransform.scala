@@ -1,35 +1,37 @@
 package manticore.compiler.assembly.levels.placed
 
-import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
-import manticore.compiler.assembly.levels.AssemblyTranslator
-
-import manticore.compiler.assembly.levels.unconstrained.{UnconstrainedIR => S}
-import manticore.compiler.assembly.levels.placed.{PlacedIR => T}
-
-import manticore.compiler.assembly.levels.UInt16
-
-import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
+import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.annotations.AssemblyAnnotation
-import manticore.compiler.assembly.annotations.{
-  Loc => LocAnnotation,
-  Layout => LayoutAnnotation
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
+  Block => BlockField
 }
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
-  X => XField,
-  Y => YField,
-  Block => BlockField,
   Capacity => CapacityField
 }
-import manticore.compiler.assembly.annotations.Memblock
-import manticore.compiler.assembly.ManticoreAssemblyIR
-import manticore.compiler.assembly.levels.CarryType
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
+  X => XField
+}
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
+  Y => YField
+}
 import manticore.compiler.assembly.annotations.MemInit
-import scala.util.Try
+import manticore.compiler.assembly.annotations.Memblock
+import manticore.compiler.assembly.annotations.Trap
+import manticore.compiler.assembly.annotations.{Layout => LayoutAnnotation}
+import manticore.compiler.assembly.annotations.{Loc => LocAnnotation}
+import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.levels.AssemblyTranslator
+import manticore.compiler.assembly.levels.CarryType
+import manticore.compiler.assembly.levels.UInt16
+import manticore.compiler.assembly.levels.placed.{PlacedIR => T}
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.assembly.levels.unconstrained.{UnconstrainedIR => S}
+
 import scala.util.Failure
 import scala.util.Success
-import manticore.compiler.assembly.annotations.Trap
-import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
+import scala.util.Try
 
 /** Changes UnconstrainedIR flavor to PlacedIR
   * @author
@@ -173,8 +175,6 @@ object UnconstrainedToPlacedTransform
 
     val v = r.variable.varType match {
       case MemoryType =>
-
-
         val memVar = r.variable.asInstanceOf[S.MemoryVariable]
 
         def initValue(bigVal: BigInt): UInt16 =
@@ -185,15 +185,15 @@ object UnconstrainedToPlacedTransform
             UInt16(bigVal.toInt)
           }
         val initialContent = if (memVar.content.nonEmpty) {
-            memVar.content.map { initValue }
+          memVar.content.map { initValue }
 
         } else {
-          r.annons.collectFirst { case memInit : MemInit =>
-            memInit.readFile().map { initValue }.toSeq
-          }.getOrElse(Nil)
+          r.annons
+            .collectFirst { case memInit: MemInit =>
+              memInit.readFile().map { initValue }.toSeq
+            }
+            .getOrElse(Nil)
         }
-
-
 
         T.MemoryVariable(
           name = r.variable.name,
@@ -310,6 +310,10 @@ object UnconstrainedToPlacedTransform
     case S.SetCarry(rd, annons)   => T.SetCarry(rd, annons)
     case S.ClearCarry(rd, annons) => T.ClearCarry(rd, annons)
     case S.ParMux(rd, choices, default, annons) =>
+      ctx.logger.error(
+        "Can not have pseudo-instruction in PlacedIR, make sure you run ParMuxDeconstruction!",
+        inst
+      )
       T.ParMux(
         rd,
         choices.map { case S.ParMuxCase(c, rs) => T.ParMuxCase(c, rs) },
@@ -326,6 +330,16 @@ object UnconstrainedToPlacedTransform
       }
       val tDslot = dslot.map(convert(_, proc_map))
       T.JumpTable(target, tPhis, tBlocks, tDslot, annons)
+    case S.PutSerial(rs, pred, order, annons) =>
+      T.PutSerial(rs, pred, T.SystemCallOrder(order.value), annons)
+    case S.Interrupt(action, condition, order, annons) =>
+      val tAction = action match {
+        case S.FinishInterrupt      => T.FinishInterrupt
+        case S.StopInterrupt        => T.StopInterrupt
+        case S.AssertionInterrupt   => T.AssertionInterrupt
+        case S.SerialInterrupt(fmt) => T.SerialInterrupt(fmt)
+      }
+      T.Interrupt(tAction, condition, T.SystemCallOrder(order.value), annons)
 
   }).setPos(inst.pos)
 
