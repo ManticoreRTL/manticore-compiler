@@ -396,7 +396,7 @@ trait ConstantFolding
                   fld.withNewScope(),
                   cases :+ JumpCase(
                     lbl,
-                    fld.keptInstructions.map(_.asInstanceOf[DataInstruction])
+                    fld.keptInstructions
                   )
                 )
             }

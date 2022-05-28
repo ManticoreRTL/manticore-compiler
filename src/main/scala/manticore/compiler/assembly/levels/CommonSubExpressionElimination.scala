@@ -128,7 +128,7 @@ trait CommonSubExpressionElimination
               // before the previous case and remove the instruction kept in the log
               cases :+ JumpCase(
                 lbl,
-                eliminated.keptInstructions.map(_.asInstanceOf[DataInstruction])
+                eliminated.keptInstructions
               )
             )
           }
