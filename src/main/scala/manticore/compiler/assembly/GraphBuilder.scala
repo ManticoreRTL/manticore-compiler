@@ -157,7 +157,7 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
                 if (!hasDependencyToSyscall(opNode)) {
                   // create the dependency artificially
                   antiDependenceEdge.foreach { edgeBuilder =>
-                    graph add edgeBuilder(memop, syscallGroup.last)
+                    graph add edgeBuilder(syscallGroup.last, memop)
                   }
                 }
               }

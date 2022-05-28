@@ -441,59 +441,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
             ctx.logger.error(s"Stopped!", intr)
             state.exception_occurred = Some(InterpretationFailure)
           case SerialInterrupt(fmt) if fires =>
-            def fillHole(
-                holes: Seq[FormatString.FmtArg],
-                res: FormatString
-            ): FormatString = if (
-              state.serial_queue.nonEmpty && holes.nonEmpty
-            ) {
-              val h = holes.head
-              h match {
-                case b: FormatString.FmtAtomArg =>
-                  val asLit = b.toLit(state.serial_queue.dequeue())
-                  fillHole(holes.tail, res.consume(asLit))
-                case FormatString.FmtConcat(atoms, width) =>
-                  if (state.serial_queue.length < atoms.length) {
-                    ctx.logger.error(
-                      "Could not substitute format string, not enough arguments!",
-                      intr
-                    )
-                    res
-                  } else {
-
-                    def concatenate(
-                        substLeft: Seq[(FormatString.FmtAtomArg, BigInt)],
-                        offset: Int = 0
-                    ): BigInt = {
-                      substLeft match {
-                        case (atm, vlu) +: tail =>
-                          val mask = ((BigInt(1) << atm.width)) - 1
-                          val masked = vlu & mask
-                          (masked << offset) | concatenate(
-                            tail,
-                            offset + atm.width
-                          )
-                        case Nil =>
-                          BigInt(0)
-                      }
-                    }
-                    val usedValues = for (i <- 0 until atoms.length) yield {
-                      state.serial_queue.dequeue()
-                    }
-
-                    val concatValue = concatenate(atoms zip usedValues)
-                    // note that we kind of know by construction that all atoms
-                    // have the exact same type (i.e., dec or hex)
-                    val litConcatValue = atoms.head.withWidth(width).toLit(concatValue)
-                    fillHole(holes.tail, res.consume(litConcatValue))
-                  }
-              }
-            } else {
-              res
-            }
-
-            val resolved = fillHole(fmt.holes, fmt)
-
+            val values = state.serial_queue.dequeueAll(_ => true)
+            val resolved = fmt.consume(values)
             if (resolved.isLit) {
               serial match {
                 case None =>

@@ -21,6 +21,38 @@ class FormatString private (val parts: Seq[FormatString.Fmt]) {
     }
     new FormatString(replace(parts))
   }
+
+  def consume(values: Seq[BigInt]): FormatString = {
+    def mkLiterals(
+        holesLeft: Seq[FormatString.FmtArg],
+        valuesLeft: Seq[BigInt]
+    ): Seq[FormatString.FmtLit] =
+      holesLeft match {
+        case h +: tail =>
+          h match {
+            case atm: FormatString.FmtAtomArg =>
+              valuesLeft match {
+                case vh +: vTail =>
+                  atm.toLit(vh) +: mkLiterals(tail, vTail)
+                case _ =>
+                  Nil
+              }
+            case FormatString.FmtConcat(atoms, width) =>
+              val (usedValues, vTail) = valuesLeft.splitAt(atoms.length)
+              if (usedValues.length == atoms.length) {
+                val concatValue = FormatString.concatenate(atoms zip usedValues)
+                val litValue = atoms.head.withWidth(width).toLit(concatValue)
+                litValue +: mkLiterals(tail, vTail)
+              } else {
+                Nil
+              }
+          }
+        case _ =>
+          Nil
+      }
+    val literals = mkLiterals(holes, values)
+    literals.foldLeft(this) { _ consume _ }
+  }
   // substitute arguments for others
   def updated(
       subst: Map[FormatString.FmtArg, FormatString.FmtArg]
@@ -48,7 +80,7 @@ object FormatString {
   }
   case class FmtHex(width: Int) extends FmtAtomArg {
     val hexWidth =
-                  ((BigInt(1) << width) - 1).toString(16).length
+      ((BigInt(1) << width) - 1).toString(16).length
     def toLit(v: BigInt) = FmtLit(truncated(v.toString(16), hexWidth, "0"))
     override def toString: String = s"%${width}h"
     def withWidth(w: Int): FmtAtomArg = copy(w)
@@ -71,9 +103,8 @@ object FormatString {
     def withWidth(w: Int): FmtAtomArg = copy(w)
   }
 
-
-  case class FmtConcat[A <: FmtAtomArg](atoms: Seq[A], width: Int) extends FmtArg
-
+  case class FmtConcat[A <: FmtAtomArg](atoms: Seq[A], width: Int)
+      extends FmtArg
 
   case class FmtParseError(error: String)
 
@@ -125,5 +156,22 @@ object FormatString {
   }
   def check(fmt: String): Boolean =
     parse(fmt).isRight
+
+  def concatenate(
+      substLeft: Seq[(FmtAtomArg, BigInt)],
+      offset: Int = 0
+  ): BigInt = {
+    substLeft match {
+      case (atm, vlu) +: tail =>
+        val mask = ((BigInt(1) << atm.width)) - 1
+        val masked = vlu & mask
+        (masked << offset) | concatenate(
+          tail,
+          offset + atm.width
+        )
+      case Nil =>
+        BigInt(0)
+    }
+  }
 
 }

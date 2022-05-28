@@ -62,14 +62,17 @@ trait ConversionBuilder extends Flavored {
       val res = m_syscall_order
       m_serial_queue += ns
       m_syscall_order += ns.length
-      ns.indices.map(_ + m_syscall_order)
+      ns.indices.map(_ + res)
     }
 
-    def flushSerial(): (Int, Seq[Seq[Name]]) = {
+    def flushSerial(): Seq[Seq[Name]] = {
+      m_serial_queue.dequeueAll(_ => true)
+    }
+
+    def nextOrder(): Int = {
       val res = m_syscall_order
       m_syscall_order += 1
-      (res, m_serial_queue.dequeueAll(_ => true))
-
+      res
     }
 
     /** Build the converted process from the given sequence of instructions

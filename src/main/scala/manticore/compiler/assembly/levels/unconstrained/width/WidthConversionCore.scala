@@ -2244,19 +2244,22 @@ object WidthConversionCore
       }
     case intr @ Interrupt(action, condition, order, _) =>
       val condArray = builder.getConversion(condition).parts
+
       assert(condArray.length == 1)
+      val newOrdValue = builder.nextOrder()
       action match {
         case StopInterrupt | AssertionInterrupt | FinishInterrupt =>
           Seq(
             intr
               .copy(
                 condition = condArray.head,
-                action = action
+                action = action,
+                order = order.withValue(newOrdValue)
               )
               .setPos(intr.pos)
           )
         case SerialInterrupt(fmt) =>
-          val (ord, args) = builder.flushSerial()
+          val args = builder.flushSerial()
           val holes = fmt.holes
           if (holes.length != args.length) {
             ctx.logger.error(
@@ -2285,10 +2288,13 @@ object WidthConversionCore
               .toMap
           val newFmt = fmt.updated(changes)
           Seq(
-            intr.copy(
-              condition = condArray.head,
-              action = SerialInterrupt(newFmt)
-            )
+            intr
+              .copy(
+                condition = condArray.head,
+                action = SerialInterrupt(newFmt),
+                order = order.withValue(newOrdValue)
+              )
+              .setPos(intr.pos)
           )
 
       }
