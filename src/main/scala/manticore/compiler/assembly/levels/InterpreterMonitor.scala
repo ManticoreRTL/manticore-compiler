@@ -181,6 +181,10 @@ trait InterpreterMonitorCompanion extends Flavored {
       }
       .collect { case (Some(x: DebugSymbol), r) => x -> r }
       .groupBy(_._1.getSymbol())
+      .view
+      .mapValues(
+        _.distinctBy(_._2)
+      ) // A single register may be shared by multiple processes but we should just to just keep one copy of it, hence distinctBy
 
     val debInfo =
       scala.collection.mutable.Map.empty[Name, InterpreterMonitor.DebugInfo]
@@ -194,7 +198,7 @@ trait InterpreterMonitorCompanion extends Flavored {
       val (firstDbg, firstReg) = indexSortedRegs.head
 
       if (regs.length != firstDbg.getCount().getOrElse(1)) {
-        ctx.logger.warn(
+        ctx.logger.warn( // here we relay on the distinctBy call earlier to make the comparison
           s"Can not monitor ${debsym} because debug symbol is incomplete. Disabling optimizations may help keep the debug symbol integrity."
         )
         // we probably do not have all the words if defTotalWidth

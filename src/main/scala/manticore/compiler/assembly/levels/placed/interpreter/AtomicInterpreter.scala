@@ -40,7 +40,8 @@ object AtomicInterpreter extends PlacedIRChecker {
       proc: DefProcess,
       vcd: Option[PlacedValueChangeWriter],
       monitor: Option[PlacedIRInterpreterMonitor],
-      serial: Option[String => Unit]
+      serial: Option[String => Unit],
+      pedanticRecv: Boolean
   )(implicit
       val ctx: AssemblyContext
   ) extends ProcessInterpreter {
@@ -310,14 +311,15 @@ object AtomicInterpreter extends PlacedIRChecker {
           // great, we were expecting this message
           write(msg.target_register, msg.value)
           missing_messages -= entry
-        } else {
+        } else if (pedanticRecv) {
           // something is up
           ctx.logger.warn(
             s"@${pc} did not expect message, writing to " +
-              s"${msg.target_id}:${msg.target_register} value of ${msg.value} from process ${msg.source_id}"
+              s"${msg.target_id}:${msg.target_register} value of ${msg.value} from process ${msg.source_id} (perhaps missing RECV)"
           )
           trap(InternalTrap)
-
+        } else {
+          write(msg.target_register, msg.value)
         }
       }
       if (missing_messages.nonEmpty) {
@@ -347,10 +349,22 @@ object AtomicInterpreter extends PlacedIRChecker {
       "atomic_interpreter"
     )
 
+    val recvPedantic =
+      program.processes.exists(_.body.exists(_.isInstanceOf[Recv]))
     val cores = program.processes.map { p =>
-      p.id -> new AtomicProcessInterpreter(p, vcd, monitor, serial)(ctx)
+      p.id -> new AtomicProcessInterpreter(
+        p,
+        vcd,
+        monitor,
+        serial,
+        recvPedantic
+      )(ctx)
     }.toMap
-
+    if (!recvPedantic && program.processes.length != 1) {
+      ctx.logger.warn(
+        "Interpreter will mask RECV failures because no process contains a RECV message. Please consider interpreting after scheduling."
+      )
+    }
     val vcycle_length = cores.map { _._2.instructionMemory.length }.max
 
     override def interpretVirtualCycle(): Seq[InterpretationTrap] = {
