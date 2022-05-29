@@ -8,7 +8,7 @@ import javax.xml.crypto.Data
 import manticore.compiler.assembly.CanComputeNameDependence
 import scala.collection.immutable.ListMap
 
-/** Base trait to implement a constant folding pass in
+/** Base trait to implement a constant folding pass
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
