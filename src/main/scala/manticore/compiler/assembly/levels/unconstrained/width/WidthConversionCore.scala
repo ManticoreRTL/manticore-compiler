@@ -2168,7 +2168,10 @@ object WidthConversionCore
           val rdArray = builder.getConversion(rd).parts
           val baseArray = builder.getConversion(base).parts
           assert(baseArray.length == rdArray.length, "something is up!")
-          assert(offsetArray.length == 1)
+          if (offsetArray.length > 1) {
+            ctx.logger.warn("Throwing away unused address bits", i)
+          }
+
           rdArray.zip(baseArray).map { case (newRd, newBase) =>
             i.copy(
               rd = newRd,
@@ -2213,7 +2216,9 @@ object WidthConversionCore
             t.head
           }
           assert(baseArray.length == rsArray.length, "something is up!")
-          assert(offsetArray.length == 1)
+          if (offsetArray.length > 1) {
+            ctx.logger.warn("Throwing away unused address bits", i)
+          }
           rsArray.zip(baseArray).map { case (newRd, newBase) =>
             i.copy(
               rs = newRd,
