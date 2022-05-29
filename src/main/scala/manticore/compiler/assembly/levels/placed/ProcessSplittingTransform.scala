@@ -1,25 +1,30 @@
 package manticore.compiler.assembly.levels.placed
 
-import manticore.compiler.assembly.DependenceGraphBuilder
-import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
+import manticore.compiler.assembly.DependenceGraphBuilder
+import manticore.compiler.assembly.annotations.Memblock
+import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.InputType
-import manticore.compiler.assembly.levels.VariableType
 import manticore.compiler.assembly.levels.OutputType
+import manticore.compiler.assembly.levels.VariableType
+import manticore.compiler.assembly.levels.placed.Helpers.GraphBuilder
+import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
+import manticore.compiler.assembly.levels.placed.Helpers.InstructionOrder
+import manticore.compiler.assembly.levels.placed.Helpers.InputOutputPairs
+import scalax.collection.Graph
+import scalax.collection.GraphEdge
+import scalax.collection.GraphTraversal
+import scalax.collection.edge.LDiEdge
+import scalax.collection.mutable.{Graph => MutableGraph}
+
+import java.lang.management.MemoryType
+import scala.annotation.tailrec
+import scala.collection.immutable
+import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
-import scalax.collection.mutable.{Graph => MutableGraph}
-import scalax.collection.Graph
-
-import scalax.collection.GraphEdge
-import java.lang.management.MemoryType
-import scalax.collection.edge.LDiEdge
-import scala.util.Failure
-import manticore.compiler.assembly.annotations.Memblock
-import scala.annotation.tailrec
-import scalax.collection.GraphTraversal
-import scala.collection.immutable
+import scala.collection.BitSet
 
 /** A pass to parallelize processes while respecting resource dependence
   * constraints
@@ -27,79 +32,111 @@ import scala.collection.immutable
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-object ProcessSplittingTransform
-    extends DependenceGraphBuilder
-    with PlacedIRTransformer {
+object ProcessSplittingTransform extends PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
 
+  private case class ProcessorDescriptor(
+      inSet: BitSet,
+      outSet: BitSet,
+      body: BitSet,
+      memory: Int
+  ) {
+
+    def merged(other: ProcessorDescriptor): ProcessorDescriptor = {
+      val newOutSet = other.outSet union outSet
+      val newInSet = (inSet union other.inSet) diff newOutSet
+      val newBody = body union other.body
+      ProcessorDescriptor(newInSet, newOutSet, newBody, memory + other.memory)
+    }
+  }
+  private object ProcessorDescriptor {
+    def empty = ProcessorDescriptor(BitSet.empty, BitSet.empty, BitSet.empty, 0)
+
+  }
+  trait ParallelizationContext {
+    def instructionIndex(inst: Instruction): Int
+    def inputIndex(r: Name): Int
+    def outputIndex(r: Name): Int
+    def getInstruction(idx: Int): Instruction
+    def getInput(idx: Int): Name
+    def getOutput(idx: Int): Name
+    def isInput(r: Name): Boolean
+    def isOutput(r: Name): Boolean
+    def isMemory(r: Name): Boolean
+    def memorySize(idx: Int): Int
+    def memoryIndex(r: Name): Int
+    def numStateRegs(): Int
+  }
+
+  private def createParallelizationContext(
+      process: DefProcess
+  )(implicit ctx: AssemblyContext): ParallelizationContext = {
+
+    val statePairs =
+      InputOutputPairs.createInputOutputPairs(process).toArray
+
+    val outputIndices = scala.collection.mutable.Map.empty[Name, Int]
+    val inputIndices = scala.collection.mutable.Map.empty[Name, Int]
+    val instrIndices = scala.collection.mutable.Map.empty[Instruction, Int]
+    var idx = 0
+    statePairs.foreach { case (current, next) =>
+      inputIndices += (current.variable.name -> idx)
+      outputIndices += (next.variable.name -> idx)
+      idx += 1
+    }
+    idx = 0
+    process.body.foreach { instr =>
+      instrIndices += (instr -> idx)
+      idx += 1
+    }
+    val body = process.body.toArray
+    val memories = process.registers.collect {
+      case DefReg(MemoryVariable(n, sz, _, _), _, _) => (n, sz)
+    }.toArray
+    idx = 0
+    val memoryIndices = scala.collection.mutable.Map.empty[Name, Int]
+    memories.foreach { case (name, sz) =>
+      memoryIndices += (name -> idx)
+      idx += 1
+    }
+    new ParallelizationContext {
+      def numStateRegs(): Int = statePairs.size
+
+      def instructionIndex(inst: Instruction): Int = instrIndices(inst)
+      def inputIndex(r: Name): Int = inputIndices(r)
+      def outputIndex(r: Name): Int = outputIndices(r)
+      def getInstruction(idx: Int): Instruction = body(idx)
+      def getInput(idx: Int): Name = statePairs(idx)._1.variable.name
+      def getOutput(idx: Int): Name = statePairs(idx)._2.variable.name
+      def isInput(r: Name): Boolean = inputIndices.contains(r)
+      def isOutput(r: Name): Boolean = outputIndices.contains(r)
+
+      def isMemory(r: Name): Boolean = memoryIndices.contains(r)
+      def memoryIndex(r: Name): Int = memoryIndices(r)
+      def memorySize(idx: Int): Int = memories(idx)._2
+    }
+  }
   private def extractIndependentInstructionSequences(
-      proc: DefProcess
+      proc: DefProcess,
+      bitSetIndexer: ParallelizationContext
   )(implicit ctx: AssemblyContext) = {
 
-    val dependence_graph =
-      DependenceAnalysis.build(process = proc, label = (i, j) => i.toString())
+    val dependence_graph = GraphBuilder.rawGraph(proc.body)
 
-    import manticore.compiler.assembly.annotations.{Reg => RegAnnotation}
     // find the output registers, these are registers that are written in
     // sink instructions, there could be instructions that are sinks in the
     // dependence graph but are not really relevant because they don't write
     // to outputs
 
-    def getRegId(r: DefReg): Try[(String, Option[Int])] = Try {
-      val annon: Option[RegAnnotation] = r.annons.collectFirst {
-        case x: RegAnnotation => x
-      }
-      (annon.get.getId(), annon.get.getIndex())
-    }
-
-    val inputs = proc.registers
-      .collect {
-        case r @ DefReg(v, _, _) if v.varType == InputType =>
-          val id = getRegId(r)
-          if (id.isFailure) {
-            ctx.logger.error(
-              s"input register is missing a valid @${RegAnnotation.name}"
-            )
-          }
-          id -> r
-      }
-      .collect { case (Success(x) -> r) =>
-        x -> r
-      }
-      .toMap
-
-    def keepOutput(r: DefReg): Boolean = getRegId(r) match {
-      case Success(id_unwrapped) =>
-        inputs.get(id_unwrapped) match {
-          case Some(_) =>
-            true
-          case None =>
-            ctx.logger.warn("output register is missing input correspondent", r)
-            ctx.logger.flush()
-            false
-        }
-      case _ =>
-        ctx.logger.error(
-          s"output register is missing a valid @${RegAnnotation.name}",
-          r
-        )
-        false
-    }
-
-    val outputs = proc.registers.collect {
-      case r @ DefReg(v, _, _) if v.varType == OutputType && keepOutput(r) =>
-        r.variable.name
-    }.toSet
-
     val sink_nodes = dependence_graph.nodes.filter { node =>
       val writes_to_output =
-        NameDependence.regDef(node.toOuter).exists(outputs.contains)
+        NameDependence.regDef(node.toOuter).exists(bitSetIndexer.isOutput)
       val is_store = node.toOuter match {
-        case _: LocalStore | _: GlobalStore => true
-        case _: Expect                      => true
-        case _                              => false
+        case _: LocalStore | _: GlobalStore          => true
+        case _: Expect | _: Interrupt | _: PutSerial => true
+        case _                                       => false
       }
       writes_to_output | is_store
     }
@@ -197,8 +234,8 @@ object ProcessSplittingTransform
           val inst = InstLeaf(onode)
           constraint_graph += GraphEdge.DiEdge(local_root, inst)
           onode match {
-            case _: Expect | _: GlobalStore |
-                _: GlobalLoad => // create and edge from SysCallRoot to ProcRoot
+            case _: Expect | _: GlobalStore | _: GlobalLoad | _: Interrupt |
+                _: PutSerial => // create and edge from SysCallRoot to ProcRoot
               constraint_graph += GraphEdge.DiEdge(
                 SysCallRoot,
                 local_root
@@ -361,49 +398,170 @@ object ProcessSplittingTransform
         }
     }
 
-    def createProcess(block: Iterable[Instruction], index: Int): DefProcess = {
+    def createProcessDescriptor(
+        block: Iterable[Instruction]
+    ): ProcessorDescriptor = {
 
-      val referenced = NameDependence.referencedNames(block)
-      val defRegs = proc.registers.filter { r =>
-        referenced.contains(r.variable.name)
+      val bodyBitSet = scala.collection.mutable.BitSet.empty
+      val inBitSet = scala.collection.mutable.BitSet.empty
+      val outBitSet = scala.collection.mutable.BitSet.empty
+      val memBitSet = scala.collection.mutable.BitSet.empty
+      val outSet = block.foreach { instr =>
+        bodyBitSet += (bitSetIndexer.instructionIndex(instr))
+        for (use <- NameDependence.regUses(instr)) {
+          if (bitSetIndexer.isInput(use)) {
+            inBitSet += bitSetIndexer.inputIndex(use)
+          }
+          if (bitSetIndexer.isMemory(use)) {
+            memBitSet += bitSetIndexer.memorySize(
+              bitSetIndexer.memoryIndex(use)
+            )
+          }
+        }
+        for (rd <- NameDependence.regDef(instr)) {
+          if (bitSetIndexer.isOutput(rd)) {
+            outBitSet += bitSetIndexer.outputIndex(rd)
+          }
+        }
       }
-      val defLabels = proc.labels.filter { lgrp =>
-        referenced.contains(lgrp.memory)
-      }
-
-      proc
-        .copy(
-          body = block.toSeq,
-          registers = defRegs,
-          labels = defLabels,
-          id =
-            ProcessIdImpl(s"${proc.id}_${index}", proc.id.x, proc.id.y + index)
-        )
-        .setPos(proc.pos)
+      inBitSet --= outBitSet
+      new ProcessorDescriptor(
+        inSet = inBitSet,
+        outSet = outBitSet,
+        body = bodyBitSet,
+        memory = memBitSet.foldLeft(0) { case (sz, idx) =>
+          bitSetIndexer.memorySize(idx)
+        }
+      )
 
     }
     // create new processes
     val result = timed("constructing merged processes") {
-      process_bodies.zipWithIndex.map { case (b, ix: Int) =>
-        createProcess(b, ix)
-      }
+      process_bodies.map(createProcessDescriptor)
     }
-    val longest_process = result.maxBy { _.body.length }
-    ctx.logger.info(
-      s"Longest process has is ${longest_process.id} with ${longest_process.body.length} instructions"
-    )
-    // done
+
     result
   }
   override def transform(
-      source: DefProgram
-  )(implicit context: AssemblyContext): DefProgram = {
-    val splitted = source.processes.flatMap { p =>
-      extractIndependentInstructionSequences(p)(context)
+      program: DefProgram
+  )(implicit ctx: AssemblyContext): DefProgram = {
+
+    if (program.processes.length != 1) {
+      ctx.logger.fail("Did not expect to have multiple processes!")
+
+    }
+    if (program.processes.head.functions.nonEmpty) {
+      ctx.logger.fail("Can not handle Custom instructions yet!")
+    }
+    val bitSetIndexer = createParallelizationContext(program.processes.head)
+    val splitted =
+      extractIndependentInstructionSequences(
+        program.processes.head,
+        bitSetIndexer
+      )
+
+    // splitted contains perhaps many processes. We should try to merge them into
+    // at most ctx.max_dimx * ctx.max_dimy processes while ensuring no process
+    // uses memory than available and also try to minimize the workspan.
+    val mergedProcesses: Array[ProcessorDescriptor] =
+      Array.fill(ctx.max_dimx * ctx.max_dimy) {
+        ProcessorDescriptor.empty
+      }
+
+    def estimateCost(p: ProcessorDescriptor): Int =
+      p.body.foldLeft(0) { case (cost, idx) =>
+        bitSetIndexer.getInstruction(idx) match {
+          case JumpTable(_, _, blocks, dslot, _) =>
+            cost + blocks.map(_.block.length).max + dslot.length
+          case _ => cost + 1
+        }
+      }
+    def canMerge(p1: ProcessorDescriptor, p2: ProcessorDescriptor): Boolean =
+      (p1.memory + p2.memory) <= ctx.max_local_memory
+
+    val toMerge =
+      scala.collection.mutable.Queue.empty[ProcessorDescriptor] ++ splitted
+
+    sealed trait MergeResult
+    case class MergeChoice(result: ProcessorDescriptor, index: Int, cost: Int)
+        extends MergeResult
+    case object NoMerge extends MergeResult
+    while (toMerge.nonEmpty) {
+      val head = toMerge.dequeue()
+      val (_, best) = mergedProcesses.foldLeft[(Int, MergeResult)](0, NoMerge) {
+        case ((ix, prevBest), currentChoice) =>
+          if (canMerge(currentChoice, head)) {
+            val possibleMerge = head merged currentChoice
+            val possibleCost = estimateCost(possibleMerge)
+            val nextBest = prevBest match {
+              case NoMerge => MergeChoice(possibleMerge, ix, possibleCost)
+              case other: MergeChoice if (other.cost > possibleCost) =>
+                MergeChoice(possibleMerge, ix, possibleCost)
+              case other => other
+            }
+            (ix + 1, nextBest)
+          } else {
+            (ix + 1, prevBest)
+          }
+      }
+      best match {
+        case MergeChoice(result, index, _) => mergedProcesses(index) = result
+        case NoMerge =>
+          ctx.logger.error(
+            "Could not merge processes because ran out of memory!"
+          )
+      }
     }
 
-    source
-      .copy(processes = splitted)
-      .setPos(source.pos)
+    // val stateOwner =
+    val stateUsers = Array.fill(bitSetIndexer.numStateRegs()) { BitSet.empty }
+
+    mergedProcesses.zipWithIndex.foreach {
+      case (ProcessorDescriptor(inSet, _, _, _), ix) =>
+        inSet.foreach { stateIndex =>
+          stateUsers(stateIndex) = stateUsers(stateIndex) | BitSet(ix)
+        }
+    }
+    def processId(index: Int) = ProcessIdImpl(s"p${index}", -1, -1)
+    val finalProcesses = mergedProcesses.zipWithIndex.map {
+      case (ProcessorDescriptor(_, outSet, bitSetBody, _), procIndex) =>
+        // note that since we use the original program order to index the bits,
+        // and that the underlying bitSetBody is an ordered set doing .toSeq.map
+        // will give back the instruction indices in the original order so no need
+        // to reorder the body
+        val body = bitSetBody.toSeq.map { ix =>
+          bitSetIndexer.getInstruction(ix)
+        }
+        val sends = outSet.toSeq.flatMap { nextStateIndex =>
+          stateUsers(nextStateIndex).toSeq.collect {
+            case recipient if recipient != procIndex =>
+              val currentStateInDest = bitSetIndexer.getInput(nextStateIndex)
+              val nextStateInHere = bitSetIndexer.getOutput(nextStateIndex)
+              Send(currentStateInDest, nextStateInHere, processId(recipient))
+          }
+        }
+        val bodyWithSends = body ++ sends
+        val referenced = NameDependence.referencedNames(bodyWithSends)
+        val usedRegs = program.processes.head.registers.filter { r =>
+          referenced(r.variable.name)
+        }
+        val usedLabelGrps = program.processes.head.labels.filter { lblgrp =>
+          referenced(lblgrp.memory)
+        }
+
+        val procId = processId(procIndex)
+
+        program.processes.head
+          .copy(
+            id = procId,
+            registers = usedRegs,
+            labels = usedLabelGrps,
+            body = bodyWithSends
+          )
+          .setPos(program.processes.head.pos)
+    }
+
+    program.copy(finalProcesses.filter(_.body.nonEmpty))
+
   }
 }

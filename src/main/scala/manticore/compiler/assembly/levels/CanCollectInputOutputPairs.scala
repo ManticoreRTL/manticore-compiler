@@ -71,7 +71,8 @@ trait CanCollectInputOutputPairs extends Flavored {
                       case Some(curr_v) =>
                         currs_to_next_pairs += (curr_v -> r)
                       case _ =>
-                        ctx.logger.warn("Register has no current value!", r)
+                        // either dead register or splitted processes
+                        // ctx.logger.warn("Register has no current value!", r)
                     }
                   case _ =>
                     ctx.logger.error("@REG annotation is missing id", r)
