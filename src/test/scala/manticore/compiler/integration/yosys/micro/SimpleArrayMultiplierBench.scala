@@ -95,5 +95,7 @@ final class SimpleArrayMultiplierBench extends MicroBench {
 
 
   testCase("8-bit multiplier with random inputs", TestConfig(8, 200))
+  testCase("16-bit multiplier with random inputs", TestConfig(16, 200))
+  testCase("32-bit multiplier with random inputs", TestConfig(32, 200))
 
 }
