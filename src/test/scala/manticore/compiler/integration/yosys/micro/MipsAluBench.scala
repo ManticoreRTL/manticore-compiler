@@ -72,12 +72,17 @@ object AluReference {
   }
 
 }
-class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
 
-  behavior of "Mips ALU"
+final class MipsAluBench extends MicroBench {
 
-  val randGen = new scala.util.Random(10)
-  def generateTestBench(testSize: Int): String = {
+  type TestConfig = Int
+
+  def benchName = "MIPS ALU"
+  def resource: String = "integration/yosys/micro/alu.sv"
+
+  def outputReference(testSize: Int) =
+    ArrayBuffer[String](f"Finished without errors at ${testSize - 1}%5d")
+  def testBench(testSize: Int): String = {
 
     val mask: Long = 0x00000000ffffffffL
     val ctrl = Seq.fill(testSize) {
@@ -165,142 +170,11 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
 
   }
 
-  def interpretUnconstrained(
-      program: UnconstrainedIR.DefProgram
-  )(implicit
-      ctx: AssemblyContext
-  ): ArrayBuffer[String] = {
-    val closed = UnconstrainedCloseSequentialCycles(program)
-    val serialOut = ArrayBuffer.empty[String]
-    val interp = UnconstrainedInterpreter.instance(
-      program = closed,
-      serial = Some(ln => serialOut += ln)
-    )
-    interp.runCompletion()
-    serialOut
-  }
-  def interpretPlaced(program: PlacedIR.DefProgram)(implicit
-      ctx: AssemblyContext
-  ): ArrayBuffer[String] = {
-    val serialOut = ArrayBuffer.empty[String]
-    val closed =
-      (PlacedIRCloseSequentialCycles andThen
-        JumpTableNormalizationTransform andThen
-        JumpLabelAssignmentTransform)(program)
-    val interp = AtomicInterpreter.instance(
-      program = closed,
-      serial = Some(serialOut += _)
-    )
-    interp.interpretCompletion()
-    serialOut
-  }
+  // the actual test execution
+  testCase("random inputs 1", 100)
+  testCase("random inputs 2", 250)
+  testCase("random inputs 3", 150)
+  testCase("random inputs 4", 200)
 
-  def checkUnconstrained(
-      clue: String,
-      program: UnconstrainedIR.DefProgram,
-      reference: ArrayBuffer[String]
-  )(implicit ctx: AssemblyContext) = {
-    val got = interpretUnconstrained(program)
-    if (!YosysUnitTest.compare(reference, got)) {
-      ctx.logger.flush()
-      fail(s"${clue}: results did not match the reference")
-    }
-    if (ctx.logger.countErrors() > 0) {
-      ctx.logger.flush()
-      fail(s"${clue}: Errors occurred")
-    }
-  }
 
-  def checkPlaced(
-      clue: String,
-      program: PlacedIR.DefProgram,
-      reference: ArrayBuffer[String]
-  )(implicit ctx: AssemblyContext) = {
-
-    val got = interpretPlaced(program)
-    if (!YosysUnitTest.compare(reference, got)) {
-      ctx.logger.flush()
-      fail(s"${clue}: results did not match the reference")
-    }
-    if (ctx.logger.countErrors() > 0) {
-      ctx.logger.flush()
-      fail(s"${clue}: Errors occurred")
-    }
-  }
-  object CompilationStage {
-
-    // the very first stage. Only reorder instructions according to
-    // topological order
-    val preparation = AssemblyFileParser andThen
-      UnconstrainedNameChecker andThen
-      UnconstrainedMakeDebugSymbols andThen
-      UnconstrainedOrderInstructions
-
-    val unconstrainedOptimizations =
-      UnconstrainedIRConstantFolding andThen
-      UnconstrainedIRStateUpdateOptimization andThen
-        UnconstrainedIRCommonSubExpressionElimination andThen
-        UnconstrainedDeadCodeElimination andThen
-        UnconstrainedNameChecker
-
-    val controlLowering =
-      UnconstrainedJumpTableConstruction andThen
-        UnconstrainedNameChecker andThen
-        UnconstrainedIRParMuxDeconstructionTransform andThen
-        UnconstrainedNameChecker
-
-    val widthLowering =
-      WidthConversion.transformation andThen
-        UnconstrainedIRConstantFolding andThen
-        UnconstrainedDeadCodeElimination
-
-    val translation =
-      UnconstrainedToPlacedTransform
-
-    val placedOptimizations =
-      PlacedIRConstantFolding andThen
-        PlacedIRCommonSubExpressionElimination andThen
-        PlacedIRDeadCodeElimination
-
-    val parallelization = ProcessSplittingTransform
-  }
-
-  "ALU" should "work correctly after parsing" in { fixture =>
-    val testBench = generateTestBench(200)
-    val verilogCode = scala.io.Source
-      .fromResource("integration/yosys/micro/alu.sv")
-      .getLines()
-      .mkString("\n") + "\n" + testBench
-    val vFilePath = fixture.dump("alu.sv", verilogCode)
-
-    implicit val ctx = AssemblyContext(
-      dump_all = true,
-      dump_dir = Some(fixture.test_dir.toFile),
-      quiet = false,
-      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
-      // log_file = None
-    )
-
-    val yosysCompiler = YosysVerilogReader andThen
-      Yosys.PreparationPasses andThen
-      Yosys.LoweringPasses andThen
-      YosysRunner(fixture.test_dir) andThen
-      CompilationStage.preparation
-
-    val program1 = yosysCompiler(Seq(vFilePath))
-    val reference = ArrayBuffer[String]("Finished without errors at   199")
-    checkUnconstrained("yosys + ordering", program1, reference)
-    val program2 = CompilationStage.unconstrainedOptimizations(program1)
-    checkUnconstrained("prelim opts", program2, reference)
-    val program3 = CompilationStage.controlLowering(program2)
-    checkUnconstrained("jump table", program3, reference)
-    val program4 = CompilationStage.widthLowering(program3)
-    checkUnconstrained("width conversion", program4, reference)
-    val program5 = CompilationStage.translation(program4)
-    checkPlaced("translation", program5, reference)
-    val program6 = CompilationStage.placedOptimizations(program5)
-    checkPlaced("placed opts", program6, reference)
-    val program7 = CompilationStage.parallelization(program6)
-    checkPlaced("parallelization", program7, reference)
-  }
 }
