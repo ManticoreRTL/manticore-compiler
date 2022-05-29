@@ -30,6 +30,8 @@ import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
 import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElimination
 import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRStateUpdateOptimization
+import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
 
 object AluReference {
   sealed abstract class AluControl(val v: Int)
@@ -236,6 +238,7 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
 
     val unconstrainedOptimizations =
       UnconstrainedIRConstantFolding andThen
+      UnconstrainedIRStateUpdateOptimization andThen
         UnconstrainedIRCommonSubExpressionElimination andThen
         UnconstrainedDeadCodeElimination andThen
         UnconstrainedNameChecker
@@ -258,6 +261,8 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
       PlacedIRConstantFolding andThen
         PlacedIRCommonSubExpressionElimination andThen
         PlacedIRDeadCodeElimination
+
+    val parallelization = ProcessSplittingTransform
   }
 
   "ALU" should "work correctly after parsing" in { fixture =>
@@ -294,5 +299,8 @@ class MipsAluTester extends UnitFixtureTest with UnitTestMatchers {
     val program5 = CompilationStage.translation(program4)
     checkPlaced("translation", program5, reference)
     val program6 = CompilationStage.placedOptimizations(program5)
+    checkPlaced("placed opts", program6, reference)
+    val program7 = CompilationStage.parallelization(program6)
+    checkPlaced("parallelization", program7, reference)
   }
 }

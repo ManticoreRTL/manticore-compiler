@@ -413,9 +413,8 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
             inBitSet += bitSetIndexer.inputIndex(use)
           }
           if (bitSetIndexer.isMemory(use)) {
-            memBitSet += bitSetIndexer.memorySize(
-              bitSetIndexer.memoryIndex(use)
-            )
+            val memIx = bitSetIndexer.memoryIndex(use)
+            memBitSet += memIx
           }
         }
         for (rd <- NameDependence.regDef(instr)) {
@@ -561,7 +560,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
           .setPos(program.processes.head.pos)
     }
 
-    program.copy(finalProcesses.filter(_.body.nonEmpty))
+    program.copy(finalProcesses.toSeq.filter(_.body.nonEmpty))
 
   }
 }
