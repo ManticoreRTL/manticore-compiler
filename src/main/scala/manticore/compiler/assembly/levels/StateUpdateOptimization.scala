@@ -27,14 +27,18 @@ trait StateUpdateOptimization extends CanRename with CanComputeNameDependence {
       process: DefProcess
   )(implicit ctx: AssemblyContext) = {
 
-    val isStateUpdateName = process.registers.collect {
-      case r if r.variable.varType == OutputType => r.variable.name
-    }.toSet
+    val registers = process.registers.map { r => r.variable.name -> r }.toMap
+    val isStateUpdateName = registers andThen (_.variable.varType == OutputType )
+    val isWire = registers andThen (_.variable.varType == WireType)
 
     val toRemove = scala.collection.mutable.Set.empty[Instruction]
     val subst = scala.collection.mutable.Map.empty[Name, Name].withDefault(r => r)
     process.body.reverseIterator.foreach {
-      case mov @ Mov(rd, rs, _) if isStateUpdateName(rd) =>
+      // we can only move write to output back up if the operand of a mov is
+      // a temporary value, i.e., a wire. We can not do the same if rs is InpuType
+      // MemoryType or ConstType because this pass is not supposed to remove
+      // dead code.
+      case mov @ Mov(rd, rs, _) if isStateUpdateName(rd) && isWire(rs) =>
         toRemove += mov
         subst += (rs -> rd)
       case _ => // nothing to do

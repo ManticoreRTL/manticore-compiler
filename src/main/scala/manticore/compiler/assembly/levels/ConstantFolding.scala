@@ -77,13 +77,12 @@ trait ConstantFolding
       ci: ConcreteConstant
   )(implicit ctx: AssemblyContext): (ConcreteConstant, ConcreteConstant)
 
-  /**
-    * A total function that fully evaluates a slice of a constant.
+  /** A total function that fully evaluates a slice of a constant.
     */
   def sliceEvaluator(
-    const: ConcreteConstant,
-    offset: Int,
-    length: Int
+      const: ConcreteConstant,
+      offset: Int,
+      length: Int
   ): ConcreteConstant
 
   /** returns a fresh constant (unique name), the value [[v]] given to the
@@ -105,6 +104,7 @@ trait ConstantFolding
   ) {
 
     def widthLookup(n: Name): Int = getReg(n).variable.width
+
     /** bind the name n to name m (i.e., n will no longer be used)
       *
       * @param n
@@ -184,7 +184,8 @@ trait ConstantFolding
       inst match {
         case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore |
             _: GlobalStore | _: PadZero | _: SetCarry | _: ClearCarry |
-            _: Predicate | _: PadZero | _: Lookup | _: PutSerial | _: Interrupt) =>
+            _: Predicate | _: PadZero | _: Lookup | _: PutSerial |
+            _: Interrupt) =>
           builder.keep(i)
         case Nop =>
           // don't keep
@@ -218,22 +219,26 @@ trait ConstantFolding
           builder.bindConst(rd, asConcrete(value) { builder.widthLookup(rd) })
 
         case i @ Slice(rd, rs, offset, length, annons) =>
-          val rs_val = builder.computedValue(rs)
-          rs_val match {
-            case Left(name) =>
-              val rsWidth = builder.widthLookup(name)
-              val isFullWidthSlice = (offset == 0) && (rsWidth == length)
-              if (isFullWidthSlice) {
-                // We are slicing the full width of another name. The slice operation
-                // is therefore redundanat and we remove it.
-                builder.bindName(rd, name)
-              } else {
-                // Can not simplify
-                builder.keep(i)
-              }
-            case Right(const) =>
-              val res = sliceEvaluator(const, offset, length)
-              builder.bindConst(rd, res)
+          if (builder.isUnopt(rd)) {
+            builder.keep(i)
+          } else {
+            val rs_val = builder.computedValue(rs)
+            rs_val match {
+              case Left(name) =>
+                val rsWidth = builder.widthLookup(name)
+                val isFullWidthSlice = (offset == 0) && (rsWidth == length)
+                if (isFullWidthSlice) {
+                  // We are slicing the full width of another name. The slice operation
+                  // is therefore redundanat and we remove it.
+                  builder.bindName(rd, name)
+                } else {
+                  // Can not simplify
+                  builder.keep(i)
+                }
+              case Right(const) =>
+                val res = sliceEvaluator(const, offset, length)
+                builder.bindConst(rd, res)
+            }
           }
 
         case i @ Mov(rd, rs, annons) =>
