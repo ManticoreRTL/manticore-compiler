@@ -593,16 +593,22 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       ${randGen.registers}
       .const one32 32 1
       .const two32 32 2
+      .const three32 32 3
       .const zero32 32 0
-      .const b00  2 0b00
-      .const b01  2 0b01
-      .const b10  2 0b10
-      .const b11  2 0b11
+      .const b000  3 0b000
+      .const b001  3 0b001
+      .const b010  3 0b010
+      .const b011  3 0b011
+      .const b100  3 0b100
+      .const b101  3 0b101
+      .const b110  3 0b110
       .wire cond1  1
       .wire cond2  1
       .wire cond3  1
       .wire cond4  1
-      .wire rbit  2
+      .wire cond5  1
+      .wire cond6  1
+      .wire rbit  3
       .wire x0 32
       .wire x1 32
       .wire x2 32
@@ -614,6 +620,8 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       .wire x7 32
       .wire x8 32
       .wire x9 32
+      .wire x10 32
+      .wire x11 32
       @TRACK [name = "result"]
       .wire result 32
       @TRACK [name = "dummy"]
@@ -630,10 +638,12 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
       SRL rbit, ${randGen.randNext}, zero32;
 
-      SEQ cond1, rbit, b00;
-      SEQ cond2, rbit, b01;
-      SEQ cond3, rbit, b10;
-      SEQ cond4, rbit, b11;
+      SEQ cond1, rbit, b000;
+      SEQ cond2, rbit, b001;
+      SEQ cond3, rbit, b010;
+      SEQ cond4, rbit, b011;
+      SEQ cond5, rbit, b100;
+      SEQ cond6, rbit, b101;
 
       ADD x5, ${randGen.randNext}, two32;
       SUB x6, x5, two32; // x6 = ${randGen.randNext}
@@ -642,7 +652,9 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
       ADD x8, x7, two32;
       ADD x9, x8, two32;
 
-      PARMUX result, cond1 ? x4, cond2 ? x6, cond3 ? x7, cond4 ? x9 , ${randGen.randNext};
+      ADD x10, ${randGen.randNext}, three32;
+
+      PARMUX result, cond1 ? x4, cond2 ? x6, cond3 ? x7, cond4 ? x9, cond5 ? x10, cond6 ? x10, ${randGen.randNext};
 
       ADD dummy, result, one32;
 
@@ -695,9 +707,9 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
         randGen.nextRef()
 
-        def isOdd(x: Int): Boolean = (0x01 & x) == 1
+
         withClue(s"@$cycle  result mismatch: ") {
-          (0x3 & randGen.currRef()) match {
+          (0x7 & randGen.currRef()) match {
             case 0 =>
               coverage |= 1
               monitor.read("result").toInt shouldEqual (randGen.currRef() + 1)
@@ -709,7 +721,12 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
             case 3 =>
               coverage |= 8
               monitor.read("result").toInt shouldEqual (randGen.currRef() + 6)
-            case _ => //
+            case 4 | 5=>
+              coverage |= (4 | 5)
+              monitor.read("result").toInt shouldEqual (randGen.currRef() + 3)
+            case 6 | 7 =>
+              coverage |= (6 | 7)
+              monitor.read("result").toInt shouldEqual (randGen.currRef())
           }
         }
         cycle += 1

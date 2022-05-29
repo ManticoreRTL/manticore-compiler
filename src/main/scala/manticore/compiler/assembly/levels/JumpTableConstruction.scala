@@ -148,7 +148,12 @@ trait JumpTableConstruction
         case None => Seq.empty // case body is empty
         case Some(defInst) =>
           val node = dataDependenceGraph get defInst
-          if (node.outDegree == 1) {
+          if ( // we can only use this instruction to find other if itself is
+            // is used in a single branch
+            node.outDegree == 1 && NameDependence
+              .regUses(pmux)
+              .count(_ == rs) == 1
+          ) {
             traverse(node) { predInst =>
               postDomRelation.isDefined(defInst, predInst)
             }
