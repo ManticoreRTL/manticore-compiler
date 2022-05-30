@@ -97,7 +97,7 @@ module Alu (
     case (ctrl)
       4'b0000: result = op1 << op2[4:0];  // sll
       4'b0001: result = op1 >> op2[4:0];  // srl
-      4'b0010: result = op1 >>> op2[4:0];  // sra
+      4'b0010: result = $signed(op1) >>> $signed(op2[4:0]);  // sra
       4'b0011: result = op1 + op2;  // add
       4'b0100: result = op1 - op2;  // sub
       4'b0101: result = op1 & op2;  // and

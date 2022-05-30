@@ -631,13 +631,15 @@ object WidthConversionCore
         assert(
           builder.originalWidth(instruction.rs1) == builder.originalWidth(
             (instruction.rs2)
-          ),
+          ) || (builder.isConstant(instruction.rs1) || builder.isConstant(
+            instruction.rs2
+          )),
           s"width mismatch in SEQ operands ${instruction.serialized}"
         )
-        assert(
-          rs1_uint16_array.size == rs2_uint16_array.size,
-          "width mismatch in SEQ operands"
-        )
+        // assert(
+        //   rs1_uint16_array.size == rs2_uint16_array.size,
+        //   "width mismatch in SEQ operands"
+        // )
         val orig_rd_width = builder.originalWidth(instruction.rd)
         if (orig_rd_width != 1) {
           ctx.logger.warn("Expected boolean wire in SEQ", instruction)

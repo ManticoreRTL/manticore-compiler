@@ -244,11 +244,11 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         case AND => clipped(rs1_val & rs2_val)
         case XOR => clipped((rs1_val &~ rs2_val) | (rs2_val &~ rs1_val))
         case SEQ =>
-          if (
-            definitions(rs1).variable.width != definitions(rs2).variable.width
-          ) {
-            ctx.logger.error("Width mismatch in SEQ", inst)
-          }
+          // if (
+          //   (definitions(rs1).variable.width != definitions(rs2).variable.width)
+          // ) {
+          //   ctx.logger.error("Width mismatch in SEQ", inst)
+          // }
           val is_eq = rs1_val == rs2_val
           state.select = is_eq
           BigInt(if (is_eq) 1 else 0)

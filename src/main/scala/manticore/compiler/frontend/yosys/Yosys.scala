@@ -6,6 +6,7 @@ object Yosys {
   val Hierarchy = YosysPassProxy("hierarchy")
   val Proc = YosysPassProxy("proc")
   val Opt = YosysPassProxy("opt")
+  val WReduce = YosysPassProxy("wreduce")
   val OptReduce = YosysPassProxy("opt_reduce")
   val OptClean = YosysPassProxy("opt_clean")
   val Flatten = YosysPassProxy("flatten")
@@ -32,6 +33,7 @@ object Yosys {
     (Hierarchy << "-auto-top" << "-check") andThen
       Proc andThen
       Opt andThen
+      WReduce andThen
       OptReduce andThen
       OptClean andThen
       (Check << "-assert") andThen

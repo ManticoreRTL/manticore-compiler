@@ -72,6 +72,7 @@ final class Mips32Bench extends MicroBench {
       .fromResource(resource)
       .getLines()
       .mkString("\n") + testBench(config)
+
     writer.write(tb)
     writer.flush()
     writer.close()
@@ -99,6 +100,7 @@ final class Mips32Bench extends MicroBench {
   )
   override def timeOut: Int = 2000
 
+  // println(outputReference(sum1to9).mkString("\n"))
   testCase(s"adding 1 to 9 should sum up to 45", sum1to9)
   testCase(s"bubble sort on a 32-element array", bubbleSort32)
 }
