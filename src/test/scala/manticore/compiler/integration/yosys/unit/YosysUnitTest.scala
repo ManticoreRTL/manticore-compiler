@@ -64,11 +64,13 @@ object YosysUnitTest {
       tempFile.toAbsolutePath().toString()
     }
 
+    val runDir = Files.createTempDirectory("verilator_rundir")
     val verilteCmd =
       s"verilator $flags ${filenames.map(_.toAbsolutePath()).mkString(" ")} ${harnessPath}"
     ctx.logger.info(s"Running command:\n${verilteCmd}")
     val ret = Process(
-      command = verilteCmd
+      command = verilteCmd,
+      cwd = runDir.toFile()
     ) ! ProcessLogger(msg => ctx.logger.info(msg))
     if (ret != 0) {
       if (ret != 0) {
@@ -80,9 +82,12 @@ object YosysUnitTest {
     // run the simulation
 
     val simCmd = s"obj_dir/VMain ${timeOut}"
+
     val out = ArrayBuffer.empty[String]
+    ctx.logger.info(s"Running ${simCmd}")
     val simRet = Process(
-      command = simCmd
+      command = simCmd,
+      cwd = runDir.toFile()
     ) ! ProcessLogger(out += _)
     if (simRet != 0) {
       println(out.mkString("\n"))
@@ -185,8 +190,8 @@ trait YosysUnitTest {
         dump("results.txt", results.mkString("\n"))
       }
 
-      if(!YosysUnitTest.compare(reference, results)) {
-         if (!dumpAll) {
+      if (!YosysUnitTest.compare(reference, results)) {
+        if (!dumpAll) {
           dump("results.txt", results.mkString("\n"))
           dump("reference.txt", reference.mkString("\n"))
         }

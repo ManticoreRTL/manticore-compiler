@@ -701,7 +701,7 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
 
       var coverage = 0
       var cycle = 0
-      while (coverage != 0xf) {
+      while (coverage != (1 | 2 | 4 | 8 | 16 | 32 | 64 | 128)) {
 
         interp.interpretVirtualCycle() shouldBe Nil
 
@@ -722,10 +722,10 @@ class JumpTableExtractionTest extends UnitFixtureTest with UnitTestMatchers {
               coverage |= 8
               monitor.read("result").toInt shouldEqual (randGen.currRef() + 6)
             case 4 | 5=>
-              coverage |= (4 | 5)
+              coverage |= (16 | 32)
               monitor.read("result").toInt shouldEqual (randGen.currRef() + 3)
             case 6 | 7 =>
-              coverage |= (6 | 7)
+              coverage |= (64 | 128)
               monitor.read("result").toInt shouldEqual (randGen.currRef())
           }
         }
