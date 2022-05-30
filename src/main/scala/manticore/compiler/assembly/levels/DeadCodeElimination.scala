@@ -47,7 +47,7 @@ trait DeadCodeElimination
     * @return
     */
   def collectSinkInstructions(
-      body: Seq[Instruction]
+      body: Iterable[Instruction]
   )(tracked: Name => Boolean)(implicit ctx: AssemblyContext): Set[Instruction] =
     body.collect {
       case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send |
@@ -63,7 +63,7 @@ trait DeadCodeElimination
     * @return
     */
   def createDefMap(
-      block: Seq[Instruction]
+      block: Iterable[Instruction]
   )(implicit ctx: AssemblyContext): Map[Name, Instruction] =
     block.flatMap {
       case jtb @ JumpTable(_, phis, blocks, delaySlot, _) =>
@@ -89,7 +89,7 @@ trait DeadCodeElimination
     * @return
     */
   def createDependenceGraph(
-      block: Seq[Instruction],
+      block: Iterable[Instruction],
       defInst: Map[Name, Instruction],
       inputOutputPairs: Map[Name, Name] // a map from input regs to output regs
   )(implicit ctx: AssemblyContext): Graph[Instruction, GraphEdge.DiEdge] = {
@@ -188,22 +188,32 @@ trait DeadCodeElimination
       graph: Graph[Instruction, GraphEdge.DiEdge]
   )(implicit ctx: AssemblyContext): scala.collection.Set[Instruction] = {
 
-    val alive = scala.collection.mutable.Set.empty[Instruction] ++ sinks
+    ctx.logger.info("Collecting live nodes")
+    // ctx.logger.info(s"graph size: ${graph.nodes.size}")
+    val alive = scala.collection.mutable.Set.empty[Instruction]
     val toVisit =
-      scala.collection.mutable.Queue.empty[graph.NodeT] ++ sinks.map {
-        graph.get(_)
+      ctx.stats.recordRunTime("collecting initial sinks") {
+        scala.collection.mutable.Queue.empty[graph.NodeT] ++ sinks.map {
+          graph.get(_)
+        }
       }
+    ctx.logger.info(s"starting search")
     // perform a backward bfs
+    var cnt = 0
     while (toVisit.nonEmpty) {
       val current = toVisit.dequeue()
-      alive += current
-      val newAlive = current.diPredecessors
-      toVisit ++= newAlive.filter(
-        !alive.contains(_)
-      ) // any alive node has been pushed to toVisit, so if some predecessors
-      // have already been visited, skip them (in a cyclic graph not skipping
-      // them leads to a forever loop!)
+      if (!alive(current)) {
+        cnt += 1
+        alive += current
+        val newAlive = current.diPredecessors
+        val newVisit = newAlive.filter(pred => !alive(pred.toOuter))
+        toVisit ++= newVisit // any alive node has been pushed to toVisit, so if some predecessors
+        // have already been visited, skip them (in a cyclic graph not skipping
+        // them leads to a forever loop!)
+      }
     }
+    ctx.stats.record("number of iterations to collect live nodes" -> cnt)
+    // ctx.logger.info(s"number of iterations to search the graph: ${cnt}")
     alive
   }
 
@@ -217,7 +227,7 @@ trait DeadCodeElimination
     * @return
     */
   def countInstructions(
-      block: Seq[Instruction]
+      block: Iterable[Instruction]
   )(implicit ctx: AssemblyContext): Int = {
     block.foldLeft(0) { case (cnt, inst) =>
       inst match {
@@ -277,7 +287,9 @@ trait DeadCodeElimination
     val closedBlock = process.body ++ inputOutputPairs.map {
       case (curr, next) => Mov(curr, next)
     }
-    val defInst = createDefMap(closedBlock)
+    val defInst = ctx.stats.recordRunTime("def map colleciton") {
+      createDefMap(closedBlock)
+    }
     // With the inclusion of JumpTables, a single pass on the data dependence
     // graph would not rid us of all the dead code. If we first remove the dead
     // from the program body, without peeking inside JumpTables, then we may
@@ -287,8 +299,11 @@ trait DeadCodeElimination
     // inside the JumpTable compute the values for a Phi instruction that is
     // removed after we perform DCE outside. This means we basically have to
     // perform DCE until we reach a fixed point.
-    case class DceResult(block: Seq[Instruction], score: Int)
-    def dceOnce(current: Seq[Instruction], index: IterationIndex): DceResult = {
+    case class DceResult(block: Iterable[Instruction], score: Int)
+    def dceOnce(
+        current: Iterable[Instruction],
+        index: IterationIndex
+    ): DceResult = {
 
       /** perform DCE on a block of instructions while treating some names as
         * non-optimizable given by the [[tracked]] argument
@@ -298,8 +313,8 @@ trait DeadCodeElimination
         * @return
         */
       def dceBlock(
-          block: Seq[Instruction]
-      )(tracked: Name => Boolean): Seq[Instruction] = {
+          block: Iterable[Instruction]
+      )(tracked: Name => Boolean): Iterable[Instruction] = {
         // find the sink instructions
         val sinks = collectSinkInstructions(block)(tracked)
         val depGraph = createDependenceGraph(block, defInst, inputOutputPairs)
@@ -345,10 +360,14 @@ trait DeadCodeElimination
           // extra care
         }
       }
-      val outerDceResult = dceBlock(current) {
-        globallyTrackedSet
-        // only keep Names with Track annons
+      ctx.logger.info(s"DCE on outer block ${index}")
+      val outerDceResult = ctx.stats.recordRunTime(s"outer_dce_${index}") {
+        dceBlock(current) {
+          globallyTrackedSet
+          // only keep Names with Track annons
+        }
       }
+      ctx.logger.info(s"DCE on inner block ${index} (if any)")
       val finalDceResult = outerDceResult.map {
         // perform DCE for the body of the jump
         case jtb @ JumpTable(target, results, caseBlocks, dslot, annons) =>
@@ -369,19 +388,19 @@ trait DeadCodeElimination
           // dceBlock will not transform any instruction to another kind
           // so since blk is all DataInstruction, then the result would
           // dynamically be the same
-          def dceDataBlock(blk: Seq[Instruction]): Seq[Instruction] =
+          def dceDataBlock(blk: Iterable[Instruction]): Iterable[Instruction] =
             dceBlock(blk) { scopedTrack }
           val reducedBlocks = caseBlocks.map { case JumpCase(lbl, blk) =>
             JumpCase(
               lbl,
-              dceDataBlock(blk)
+              dceDataBlock(blk).toSeq
             )
           }
           val reducedDelaySlot = dceDataBlock(dslot)
           jtb
             .copy(
               blocks = reducedBlocks,
-              dslot = reducedDelaySlot
+              dslot = reducedDelaySlot.toSeq
             )
             .setPos(jtb.pos)
         case inst => inst
@@ -396,7 +415,7 @@ trait DeadCodeElimination
     def fixedPointDoWhile(
         iter: IterationIndex,
         last: DceResult
-    ): Seq[Instruction] = {
+    ): Iterable[Instruction] = {
       if (iter.index >= maxIter) {
         last.block
       } else {
@@ -460,7 +479,7 @@ trait DeadCodeElimination
     }
     process
       .copy(
-        body = withOutIOMovs,
+        body = withOutIOMovs.toSeq,
         registers = optRegs,
         labels = optLabels
       )

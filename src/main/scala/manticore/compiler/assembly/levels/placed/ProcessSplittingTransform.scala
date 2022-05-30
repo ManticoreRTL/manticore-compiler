@@ -12,6 +12,7 @@ import manticore.compiler.assembly.levels.placed.Helpers.GraphBuilder
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.placed.Helpers.InstructionOrder
 import manticore.compiler.assembly.levels.placed.Helpers.InputOutputPairs
+import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
 import scalax.collection.Graph
 import scalax.collection.GraphEdge
 import scalax.collection.GraphTraversal
@@ -434,6 +435,10 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       )
 
     }
+    ctx.stats.record(
+      "max number of processes before merge" -> process_bodies.size
+    )
+
     // create new processes
     val result = timed("constructing merged processes") {
       process_bodies.map(createProcessDescriptor)
@@ -560,7 +565,9 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
           .setPos(program.processes.head.pos)
     }
 
-    program.copy(finalProcesses.toSeq.filter(_.body.nonEmpty))
+    val result = program.copy(finalProcesses.toSeq.filter(_.body.nonEmpty))
+    ctx.stats.record(ProgramStatistics.mkProgramStats(result))
+    result
 
   }
 }
