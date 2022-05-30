@@ -39,6 +39,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
   behavior of benchName
 
+  def timeOut: Int = 1000
   def benchName: String
 
   val randGen = new scala.util.Random(7891268)
@@ -63,7 +64,8 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         dump_all = true,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
-        log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+        log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
+        max_cycles = timeOut
         // log_file = None
       )
 
@@ -75,19 +77,20 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
       val program1 = yosysCompiler(Seq(vFilePath))
       val reference = outputReference(cfg)
-      checkUnconstrained("yosys + ordering", program1, reference)
+      val dumper = { (n: String, t: String) => fixture.dump(n, t); () }
+      checkUnconstrained("yosys + ordering", program1, reference, dumper)
       val program2 = CompilationStage.unconstrainedOptimizations(program1)
-      checkUnconstrained("prelim opts", program2, reference)
+      checkUnconstrained("prelim opts", program2, reference, dumper)
       val program3 = CompilationStage.controlLowering(program2)
-      checkUnconstrained("jump table", program3, reference)
+      checkUnconstrained("jump table", program3, reference, dumper)
       val program4 = CompilationStage.widthLowering(program3)
-      checkUnconstrained("width conversion", program4, reference)
+      checkUnconstrained("width conversion", program4, reference, dumper)
       val program5 = CompilationStage.translation(program4)
-      checkPlaced("translation", program5, reference)
+      checkPlaced("translation", program5, reference, dumper)
       val program6 = CompilationStage.placedOptimizations(program5)
-      checkPlaced("placed opts", program6, reference)
+      checkPlaced("placed opts", program6, reference, dumper)
       val program7 = CompilationStage.parallelization(program6)
-      checkPlaced("parallelization", program7, reference)
+      checkPlaced("parallelization", program7, reference, dumper)
     }
   }
 
@@ -124,15 +127,20 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
   def checkUnconstrained(
       clue: String,
       program: UnconstrainedIR.DefProgram,
-      reference: ArrayBuffer[String]
+      reference: ArrayBuffer[String],
+      dumper: (String, String) => Unit
   )(implicit ctx: AssemblyContext) = {
     val got = interpretUnconstrained(program)
     if (!YosysUnitTest.compare(reference, got)) {
       ctx.logger.flush()
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", got.mkString("\n"))
       fail(s"${clue}: results did not match the reference")
     }
     if (ctx.logger.countErrors() > 0) {
       ctx.logger.flush()
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", got.mkString("\n"))
       fail(s"${clue}: Errors occurred")
     }
   }
@@ -140,16 +148,21 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
   def checkPlaced(
       clue: String,
       program: PlacedIR.DefProgram,
-      reference: ArrayBuffer[String]
+      reference: ArrayBuffer[String],
+      dumper: (String, String) => Unit
   )(implicit ctx: AssemblyContext) = {
 
     val got = interpretPlaced(program)
     if (!YosysUnitTest.compare(reference, got)) {
       ctx.logger.flush()
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", got.mkString("\n"))
       fail(s"${clue}: results did not match the reference")
     }
     if (ctx.logger.countErrors() > 0) {
       ctx.logger.flush()
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", got.mkString("\n"))
       fail(s"${clue}: Errors occurred")
     }
   }
@@ -186,8 +199,8 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
     val placedOptimizations =
       PlacedIRConstantFolding
-        PlacedIRCommonSubExpressionElimination andThen
-        PlacedIRDeadCodeElimination
+    PlacedIRCommonSubExpressionElimination andThen
+      PlacedIRDeadCodeElimination
 
     val parallelization = ProcessSplittingTransform
   }

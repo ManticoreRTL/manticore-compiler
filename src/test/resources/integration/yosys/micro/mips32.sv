@@ -408,7 +408,7 @@ module Mips32 (
   );
   always @(posedge clock) begin
     if (c_reg_write) begin
-      $display("RF[%d] <= %d", reg_dst ? instr[15:11] : instr[20:16], reg_write);
+      $display("%h %h: RF[%d] <= %d", pc, instr, reg_dst ? instr[15:11] : instr[20:16], reg_write);
     end
   end
   // ALU Control
@@ -456,7 +456,8 @@ module Mips32 (
       halted_r <= 1'b0;
     end else begin
       if (instr[5:0] == 6'd13) begin
-        // halted_r <= 1'b1;
+        halted_r <= 1'b1;
+        $display("Got halt!");
         $finish;
       end
       // if (halted_r == 1'b0) begin
