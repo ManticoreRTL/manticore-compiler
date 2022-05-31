@@ -56,6 +56,9 @@ object UnconstrainedNameChecker
           s"${rd} is assigned ${assigns.length} times:\n${assigns.mkString("\n")}"
         )
       }
+      NameCheck.checkAllStatesUpdate(process) { case name =>
+        context.logger.error(s"${name} is never assigned!")
+      }
 
     }
     NameCheck.checkSends(program)(

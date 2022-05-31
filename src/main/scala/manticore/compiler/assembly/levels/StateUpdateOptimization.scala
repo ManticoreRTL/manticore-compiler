@@ -1,10 +1,11 @@
 package manticore.compiler.assembly.levels
 
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.levels.placed.PlacedIR
-import manticore.compiler.assembly.levels.OutputType
-import manticore.compiler.assembly.levels.CanRename
 import manticore.compiler.assembly.CanComputeNameDependence
+import manticore.compiler.assembly.levels.CanRename
+import manticore.compiler.assembly.levels.OutputType
+import manticore.compiler.assembly.levels.placed.PlacedIR
+
 
 /** A simple optimization path to remove redundant MOV instructions to output
   * names. This is basically a hack to work around the fact that CF or CSE do
@@ -15,7 +16,9 @@ import manticore.compiler.assembly.CanComputeNameDependence
   * @author
   *   Mahyar Emami
   */
-trait StateUpdateOptimization extends CanRename with CanComputeNameDependence {
+trait StateUpdateOptimization
+    extends CanRename
+    with CanComputeNameDependence  {
 
   import flavor._
 
@@ -28,17 +31,26 @@ trait StateUpdateOptimization extends CanRename with CanComputeNameDependence {
   )(implicit ctx: AssemblyContext) = {
 
     val registers = process.registers.map { r => r.variable.name -> r }.toMap
-    val isStateUpdateName = registers andThen (_.variable.varType == OutputType )
+    val isStateUpdateName = registers andThen (_.variable.varType == OutputType)
     val isWire = registers andThen (_.variable.varType == WireType)
 
     val toRemove = scala.collection.mutable.Set.empty[Instruction]
-    val subst = scala.collection.mutable.Map.empty[Name, Name].withDefault(r => r)
+    val subst =
+      scala.collection.mutable.Map.empty[Name, Name].withDefault(r => r)
+
     process.body.reverseIterator.foreach {
       // we can only move write to output back up if the operand of a mov is
-      // a temporary value, i.e., a wire. We can not do the same if rs is InpuType
+      // a temporary value, i.e., a wire. We can not do the same if rs is InputType
       // MemoryType or ConstType because this pass is not supposed to remove
       // dead code.
-      case mov @ Mov(rd, rs, _) if isStateUpdateName(rd) && isWire(rs) =>
+      // Also note that if we have
+      // MOV o1, W1
+      // MOV o2, W1
+      // we can only remove one of the moves and have
+      // ..assign to o2 in the original place
+      // MOV o1, o2
+      case mov @ Mov(rd, rs, _)
+          if isStateUpdateName(rd) && isWire(rs) && !subst.contains(rs) =>
         toRemove += mov
         subst += (rs -> rd)
       case _ => // nothing to do
@@ -53,6 +65,7 @@ trait StateUpdateOptimization extends CanRename with CanComputeNameDependence {
       ) || r.variable.varType == OutputType || r.variable.varType == InputType
     )
 
+    assert(renamedBody.length <= process.body.length)
     process.copy(
       body = renamedBody,
       registers = newRegs

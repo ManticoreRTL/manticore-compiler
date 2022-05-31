@@ -5,6 +5,7 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
 import scala.annotation.tailrec
 
 import manticore.compiler.AssemblyContext
+import scala.annotation.unspecialized
 
 /** A generic name checker that makes sure all the used names in the program are
   * defined. This class should be specialized as an object before being used,
@@ -187,6 +188,56 @@ trait AssemblyNameChecker extends Flavored {
       checkBlock(Seq.empty, process.body)
     }
 
+    /** collect the set of names that have been used but never written to
+      */
+    def collectMissingStateUpdate(process: DefProcess): Iterable[Name] = {
+
+      def checkBlock(
+          unassigned: Set[Name],
+          block: Iterable[Instruction]
+      ): Set[Name] = {
+        block.foldLeft(unassigned) { case (prev, instr) =>
+          instr match {
+            case _ @(_: Interrupt | Nop | _: LocalStore | _: GlobalStore |
+                _: PutSerial | _: BreakCase | _: Expect | _: Recv | _: Send |
+                _: Predicate) =>
+              prev
+
+            case LocalLoad(rd, _, _, _, _) =>
+              prev - rd
+            case Lookup(rd, _, _, _) =>
+              prev - rd
+            case JumpTable(target, results, blocks, dslot, annons) =>
+              val afterDslot = checkBlock(prev, dslot)
+              blocks.foldLeft(afterDslot) { case (un, JumpCase(_, blk)) =>
+                checkBlock(un, blk)
+              } -- results.map(_.rd)
+            case ParMux(rd, _, _, _)   => prev - rd
+            case SetValue(rd, _, _)    => prev - rd
+            case PadZero(rd, _, _, _)  => prev - rd
+            case ClearCarry(carry, _)  => prev - carry
+            case Mov(rd, _, _)         => prev - rd
+            case SetCarry(carry, _)    => prev - carry
+            case Mux(rd, _, _, _, _)   => prev - rd
+            case GlobalLoad(rd, _, _)  => prev - rd
+            case Slice(rd, _, _, _, _) => prev - rd
+
+            case BinaryArithmetic(_, rd, _, _, _) => prev - rd
+            case AddC(rd, co, _, _, _, _)         => prev -- Seq(rd, co)
+            case CustomInstruction(_, rd, _, _)   => prev - rd
+          }
+        }
+      }
+
+      val allUnassigned = process.registers.collect {
+        case r
+            if r.variable.varType == OutputType  =>
+          r.variable.name
+      }.toSet
+
+      checkBlock(allUnassigned, process.body)
+    }
+
     /** Collect any undefined labels in the process
       *
       * @param process
@@ -278,9 +329,9 @@ trait AssemblyNameChecker extends Flavored {
             case Interrupt(action, _, _, _) =>
               action match {
                 case AssertionInterrupt => assigns
-                case FinishInterrupt => assigns
+                case FinishInterrupt    => assigns
                 case SerialInterrupt(_) => assigns
-                case StopInterrupt => assigns
+                case StopInterrupt      => assigns
               }
           }
         }
@@ -339,6 +390,20 @@ trait AssemblyNameChecker extends Flavored {
     def checkSSA(process: DefProcess)(notifier: NonSSA => Unit): Unit = {
       val nonSSA = collectNonSSA(process)
       nonSSA.foreach { notifier }
+    }
+
+    /** Check that all values in the program are defined. I.e., ensure that
+      * there are not [[OutputType]] register that are not
+      * assigned the process and therefore have undefined value.
+      *
+      * @param process
+      * @param notifier
+      */
+    def checkAllStatesUpdate(
+        process: DefProcess
+    )(notifier: Name => Unit): Unit = {
+      val nonAssigned = collectMissingStateUpdate(process)
+      nonAssigned.foreach { notifier }
     }
 
     /** Check cross process names, make sure all send messages have valid
