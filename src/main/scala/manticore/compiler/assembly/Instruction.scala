@@ -139,11 +139,17 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends Declaration
       with HasSerialized {
-    override def serialized: String =
-      s"${serializedAnnons("")}.prog: \n" + processes.foldLeft("") {
-        case (str, p) =>
-          str + p.serialized + "\n"
+    override def serialized: String = {
+
+      val builder = new StringBuilder
+      builder ++= s"${serializedAnnons("")}.prog: \n"
+      for(p <- processes) {
+        builder ++= p.serialized
+        builder ++= "\n"
       }
+      builder.toString()
+
+    }
   }
 
   // process definition, can be multiple
@@ -157,10 +163,20 @@ trait ManticoreAssemblyIR {
   ) extends Declaration
       with HasSerialized {
     override def serialized: String = {
+      val builder = new StringBuilder
+      builder ++= s"${serializedAnnons("\t")}\t.proc ${id}:\n"
 
-      s"${serializedAnnons("\t")}\t.proc ${id}:\n${(registers
-        .map(_.serialized) ++ functions.map(_.serialized) ++
-        labels.map(_.serialized) ++ body.map(_.serialized)).mkString("\n")}"
+      def append[T <: HasSerialized](elems: Seq[T]): Unit = {
+        for (e <- elems) {
+          builder ++= e.serialized
+          builder ++= "\n"
+        }
+      }
+     append(registers)
+     append(functions)
+     append(labels)
+     append(body)
+     builder.toString()
 
     }
   }

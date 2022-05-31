@@ -32,6 +32,8 @@ import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
 import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.frontend.yosys.Yosys
 import manticore.compiler.frontend.yosys.YosysRunner
+import manticore.compiler.LoggerId
+import manticore.compiler.assembly.levels.placed.PlacedNameChecker
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -61,7 +63,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val vFilePath = fixture.dump(resource.split("/").last, verilogCode)
 
       implicit val ctx = AssemblyContext(
-        dump_all = true,
+        dump_all = false,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
@@ -83,16 +85,19 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       checkUnconstrained("yosys + ordering", program1, reference, dumper)
       val program2 = CompilationStage.unconstrainedOptimizations(program1)
       checkUnconstrained("prelim opts", program2, reference, dumper)
+      ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       val program3 = CompilationStage.controlLowering(program2)
       checkUnconstrained("jump table", program3, reference, dumper)
       val program4 = CompilationStage.widthLowering(program3)
       checkUnconstrained("width conversion", program4, reference, dumper)
       val program5 = CompilationStage.translation(program4)
+      ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       checkPlaced("translation", program5, reference, dumper)
       val program6 = CompilationStage.placedOptimizations(program5)
       checkPlaced("placed opts", program6, reference, dumper)
       val program7 = CompilationStage.parallelization(program6)
       checkPlaced("parallelization", program7, reference, dumper)
+      ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
     }
   }
 
@@ -145,6 +150,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       dumper("results.txt", got.mkString("\n"))
       fail(s"${clue}: Errors occurred")
     }
+
   }
 
   def checkPlaced(
@@ -193,18 +199,20 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
     val widthLowering =
       WidthConversion.transformation andThen
         UnconstrainedIRConstantFolding andThen
+        UnconstrainedIRStateUpdateOptimization andThen
+        UnconstrainedIRCommonSubExpressionElimination andThen
         UnconstrainedDeadCodeElimination andThen
-        UnconstrainedIRConstantFolding
+        UnconstrainedNameChecker
 
     val translation =
       UnconstrainedToPlacedTransform
 
     val placedOptimizations =
-      PlacedIRConstantFolding
-    PlacedIRCommonSubExpressionElimination andThen
+      PlacedIRConstantFolding andThen
+      PlacedIRCommonSubExpressionElimination andThen
       PlacedIRDeadCodeElimination
 
-    val parallelization = ProcessSplittingTransform
+    val parallelization = ProcessSplittingTransform andThen PlacedNameChecker
   }
 
 }

@@ -6,8 +6,9 @@ import manticore.compiler.integration.yosys.unit.YosysUnitTest
 import java.io.PrintWriter
 import java.nio.file.Files
 import scala.collection.mutable.ArrayBuffer
+import org.scalatest.CancelAfterFailure
 
-final class BitcoinBench extends MicroBench {
+final class BitcoinBench extends MicroBench with CancelAfterFailure {
 
   case class TestConfig(difficulty: Int, loopLog2: Int) {
       require(difficulty < 256 && difficulty >= 1)
@@ -71,10 +72,14 @@ final class BitcoinBench extends MicroBench {
 
   override def timeOut: Int = 10000
 
-  val config1 = TestConfig(10, 2)
-  testCase(config1.toString(), config1)
+  val loopFactor = Range(0, 5) // 5 means fully unrolled and hugely parallel hardware
 
-
+  val configs = loopFactor.map { TestConfig(10, _) }
+  
+  configs.reverseIterator.foreach { // do in reverse order because the
+    // later ones run faster
+    cfg => testCase(cfg.toString(), cfg)
+  }
 
 
 }
