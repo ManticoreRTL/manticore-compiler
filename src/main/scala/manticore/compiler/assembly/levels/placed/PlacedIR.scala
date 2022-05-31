@@ -15,6 +15,7 @@ import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.assembly.CanBuildDependenceGraph
 import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.CanOrderInstructions
+import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 
 /** IR level with placed processes and allocated registers.
   *
@@ -485,7 +486,8 @@ object Helpers
     extends CanBuildDependenceGraph
     with CanCollectInputOutputPairs
     with CanComputeNameDependence
-    with CanOrderInstructions {
+    with CanOrderInstructions
+    with CanCollectProgramStatistics {
   val flavor = PlacedIR
 
 }

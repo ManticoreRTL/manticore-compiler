@@ -5,8 +5,9 @@ import manticore.compiler.assembly.BinaryOperator
 
 import manticore.compiler.assembly.levels.CanRename
 import manticore.compiler.assembly.CanComputeNameDependence
-/**
-  * @author
+import manticore.compiler.assembly.annotations.Track
+
+/** @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 trait CommonSubExpressionElimination
@@ -27,6 +28,7 @@ trait CommonSubExpressionElimination
   case class AddCarryExpr(rs1: Name, rs2: Name, ci: Name) extends Expression
 
   case class EliminationContext(
+      noOpt: Name => Boolean,
       expressions: Map[Expression, Name] = Map.empty[Expression, Name],
       substitutions: Map[Name, Name] = Map.empty[Name, Name],
       keptInstructions: Seq[Instruction] = Seq.empty[Instruction]
@@ -69,7 +71,7 @@ trait CommonSubExpressionElimination
   ): EliminationContext = {
     block.foldLeft(cseCtx) { case (cse, inst) =>
       inst match {
-        case Mux(rd, sel, rfalse, rtrue, _) =>
+        case Mux(rd, sel, rfalse, rtrue, _) if !cse.noOpt(rd) =>
           val selName = cse getName sel
           val falseName = cse getName rfalse
           val trueName = cse getName rtrue
@@ -80,7 +82,8 @@ trait CommonSubExpressionElimination
             case None => // keep the instruction, it's a fresh expression
               cse record (inst -> (expr -> rd))
           }
-        case BinaryArithmetic(op, rd, rs1, rs2, _) =>
+
+        case BinaryArithmetic(op, rd, rs1, rs2, _) if !cse.noOpt(rd) =>
           val rs1Name = cse getName rs1
           val rs2Name = cse getName rs2
           val expr1 = BinOpExpr(op, rs1Name, rs2Name)
@@ -142,7 +145,6 @@ trait CommonSubExpressionElimination
 
           newCtx withNewScope (availExpressions, afterDelaySlot.keptInstructions :+ optJtb)
 
-          cse keep jtb
         case _ =>
           cse keep inst
 
@@ -150,17 +152,21 @@ trait CommonSubExpressionElimination
     }
   }
 
-  def emptyCseContext = EliminationContext(
-    expressions = Map.empty[Expression, Name],
-    substitutions = Map.empty[Name, Name],
-    keptInstructions = Seq.empty[Instruction]
-  )
+  // def emptyCseContext = EliminationContext(
+  //   expressions = Map.empty[Expression, Name],
+  //   substitutions = Map.empty[Name, Name],
+  //   keptInstructions = Seq.empty[Instruction]
+  // )
   def cseProcess(
       process: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
-
+    def hasTrack(r: DefReg): Boolean = r.annons.exists { _.isInstanceOf[Track] }
+    val noOpt = process.registers.collect {
+      case r if r.variable.varType == OutputType || hasTrack(r) =>
+        r.variable.name
+    }.toSet
     val cseCtx = cseBlock(
-      EliminationContext(),
+      EliminationContext(noOpt),
       process.body
     )
     val subst: Name => Name = cseCtx.substitutions orElse { n => n }
