@@ -1,13 +1,11 @@
 package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.DependenceGraphBuilder
-import manticore.compiler.assembly.annotations.Memblock
+
 import manticore.compiler.assembly.levels.AssemblyTransformer
-import manticore.compiler.assembly.levels.ConstType
-import manticore.compiler.assembly.levels.InputType
+
 import manticore.compiler.assembly.levels.OutputType
-import manticore.compiler.assembly.levels.VariableType
+import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.placed.Helpers.GraphBuilder
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.placed.Helpers.InstructionOrder
@@ -19,13 +17,53 @@ import scalax.collection.GraphTraversal
 import scalax.collection.edge.LDiEdge
 import scalax.collection.mutable.{Graph => MutableGraph}
 
-import java.lang.management.MemoryType
 import scala.annotation.tailrec
 import scala.collection.immutable
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
 import scala.collection.BitSet
+
+object DisjointSets {
+  def apply[T](elements: Iterable[T]) = {
+    import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
+    val allSets: MutableMap[T, MutableSet[T]] =
+      MutableMap.empty[T, MutableSet[T]]
+    allSets ++= elements.map { x => x -> MutableSet[T](x) }
+    new DisjointSets[T] {
+      override def union(a: T, b: T): scala.collection.Set[T] = {
+        val setA = allSets(a)
+        val setB = allSets(b)
+        if (setA(b) || setB(a)) {
+          // already joined
+          setA
+        } else if (setA.size > setB.size) {
+          setA ++= setB
+          allSets ++= setB.map { _ -> setA }
+          setA
+        } else {
+          setB ++= setA
+          allSets ++= setA.map { _ -> setB }
+          setB
+        }
+      }
+      override def find(a: T): scala.collection.Set[T] = allSets(a)
+
+      override def sets: Iterable[scala.collection.Set[T]] = allSets.values
+
+      override def add(a: T): scala.collection.Set[T] = {
+        if (!allSets.contains(a)) {
+          allSets += (a -> MutableSet[T](a))
+        }
+        allSets(a)
+      }
+    }
+  }
+
+}
+sealed trait DisjointSets[T] {
+  def union(first: T, second: T): scala.collection.Set[T]
+  def find(a: T): scala.collection.Set[T]
+  def sets: Iterable[scala.collection.Set[T]]
+  def add(a: T): scala.collection.Set[T]
+}
 
 /** A pass to parallelize processes while respecting resource dependence
   * constraints
@@ -121,330 +159,163 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
   }
   private def extractIndependentInstructionSequences(
       proc: DefProcess,
-      bitSetIndexer: ParallelizationContext
+      parContext: ParallelizationContext
   )(implicit ctx: AssemblyContext) = {
 
-    val dependence_graph = GraphBuilder.rawGraph(proc.body)
+    sealed trait SetElement
+    case object Syscall extends SetElement
+    case class Instr(instr: Instruction) extends SetElement
+    case class Memory(name: Name) extends SetElement
+    case class State(name: Name) extends SetElement
 
-    // find the output registers, these are registers that are written in
-    // sink instructions, there could be instructions that are sinks in the
-    // dependence graph but are not really relevant because they don't write
-    // to outputs
+    val elements: Iterable[SetElement] = proc.registers.collect {
+      case r if r.variable.varType == OutputType => State(r.variable.name)
+      case r if r.variable.varType == MemoryType => Memory(r.variable.name)
+    } :+ Syscall
 
-    val sink_nodes = dependence_graph.nodes.filter { node =>
-      val writes_to_output =
-        NameDependence.regDef(node.toOuter).exists(bitSetIndexer.isOutput)
-      val is_store = node.toOuter match {
-        case _: LocalStore | _: GlobalStore          => true
-        case _: Expect | _: Interrupt | _: PutSerial => true
-        case _                                       => false
-      }
-      writes_to_output | is_store
+    // initialize the disjoint sets with elements that are either sink instructions,
+    // memories, next state registers, or a unique Syscall object
+    val disjoint = DisjointSets(elements)
+
+    val executionGraph = ctx.stats.recordRunTime("creating raw graph") {
+      GraphBuilder.rawGraph(proc.body)
     }
 
-    // We want to find parallel processes from by performing a backward
-    // traversal starting from sink nodes in the instruction dependence graph we
-    // have instantiated. But in doing so we must respect two constraints:
-    // 1. If process p1 and p2 have EXPECT/GlobalLoad/GlobalStore instructions then p1 = p2
-    // 2. If process p1 and p2 both access memory block b, then p1 = p2
-    //
-    // To do so, we build another graph, call it a constraint_graph to encode
-    // the which instructions are supposed to be grouped together. This graph is
-    // a 3 level high hierarchy: At the first level, we have a vertex that
-    // indicates the kind of constraint (i.e., memory or system call). At the
-    // second level there are processes "roots" that essentially wrapped output
-    // instructions (writing to output regs or storing in memory or system
-    // call). And the last level of hierarchy are all the other instructions
-    // (including output ones). We can construct this graph by perform multiple
-    // backwards traversals starting from the sink nodes. The complexity would
-    // be O(#out * (V + E)) with #out begin number of sink instructions and (V +
-    // E) being the worst case complexity of a backward traversal (e.g., BFS).
-    //
-    //              +----------------+ +-----------------+ +--------+ +-----------+
-    //              |                | |                 | |        | |           |
-    //              |MemBlockRoot(b0)| | MemBlockRoot(b1)| |FreeRoot| |SysCallRoot|
-    //              |                | |                 | |        | |           |
-    //      +-------+--+-------+-----+ +-------+---------+ +--------+ +-----------+
-    //      |          |       |               |           |        |             |
-    //      |          |       | +-------------+           |        |             |
-    //      |          |       | |                         |        |             |
-    // +----v---+  +---v---+ +-v-v--+  +--------+    +-----v-+  +---v----+    +---v-----+
-    // |        |  |       | |      |  |        |    |       |  |        |    |         |
-    // |ProcRoot|  |       | |      |  |        |    |       |  |        |    |         |
-    // +----+---+  +-------+ +------+  +--------+    +-------+  +--------+    +---------+
-    //      |
-    //      |
-    //    +-v----+
-    //    | leaf |
-    //    +------+
-    //
-    // After constructing this graph, we mask the edges in the last level (edge
-    // going to leaves) and look for weakly connected components, the set of ProcRoots
-    // at in every weakly connected sub graph can help us get the instructions
-    // that have to be packed together. We simply create a set of instructions
-    // by iterating the set of ProcRoots in a weakly connected subgraph and
-    // that will be the instructions we should pack in one process.
-    //
-    //
+    // Collect the sink nodes in the graph. These are either writes to OutputType
+    // registers, stores or system calls. Anything else is basically dead code
+    val sinkNodes = executionGraph.nodes.filter(_.outDegree == 0)
 
-    // Helper classes for building the constraint graph
+    // To extract independent processes, we start from the sink node and do a
+    // backward traversal in the read-after-write dependence graph. While doing
+    // the traversal we check whether each instruction uses any "exclusively-owned"
+    // resources. Such resources are the system call (i.e., clock-gating), memories
+    // or the next value of state registers (i.e, OutputType). These resources
+    // and the way they are used impose a fundamental limit on how we can extract
+    // processes. For instance if in computing the next value of some state we
+    // require access to the read/write memory. Then all the state registers
+    // that access the memory should be co-located on the same process. To keep
+    // track of these constraints. We create disjoint sets of instructions (and resources).
+    // The initial disjoint sets are the instructions and the 3 kinds of resources.
 
-    sealed abstract class SubProcess
-    case class MemBlockRoot(mem: Name) extends SubProcess {
-      override def toString(): String = mem
+    ctx.stats.recordRunTime("creating disjoint sets") {
+      sinkNodes.foreach { sink =>
+        val sinkInst = sink.toOuter
+        disjoint.add(Instr(sinkInst))
+        // Note that a sink may have the form MOV o1, o2 where o1 and o2 are two
+        // different output registers. This means we have to put o1 and o2
+        // in the same process
 
-      override def equals(x: Any) = x match {
-        case mx: MemBlockRoot => (mx eq this) || (mem == mx.mem)
-        case _                => false
-      }
-      override def hashCode() = mem.hashCode()
-
-    }
-    case object SysCallRoot extends SubProcess {
-      override def toString(): String = "syscall"
-    }
-    case class ProcRoot(sink: Instruction) extends SubProcess {
-      override def toString(): String = s"root of ${sink}"
-      override def equals(x: Any) = x match {
-        case px: ProcRoot => (px eq this) || (px.sink == sink)
-        case _            => false
-      }
-      override def hashCode() = sink.hashCode()
-    }
-    case class InstLeaf(inst: Instruction) extends SubProcess {
-      override def toString(): String = inst.toString()
-      override def equals(x: Any) = x match {
-        case xl: InstLeaf => (xl eq this) || (xl.inst == inst)
-        case _            => false
-      }
-      override def hashCode() = inst.hashCode()
-    }
-
-    // the constraint graph, the graph does not need to be directed... but it is
-    val constraint_graph =
-      scalax.collection.mutable.Graph.empty[SubProcess, GraphEdge.DiEdge]
-
-    // backward traversal from sink nodes that partially creates the constraint
-    // graph
-    def createConstraints(output_node: dependence_graph.NodeT): ProcRoot = {
-      val local_root = ProcRoot(output_node)
-      constraint_graph += local_root
-      output_node.outerNodeTraverser
-        .withDirection(GraphTraversal.Predecessors)
-        .foreach { onode =>
-          val inst = InstLeaf(onode)
-          constraint_graph += GraphEdge.DiEdge(local_root, inst)
-          onode match {
-            case _: Expect | _: GlobalStore | _: GlobalLoad | _: Interrupt |
-                _: PutSerial => // create and edge from SysCallRoot to ProcRoot
-              constraint_graph += GraphEdge.DiEdge(
-                SysCallRoot,
-                local_root
-              )
-
-            case LocalStore(_, _, _, _, order, _) =>
-              constraint_graph += GraphEdge.DiEdge(
-                MemBlockRoot(order.memory),
-                local_root
-              )
-            case LocalLoad(_, _, _, order, _) =>
-              constraint_graph += GraphEdge.DiEdge(
-                MemBlockRoot(order.memory),
-                local_root
-              )
-            case _ =>
-            // do nothing for now
-          }
+        val sinkSet = sink.toOuter match {
+          case store @ LocalStore(rs, mem, _, _, MemoryAccessOrder(m, _), _) =>
+            assert(m == mem)
+            disjoint.union(Instr(store), Memory(mem))
+          case meminst @ (_: GlobalStore | _: GlobalLoad) =>
+            disjoint.union(Instr(meminst), Syscall)
+          case instr @ (_: Expect | _: Interrupt | _: PutSerial) =>
+            disjoint.union(Instr(instr), Syscall)
+          case load @ LocalLoad(
+                rd,
+                base,
+                address,
+                MemoryAccessOrder(m, _),
+                annons
+              ) =>
+            assert(base == m)
+            if (parContext.isOutput(rd)) {
+              disjoint.union(Instr(load), State(rd))
+            } else {
+              ctx.logger.warn("Load without use is dead", load)
+            }
+          case _ => // nothing to do
         }
 
-      local_root
-    }
-
-    // run a function and time it
-    def timed[T](header: String)(fn_body: => T): T = {
-      ctx.logger.info(header)
-
-      val (res, elapsed) = ctx.stats.timed(fn_body)
-      ctx.stats.recordRunTime(header, elapsed)
-      ctx.logger.info(
-        f"took ${elapsed * 1e-3}%.3f seconds"
-      )
-      ctx.logger.flush()
-      res
-    }
-
-    // do the backward traversal from sink nodes to build the constraint graph
-
-    val proct_roots = timed("Extracting parallel processes") {
-      val res = sink_nodes.map { createConstraints }
-      ctx.logger.dumpArtifact(
-        s"constraint_graph${ctx.logger.countProgress()}_${transformId}_${proc.id}.dot"
-      ) {
-
-        import scalax.collection.io.dot._
-        import scalax.collection.io.dot.implicits._
-
-        val dot_root = DotRootGraph(
-          directed = true,
-          id = Some("Resource dependence graph")
-        )
-
-        def nodeTransformer(
-            inode: Graph[SubProcess, GraphEdge.DiEdge]#NodeT
-        ): Option[(DotGraph, DotNodeStmt)] =
-          Some(
-            (
-              dot_root,
-              DotNodeStmt(
-                NodeId(inode.toOuter.hashCode().toString()),
-                List(DotAttr("label", inode.toOuter.toString.trim))
-              )
-            )
-          )
-        val dot_export: String = constraint_graph.toDot(
-          dotRoot = dot_root,
-          edgeTransformer = iedge =>
-            Some(
-              (
-                dot_root,
-                DotEdgeStmt(
-                  iedge.edge.source.toOuter.hashCode().toString(),
-                  iedge.edge.target.toOuter.hashCode().toString()
-                )
-              )
-            ),
-          iNodeTransformer = Some(nodeTransformer),
-          cNodeTransformer = Some(nodeTransformer)
-        )
-        dot_export
-      }
-
-      // val leaves = constraint_graph.nodes.filter { inode =>
-      //   inode.toOuter match {
-      //     case _: InstLeaf => true
-      //     case _           => false
-      //   }
-      // }
-
-      val leaves = constraint_graph.nodes.collect {
-        case n if n.toOuter.isInstanceOf[InstLeaf] =>
-          n.toOuter.asInstanceOf[InstLeaf].inst
-      }
-      if (leaves.size != proc.body.size) {
-        val left_out = proc.body.toSet[Instruction].diff(leaves).toSeq
-
-        left_out.foreach { i =>
-          ctx.logger.warn("removing unused instruction", i)
-        }
-      }
-      // assert(leaves.size == proc.body.size, "no instruction should be left out")
-      ctx.logger.info(
-        s"Found ${res.size} parallel processes from ${proc.body.size} instruction "
-      )
-      res
-    }
-
-    // proct_roots.foreach { p =>
-    //   ctx.logger.info(s"${p.sink} -> ${constraint_graph.get(p).outDegree}")
-    // }
-    // find weakly connected subgraphs  (masking last level edges and nodes)
-
-    val compatible_processes = timed("Finding compatible processes") {
-      val res = constraint_graph
-        .componentTraverser(
-          subgraphEdges = iedge =>
-            iedge.toOuter match {
-              case GraphEdge.DiEdge(u: ProcRoot, v: InstLeaf) => false
-              case _                                          => true
-            },
-          subgraphNodes = inode =>
-            inode.toOuter match {
-              case (_: ProcRoot | _: MemBlockRoot | SysCallRoot) => true
-              case _                                             => false
+        sink.outerNodeTraverser
+          .withDirection(GraphTraversal.Predecessors)
+          .foreach { instr =>
+            // if this instruction references an state element, we should
+            // make the union of the state element with the sink instruction
+            // so that sink instruction that reference the same output variables
+            // or memories are grouped together
+            val namesReferenced =
+              NameDependence.regDef(instr) ++ NameDependence.regUses(instr)
+            namesReferenced.foreach { name =>
+              // in case in our traversal we reference some output name we should
+              // create a union between the sink node and the output names
+              if (parContext.isOutput(name)) {
+                disjoint.union(Instr(sinkInst), State(name))
+              }
             }
-        )
-      ctx.logger.info(s"Found ${res.size} compatible processes")
-      res
-    }
-
-    // combine the instructions in the weakly connected subgraphs
-    val process_bodies = timed("Merging incompatible processes") {
-      compatible_processes
-        .map { connected_components =>
-          val mem_nodes = connected_components.nodes.filter(inode =>
-            inode.toOuter match {
-              case _: MemBlockRoot => true
-              case _               => false
-            }
-          )
-          val has_syscall = connected_components.nodes.exists { inode =>
-            inode.toOuter == SysCallRoot
-          }
-          val proc_root_nodes = connected_components.nodes.filter(inode =>
-            inode.toOuter match {
-              case _: ProcRoot => true
-              case _           => false
-            }
-          )
-
-          val leaf_instructions =
-            scala.collection.mutable.Set.empty[Instruction]
-          proc_root_nodes.foreach { inode =>
-            // println(s"${inode.diSuccessors.size}")
-            leaf_instructions ++= inode.diSuccessors.map { ileaf =>
-              ileaf.toOuter.asInstanceOf[InstLeaf].inst
+            instr match {
+              case _ @(_: Expect | _: Interrupt | _: PutSerial | _: GlobalLoad |
+                  _: GlobalStore) =>
+                disjoint.union(Instr(sinkInst), Syscall)
+              case load @ LocalLoad(_, mem, _, _, _) =>
+                disjoint.union(Instr(sinkInst), Memory(mem))
+              case store @ LocalStore(_, mem, _, _, _, _) =>
+                disjoint.union(Instr(sinkInst), Memory(mem))
+              case _ => // nothing special to do
             }
           }
-          leaf_instructions
-        }
+      }
     }
 
-    def createProcessDescriptor(
-        block: Iterable[Instruction]
-    ): ProcessorDescriptor = {
+    // now each set in our disjoint sets represents a set of sink nodes that make
+    // up one process.
+
+    def collectProcessBody(sinks: Iterable[Instruction]) = {
 
       val bodyBitSet = scala.collection.mutable.BitSet.empty
       val inBitSet = scala.collection.mutable.BitSet.empty
       val outBitSet = scala.collection.mutable.BitSet.empty
       val memBitSet = scala.collection.mutable.BitSet.empty
-      val outSet = block.foreach { instr =>
-        bodyBitSet += (bitSetIndexer.instructionIndex(instr))
-        for (use <- NameDependence.regUses(instr)) {
-          if (bitSetIndexer.isInput(use)) {
-            inBitSet += bitSetIndexer.inputIndex(use)
+
+      sinks.foreach { sinkInst =>
+        val sinkNode = executionGraph.get(sinkInst)
+        sinkNode.outerNodeTraverser
+          .withDirection(GraphTraversal.Predecessors)
+          .foreach { reachableInstr =>
+            bodyBitSet += (parContext.instructionIndex(reachableInstr))
+            for (use <- NameDependence.regUses(reachableInstr)) {
+              if (parContext.isInput(use)) {
+                inBitSet += parContext.inputIndex(use)
+              }
+              if (parContext.isMemory(use)) {
+                val memIx = parContext.memoryIndex(use)
+                memBitSet += memIx
+              }
+            }
+            for (rd <- NameDependence.regDef(reachableInstr)) {
+              if (parContext.isOutput(rd)) {
+                outBitSet += parContext.outputIndex(rd)
+              }
+            }
           }
-          if (bitSetIndexer.isMemory(use)) {
-            val memIx = bitSetIndexer.memoryIndex(use)
-            memBitSet += memIx
-          }
-        }
-        for (rd <- NameDependence.regDef(instr)) {
-          if (bitSetIndexer.isOutput(rd)) {
-            outBitSet += bitSetIndexer.outputIndex(rd)
-          }
-        }
       }
-      inBitSet --= outBitSet
+      inBitSet --= outBitSet // if an input and its corresponding output
+      // are referenced in the same process, then remove it from the inBitSet
+      // because basically inBitSet should only contain InputType registers that
+      // are not owned by this process and outBitSet should contains all the
+      // OutputType registers that are owned by it.
       new ProcessorDescriptor(
         inSet = inBitSet,
         outSet = outBitSet,
         body = bodyBitSet,
         memory = memBitSet.foldLeft(0) { case (sz, idx) =>
-          bitSetIndexer.memorySize(idx)
+          parContext.memorySize(idx)
         }
       )
-
-    }
-    ctx.stats.record(
-      "max number of processes before merge" -> process_bodies.size
-    )
-
-    // create new processes
-    val result = timed("constructing merged processes") {
-      process_bodies.map(createProcessDescriptor)
     }
 
-    result
+    val results = ctx.stats.recordRunTime("creating independent processes") {
+      disjoint.sets
+        .map { resourceSet =>
+          val sinkInstrs = resourceSet.collect { case Instr(instr) => instr }
+          sinkInstrs
+        }
+        .collect { case block if block.nonEmpty => collectProcessBody(block) }
+    }
+    ctx.stats.record("Maximum number of independent processes" -> results.size)
+    results
   }
   override def transform(
       program: DefProgram
@@ -490,30 +361,33 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     case class MergeChoice(result: ProcessorDescriptor, index: Int, cost: Int)
         extends MergeResult
     case object NoMerge extends MergeResult
-    while (toMerge.nonEmpty) {
-      val head = toMerge.dequeue()
-      val (_, best) = mergedProcesses.foldLeft[(Int, MergeResult)](0, NoMerge) {
-        case ((ix, prevBest), currentChoice) =>
-          if (canMerge(currentChoice, head)) {
-            val possibleMerge = head merged currentChoice
-            val possibleCost = estimateCost(possibleMerge)
-            val nextBest = prevBest match {
-              case NoMerge => MergeChoice(possibleMerge, ix, possibleCost)
-              case other: MergeChoice if (other.cost > possibleCost) =>
-                MergeChoice(possibleMerge, ix, possibleCost)
-              case other => other
-            }
-            (ix + 1, nextBest)
-          } else {
-            (ix + 1, prevBest)
+    ctx.stats.recordRunTime("merging processes") {
+      while (toMerge.nonEmpty) {
+        val head = toMerge.dequeue()
+        val (_, best) =
+          mergedProcesses.foldLeft[(Int, MergeResult)](0, NoMerge) {
+            case ((ix, prevBest), currentChoice) =>
+              if (canMerge(currentChoice, head)) {
+                val possibleMerge = head merged currentChoice
+                val possibleCost = estimateCost(possibleMerge)
+                val nextBest = prevBest match {
+                  case NoMerge => MergeChoice(possibleMerge, ix, possibleCost)
+                  case other: MergeChoice if (other.cost > possibleCost) =>
+                    MergeChoice(possibleMerge, ix, possibleCost)
+                  case other => other
+                }
+                (ix + 1, nextBest)
+              } else {
+                (ix + 1, prevBest)
+              }
           }
-      }
-      best match {
-        case MergeChoice(result, index, _) => mergedProcesses(index) = result
-        case NoMerge =>
-          ctx.logger.error(
-            "Could not merge processes because ran out of memory!"
-          )
+        best match {
+          case MergeChoice(result, index, _) => mergedProcesses(index) = result
+          case NoMerge =>
+            ctx.logger.error(
+              "Could not merge processes because ran out of memory!"
+            )
+        }
       }
     }
 
