@@ -3,6 +3,7 @@ package manticore.compiler.assembly.levels.placed.lowering
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.placed.Helpers.GraphBuilder
 import manticore.compiler.assembly.levels.placed.Helpers.InputOutputPairs
+import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
 import manticore.compiler.assembly.levels.placed.PlacedIRRenamer.Rename
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
@@ -51,7 +52,11 @@ private[lowering] object ProgramSchedulingTransform
       )
     }
 
-    createProgramSchedule(prepared)(context)
+    val results = createProgramSchedule(prepared)(context)
+
+    context.stats.record(ProgramStatistics.mkProgramStats(results))
+
+    results
 
   }
 
@@ -114,6 +119,7 @@ private[lowering] object ProgramSchedulingTransform
             findCompatible(matcher, notMatched :+ toSchedule)
           }
         } else {
+          core.scheduleContext.readyList ++= notMatched
           None
         }
       }

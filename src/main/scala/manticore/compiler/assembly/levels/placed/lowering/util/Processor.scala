@@ -84,11 +84,8 @@ private[lowering] final class ScheduleContext(
     // a copy of the original dependence graph excluding the Send instructions
 
     val builder = MutableGraph.empty[Instruction, GraphEdge.DiEdge]
-    builder ++= dependenceGraph.nodes.filter(!_.isInstanceOf[Send])
-    builder ++= dependenceGraph.edges.filter {
-      case GraphEdge.DiEdge(_, _: Send) => false
-      case _                            => true
-    }
+    builder ++= dependenceGraph.nodes
+    builder ++= dependenceGraph.edges
     builder
   }
 
@@ -97,16 +94,15 @@ private[lowering] final class ScheduleContext(
 
   // add an instruction to schedule
   def +=(inst: Instruction) = {
-    assert(nodesToSchedule != 0)
     schedule += inst
-    if (inst != Nop)
-      nodesToSchedule -= 1
+    +?=(inst)
   }
   // don't really add the instruction but advance the state
   def +?=(inst: Instruction): Unit = {
-    assert(nodesToSchedule != 0)
-    if (inst != Nop)
+    if (inst != Nop) {
+      assert(nodesToSchedule != 0)
       nodesToSchedule -= 1
+    }
   }
 
   // pre-populate the ready list

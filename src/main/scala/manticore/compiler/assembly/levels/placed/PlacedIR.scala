@@ -429,16 +429,14 @@ object LatencyAnalysis {
 
   import PlacedIR._
   def latency(inst: Instruction): Int = inst match {
-    case _: Predicate                          => 0
-    case _: Expect                             => 0
-    case Nop                                   => 0
-    case JumpTable(_, _, blocks, delaySlot, _) =>
-      // this is a heuristic by all means!
-      val delaySlotLatency = maxLatency() + delaySlot.foldLeft(1) {
-        _ + latency(_)
-      }
-      blocks.map { case JumpCase(_, blk) =>
-        blk.foldLeft(delaySlotLatency) { _ + latency(_) }
+    case _: Predicate                                 => 0
+    case _ @(_: Expect | _: Interrupt | _: PutSerial) => 0
+    case Nop                                          => 0
+    case JumpTable(_, _, blocks, delaySlot, _)        =>
+      // this is a conservative estimation
+      val delaySlotLatency = 1 + delaySlot.length
+      delaySlotLatency + blocks.map { case JumpCase(_, blk) =>
+        blk.length + maxLatency() + 1
       }.max
 
     case _ => maxLatency()
@@ -491,4 +489,3 @@ object Helpers
   val flavor = PlacedIR
 
 }
-

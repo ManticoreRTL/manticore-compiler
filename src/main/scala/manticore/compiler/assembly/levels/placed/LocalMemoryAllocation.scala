@@ -52,7 +52,7 @@ object LocalMemoryAllocation extends PlacedIRTransformer {
   )(implicit context: AssemblyContext): DefProgram = {
 
     prog.copy(
-      processes = prog.processes.map(allocateMemory(_)(context))
+      processes = prog.processes.map(allocateMemory)
     )
   }
 

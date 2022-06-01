@@ -187,6 +187,8 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
         }
       }
       graph
+    } ensuring {
+      g => g.nodes.size == instructionBlock.size
     }
 
     def toDotGraph[N](

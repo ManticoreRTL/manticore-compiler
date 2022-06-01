@@ -95,6 +95,7 @@ trait AssemblyTransformer[T <: ManticoreAssemblyIR#DefProgram]
       }
     }
   }
+
   final def withCondition(cond: => Boolean) = {
     val thisTransform = this
     new AssemblyTransformer[T] {
@@ -114,6 +115,14 @@ trait AssemblyTransformer[T <: ManticoreAssemblyIR#DefProgram]
 
     }
   }
+  /**
+    * create a new transformation that only executes if the given condition
+    * holds
+    *
+    * @param cond
+    * @return
+    */
+  final def ?(cond: => Boolean) = withCondition(cond)
 }
 
 // base trait for changing flavor

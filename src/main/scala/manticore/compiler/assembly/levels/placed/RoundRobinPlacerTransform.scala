@@ -16,22 +16,38 @@ object RoundRobinPlacerTransform extends PlacedIRTransformer {
       Range(0, ctx.max_dimy).map { y => (x, y) }
     }
 
-    val placed_processes =
-      program.processes
-        .sortBy { p => p.body.count(_.isInstanceOf[Expect]) } {
-          Ordering[Int].reverse
+    val sortedProcess = program.processes
+      .sortBy { p =>
+        p.body.count {
+          case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore |
+              _: PutSerial) =>
+            true
+          case _ => false
         }
-        .zip(places)
-        .map { case (proc, (x, y)) =>
-          proc
-            .copy(
-              id = ProcessIdImpl(s"placed_X${x}_Y${y}", x, y)
-            )
-            .setPos(proc.pos)
-        }
+      } {
+        Ordering[Int].reverse
+      }
+    val newProcessIds: Map[ProcessId, ProcessId] = sortedProcess
+      .zip(places)
+      .map { case (proc, (x, y)) =>
+        proc.id -> ProcessIdImpl(s"placed_X${x}_Y${y}", x, y)
+      }
+      .toMap
+
+    val placed = sortedProcess.map { process =>
+
+      val renamed =process.body.map {
+        case send: Send => send.copy(dest_id = newProcessIds(send.dest_id)).setPos(send.pos)
+        case other => other
+      }
+      process.copy(
+        id = newProcessIds(process.id),
+        body = renamed
+      ).setPos(process.pos)
+    }
     program
       .copy(
-        processes = placed_processes
+        processes = placed
       )
       .setPos(program.pos)
 
