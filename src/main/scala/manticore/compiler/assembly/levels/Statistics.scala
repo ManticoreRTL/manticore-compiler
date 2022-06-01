@@ -123,7 +123,8 @@ trait CanCollectProgramStatistics extends Flavored {
             acc + count(inst)
           }
           vcycle += dslotInsts
-          numInsts + dslotInsts
+
+          numInsts + dslotInsts + incr("SWITCH")
         case Interrupt(action, _, _, _) =>
           action match {
             case AssertionInterrupt => incr("ASSERT")
