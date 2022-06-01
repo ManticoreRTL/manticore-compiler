@@ -46,7 +46,7 @@ object DisjointSets {
       }
       override def find(a: T): scala.collection.Set[T] = allSets(a)
 
-      override def sets: Iterable[scala.collection.Set[T]] = allSets.values
+      override def sets: Iterable[scala.collection.Set[T]] = allSets.values.toSet
 
       override def add(a: T): scala.collection.Set[T] = {
         if (!allSets.contains(a)) {
@@ -168,14 +168,6 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     case class Memory(name: Name) extends SetElement
     case class State(name: Name) extends SetElement
 
-    val elements: Iterable[SetElement] = proc.registers.collect {
-      case r if r.variable.varType == OutputType => State(r.variable.name)
-      case r if r.variable.varType == MemoryType => Memory(r.variable.name)
-    } :+ Syscall
-
-    // initialize the disjoint sets with elements that are either sink instructions,
-    // memories, next state registers, or a unique Syscall object
-    val disjoint = DisjointSets(elements)
 
     val executionGraph = ctx.stats.recordRunTime("creating raw graph") {
       GraphBuilder.rawGraph(proc.body)
@@ -184,6 +176,15 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     // Collect the sink nodes in the graph. These are either writes to OutputType
     // registers, stores or system calls. Anything else is basically dead code
     val sinkNodes = executionGraph.nodes.filter(_.outDegree == 0)
+
+    val elements: Iterable[SetElement] = proc.registers.collect {
+      case r if r.variable.varType == OutputType => State(r.variable.name)
+      case r if r.variable.varType == MemoryType => Memory(r.variable.name)
+    } ++ sinkNodes.map(n => Instr(n.toOuter)) :+ Syscall
+
+    // initialize the disjoint sets with elements that are either sink instructions,
+    // memories, next state registers, or a unique Syscall object
+    val disjoint = DisjointSets(elements)
 
     // To extract independent processes, we start from the sink node and do a
     // backward traversal in the read-after-write dependence graph. While doing
@@ -200,7 +201,6 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     ctx.stats.recordRunTime("creating disjoint sets") {
       sinkNodes.foreach { sink =>
         val sinkInst = sink.toOuter
-        disjoint.add(Instr(sinkInst))
         // Note that a sink may have the form MOV o1, o2 where o1 and o2 are two
         // different output registers. This means we have to put o1 and o2
         // in the same process
@@ -306,6 +306,21 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       )
     }
 
+    ctx.logger.dumpArtifact("disjoint_sets.txt") {
+      ctx.logger.info("Dumping disjoint sets")
+      val builder = new StringBuilder
+      disjoint.sets.foreach { set =>
+        builder ++= "{\n"
+        set.foreach {
+          case Instr(instr) => builder ++= (instr.toString() + "\n")
+          case Syscall      => builder ++= ("syscall\n")
+          case Memory(m)    => builder ++= (m + "\n")
+          case State(s)     => builder ++= (s + "\n")
+        }
+        builder ++= "}\n"
+      }
+      builder.toString()
+    }
     val results = ctx.stats.recordRunTime("creating independent processes") {
       disjoint.sets
         .map { resourceSet =>
