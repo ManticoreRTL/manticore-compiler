@@ -17,6 +17,7 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRTransform
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVariables
 
 import scala.collection.mutable.ArrayBuffer
+import scala.sys.process.processInternal
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -2380,7 +2381,7 @@ object WidthConversionCore
       val rs_uint16_array = builder.getConversion(rs).parts
       val rd_uint16_array = builder.getConversion(rd).parts
       // Must hold given the test above.
-      assert(rd_uint16_array.length == 1)
+      assert(rd_uint16_array.length == 1, s"something is up with $i")
 
       val wordIdx = offset / 16
 
@@ -2506,8 +2507,8 @@ object WidthConversionCore
 
     val newConsts = ArrayBuffer.empty[DefReg]
 
-    val newBody = proc.body.map { i =>
-      i match {
+    def replace(block: Iterable[Instruction]): Iterable[Instruction] = {
+      block.map {
         case s @ Slice(rd, rs, offset, length, annons)
             if !sliceCoversOneWord(s) =>
           // We transform the slice into an unconstrained SRL with a narrower output.
@@ -2523,14 +2524,23 @@ object WidthConversionCore
           )
           newConsts += shiftAmountVar
           BinaryArithmetic(BinaryOperator.SRL, rd, rs, shiftAmountName, annons)
+            .setPos(s.pos)
+        case jtb @ JumpTable(_, _, caseBlk, dslot, _) =>
+          val newDslot = replace(dslot)
+          val newCaseBlks = caseBlk.map { case JumpCase(lbl, blk) =>
+            JumpCase(lbl, replace(blk).toSeq)
+          }
 
-        case _ => i
+          jtb.copy(dslot = newDslot.toSeq, blocks = newCaseBlks)
+
+        case instr => instr // do nothing
       }
     }
+    val newBody = replace(proc.body)
 
     proc.copy(
       registers = proc.registers ++ newConsts,
-      body = newBody
+      body = newBody.toSeq
     )
   }
 
