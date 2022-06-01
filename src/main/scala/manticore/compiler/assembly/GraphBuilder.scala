@@ -1,14 +1,15 @@
 package manticore.compiler.assembly
 
+import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.Flavored
 import scalax.collection.GraphEdge.DiEdge
 import scalax.collection.edge.LDiEdge
 import scalax.collection.mutable.{Graph => MutableGraph}
 import scalax.collection.{Graph => ImmutableGraph}
-import manticore.compiler.AssemblyContext
-import scala.reflect.ClassTag
-import javax.sound.midi.Instrument
+
 import java.awt.geom.Dimension2D
+import javax.sound.midi.Instrument
+import scala.reflect.ClassTag
 
 trait CanBuildDependenceGraph extends CanComputeNameDependence {
 

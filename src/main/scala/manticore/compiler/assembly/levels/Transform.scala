@@ -42,8 +42,7 @@ trait CompilerTransformation[
     }
   }
 
-  override def apply(program: S)(implicit ctx: AssemblyContext): T = {
-
+  protected final def do_apply(program: S)(implicit ctx: AssemblyContext): T = {
     ctx.logger.start(
       s"[${ctx.logger.countProgress()}] Starting transformation ${transformId}"
     )
@@ -63,6 +62,9 @@ trait CompilerTransformation[
     ctx.logger.end("")
     res
   }
+  override def apply(program: S)(implicit ctx: AssemblyContext): T = do_apply(
+    program
+  )
 
 }
 
@@ -81,30 +83,38 @@ trait AssemblyTransformer[T <: ManticoreAssemblyIR#DefProgram]
     val thisTransform = this
     new AssemblyTransformer[T] {
       override implicit val transformId: TransformationID = other.transformId
-      override def transform(program: T)(implicit ctx: AssemblyContext): T =
-        other.transform(program)
+      override def transform(program: T)(implicit ctx: AssemblyContext): T = {
+        throw new UnsupportedOperationException(
+          "Can not call this method on a combined transform"
+        )
+      }
       override def apply(t: T)(implicit ctx: AssemblyContext): T = {
-
+        type ParentType = CompilerTransformation[T, T]
         val r = thisTransform.apply(t)
-        super.apply(r)
+        other.apply(r)
       }
     }
   }
   final def withCondition(cond: => Boolean) = {
     val thisTransform = this
     new AssemblyTransformer[T] {
-      override implicit val transformId: TransformationID = thisTransform.transformId
-      override def transform(p: T)(implicit ctx: AssemblyContext) = {
+      override implicit val transformId: TransformationID =
+        thisTransform.transformId
+      override def apply(program: T)(implicit ctx: AssemblyContext) = {
         if (cond) {
-          thisTransform.transform(p)
+          thisTransform.apply(program)
         } else {
-          p
+          program
         }
       }
+      override def transform(p: T)(implicit ctx: AssemblyContext) =
+        throw new UnsupportedOperationException(
+          "Can not call this method on a combined transform"
+        )
+
     }
   }
 }
-
 
 // base trait for changing flavor
 trait AssemblyTranslator[
@@ -145,10 +155,12 @@ trait AssemblyChecker[T <: ManticoreAssemblyIR#DefProgram]
     new AssemblyChecker[T] {
       override implicit val transformId: TransformationID = other.transformId
       override def check(source: T)(implicit context: AssemblyContext): Unit =
-        other.check(source)
+        throw new UnsupportedOperationException(
+          "Can not call this method on a combined transform"
+        )
       override def apply(t: T)(implicit ctx: AssemblyContext): T = {
         val r = thisTransform.apply(t)
-        super.apply(r)
+        other.apply(r)
       }
     }
   }
