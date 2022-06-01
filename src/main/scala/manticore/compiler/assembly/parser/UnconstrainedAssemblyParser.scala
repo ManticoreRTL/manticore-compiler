@@ -28,6 +28,7 @@ import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.annotations.Reg
 import manticore.compiler.HasLoggerId
 import manticore.compiler.FormatString
+import manticore.compiler.LoggerId
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -117,6 +118,8 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
 }
 
 private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
+
+  implicit val loggerId = LoggerId("AssemblyParser")
   type Tokens = AssemblyTokens
   val lexical: UnconstrainedAssemblyLexer = new UnconstrainedAssemblyLexer()
   import lexical._
@@ -358,12 +361,14 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       case (a ~ _ ~ rd ~ _ ~ dest_id ~ _ ~ rs) =>
         Send(rd.chars, rs.chars, dest_id.chars, a)
     }
-  def expect_inst: Parser[Expect] =
-    (annotations ~ keyword(
+  def expect_inst(implicit ctx: AssemblyContext): Parser[Expect] =
+    (annotations ~ positioned(keyword(
       "EXPECT"
-    ) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> stringLit <~ "]")) ^^ {
-      case (a ~ _ ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
-        Expect(ref.chars, got.chars, ex_id.chars, a)
+    )) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> stringLit <~ "]")) ^^ {
+      case (a ~ kword ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
+        val instr = Expect(ref.chars, got.chars, ex_id.chars, a).setPos(kword.pos)
+        ctx.logger.warn("EXPECT will be retired soon. Use ASSERT instead.", instr)
+        instr
     }
 
   def pred_inst: Parser[Predicate] =
@@ -453,21 +458,21 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       PadZero(rd.chars, rs.chars, width, a)
   }
 
-  def instruction: Parser[Instruction] = positioned(
+  def instruction(implicit ctx: AssemblyContext): Parser[Instruction] = positioned(
     arith_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
       | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst | slice_inst
       | interrupt_inst | put_inst
   ) <~ ";"
-  def body: Parser[Seq[Instruction]] = rep(instruction)
-  def regs: Parser[Seq[Seq[DefReg]]] = rep(def_reg)
+  def body(implicit ctx: AssemblyContext): Parser[Seq[Instruction]] = rep(instruction)
+  def regs(implicit ctx: AssemblyContext): Parser[Seq[Seq[DefReg]]] = rep(def_reg)
 
-  def process: Parser[DefProcess] =
+  def process(implicit ctx: AssemblyContext): Parser[DefProcess] =
     (annotations ~ keyword(".proc") ~ ident ~ ":" ~ regs ~ body) ^^ {
       case (a ~ _ ~ id ~ _ ~ rs ~ insts) =>
         DefProcess(id.chars, rs.flatten, Seq.empty, insts, Seq(), a)
     }
 
-  def program: Parser[DefProgram] =
+  def program(implicit ctx: AssemblyContext): Parser[DefProgram] =
     (annotations ~ keyword(".prog") ~ ":" ~ rep(process)) ^^ {
       case (a ~ _ ~ _ ~ p) =>
         DefProgram(
@@ -475,9 +480,8 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
           a
         )
     }
-  def apply(input: String, ctx: AssemblyContext): DefProgram = {
+  def apply(input: String)(implicit ctx: AssemblyContext): DefProgram = {
 
-    implicit val loggerId = new HasLoggerId { val id = "AssemblyParser" }
     val tokens: lexical.Scanner = new lexical.Scanner(input)
     phrase(positioned(program))(tokens) match {
       case Success(result, _) => result
@@ -491,5 +495,3 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   }
 
 }
-
-

@@ -14,7 +14,7 @@ object AssemblyParser
       source: String
   )(implicit context: AssemblyContext): UnconstrainedIR.DefProgram = {
     context.logger.info("Parsing from string input")
-    UnconstrainedAssemblyParser(source, context)
+    UnconstrainedAssemblyParser(source)
   }
 
   @deprecated("reading files is deprecated, use AssemblyFileParser instead")
@@ -22,10 +22,7 @@ object AssemblyParser
       source: File
   )(implicit context: AssemblyContext): UnconstrainedIR.DefProgram = {
     context.logger.info("Parsing from file input")
-    UnconstrainedAssemblyParser(
-      scala.io.Source.fromFile(source).mkString(""),
-      context
-    )
+    UnconstrainedAssemblyParser(scala.io.Source.fromFile(source).mkString(""))
   }
 
 }
@@ -40,8 +37,7 @@ object AssemblyFileParser
   )(implicit ctx: AssemblyContext): UnconstrainedIR.DefProgram = {
     ctx.logger.info(s"Parsing from file ${path.toAbsolutePath()}")
     UnconstrainedAssemblyParser(
-      scala.io.Source.fromFile(path.toFile()).mkString(""),
-      ctx
+      scala.io.Source.fromFile(path.toFile()).mkString("")
     )
   }
 
