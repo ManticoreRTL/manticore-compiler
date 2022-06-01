@@ -39,13 +39,19 @@ import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.parser.AssemblyLexical
 import manticore.compiler.assembly.levels.codegen.InitializerProgram
 import java.io.PrintWriter
-
+import manticore.compiler.assembly.parser.AssemblyFileParser
+sealed trait Mode
+case object CompileMode extends Mode
+case object ExecMode extends Mode
 case class CliConfig(
+    mode: Mode = ExecMode,
     input_file: Option[File] = None,
     print_tree: Boolean = false,
     dump_all: Boolean = false,
     dump_dir: Option[File] = None,
     output_dir: Option[File] = None,
+    output_file: Option[File] = None,
+    log_file: Option[File] = None,
     debug_en: Boolean = false,
     report: Option[File] = None,
     /** Machine configurations * */
@@ -70,53 +76,75 @@ object Main {
       OParser.sequence(
         programName("masm"),
         head("Manticore assembler", "vPROTOTYPE"),
-        opt[File]('i', "input")
-          .action { case (x, c) => c.copy(input_file = Some(x)) }
-          .required()
-          .text("input assembly file"),
-        opt[File]('o', "output")
-          .action { case (x, c) => c.copy(output_dir = Some(x)) }
-          .text("output directory"),
-        opt[File]('r', "report")
-          .action { case (x, c) => c.copy(report = Some(x)) }
-          .text("emit a compilation report"),
-        opt[Unit]('t', "print-tree")
-          .action { case (_, c) => c.copy(print_tree = true) }
-          .text("print the asm program at each step of the assembler"),
-        opt[Unit]("dump-all")
-          .action { case (_, c) => c.copy(dump_all = true) }
-          .text(
-            "dump everything in each step in the directory given by --dump-dir"
+        cmd("execute")
+          .action { case (_, c) => c.copy(mode = ExecMode) }
+          .text("execute a manticore assembly program")
+          .children(
+            opt[File]('o', "output")
+              .action { case (x, c) => c.copy(output_file = Some(x)) }
+              .text("file for writing program output (i.e., $display)"),
+            opt[File]('l', "log")
+              .action { case (x, c) => c.copy(log_file = Some(x)) }
+              .text("compilation log file"),
+            opt[File]("dump-dir")
+              .action { case (x, c) => c.copy(dump_dir = Some(x)) }
+              .text("directory to write all the dump files"),
+            opt[Unit]("dump-all")
+              .action { case (_, c) => c.copy(dump_all = true) }
+              .text(
+                "dump everything in each step in the directory given by --dump-dir"
+              ),
+            opt[Unit]('d', "debug")
+              .action { case (_, c) => c.copy(debug_en = true) }
+              .text("print debug information"),
+            arg[File]("FILE")
+              .action { case (x, c) => c.copy(input_file = Some(x)) }
+              .text("input file")
+              .required()
           ),
-        opt[File]("dump-dir")
-          .action { case (x, c) => c.copy(dump_dir = Some(x)) }
-          .text("directory to place all the dump files"),
-        opt[Unit]('d', "debug")
-          .action { case (_, c) => c.copy(debug_en = true) }
-          .text("print debug information"),
-        opt[Int]('X', "dimx")
-          .action { case (x, c) => c.copy(dimx = x) }
-          .text("number of cores in X"),
-        opt[Int]('Y', "dimy")
-          .action { case (y, c) => c.copy(dimy = y) }
-          .text("number of cores in y"),
-        opt[Unit]("simulate")
-          .action { case (_, c) => c.copy(simulate = true) }
-          .hidden()
-          .text("simulate the program using Verilator"),
-        opt[Unit]("interpret")
-          .action { case (_, c) => c.copy(interpret = true) }
-          .hidden()
-          .text("interpret the program in software"),
-        opt[Unit]("dump-rf")
-          .action { case (_, c) => c.copy(dump_rf = true) }
-          .text("dump register file initial values in ascii binary format"),
-        opt[Unit]("dump-ra")
-          .action { case (_, c) => c.copy(dump_ra = true) }
-          .text("dump register array initial values in ascii binary format"),
-        opt[Unit]("dump-ascii")
-          .action { case (_, c) => c.copy(dump_ascii = true) }
-          .text("dump program in in human readable and binary ascii format"),
+        // opt[File]('i', "input")
+        //   .action { case (x, c) => c.copy(input_file = Some(x)) }
+        //   .required()
+        //   .text("input assembly file"),
+        // opt[File]('o', "output")
+        //   .action { case (x, c) => c.copy(output_dir = Some(x)) }
+        //   .text("output directory"),
+        // opt[File]('r', "report")
+        //   .action { case (x, c) => c.copy(report = Some(x)) }
+        //   .text("emit a compilation report"),
+        // opt[Unit]('t', "print-tree")
+        //   .action { case (_, c) => c.copy(print_tree = true) }
+        //   .text("print the asm program at each step of the assembler"),
+        // opt[Unit]("dump-all")
+        //   .action { case (_, c) => c.copy(dump_all = true) }
+        //   .text(
+        //     "dump everything in each step in the directory given by --dump-dir"
+        //   ),
+        // opt[File]("dump-dir")
+        //   .action { case (x, c) => c.copy(dump_dir = Some(x)) }
+        //   .text("directory to place all the dump files"),
+        // opt[Unit]('d', "debug")
+        //   .action { case (_, c) => c.copy(debug_en = true) }
+        //   .text("print debug information"),
+        // opt[Int]('X', "dimx")
+        //   .action { case (x, c) => c.copy(dimx = x) }
+        //   .text("number of cores in X"),
+        // opt[Int]('Y', "dimy")
+        //   .action { case (y, c) => c.copy(dimy = y) }
+        //   .text("number of cores in y"),
+        // opt[Unit]("interpret")
+        //   .action { case (_, c) => c.copy(interpret = true) }
+        //   .hidden()
+        //   .text("interpret the program"),
+        // opt[Unit]("dump-rf")
+        //   .action { case (_, c) => c.copy(dump_rf = true) }
+        //   .text("dump register file initial values in ascii binary format"),
+        // opt[Unit]("dump-ra")
+        //   .action { case (_, c) => c.copy(dump_ra = true) }
+        //   .text("dump register array initial values in ascii binary format"),
+        // opt[Unit]("dump-ascii")
+        //   .action { case (_, c) => c.copy(dump_ascii = true) }
+        //   .text("dump program in in human readable and binary ascii format"),
         help('h', "help").text("print usage text and exit")
       )
     }
@@ -140,36 +168,35 @@ object Main {
         max_dimy = cfg.dimy,
         dump_ra = cfg.dump_ra,
         dump_rf = cfg.dump_rf,
-        dump_ascii =  cfg.dump_ascii
+        dump_ascii = cfg.dump_ascii,
+        log_file = cfg.log_file
       )
 
-    def runPhases(prg: UnconstrainedIR.DefProgram) = {
+    val compiler = AssemblyFileParser andThen
+      UnconstrainedNameChecker andThen
+      UnconstrainedMakeDebugSymbols andThen
+      UnconstrainedOrderInstructions andThen
+      UnconstrainedCloseSequentialCycles
+    val program = compiler(cfg.input_file.get.toPath())
 
-      import ManticorePasses._
-
-      val phases =
-        frontend andThen
-          middleend andThen
-          FrontendInterpreter(cfg.interpret) andThen
-          backend andThen
-          BackendInterpreter(cfg.interpret)
-
-      val result = phases(prg)
-      // MachineCodeGenerator(result)
-      // InitializerProgram(result)
-      cfg.report match {
-        case Some(report_file) =>
-          val printer = new PrintWriter(report_file)
-          printer.print(ctx.stats.asYaml)
-          printer.flush()
-          printer.close()
-        case None =>
-          // do nothing
-      }
+    trait SerialPrinter {
+      def println(ln: String): Unit
     }
+    val serialCapture = cfg.output_file match {
+      case Some(fname) =>
+        new PrintWriter(fname)
+      case None =>
+        new PrintWriter(System.out)
+    }
+    val interpreter = UnconstrainedInterpreter.instance(
+      program = program,
+      serial = Some { ln =>
+        serialCapture.println(ln)
+        serialCapture.flush
+      }
+    )
 
-    val parsed = AssemblyParser(cfg.input_file.get)
-    runPhases(parsed)
+    interpreter.runCompletion()
 
   }
 

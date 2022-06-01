@@ -267,7 +267,7 @@ object Logger {
 
     val printer = log_file match {
       case Some(f: File) =>
-        Files.createDirectories(f.toPath().getParent())
+        Files.createDirectories(f.toPath().toAbsolutePath.getParent())
         new PrintWriter(f)
       case None          => new PrintWriter(System.out, true)
     }

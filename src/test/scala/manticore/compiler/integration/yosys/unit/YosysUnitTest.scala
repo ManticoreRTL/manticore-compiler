@@ -198,45 +198,7 @@ trait YosysUnitTest {
 
         ctx.logger.fail("encountered error(s)!")(LoggerId("check"))
       }
-      // val numLines = reference.length min results.length
-      // implicit val loggerId = new HasLoggerId { val id = "result-check" }
 
-      // @tailrec
-      // def check(index: Int): Unit = {
-      //   if (index == reference.length) {
-      //     if (results.length > reference.length) {
-      //       ctx.logger.error(
-      //         s"Too many results, expected ${reference.length} but got ${results.length} lines!"
-      //       )
-      //     } else {
-      //       ctx.logger.info("Success")
-      //     }
-      //   } else {
-      //     if (index > results.length) {
-      //       ctx.logger.error(
-      //         s"Not enough results, expected ${reference.length} but got ${results.length} lines!"
-      //       )
-      //     } else {
-      //       if (reference(index) != results(index)) {
-      //         ctx.logger.error(
-      //           s"line ${index + 1} does not match:\ngot:${results(index)}\nref:${reference(index)}"
-      //         )
-      //       } else {
-      //         check(index + 1)
-      //       }
-      //     }
-
-      //   }
-      // }
-      // assert(reference.length > 0)
-      // check(0)
-      // if (ctx.logger.countErrors() > 0) {
-      //   if (!dumpAll) {
-      //     dump("results.txt", results.mkString("\n"))
-      //     dump("reference.txt", reference.mkString("\n"))
-      //   }
-      //   ctx.logger.fail("encountered error(s)!")
-      // }
     } catch {
       case e: Exception =>
         println(
