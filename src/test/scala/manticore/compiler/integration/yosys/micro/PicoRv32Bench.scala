@@ -1,6 +1,10 @@
 package manticore.compiler.integration.yosys.micro
 
 import scala.collection.mutable.ArrayBuffer
+import java.nio.file.Files
+import java.io.PrintWriter
+import manticore.compiler.AssemblyContext
+import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
 final class PicoRv32Bench extends MicroBench {
 
@@ -54,18 +58,19 @@ final class PicoRv32Bench extends MicroBench {
         |	reg [31:0] memory [0:255];
         |
         |	initial begin
-        |		memory[0] = 32'h 3fc00093; //       li      x1,1020
-        |		memory[1] = 32'h 0000a023; //       sw      x0,0(x1)
-        |		memory[2] = 32'h 0000a103; // loop: lw      x2,0(x1)
-        |		memory[3] = 32'h 00110113; //       addi    x2,x2,1
-        |		memory[4] = 32'h 0020a023; //       sw      x2,0(x1)
-        |		memory[5] = 32'h ff5ff06f; //       j       <loop>
+        |		memory[0] = 32'h3fc00093; //       li      x1,1020
+        |		memory[1] = 32'h0000a023; //       sw      x0,0(x1)
+        |		memory[2] = 32'h0000a103; // loop: lw      x2,0(x1)
+        |		memory[3] = 32'h00110113; //       addi    x2,x2,1
+        |		memory[4] = 32'h0020a023; //       sw      x2,0(x1)
+        |		memory[5] = 32'hff5ff06f; //       j       <loop>
         |	end
         |
         |
         |	always @(posedge clock) begin
         |		cycle_counter <= cycle_counter + 1;
         |		if (cycle_counter == NUM_CYCLES) begin
+        |     $$display("Finished after %d cycles", cycle_counter);
         |			$$finish;
         |		end
         |	end
@@ -110,9 +115,26 @@ final class PicoRv32Bench extends MicroBench {
 
   override def timeOut: Int = 10000
 
-  override def outputReference(testSize: TestConfig): ArrayBuffer[String] =
-    ArrayBuffer.empty[String]
+  override def outputReference(testSize: TestConfig): ArrayBuffer[String] = {
 
-  testCase("meh", 100)
+    val tempDir = Files.createTempDirectory("picorv32_ref")
+    val vfile = tempDir.resolve("picorv32_tb.sv")
+
+    val writer = new PrintWriter(vfile.toFile())
+    val tb = scala.io.Source
+      .fromResource(resource)
+      .getLines()
+      .mkString("\n") + testBench(testSize)
+
+    writer.write(tb)
+    writer.flush()
+    writer.close()
+    implicit val ctx = AssemblyContext(
+      log_file = Some(tempDir.resolve("verilator.log").toFile())
+    )
+    YosysUnitTest.verilate(Seq(vfile), timeOut)
+  }
+
+  testCase("simple counter on PicoRV32", 100)
 
 }
