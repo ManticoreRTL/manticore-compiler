@@ -11,6 +11,7 @@ import scala.collection.parallel.CollectionConverters._
   * @author
   *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
+@deprecated("This transformation will be removed")
 object PredicateInsertionTransform extends PlacedIRTransformer {
 
   import PlacedIR._

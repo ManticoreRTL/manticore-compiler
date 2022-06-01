@@ -14,6 +14,7 @@ import manticore.compiler.assembly.levels.MemoryType
   * @author
   *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
+@deprecated("transformation is obsolete")
 object ProcessMergingTransform extends PlacedIRTransformer {
 
   import PlacedIR._

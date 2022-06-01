@@ -1,368 +1,475 @@
-@PROGRAM [name = "\Main"]
 .prog:
-  .proc \Main:
-    @MEMINIT [ file = "xor_reduce.masm.in_rom.data", count = 50, width = 36]
-    @SOURCEINFO [file = "Main.sv:26.25-26.31"]
-    @DEBUGSYMBOL [ symbol = "\in_rom"]
-    @MEMBLOCK [ block = "\in_rom", width = 36, capacity = 50 ]
-    .mem \in_rom 6
-    @MEMINIT [ file = "xor_reduce.masm.out_rom.data", count = 50, width = 1]
-    @SOURCEINFO [file = "Main.sv:27.25-27.32"]
-    @DEBUGSYMBOL [ symbol = "\out_rom"]
-    @MEMBLOCK [ block = "\out_rom", width = 1, capacity = 50 ]
-    .mem \out_rom 6
-    .wire w_$emit_masm_py_207_$tmp 16
-    .wire w_$emit_masm_py_207_$tmp_1 32
-    .wire w_$emit_masm_py_207_$tmp_10 1
-    .wire w_$emit_masm_py_207_$tmp_11 1
-    .wire w_$emit_masm_py_207_$tmp_12 1
-    .wire w_$emit_masm_py_207_$tmp_13 1
-    .wire w_$emit_masm_py_207_$tmp_14 1
-    .wire w_$emit_masm_py_207_$tmp_15 1
-    .wire w_$emit_masm_py_207_$tmp_16 1
-    .wire w_$emit_masm_py_207_$tmp_17 1
-    .wire w_$emit_masm_py_207_$tmp_18 1
-    .wire w_$emit_masm_py_207_$tmp_19 1
-    .wire w_$emit_masm_py_207_$tmp_2 32
-    .wire w_$emit_masm_py_207_$tmp_20 1
-    .wire w_$emit_masm_py_207_$tmp_21 1
-    .wire w_$emit_masm_py_207_$tmp_22 1
-    .wire w_$emit_masm_py_207_$tmp_23 1
-    .wire w_$emit_masm_py_207_$tmp_24 1
-    .wire w_$emit_masm_py_207_$tmp_25 1
-    .wire w_$emit_masm_py_207_$tmp_26 1
-    .wire w_$emit_masm_py_207_$tmp_27 1
-    .wire w_$emit_masm_py_207_$tmp_28 1
-    .wire w_$emit_masm_py_207_$tmp_29 1
-    .wire w_$emit_masm_py_207_$tmp_3 1
-    .wire w_$emit_masm_py_207_$tmp_30 1
-    .wire w_$emit_masm_py_207_$tmp_31 1
-    .wire w_$emit_masm_py_207_$tmp_32 1
-    .wire w_$emit_masm_py_207_$tmp_33 1
-    .wire w_$emit_masm_py_207_$tmp_34 1
-    .wire w_$emit_masm_py_207_$tmp_35 1
-    .wire w_$emit_masm_py_207_$tmp_36 1
-    .wire w_$emit_masm_py_207_$tmp_37 1
-    .wire w_$emit_masm_py_207_$tmp_38 1
-    .wire w_$emit_masm_py_207_$tmp_39 1
-    .wire w_$emit_masm_py_207_$tmp_4 1
-    .wire w_$emit_masm_py_207_$tmp_40 1
-    .wire w_$emit_masm_py_207_$tmp_41 1
-    .wire w_$emit_masm_py_207_$tmp_42 1
-    .wire w_$emit_masm_py_207_$tmp_5 1
-    .wire w_$emit_masm_py_207_$tmp_6 1
-    .wire w_$emit_masm_py_207_$tmp_7 1
-    .wire w_$emit_masm_py_207_$tmp_8 1
-    .wire w_$emit_masm_py_207_$tmp_9 1
-    @REG [id = "$procdff$60", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_320_$procdff$60_curr 1 1
-    @REG [id = "$procdff$61", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_320_$procdff$61_curr 1 1
-    @REG [id = "$procdff$62", type = "\REG_CURR"]
-    .input pi_$emit_masm_py_320_$procdff$62_curr 16 0
-    @REG [id = "$procdff$60", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_333_$procdff$60_next 1
-    @REG [id = "$procdff$61", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_333_$procdff$61_next 1
-    @REG [id = "$procdff$62", type = "\REG_NEXT"]
-    .output po_$emit_masm_py_333_$procdff$62_next 16
-    .wire w_$emit_masm_py_561_$slice_out_ 16
-    .wire w_$emit_masm_py_561_$slice_out__1 1
-    .wire w_$emit_masm_py_561_$slice_out__10 1
-    .wire w_$emit_masm_py_561_$slice_out__11 1
-    .wire w_$emit_masm_py_561_$slice_out__12 1
-    .wire w_$emit_masm_py_561_$slice_out__13 1
-    .wire w_$emit_masm_py_561_$slice_out__14 1
-    .wire w_$emit_masm_py_561_$slice_out__15 1
-    .wire w_$emit_masm_py_561_$slice_out__16 1
-    .wire w_$emit_masm_py_561_$slice_out__17 1
-    .wire w_$emit_masm_py_561_$slice_out__18 1
-    .wire w_$emit_masm_py_561_$slice_out__19 1
-    .wire w_$emit_masm_py_561_$slice_out__2 1
-    .wire w_$emit_masm_py_561_$slice_out__20 1
-    .wire w_$emit_masm_py_561_$slice_out__21 1
-    .wire w_$emit_masm_py_561_$slice_out__22 1
-    .wire w_$emit_masm_py_561_$slice_out__23 1
-    .wire w_$emit_masm_py_561_$slice_out__24 1
-    .wire w_$emit_masm_py_561_$slice_out__25 1
-    .wire w_$emit_masm_py_561_$slice_out__26 1
-    .wire w_$emit_masm_py_561_$slice_out__27 1
-    .wire w_$emit_masm_py_561_$slice_out__28 1
-    .wire w_$emit_masm_py_561_$slice_out__29 1
-    .wire w_$emit_masm_py_561_$slice_out__3 1
-    .wire w_$emit_masm_py_561_$slice_out__30 1
-    .wire w_$emit_masm_py_561_$slice_out__31 1
-    .wire w_$emit_masm_py_561_$slice_out__32 1
-    .wire w_$emit_masm_py_561_$slice_out__33 1
-    .wire w_$emit_masm_py_561_$slice_out__34 1
-    .wire w_$emit_masm_py_561_$slice_out__35 1
-    .wire w_$emit_masm_py_561_$slice_out__36 1
-    .wire w_$emit_masm_py_561_$slice_out__4 1
-    .wire w_$emit_masm_py_561_$slice_out__5 1
-    .wire w_$emit_masm_py_561_$slice_out__6 1
-    .wire w_$emit_masm_py_561_$slice_out__7 1
-    .wire w_$emit_masm_py_561_$slice_out__8 1
-    .wire w_$emit_masm_py_561_$slice_out__9 1
-    .wire w_$emit_masm_py_683_$const_out_ 32
-    .wire w_$emit_masm_py_683_$const_out__1 32
-    .wire w_$emit_masm_py_683_$const_out__2 1
-    .wire w_$emit_masm_py_683_$const_out__3 1
-    .wire w_$emit_masm_py_683_$const_out__4 1
-    .wire w_$emit_masm_py_683_$const_out__5 1
-    @SOURCEINFO [file = "Main.sv:59.9-59.33"]
-    .wire w_\_10_ 1
-    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
-    .wire w_\_11_ 1
-    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
-    .wire w_\_1_ 1
-    @SOURCEINFO [file = "Main.sv:48.16-48.27"]
-    .wire w_\_6_ 32
-    @SOURCEINFO [file = "Main.sv:20.16-20.21"]
-    @DEBUGSYMBOL [ symbol = "\clock"]
-    .input pi_\clock 1
-    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
-    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_expect.2"]
-    .wire po_\cond_out_$masm_expect_2 1
-    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
-    @DEBUGSYMBOL [ symbol = "\cond_out.$masm_stop.5"]
-    .wire po_\cond_out_$masm_stop_5 1
-    @SOURCEINFO [file = "Main.sv:33.25-33.32"]
-    @DEBUGSYMBOL [ symbol = "\counter"]
-    .wire w_\counter 16 0
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:2.25-2.27"]
-    @DEBUGSYMBOL [ symbol = "dut.IN"]
-    .wire w_\dut_IN 36
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:3.25-3.28"]
-    @DEBUGSYMBOL [ symbol = "dut.OUT"]
-    .wire w_\dut_OUT 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
-    .wire w_\dut__10_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
-    .wire w_\dut__11_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
-    .wire w_\dut__12_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
-    .wire w_\dut__13_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
-    .wire w_\dut__14_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
-    .wire w_\dut__15_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
-    .wire w_\dut__16_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
-    .wire w_\dut__17_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
-    .wire w_\dut__18_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
-    .wire w_\dut__19_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.58"]
-    .wire w_\dut__1_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
-    .wire w_\dut__20_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
-    .wire w_\dut__21_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
-    .wire w_\dut__22_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
-    .wire w_\dut__23_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
-    .wire w_\dut__24_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
-    .wire w_\dut__25_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
-    .wire w_\dut__26_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
-    .wire w_\dut__27_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
-    .wire w_\dut__28_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
-    .wire w_\dut__29_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.49"]
-    .wire w_\dut__2_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
-    .wire w_\dut__30_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
-    .wire w_\dut__31_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
-    .wire w_\dut__32_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
-    .wire w_\dut__33_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
-    .wire w_\dut__34_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.40"]
-    .wire w_\dut__3_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:15.16-15.31"]
-    .wire w_\dut__4_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.86"]
-    .wire w_\dut__5_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.72"]
-    .wire w_\dut__6_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.58"]
-    .wire w_\dut__7_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.44"]
-    .wire w_\dut__8_ 1
-    @SOURCEINFO [file = "Main.sv:42.10-45.4|Main.sv:11.23-11.100"]
-    .wire w_\dut__9_ 1
-    @SOURCEINFO [file = "Main.sv:31.25-31.41"]
-    @DEBUGSYMBOL [ symbol = "\out_val_expected"]
-    .wire w_\out_val_expected 1
-    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
-    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_expect.0"]
-    .wire w_\reg_cond_$masm_expect_0 1 1
-    @SOURCEINFO [file = "Main.sv:0.0-0.0"]
-    @DEBUGSYMBOL [ symbol = "\reg_cond.$masm_stop.3"]
-    .wire w_\reg_cond_$masm_stop_3 1 1
-    .const c_0 1 0b1
-    .const c_1 1 0b1
-    .const c_2 32 0b00000000000000000000000000000001
-    .const c_3 32 0b00000000000000000000000000110001
-    .const c_4 1 0b0
-    .const c_5 1 0b0
-    .const c_6 1 0b0
-    .const c_7 1 0b0
-    .wire w_0 32
-    .const c_8 1 0b0
-    .wire w_1 16
-    .wire w_2 16
-    MOV w_$emit_masm_py_207_$tmp, w_$emit_masm_py_561_$slice_out_;
-    MOV w_$emit_masm_py_207_$tmp_1, w_$emit_masm_py_683_$const_out_;
-    MOV w_$emit_masm_py_207_$tmp_2, w_$emit_masm_py_683_$const_out__1;
-    MOV w_$emit_masm_py_207_$tmp_3, w_$emit_masm_py_683_$const_out__2;
-    MOV w_$emit_masm_py_207_$tmp_4, w_$emit_masm_py_683_$const_out__3;
-    MOV w_$emit_masm_py_207_$tmp_5, w_$emit_masm_py_683_$const_out__4;
-    MOV w_$emit_masm_py_207_$tmp_6, w_$emit_masm_py_683_$const_out__5;
-    MOV w_$emit_masm_py_207_$tmp_7, w_$emit_masm_py_561_$slice_out__1;
-    MOV w_$emit_masm_py_207_$tmp_8, w_$emit_masm_py_561_$slice_out__2;
-    MOV w_$emit_masm_py_207_$tmp_9, w_$emit_masm_py_561_$slice_out__3;
-    MOV w_$emit_masm_py_207_$tmp_10, w_$emit_masm_py_561_$slice_out__4;
-    MOV w_$emit_masm_py_207_$tmp_11, w_$emit_masm_py_561_$slice_out__5;
-    MOV w_$emit_masm_py_207_$tmp_12, w_$emit_masm_py_561_$slice_out__6;
-    MOV w_$emit_masm_py_207_$tmp_13, w_$emit_masm_py_561_$slice_out__7;
-    MOV w_$emit_masm_py_207_$tmp_14, w_$emit_masm_py_561_$slice_out__8;
-    MOV w_$emit_masm_py_207_$tmp_15, w_$emit_masm_py_561_$slice_out__9;
-    MOV w_$emit_masm_py_207_$tmp_16, w_$emit_masm_py_561_$slice_out__10;
-    MOV w_$emit_masm_py_207_$tmp_17, w_$emit_masm_py_561_$slice_out__11;
-    MOV w_$emit_masm_py_207_$tmp_18, w_$emit_masm_py_561_$slice_out__12;
-    MOV w_$emit_masm_py_207_$tmp_19, w_$emit_masm_py_561_$slice_out__13;
-    MOV w_$emit_masm_py_207_$tmp_20, w_$emit_masm_py_561_$slice_out__14;
-    MOV w_$emit_masm_py_207_$tmp_21, w_$emit_masm_py_561_$slice_out__15;
-    MOV w_$emit_masm_py_207_$tmp_22, w_$emit_masm_py_561_$slice_out__16;
-    MOV w_$emit_masm_py_207_$tmp_23, w_$emit_masm_py_561_$slice_out__17;
-    MOV w_$emit_masm_py_207_$tmp_24, w_$emit_masm_py_561_$slice_out__18;
-    MOV w_$emit_masm_py_207_$tmp_25, w_$emit_masm_py_561_$slice_out__19;
-    MOV w_$emit_masm_py_207_$tmp_26, w_$emit_masm_py_561_$slice_out__20;
-    MOV w_$emit_masm_py_207_$tmp_27, w_$emit_masm_py_561_$slice_out__21;
-    MOV w_$emit_masm_py_207_$tmp_28, w_$emit_masm_py_561_$slice_out__22;
-    MOV w_$emit_masm_py_207_$tmp_29, w_$emit_masm_py_561_$slice_out__23;
-    MOV w_$emit_masm_py_207_$tmp_30, w_$emit_masm_py_561_$slice_out__24;
-    MOV w_$emit_masm_py_207_$tmp_31, w_$emit_masm_py_561_$slice_out__25;
-    MOV w_$emit_masm_py_207_$tmp_32, w_$emit_masm_py_561_$slice_out__26;
-    MOV w_$emit_masm_py_207_$tmp_33, w_$emit_masm_py_561_$slice_out__27;
-    MOV w_$emit_masm_py_207_$tmp_34, w_$emit_masm_py_561_$slice_out__28;
-    MOV w_$emit_masm_py_207_$tmp_35, w_$emit_masm_py_561_$slice_out__29;
-    MOV w_$emit_masm_py_207_$tmp_36, w_$emit_masm_py_561_$slice_out__30;
-    MOV w_$emit_masm_py_207_$tmp_37, w_$emit_masm_py_561_$slice_out__31;
-    MOV w_$emit_masm_py_207_$tmp_38, w_$emit_masm_py_561_$slice_out__32;
-    MOV w_$emit_masm_py_207_$tmp_39, w_$emit_masm_py_561_$slice_out__33;
-    MOV w_$emit_masm_py_207_$tmp_40, w_$emit_masm_py_561_$slice_out__34;
-    MOV w_$emit_masm_py_207_$tmp_41, w_$emit_masm_py_561_$slice_out__35;
-    MOV w_$emit_masm_py_207_$tmp_42, w_$emit_masm_py_561_$slice_out__36;
-    MOV w_\reg_cond_$masm_expect_0, pi_$emit_masm_py_320_$procdff$60_curr;
-    MOV po_$emit_masm_py_333_$procdff$60_next, w_\_1_;
-    MOV w_\reg_cond_$masm_stop_3, pi_$emit_masm_py_320_$procdff$61_curr;
-    MOV po_$emit_masm_py_333_$procdff$61_next, w_\_11_;
-    MOV w_\counter, pi_$emit_masm_py_320_$procdff$62_curr;
-    MOV po_$emit_masm_py_333_$procdff$62_next, w_$emit_masm_py_207_$tmp;
-    @TRAP [type = "\fail", file="Main.sv:56.5-56.17"]
-    EXPECT w_\reg_cond_$masm_expect_0, c_0, ["invalid result"];
-    @TRAP [type = "\stop", file="Main.sv:63.7-63.17"]
-    EXPECT w_\reg_cond_$masm_stop_3, c_1, [""];
-    SLICE w_$emit_masm_py_561_$slice_out_, w_\_6_, 0, 16;
-    SLICE w_$emit_masm_py_561_$slice_out__1, w_\dut_IN, 4, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__10, w_\dut_IN, 30, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__11, w_\dut_IN, 31, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__12, w_\dut_IN, 29, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__13, w_\dut_IN, 28, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__14, w_\dut_IN, 27, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__15, w_\dut_IN, 26, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__16, w_\dut_IN, 24, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__17, w_\dut_IN, 25, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__18, w_\dut_IN, 23, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__19, w_\dut_IN, 22, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__2, w_\dut_IN, 3, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__20, w_\dut_IN, 21, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__21, w_\dut_IN, 20, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__22, w_\dut_IN, 18, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__23, w_\dut_IN, 19, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__24, w_\dut_IN, 17, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__25, w_\dut_IN, 16, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__26, w_\dut_IN, 15, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__27, w_\dut_IN, 14, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__28, w_\dut_IN, 12, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__29, w_\dut_IN, 13, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__3, w_\dut_IN, 2, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__30, w_\dut_IN, 11, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__31, w_\dut_IN, 10, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__32, w_\dut_IN, 9, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__33, w_\dut_IN, 8, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__34, w_\dut_IN, 6, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__35, w_\dut_IN, 7, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__36, w_\dut_IN, 5, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__4, w_\dut_IN, 0, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__5, w_\dut_IN, 1, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__6, w_\dut_IN, 35, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__7, w_\dut_IN, 34, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__8, w_\dut_IN, 33, 1;
-    SLICE w_$emit_masm_py_561_$slice_out__9, w_\dut_IN, 32, 1;
-    MOV w_$emit_masm_py_683_$const_out_, c_2;
-    MOV w_$emit_masm_py_683_$const_out__1, c_3;
-    MOV w_$emit_masm_py_683_$const_out__2, c_4;
-    MOV w_$emit_masm_py_683_$const_out__3, c_5;
-    MOV w_$emit_masm_py_683_$const_out__4, c_6;
-    MOV w_$emit_masm_py_683_$const_out__5, c_7;
-    ADD w_\_6_, w_\counter, w_$emit_masm_py_207_$tmp_1;
-    SEQ w_\_1_, w_\dut_OUT, w_\out_val_expected;
-    PADZERO w_0, w_\counter, 32;
-    SEQ w_\_10_, w_0, w_$emit_masm_py_207_$tmp_2;
-    SEQ w_\_11_, w_\_10_, c_8;
-    ADD w_1, \in_rom, w_\counter;
-    @MEMBLOCK [ block = "\in_rom", width = 36, capacity = 50 ]
-    LD w_\dut_IN, w_1[0];
-    ADD w_2, \out_rom, w_\counter;
-    @MEMBLOCK [ block = "\out_rom", width = 1, capacity = 50 ]
-    LD w_\out_val_expected, w_2[0];
-    XOR w_\dut_OUT, w_\dut__1_, w_\dut__9_;
-    XOR w_\dut__1_, w_\dut__2_, w_\dut__14_;
-    XOR w_\dut__2_, w_\dut__3_, w_\dut__19_;
-    XOR w_\dut__3_, w_\dut__4_, w_\dut__24_;
-    XOR w_\dut__4_, w_\dut__34_, w_\dut__29_;
-    XOR w_\dut__5_, w_\dut__6_, w_$emit_masm_py_207_$tmp_7;
-    XOR w_\dut__6_, w_\dut__7_, w_$emit_masm_py_207_$tmp_8;
-    XOR w_\dut__7_, w_\dut__8_, w_$emit_masm_py_207_$tmp_9;
-    XOR w_\dut__8_, w_$emit_masm_py_207_$tmp_10, w_$emit_masm_py_207_$tmp_11;
-    XOR w_\dut__9_, w_\dut__10_, w_$emit_masm_py_207_$tmp_12;
-    XOR w_\dut__10_, w_\dut__11_, w_$emit_masm_py_207_$tmp_13;
-    XOR w_\dut__11_, w_\dut__12_, w_$emit_masm_py_207_$tmp_14;
-    XOR w_\dut__12_, w_\dut__13_, w_$emit_masm_py_207_$tmp_15;
-    XOR w_\dut__13_, w_$emit_masm_py_207_$tmp_16, w_$emit_masm_py_207_$tmp_17;
-    XOR w_\dut__14_, w_\dut__15_, w_$emit_masm_py_207_$tmp_18;
-    XOR w_\dut__15_, w_\dut__16_, w_$emit_masm_py_207_$tmp_19;
-    XOR w_\dut__16_, w_\dut__17_, w_$emit_masm_py_207_$tmp_20;
-    XOR w_\dut__17_, w_\dut__18_, w_$emit_masm_py_207_$tmp_21;
-    XOR w_\dut__18_, w_$emit_masm_py_207_$tmp_22, w_$emit_masm_py_207_$tmp_23;
-    XOR w_\dut__19_, w_\dut__20_, w_$emit_masm_py_207_$tmp_24;
-    XOR w_\dut__20_, w_\dut__21_, w_$emit_masm_py_207_$tmp_25;
-    XOR w_\dut__21_, w_\dut__22_, w_$emit_masm_py_207_$tmp_26;
-    XOR w_\dut__22_, w_\dut__23_, w_$emit_masm_py_207_$tmp_27;
-    XOR w_\dut__23_, w_$emit_masm_py_207_$tmp_28, w_$emit_masm_py_207_$tmp_29;
-    XOR w_\dut__24_, w_\dut__25_, w_$emit_masm_py_207_$tmp_30;
-    XOR w_\dut__25_, w_\dut__26_, w_$emit_masm_py_207_$tmp_31;
-    XOR w_\dut__26_, w_\dut__27_, w_$emit_masm_py_207_$tmp_32;
-    XOR w_\dut__27_, w_\dut__28_, w_$emit_masm_py_207_$tmp_33;
-    XOR w_\dut__28_, w_$emit_masm_py_207_$tmp_34, w_$emit_masm_py_207_$tmp_35;
-    XOR w_\dut__29_, w_\dut__30_, w_$emit_masm_py_207_$tmp_36;
-    XOR w_\dut__30_, w_\dut__31_, w_$emit_masm_py_207_$tmp_37;
-    XOR w_\dut__31_, w_\dut__32_, w_$emit_masm_py_207_$tmp_38;
-    XOR w_\dut__32_, w_\dut__33_, w_$emit_masm_py_207_$tmp_39;
-    XOR w_\dut__33_, w_$emit_masm_py_207_$tmp_40, w_$emit_masm_py_207_$tmp_41;
-    XOR w_\dut__34_, w_\dut__5_, w_$emit_masm_py_207_$tmp_42;
+.proc main:
+// wires
+	@DEBUGSYMBOL [ symbol = "counter" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:32.25-32.32" ]
+// \counter
+	.wire ys_w0 16
+	.wire  ys_w1 16
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+// $0\counter[15:0]
+	.wire ys_w2 16
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:51.9-51.33" ]
+// $eq$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:51$59_Y
+	.wire ys_w3 1
+	.wire  ys_w4 16
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.86" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$9_Y
+	.wire ys_w5 1
+	.wire  ys_w6 1
+	@DEBUGSYMBOL [ symbol = "in_val" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:28.25-28.31" ]
+// \in_val
+	.wire ys_w7 36
+// $auto$manticore_subword.cc:43:transform$subword_out$104
+	.wire ys_w8 1
+	.wire  ys_w9 1
+	.wire  ys_w10 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.44" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$11_Y
+	.wire ys_w11 1
+	.wire  ys_w12 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.58" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$12_Y
+	.wire ys_w13 1
+	.wire  ys_w14 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.72" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$13_Y
+	.wire ys_w15 1
+	.wire  ys_w16 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.86" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$14_Y
+	.wire ys_w17 1
+	.wire  ys_w18 1
+// $auto$manticore_subword.cc:43:transform$subword_out$105
+	.wire ys_w19 1
+	.wire  ys_w20 1
+	.wire  ys_w21 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.44" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$16_Y
+	.wire ys_w22 1
+	.wire  ys_w23 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.58" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$17_Y
+	.wire ys_w24 1
+	.wire  ys_w25 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.72" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$18_Y
+	.wire ys_w26 1
+	.wire  ys_w27 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.86" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$19_Y
+	.wire ys_w28 1
+	.wire  ys_w29 1
+// $auto$manticore_subword.cc:43:transform$subword_out$106
+	.wire ys_w30 1
+	.wire  ys_w31 1
+	.wire  ys_w32 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.44" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$21_Y
+	.wire ys_w33 1
+	.wire  ys_w34 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.58" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$22_Y
+	.wire ys_w35 1
+	.wire  ys_w36 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.72" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$23_Y
+	.wire ys_w37 1
+	.wire  ys_w38 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.86" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$24_Y
+	.wire ys_w39 1
+	.wire  ys_w40 1
+// $auto$manticore_subword.cc:43:transform$subword_out$107
+	.wire ys_w41 1
+	.wire  ys_w42 1
+	.wire  ys_w43 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.44" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$26_Y
+	.wire ys_w44 1
+	.wire  ys_w45 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.58" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$27_Y
+	.wire ys_w46 1
+	.wire  ys_w47 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.72" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$28_Y
+	.wire ys_w48 1
+	.wire  ys_w49 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.86" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$29_Y
+	.wire ys_w50 1
+	.wire  ys_w51 1
+// $auto$manticore_subword.cc:43:transform$subword_out$108
+	.wire ys_w52 1
+	.wire  ys_w53 1
+	.wire  ys_w54 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.44" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$31_Y
+	.wire ys_w55 1
+	.wire  ys_w56 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.58" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$32_Y
+	.wire ys_w57 1
+	.wire  ys_w58 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.72" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$33_Y
+	.wire ys_w59 1
+	.wire  ys_w60 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.86" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$34_Y
+	.wire ys_w61 1
+	.wire  ys_w62 1
+// $auto$manticore_subword.cc:43:transform$subword_out$109
+	.wire ys_w63 1
+	.wire  ys_w64 1
+	.wire  ys_w65 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.44" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$6_Y
+	.wire ys_w66 1
+	.wire  ys_w67 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.58" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$7_Y
+	.wire ys_w68 1
+	.wire  ys_w69 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11.23-11.72" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$8_Y
+	.wire ys_w70 1
+	.wire  ys_w71 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15.16-15.31" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$1_Y
+	.wire ys_w72 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15.16-15.40" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$2_Y
+	.wire ys_w73 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15.16-15.49" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$3_Y
+	.wire ys_w74 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15.16-15.58" ]
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$4_Y
+	.wire ys_w75 1
+	@DEBUGSYMBOL [ symbol = "dut/OUT" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:3.25-3.28" ]
+// \dut.OUT
+	.wire ys_w76 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:47.9-47.36" ]
+// $ne$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:47$58_Y
+	.wire ys_w77 1
+	.wire  ys_w78 1
+	@DEBUGSYMBOL [ symbol = "out_val_expected" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:30.25-30.41" ]
+// \out_val_expected
+	.wire ys_w79 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+// $manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$VARG$37
+	.wire ys_w83 16
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:53.7-53.14" ]
+// $manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:53$EN$44
+	.wire ys_w87 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+// $0$manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:52$EN$42[0:0]$54
+	.wire ys_w88 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+// $manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$EN$36
+	.wire ys_w95 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+// $0$manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$EN$36[0:0]$48
+	.wire ys_w96 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+// $manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$VARG$38
+	.wire ys_w100 36
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+// $manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$VARG$39
+	.wire ys_w104 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:45.3-55.6" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+// $manticore_task$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$VARG$40
+	.wire ys_w108 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:25.25-25.31" ]
+	.wire  ys_w110 6
+	.wire  ys_w111 36
+	.wire  ys_w112 7
+	.wire  ys_w113 1
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:26.25-26.32" ]
+	.wire  ys_w115 1
+	.wire  ys_w116 7
+	.wire  ys_w117 1
+	@DEBUGSYMBOL [ symbol = "dut/IN" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:2.25-2.27" ]
+// \dut.IN
+	.wire ys_w118 36
+	@DEBUGSYMBOL [ symbol = "out_val" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:29.25-29.32" ]
+// \out_val
+	.wire ys_w119 1
+	@DEBUGSYMBOL [ symbol = "dut/tmp" ]
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:40.10-43.4|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:6.17-6.20" ]
+// \dut.tmp
+	.wire ys_w120 6
+	.wire  ys_w121 2
+	.wire  ys_w122 2
+	.wire  ys_w123 2
+	.wire  ys_w124 2
+	.wire  ys_w125 3
+	.wire  ys_w126 3
+	.wire  ys_w127 3
+	.wire  ys_w128 3
+	.wire  ys_w129 4
+	.wire  ys_w130 4
+	.wire  ys_w131 4
+	.wire  ys_w132 4
+	.wire  ys_w133 5
+	.wire  ys_w134 5
+	.wire  ys_w135 5
+	.wire  ys_w136 5
+	.wire  ys_w137 6
+	.wire  ys_w138 6
+	.wire  ys_w139 6
+	.wire  ys_w140 6
+
+// states
+	.reg ys_r80 16 .input ys_i81 .output ys_o82
+	.reg ys_r84 1 .input ys_i85 0b0 .output ys_o86
+	.reg ys_r89 16 .input ys_i90 0b0000000000000000 .output ys_o91
+	.reg ys_r92 1 .input ys_i93 0b0 .output ys_o94
+	.reg ys_r97 36 .input ys_i98 .output ys_o99
+	.reg ys_r101 1 .input ys_i102 .output ys_o103
+	.reg ys_r105 1 .input ys_i106 .output ys_o107
+
+// memories
+	@MEMBLOCK [block = "\in_rom", width = 36, capacity = 50]
+	@MEMINIT [ file = "xor_reduce.masm.in_rom.data", width = 36, count = 50]
+	.mem ys_m109 36 50
+	@MEMBLOCK [block = "\out_rom", width = 1, capacity = 50]
+	@MEMINIT [ file = "xor_reduce.masm.out_rom.data", width = 1, count = 50]
+	.mem ys_m114 1 50
+
+// constants
+	.const ys_c0 1 0b1
+	.const ys_c1 6 0b110001
+	.const ys_c2 1 0b0
+	.const ys_c3 7 0b0110010
+	.const ys_c4 36 0b000000000000000000000000000000000000
+	.const ys_c5 32 0b00000000000000000000000000000001
+	.const ys_c6 32 0b00000000000000000000000000000010
+	.const ys_c7 32 0b00000000000000000000000000000011
+	.const ys_c8 32 0b00000000000000000000000000000100
+	.const ys_c9 32 0b00000000000000000000000000000101
+
+// instructions
+// $add$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:46$57 : $add
+	PADZERO ys_w1, ys_c0, 16;
+	ADD ys_w2, ys_w0, ys_w1;
+// $auto$mem.cc:273:emit$102 : $memrd_v2
+// $auto$mem.cc:273:emit$103 : $memrd_v2
+// $eq$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:51$59 : $eq
+	PADZERO ys_w4, ys_c1, 16;
+	SEQ ys_w3, ys_w0, ys_w4;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$10 : $xor
+	SLICE ys_w6, ys_w7, 5, 1;
+	XOR ys_w8, ys_w5, ys_w6;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$11 : $xor
+	SLICE ys_w9, ys_w7, 6, 1;
+	SLICE ys_w10, ys_w7, 7, 1;
+	XOR ys_w11, ys_w9, ys_w10;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$12 : $xor
+	SLICE ys_w12, ys_w7, 8, 1;
+	XOR ys_w13, ys_w11, ys_w12;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$13 : $xor
+	SLICE ys_w14, ys_w7, 9, 1;
+	XOR ys_w15, ys_w13, ys_w14;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$14 : $xor
+	SLICE ys_w16, ys_w7, 10, 1;
+	XOR ys_w17, ys_w15, ys_w16;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$15 : $xor
+	SLICE ys_w18, ys_w7, 11, 1;
+	XOR ys_w19, ys_w17, ys_w18;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$16 : $xor
+	SLICE ys_w20, ys_w7, 12, 1;
+	SLICE ys_w21, ys_w7, 13, 1;
+	XOR ys_w22, ys_w20, ys_w21;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$17 : $xor
+	SLICE ys_w23, ys_w7, 14, 1;
+	XOR ys_w24, ys_w22, ys_w23;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$18 : $xor
+	SLICE ys_w25, ys_w7, 15, 1;
+	XOR ys_w26, ys_w24, ys_w25;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$19 : $xor
+	SLICE ys_w27, ys_w7, 16, 1;
+	XOR ys_w28, ys_w26, ys_w27;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$20 : $xor
+	SLICE ys_w29, ys_w7, 17, 1;
+	XOR ys_w30, ys_w28, ys_w29;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$21 : $xor
+	SLICE ys_w31, ys_w7, 18, 1;
+	SLICE ys_w32, ys_w7, 19, 1;
+	XOR ys_w33, ys_w31, ys_w32;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$22 : $xor
+	SLICE ys_w34, ys_w7, 20, 1;
+	XOR ys_w35, ys_w33, ys_w34;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$23 : $xor
+	SLICE ys_w36, ys_w7, 21, 1;
+	XOR ys_w37, ys_w35, ys_w36;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$24 : $xor
+	SLICE ys_w38, ys_w7, 22, 1;
+	XOR ys_w39, ys_w37, ys_w38;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$25 : $xor
+	SLICE ys_w40, ys_w7, 23, 1;
+	XOR ys_w41, ys_w39, ys_w40;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$26 : $xor
+	SLICE ys_w42, ys_w7, 24, 1;
+	SLICE ys_w43, ys_w7, 25, 1;
+	XOR ys_w44, ys_w42, ys_w43;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$27 : $xor
+	SLICE ys_w45, ys_w7, 26, 1;
+	XOR ys_w46, ys_w44, ys_w45;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$28 : $xor
+	SLICE ys_w47, ys_w7, 27, 1;
+	XOR ys_w48, ys_w46, ys_w47;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$29 : $xor
+	SLICE ys_w49, ys_w7, 28, 1;
+	XOR ys_w50, ys_w48, ys_w49;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$30 : $xor
+	SLICE ys_w51, ys_w7, 29, 1;
+	XOR ys_w52, ys_w50, ys_w51;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$31 : $xor
+	SLICE ys_w53, ys_w7, 30, 1;
+	SLICE ys_w54, ys_w7, 31, 1;
+	XOR ys_w55, ys_w53, ys_w54;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$32 : $xor
+	SLICE ys_w56, ys_w7, 32, 1;
+	XOR ys_w57, ys_w55, ys_w56;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$33 : $xor
+	SLICE ys_w58, ys_w7, 33, 1;
+	XOR ys_w59, ys_w57, ys_w58;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$34 : $xor
+	SLICE ys_w60, ys_w7, 34, 1;
+	XOR ys_w61, ys_w59, ys_w60;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$35 : $xor
+	SLICE ys_w62, ys_w7, 35, 1;
+	XOR ys_w63, ys_w61, ys_w62;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$6 : $xor
+	SLICE ys_w64, ys_w7, 0, 1;
+	SLICE ys_w65, ys_w7, 1, 1;
+	XOR ys_w66, ys_w64, ys_w65;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$7 : $xor
+	SLICE ys_w67, ys_w7, 2, 1;
+	XOR ys_w68, ys_w66, ys_w67;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$8 : $xor
+	SLICE ys_w69, ys_w7, 3, 1;
+	XOR ys_w70, ys_w68, ys_w69;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:11$9 : $xor
+	SLICE ys_w71, ys_w7, 4, 1;
+	XOR ys_w5, ys_w70, ys_w71;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$1 : $xor
+	XOR ys_w72, ys_w8, ys_w19;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$2 : $xor
+	XOR ys_w73, ys_w72, ys_w30;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$3 : $xor
+	XOR ys_w74, ys_w73, ys_w41;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$4 : $xor
+	XOR ys_w75, ys_w74, ys_w52;
+// $flatten\dut.$xor$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:15$5 : $xor
+	XOR ys_w76, ys_w75, ys_w63;
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$60 : $manticore
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:49$61 : $manticore
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:52$62 : $manticore
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:53$63 : $manticore
+// $ne$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:47$58 : $ne
+	SEQ ys_w78, ys_w76, ys_w79;
+	XOR ys_w77, ys_w78, ys_c0;
+// $procdff$100 : $dff
+	MOV ys_w83, ys_i81;
+	MOV ys_o82, ys_w0;
+// $procdff$101 : $dff
+	MOV ys_w87, ys_i85;
+	MOV ys_o86, ys_w88;
+// $procdff$92 : $dff
+	MOV ys_w0, ys_i90;
+	MOV ys_o91, ys_w2;
+// $procdff$93 : $dff
+	MOV ys_w95, ys_i93;
+	MOV ys_o94, ys_w96;
+// $procdff$95 : $dff
+	MOV ys_w100, ys_i98;
+	MOV ys_o99, ys_w7;
+// $procdff$96 : $dff
+	MOV ys_w104, ys_i102;
+	MOV ys_o103, ys_w79;
+// $procdff$97 : $dff
+	MOV ys_w108, ys_i106;
+	MOV ys_o107, ys_w76;
+// $procmux$82 : $mux
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:47.9-47.36|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:47.5-50.8" ]
+	MUX ys_w96, ys_w77, ys_c2, ys_c0;
+// $procmux$88 : $mux
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:51.9-51.33|/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:51.5-54.8" ]
+	MUX ys_w88, ys_w3, ys_c2, ys_c0;
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48$60 : $manticore
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+	(0) PUT ys_w83, ys_w95;
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+	(1) PUT ys_w100, ys_w95;
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+	(2) PUT ys_w104, ys_w95;
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+	(3) PUT ys_w108, ys_w95;
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:48.7-48.15" ]
+	(4) FLUSH "[%16d] Expected parity(%36d) = %1d but got %1d", ys_w95;
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:49$61 : $manticore
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:49.7-49.12" ]
+	(5) STOP ys_w95;
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:52$62 : $manticore
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:52.7-52.15" ]
+	(6) PUT ys_w83, ys_w87;
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:52.7-52.15" ]
+	(7) FLUSH "Finished after %16d cycles", ys_w87;
+// $manticore$/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:53$63 : $manticore
+	@SOURCEINFO [ file = "/scratch/emami/jit_sim/manticore-compiler/./test_run_dir/XorReduceBench/bit_patterns_should_match_expected_results/xor_reduce.sv:53.7-53.14" ]
+	(8) FINISH ys_w87;
+	SLICE ys_w110, ys_w0, 0, 6;
+	(ys_m109, 0) LLD ys_w111, ys_m109[ ys_w110 ];
+// Bound check
+	PADZERO ys_w112, ys_w110, 7;
+	SLT ys_w113, ys_w112, ys_c3;
+	MUX ys_w7, ys_w113, ys_c4, ys_w111;
+	(ys_m114, 0) LLD ys_w115, ys_m114[ ys_w110 ];
+// Bound check
+	PADZERO ys_w116, ys_w110, 7;
+	SLT ys_w117, ys_w116, ys_c3;
+	MUX ys_w79, ys_w117, ys_c2, ys_w115;
+// Connection
+	MOV ys_w118, ys_w7;
+// Connection
+	MOV ys_w119, ys_w76;
+// Connection
+// Concat gen { $auto$manticore_subword.cc:43:transform$subword_out$109 $auto$manticore_subword.cc:43:transform$subword_out$108 $auto$manticore_subword.cc:43:transform$subword_out$107 $auto$manticore_subword.cc:43:transform$subword_out$106 $auto$manticore_subword.cc:43:transform$subword_out$105 $auto$manticore_subword.cc:43:transform$subword_out$104 }
+	PADZERO ys_w121, ys_w8, 2;
+	PADZERO ys_w122, ys_w19, 2;
+	SLL ys_w123, ys_w122, ys_c5;
+	OR ys_w124, ys_w123, ys_w121;
+	PADZERO ys_w125, ys_w124, 3;
+	PADZERO ys_w126, ys_w30, 3;
+	SLL ys_w127, ys_w126, ys_c6;
+	OR ys_w128, ys_w127, ys_w125;
+	PADZERO ys_w129, ys_w128, 4;
+	PADZERO ys_w130, ys_w41, 4;
+	SLL ys_w131, ys_w130, ys_c7;
+	OR ys_w132, ys_w131, ys_w129;
+	PADZERO ys_w133, ys_w132, 5;
+	PADZERO ys_w134, ys_w52, 5;
+	SLL ys_w135, ys_w134, ys_c8;
+	OR ys_w136, ys_w135, ys_w133;
+	PADZERO ys_w137, ys_w136, 6;
+	PADZERO ys_w138, ys_w63, 6;
+	SLL ys_w139, ys_w138, ys_c9;
+	OR ys_w140, ys_w139, ys_w137;
+	MOV ys_w120, ys_w140;
+

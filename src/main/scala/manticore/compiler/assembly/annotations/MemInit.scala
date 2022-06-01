@@ -20,13 +20,13 @@ final class MemInit private (
       filePath.getFileName().getFileName().toString().split("\\.").last
 
     val radix = fileExt match {
-      case "bin"         => 2
-      case "hex"         => 16
-      case "dat" | "txt" => 10
+      case "bin"                   => 2
+      case "hex"                   => 16
+      case "dat" | "txt" | "data" => 10
       case _ =>
         throw new CompilationFailureException(
           s"Failed reading file ${filePath.toAbsolutePath()}. " +
-            s"Only can accept binary (.bin), hexadecimal (.hex) or decimal (.dat or .txt) memory initialization files!"
+            s"Only can accept binary (.bin), hexadecimal (.hex) or decimal (.dat or .txt or .data) memory initialization files!"
         )
     }
 

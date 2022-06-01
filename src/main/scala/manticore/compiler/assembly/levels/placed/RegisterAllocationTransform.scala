@@ -17,7 +17,7 @@ import manticore.compiler.assembly.levels.CarryType
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-
+@deprecated("transformation is obsolete")
 object RegisterAllocationTransform
     extends CanComputeNameDependence
     with PlacedIRTransformer {

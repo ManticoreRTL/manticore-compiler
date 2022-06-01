@@ -21,6 +21,14 @@ import manticore.compiler.assembly.utils.XorReduce
 import manticore.compiler.HasLoggerId
 import java.io.PrintWriter
 import scala.collection.mutable.{HashMap => MHashMap}
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedNameChecker
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedMakeDebugSymbols
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedOrderInstructions
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRConstantFolding
+import manticore.compiler.assembly.levels.ParMuxDeconstruction
+import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRCommonSubExpressionElimination
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRParMuxDeconstructionTransform
 
 class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
@@ -54,14 +62,32 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
     true
   )
 
-  val lowerCompiler = AssemblyParser andThen ManticorePasses.frontend andThen
-    ManticorePasses.middleend andThen
+  val prelimOpts = UnconstrainedIRConstantFolding andThen
+    UnconstrainedIRCommonSubExpressionElimination andThen
+    UnconstrainedDeadCodeElimination
+  val frontend = AssemblyParser andThen
+    UnconstrainedNameChecker andThen
+    UnconstrainedMakeDebugSymbols andThen
+    UnconstrainedOrderInstructions andThen
+    prelimOpts andThen
+    UnconstrainedIRParMuxDeconstructionTransform andThen
+    WidthConversion.transformation andThen
+    prelimOpts
+
+  val lowerCompiler = frontend andThen
     UnconstrainedToPlacedTransform andThen
     PlacedIRConstantFolding andThen
     PlacedIRCommonSubExpressionElimination andThen
-    ManticorePasses.ExtractParallelism andThen
-    SendInsertionTransform
+    ProcessSplittingTransform
 
+  def interpret(program: PlacedIR.DefProgram)(implicit ctx: AssemblyContext) = {
+
+    val prepare = PlacedIRCloseSequentialCycles andThen
+        JumpTableNormalizationTransform andThen
+        JumpLabelAssignmentTransform
+    val prepared = prepare(program)
+    AtomicInterpreter(prepared)
+  }
   sources.foreach { source =>
     dims.foreach { case (dimx, dimy) =>
       numLutInputs.foreach { numCustomInstrInputs =>
@@ -84,25 +110,22 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
               val progLowered = lowerCompiler(source(f))
 
               // Sanity check that the program interprets correctly without LUTs
-              (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
-                progLowered
-              )
+              interpret(progLowered)
+              // (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
+              //   progLowered
+              // )
 
               val progWithLuts = CustomLutInsertion(progLowered)
 
               // Sanity check that the program interprets correctly with LUTs.
-              (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
-                progWithLuts
-              )
+              interpret(progWithLuts)
 
               // Since processes might be split, we need to insert Send instructions for correctness.
               val progWithLutsDce =
                 PlacedIRDeadCodeElimination(progWithLuts)
 
               // Sanity check that the program interprets correctly without LUTs
-              (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
-                progWithLutsDce
-              )
+              interpret(progWithLutsDce)
 
               def computeVirtualCycle(prog: DefProgram): Int = {
                 prog.processes.map(proc => proc.body.length).max

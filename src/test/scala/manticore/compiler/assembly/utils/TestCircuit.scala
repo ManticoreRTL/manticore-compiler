@@ -73,7 +73,8 @@ object Xormix32 extends TestCircuit {
   override protected def prefixPath: String = "levels/placed"
   override protected def masmFile: String = "xormix32.masm"
   override protected def memInitFiles: Seq[String] = Seq(
-    "xormix32.masm.ref_result.data"
+    "xormix32.mem.ref.hex",
+    "xormix32.mem.salts.hex"
   )
 }
 

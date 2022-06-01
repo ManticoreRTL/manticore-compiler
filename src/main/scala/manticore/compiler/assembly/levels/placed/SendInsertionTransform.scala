@@ -13,6 +13,7 @@ import manticore.compiler.assembly.levels.OutputType
   * @author
   *   Mahyar Emami <mahyar.emami@eplf.ch>
   */
+@deprecated("Transformation is obsolete")
 object SendInsertionTransform extends PlacedIRTransformer {
 
   import PlacedIR._
