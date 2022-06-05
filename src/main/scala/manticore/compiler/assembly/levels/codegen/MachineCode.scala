@@ -1,25 +1,23 @@
 package manticore.compiler.assembly.levels.codegen
 
 import manticore.compiler.AssemblyContext
-
-import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.assembly.levels.AssemblyTransformer
-import manticore.compiler.assembly.levels.HasTransformationID
-import manticore.compiler.assembly.levels.TransformationID
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
-
-import java.io.File
-import java.io.PrintWriter
-import java.nio.file.Files
 import manticore.compiler.assembly.levels.ConstType
+import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
-
+import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.UInt16
-import java.nio.file.Path
+import manticore.compiler.assembly.levels.placed.LatencyAnalysis
+import manticore.compiler.assembly.levels.placed.PlacedIR._
+
+import java.io.File
 import java.io.FileOutputStream
+import java.io.PrintWriter
+import java.nio.file.Files
+import java.nio.file.Path
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
@@ -130,7 +128,7 @@ object MachineCodeGenerator
       Files.createDirectories(dir_name)
       assembled.foreach { case AssembledProcess(proc, aproc, _, _, _) =>
         if (aproc.length > 0) {
-          val f = dir_name.resolve(s"${proc.id}.masm")
+          val f       = dir_name.resolve(s"${proc.id}.masm")
           val printer = new PrintWriter(f.toFile())
           printer.println(s".proc ${proc.id}:")
           printer.println(
@@ -151,12 +149,11 @@ object MachineCodeGenerator
               }
             }
           printer.println("// ---------------- BODY ---------------------- //")
-          proc.body.zipWithIndex.zip(aproc).foreach {
-            case ((inst, ix), bincode) =>
-              val bin_str = f"${bincode.toBinaryString}%64s".replace(' ', '0')
-              printer.println(
-                f"${ix}%4d |${inst.toString().strip()}%-50s \t | ${bin_str}"
-              )
+          proc.body.zipWithIndex.zip(aproc).foreach { case ((inst, ix), bincode) =>
+            val bin_str = f"${bincode.toBinaryString}%64s".replace(' ', '0')
+            printer.println(
+              f"${ix}%4d |${inst.toString().strip()}%-50s \t | ${bin_str}"
+            )
           }
           printer.flush()
           printer.close()
@@ -293,7 +290,7 @@ object MachineCodeGenerator
     }.length
     implicit val asm = Assembler()
     // the schedule length on this process is the proc.body.length + recv_count
-    implicit val local: Name => Int = ids(proc.id)
+    implicit val local: Name => Int               = ids(proc.id)
     implicit val remote: (ProcessId, Name) => Int = (i, n) => ids(i)(n)
 
     val assembled = proc.body.map(assemble(proc, _))
@@ -308,45 +305,49 @@ object MachineCodeGenerator
   sealed abstract class Field(val startIndex: Int, val bitLength: Int) {
     val endIndex = startIndex + bitLength - 1
   }
-  case object OpcodeField extends Field(0, 4)
-  case object RdField extends Field(OpcodeField.endIndex + 1, 11)
-  case object FunctField extends Field(RdField.endIndex + 1, 5)
-  case object Rs1Field extends Field(FunctField.endIndex + 1, 11)
-  case object Rs2Field extends Field(Rs1Field.endIndex + 1, 11)
-  case object Rs3Field extends Field(Rs2Field.endIndex + 1, 11)
-  case object Rs4Field extends Field(Rs3Field.endIndex + 1, 11)
-  case object ImmField extends Field(Rs1Field.endIndex + 1, 33)
+  case object OpcodeField    extends Field(0, 4)
+  case object RdField        extends Field(OpcodeField.endIndex + 1, 11)
+  case object FunctField     extends Field(RdField.endIndex + 1, 5)
+  case object Rs1Field       extends Field(FunctField.endIndex + 1, 11)
+  case object Rs2Field       extends Field(Rs1Field.endIndex + 1, 11)
+  case object Rs3Field       extends Field(Rs2Field.endIndex + 1, 11)
+  case object Rs4Field       extends Field(Rs3Field.endIndex + 1, 11)
+  case object ImmField       extends Field(Rs1Field.endIndex + 1, 33)
 
   object Opcodes extends Enumeration {
     type Type = Value
-    val NOP = Value(0x0)
-    val SET = Value(0x1)
-    val CUST0 = Value(0x2)
-    val ARITH = Value(0x3)
-    val LLOAD = Value(0x4)
-    val LSTORE = Value(0x5)
-    val EXPECT = Value(0x6)
-    val GLOAD = Value(0x7)
-    val GSTORE = Value(0x8)
-    val SEND = Value(0x9)
-    val PREDICATE = Value(0xa)
-    val SETCARRY = Value(0xb)
+    val NOP           = Value(0x0)
+    val SET           = Value(0x1)
+    val CUST          = Value(0x2)
+    val ARITH         = Value(0x3)
+    val LLOAD         = Value(0x4)
+    val LSTORE        = Value(0x5)
+    val EXPECT        = Value(0x6)
+    val GLOAD         = Value(0x7)
+    val GSTORE        = Value(0x8)
+    val SEND          = Value(0x9)
+    val PREDICATE     = Value(0xa)
+    val SETCARRY      = Value(0xb)
+    val SETLUTDATA    = Value(0xc)
+    val CONFIGURELUTS = Value(0xd)
+    val SLICE         = Value(0xe)
   }
 
   final class Assembler() {
-    var inst: Long = 0L
-    var pos: Long = 0L
-    def Rd(value: Int): Assembler = <<(value, RdField)
-    def Funct(value: BinaryOperator.BinaryOperator): Assembler =
-      <<(value.id, FunctField)
-    def Rs1(value: Int): Assembler = <<(value, Rs1Field)
-    def Rs2(value: Int): Assembler = <<(value, Rs2Field)
-    def Rs3(value: Int): Assembler = <<(value, Rs3Field)
-    def Rs4(value: Int): Assembler = <<(value, Rs4Field)
-    def Zero(length: Int): Assembler = <<(0, length)
-    def Immediate(value: Int): Assembler = <<(value, 16)
-    def DestX(value: Int): Assembler = <<(value, 8)
-    def DestY(value: Int): Assembler = <<(value, 8)
+    var inst: Long                                             = 0L
+    var pos: Long                                              = 0L
+    def Rd(value: Int): Assembler                              = <<(value, RdField)
+    def Funct(value: BinaryOperator.BinaryOperator): Assembler = <<(value.id, FunctField)
+    def Funct(value: Int): Assembler                           = <<(value, FunctField)
+    def Rs1(value: Int): Assembler                             = <<(value, Rs1Field)
+    def Rs2(value: Int): Assembler                             = <<(value, Rs2Field)
+    def Rs3(value: Int): Assembler                             = <<(value, Rs3Field)
+    def Rs4(value: Int): Assembler                             = <<(value, Rs4Field)
+    def SliceOfst(value: Int): Assembler                       = <<(value, 4)
+    def Zero(length: Int): Assembler                           = <<(0, length)
+    def Immediate(value: Int): Assembler                       = <<(value, 16)
+    def DestX(value: Int): Assembler                           = <<(value, 8)
+    def DestY(value: Int): Assembler                           = <<(value, 8)
     private def <<(value: Int, field: Field): Assembler =
       <<(value, field.bitLength)
     private def <<(value: Int, bit_length: Int): Assembler = {
@@ -377,7 +378,7 @@ object MachineCodeGenerator
       ids: Name => Int
   ): Long = {
 
-    val rd = ids(inst.rd)
+    val rd  = ids(inst.rd)
     val rs1 = ids(inst.rs1)
     val rs2 = ids(inst.rs2)
     asm
@@ -389,6 +390,7 @@ object MachineCodeGenerator
       .Zero(Rs3Field.bitLength + Rs4Field.bitLength)
       .toLong
   }
+
   def assemble(
       proc: DefProcess,
       inst: Instruction
@@ -401,9 +403,6 @@ object MachineCodeGenerator
 
     val res = inst match {
       case i: BinaryArithmetic => assemble(i)
-      case i: CustomInstruction =>
-        ctx.logger.error(s"Can not generate code", i)
-        0L
       case LocalLoad(rd, base, offset, _, annons) =>
         asm
           .Opcode(Opcodes.LLOAD)
@@ -492,8 +491,7 @@ object MachineCodeGenerator
           .Rd(local(carry))
           .Funct(BinaryOperator.ADD)
           .Zero(
-            Rs1Field.bitLength + Rs2Field.bitLength +
-              Rs3Field.bitLength + Rs4Field.bitLength - 16
+            Rs1Field.bitLength + Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 16
           )
           .Immediate(1)
           .toLong
@@ -522,10 +520,41 @@ object MachineCodeGenerator
           .Rd(local(rd))
           .Funct(BinaryOperator.ADD)
           .Zero(
-            Rs1Field.bitLength + Rs2Field.bitLength +
-              Rs3Field.bitLength + Rs4Field.bitLength - 16
+            Rs1Field.bitLength + Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 16
           )
           .Immediate(value.toInt)
+          .toLong
+      case CustomInstruction(name, rd, rsx, _) =>
+        assert(
+          rsx.length == 4,
+          s"Error: Expected 4 args for custom function, but received ${rsx.length}."
+        )
+        val id = proc.functions.indexWhere(func => func.name == name)
+        assert(
+          id != -1,
+          s"Error: could not locate custom function ${name} in process ${proc.id.id}"
+        )
+        val Seq(rs1, rs2, rs3, rs4) = rsx
+        asm
+          .Opcode(Opcodes.CUST)
+          .Rd(local(rd))
+          .Funct(id)
+          .Rs1(local(rs1))
+          .Rs2(local(rs2))
+          .Rs3(local(rs3))
+          .Rs4(local(rs4))
+          .toLong
+      case Slice(rd, rs, offset, length, _) =>
+        asm
+          .Opcode(Opcodes.SLICE)
+          .Rd(local(rd))
+          .Funct(BinaryOperator.SRL)
+          .Rs1(local(rs))
+          .Zero(
+            Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 4 - 16
+          ) // SliceOfst (4) + Immediate (16)
+          .SliceOfst(offset)
+          .Immediate(length)
           .toLong
       case _ =>
         ctx.logger.error("can not handle instruction", inst)
