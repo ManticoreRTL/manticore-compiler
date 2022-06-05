@@ -96,7 +96,7 @@ object TaggedInstruction {
             PhiSource(phis((jcase.label, n)), n)
         }
       val indexed = jcase.block match {
-        case (jtarget: Instruction) :: rest =>
+        case (jtarget: Instruction) +: rest =>
           val first = TaggedInstruction(
             jtarget,
             phiSources(jtarget) :+ JumpTarget(jcase.label)

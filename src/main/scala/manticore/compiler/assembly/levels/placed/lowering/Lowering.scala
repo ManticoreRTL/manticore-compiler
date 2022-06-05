@@ -12,7 +12,7 @@ object Lowering {
   val Transformation =
     JumpTableNormalizationTransform andThen
       ProgramSchedulingTransform andThen
-      JumpLabelAssignmentTransform andThen
+      SetJumpTargetsTransform andThen
       LocalMemoryAllocation andThen
       RegisterAllocationTransform
 

@@ -4,8 +4,8 @@ import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.placed.lowering.util.Interval
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
-import manticore.compiler.assembly.levels.placed.PlacedIRDependencyDependenceGraphBuilder.NameDependence
-import manticore.compiler.assembly.levels.placed.PlacedIRInputOutputCollector.InputOutputPairs
+import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
+import manticore.compiler.assembly.levels.placed.Helpers.InputOutputPairs
 import manticore.compiler.HasLoggerId
 
 /** Lifetime computation utility
@@ -139,7 +139,7 @@ private[lowering] object LifetimeAnalysis {
     }
 
     orderedBlocks += leafBlock
-    ctx.logger.dumpArtifact("blocks.txt") {
+    ctx.logger.dumpArtifact(s"${process.id}_blocks.txt") {
 
       val text = new StringBuilder()
 
@@ -259,7 +259,7 @@ private[lowering] object LifetimeAnalysis {
 
     orderedBlocks.reverse.foreach(buildInterval)
 
-    ctx.logger.dumpArtifact("lifetime.txt") {
+    ctx.logger.dumpArtifact(s"${process.id}_lifetime.txt") {
       intervals
         .map { case (name, intervals) => s"${name}: ${intervals}" }
         .mkString("\n")

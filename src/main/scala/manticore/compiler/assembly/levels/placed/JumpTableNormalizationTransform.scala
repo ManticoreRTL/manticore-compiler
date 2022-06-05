@@ -58,7 +58,7 @@ object JumpTableNormalizationTransform
     * @param ctx
     * @return
     */
-  private def normalize(jtb: JumpTable, aliasOf: (Label, Name) => Name)(implicit
+  private def normalize(jtb: JumpTable, aliasOf: (Label, Name, Name) => Name)(implicit
       ctx: AssemblyContext
   ): JumpTable = {
 
@@ -84,28 +84,20 @@ object JumpTableNormalizationTransform
       if (!JumpTableProperties.jumpTableContainsAllDefinitionsUsedInPhis(jtb)) {
         // a map from labels to the sequence of names in that label that
         // are used in the Phis
-        val phiContributors = jump.results
-          .flatMap { case Phi(rd, rsx) =>
-            rsx.map { case (lbl, rs) => (lbl, rs) }
-          }
-          .groupBy(_._1)
-          .view
-          .mapValues(_.map(_._2))
 
-        def getAliases(jCase: JumpCase) = {
-
-          val isDefineInCaseBody = jCase.block.foldLeft(Set.empty[Name]) {
+        def getAliases(jCase: JumpCase): Iterable[((Name, Name), Name)] = {
+          val isDefinedInCaseBody = jCase.block.foldLeft(Set.empty[Name]) {
             _ ++ NameDependence.regDef(_)
           }
-          // now for any rs in contributesToPhi(jCase.label)
-          val definedOutSide = phiContributors(jCase.label).filter {
-            !isDefineInCaseBody(_)
-          }
-          val aliases = definedOutSide.distinct.map { origName =>
-            origName -> aliasOf(jCase.label, origName)
+          val aliases = scala.collection.mutable.ArrayBuffer.empty[((Name, Name), Name)]
+          for (Phi(rd, rsx) <- jump.results) {
+            for((lbl, rs) <- rsx) {
+              if (lbl == jCase.label && !isDefinedInCaseBody(rs)) {
+                aliases += ((rd, rs) -> aliasOf(jCase.label, rd, rs))
+              }
+            }
           }
           aliases
-
         }
         val aliases = jump.blocks.map { case jCase @ JumpCase(lbl, _) =>
           lbl -> getAliases(jCase)
@@ -113,19 +105,19 @@ object JumpTableNormalizationTransform
         val blocksWithAliasing =
           jump.blocks.map { jCase =>
             jCase.copy(block = jCase.block ++ aliases(jCase.label).map {
-              case (origN, newN) => Mov(newN, origN)
+              case ((_, origN), newN) => Mov(newN, origN)
             })
           }
 
-        def phiRename(label: Label, rs: Name): Name =
+        def phiRename(label: Label, rd: Name, rs: Name): Name =
           aliases(label)
-            .collectFirst { case (orig, als) if orig == rs => als }
+            .collectFirst { case ((origRd, orig), als) if rd == origRd && orig == rs => als }
             .getOrElse(rs)
 
         val newPhis = jump.results.map { case Phi(rd, rsx) =>
           Phi(
             rd,
-            rsx.map { case (lbl, rs) => (lbl, phiRename(lbl, rs)) }
+            rsx.map { case (lbl, rs) => (lbl, phiRename(lbl, rd, rs)) }
           )
         }
         jump.copy(
@@ -169,12 +161,12 @@ object JumpTableNormalizationTransform
       process
     } else {
 
-      val scopedSubst = scala.collection.mutable.Map.empty[(Label, Name), Name]
-      def mkAlias(label: Label, original: Name): Name =
-        scopedSubst.get((label, original)) match {
+      val scopedSubst = scala.collection.mutable.Map.empty[(Label, Name, Name), Name]
+      def mkAlias(label: Label, result: Name, original: Name): Name =
+        scopedSubst.get((label, result, original)) match {
           case None =>
             val newName = s"%w${ctx.uniqueNumber()}"
-            scopedSubst += (label, original) -> newName
+            scopedSubst += (label, result, original) -> newName
             newName
           case Some(alias) => alias
         }
@@ -184,7 +176,7 @@ object JumpTableNormalizationTransform
       }
 
       val flatSubst = scopedSubst
-        .groupMap { case ((lbl, orig) -> alias) =>
+        .groupMap { case ((lbl, rd, orig) -> alias) =>
           orig
         } { case (_, alias) => alias }
         .withDefault(_ => Seq.empty)

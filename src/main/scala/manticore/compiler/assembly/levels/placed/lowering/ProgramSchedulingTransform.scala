@@ -202,10 +202,10 @@ private[lowering] object ProgramSchedulingTransform
         core.scheduleContext.activeList += (core.scheduleContext.graph
           .get(inst) -> commitCycle)
 
-        ctx.logger.info(
+        ctx.logger.debug(
           s"@${core.process.id}:${core.currentCycle}: ${inst}"
         )
-        ctx.logger.info(s"commits @ ${commitCycle}")
+        ctx.logger.debug(s"commits @ ${commitCycle}")
       }
       def activateReady(ready: Option[MatchResult]): Unit = ready match {
         case Some(newActive) =>

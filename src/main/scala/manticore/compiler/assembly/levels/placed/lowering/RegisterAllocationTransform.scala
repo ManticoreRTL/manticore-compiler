@@ -125,7 +125,7 @@ private[lowering] object RegisterAllocationTransform
     // tell the manager of a new hint
     def tell(name: Name)(newHint: => AllocationHint): Unit
     // lookup a hint
-    def seek(name: Name): Option[AllocationHint]
+    def ask(name: Name): Option[AllocationHint]
     // get the Name that aliases name.
     // For instance phi(rd, rs1, rs2):
     // alias(rs1) = rd
@@ -166,7 +166,7 @@ private[lowering] object RegisterAllocationTransform
 
       def alias(n: Name): Option[Name] =
         if (hints.contains(n)) {
-          // n is either input or rd of a a phi
+          // n is either input or rd of a phi
           Some(n)
         } else {
           if (getCurrent.contains(n)) {
@@ -182,7 +182,7 @@ private[lowering] object RegisterAllocationTransform
           }
         }
 
-      def seek(n: Name): Option[AllocationHint] =
+      def ask(n: Name): Option[AllocationHint] =
         alias(n) match {
           case None           => None
           case Some(realName) => hints(realName)
@@ -203,6 +203,8 @@ private[lowering] object RegisterAllocationTransform
     import scala.collection.mutable.PriorityQueue
     import scala.collection.mutable.ArrayDeque
     import scala.collection.mutable.Queue
+
+    ctx.logger.debug(s"Register allocation for ${process.id}")
 
     val lifetime = ctx.stats.recordRunTime(s"lifetime ${process.id}") {
       util.LifetimeAnalysis(process)
@@ -243,8 +245,7 @@ private[lowering] object RegisterAllocationTransform
     val hints = createHintManager(process)
     @tailrec
     def tryRelease(
-        currentInterval: IntervalSet,
-        freeListUsed: ArrayDeque[Int]
+        currentInterval: IntervalSet
     ): Unit = {
 
       if (activeList.nonEmpty) {
@@ -254,12 +255,16 @@ private[lowering] object RegisterAllocationTransform
         val mayHavePassedInterval = lifetime(firstActive.variable.name)
         if (mayHavePassedInterval.max <= currentInterval.min) { // <= because interval end in exclusive
           // the firstActive is no longer alive
+          if (firstActive.variable.varType == CarryType) {
+            freeCarryList += firstActive.variable.id
+          } else {
+            mainFreeList += firstActive.variable.id
+          }
 
-          freeListUsed += firstActive.variable.id
           ctx.logger.debug(
             s"Freed ${firstActive.variable.name}:${firstActive.variable.id}"
           )
-          tryRelease(currentInterval, freeListUsed)
+          tryRelease(currentInterval)
 
         } else {
           // there is nothing more to release, put the head back into the
@@ -278,15 +283,14 @@ private[lowering] object RegisterAllocationTransform
 
       @tailrec
       def reverseIterate(index: Int = deque.length - 1): Option[Int] = {
-        if (deque(index) == lastId) {
+        if (index < 0) {
+          None
+        } else if (deque(index) == lastId) {
           Some(index)
         } else {
-          if (index == 0) {
-            None
-          } else {
-            reverseIterate(index - 1)
-          }
+          reverseIterate(index - 1)
         }
+
       }
 
       if (deque.isEmpty) {
@@ -306,13 +310,13 @@ private[lowering] object RegisterAllocationTransform
         val currentInterval = lifetime(currentRegToAllocate.variable.name)
 
         val freeListUsed =
-          if (currentRegToAllocate.variable.varType == ConstType) {
+          if (currentRegToAllocate.variable.varType == CarryType) {
             freeCarryList
           } else {
             mainFreeList
           }
         // release any registers whose intervals are passed
-        tryRelease(currentInterval, freeListUsed)
+        tryRelease(currentInterval)
 
         if (freeListUsed.nonEmpty) {
           // look for any hint for allocation
@@ -326,7 +330,7 @@ private[lowering] object RegisterAllocationTransform
               AllocationHint(allocationId, currentInterval)
             }
           }
-          hints.seek(currentRegToAllocate.variable.name) match {
+          hints.ask(currentRegToAllocate.variable.name) match {
             case Some(lastHint) =>
               // try to use lastId
               val idPosition =
