@@ -34,6 +34,11 @@ import manticore.compiler.frontend.yosys.Yosys
 import manticore.compiler.frontend.yosys.YosysRunner
 import manticore.compiler.LoggerId
 import manticore.compiler.assembly.levels.placed.PlacedNameChecker
+import manticore.compiler.assembly.levels.placed.lowering.Lowering
+import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
+import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
+import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.assembly.levels.placed.lowering.AbstractExecution
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -68,8 +73,11 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
-        max_dimx = 10,
-        max_dimy = 10
+        max_dimx = 5,
+        max_dimy = 5,
+        debug_message = true,
+        max_registers = 512,
+        max_carries = 16
         // log_file = None
       )
 
@@ -98,6 +106,41 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program7 = CompilationStage.parallelization(program6)
       checkPlaced("parallelization", program7, reference, dumper)
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+
+      // temporary disabled until I fix the bugs with lowering passes :(
+      // val program8 = CompilationStage.finalLowering(program7)
+      // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+
+      // // do one final interpretation to make sure register allocation is correct
+      // // checking whether a schedule is correct (i.e., enough Nops, contention
+      // // free network) is done with a checker pass because atomic interpreter is
+      // // not sophisticated enough to do a full cycle-accurate simulation of a
+      // // manticore network.
+
+      // val serialOut = ArrayBuffer.empty[String]
+      // val interp = AtomicInterpreter.instance(
+      //   program = program8,
+      //   serial = Some(serialOut += _)
+      // )
+      // interp.interpretCompletion()
+
+      // if (ctx.logger.countErrors() > 0) {
+      //   dumper("reference.txt", reference.mkString("\n"))
+      //   dumper("results.txt", serialOut.mkString("\n"))
+      //   fail(s"Complete schedule: failed due to earlier errors")
+      // }
+      // if (!YosysUnitTest.compare(reference, serialOut)) {
+      //   ctx.logger.flush()
+      //   dumper("reference.txt", reference.mkString("\n"))
+      //   dumper("results.txt", serialOut.mkString("\n"))
+      //   fail(s"Complete schedule: results did not match the reference")
+      // }
+      // if (ctx.logger.countErrors() > 0) {
+      //   ctx.logger.flush()
+      //   dumper("reference.txt", reference.mkString("\n"))
+      //   dumper("results.txt", serialOut.mkString("\n"))
+      //   fail(s"Complete schedule: Errors occurred")
+      // }
     }
   }
 
@@ -138,6 +181,11 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       dumper: (String, String) => Unit
   )(implicit ctx: AssemblyContext) = {
     val got = interpretUnconstrained(program)
+    if (ctx.logger.countErrors() > 0) {
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", got.mkString("\n"))
+      fail(s"${clue}: failed due to earlier errors")
+    }
     if (!YosysUnitTest.compare(reference, got)) {
       ctx.logger.flush()
       dumper("reference.txt", reference.mkString("\n"))
@@ -161,6 +209,11 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
   )(implicit ctx: AssemblyContext) = {
 
     val got = interpretPlaced(program)
+    if (ctx.logger.countErrors() > 0) {
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", got.mkString("\n"))
+      fail(s"${clue}: failed due to earlier errors")
+    }
     if (!YosysUnitTest.compare(reference, got)) {
       ctx.logger.flush()
       dumper("reference.txt", reference.mkString("\n"))
@@ -174,45 +227,53 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       fail(s"${clue}: Errors occurred")
     }
   }
-  object CompilationStage {
 
-    // the very first stage. Only reorder instructions according to
-    // topological order
-    val preparation = AssemblyFileParser andThen
+}
+
+object CompilationStage {
+
+  // the very first stage. Only reorder instructions according to
+  // topological order
+  val preparation = AssemblyFileParser andThen
+    UnconstrainedNameChecker andThen
+    UnconstrainedMakeDebugSymbols andThen
+    UnconstrainedOrderInstructions
+
+  val unconstrainedOptimizations =
+    UnconstrainedIRConstantFolding andThen
+      UnconstrainedIRStateUpdateOptimization andThen
+      UnconstrainedIRCommonSubExpressionElimination andThen
+      UnconstrainedDeadCodeElimination andThen
+      UnconstrainedNameChecker
+
+  val controlLowering =
+    UnconstrainedJumpTableConstruction andThen
       UnconstrainedNameChecker andThen
-      UnconstrainedMakeDebugSymbols andThen
-      UnconstrainedOrderInstructions
+      UnconstrainedIRParMuxDeconstructionTransform andThen
+      UnconstrainedNameChecker
 
-    val unconstrainedOptimizations =
+  val widthLowering =
+    WidthConversion.transformation andThen
       UnconstrainedIRConstantFolding andThen
-        UnconstrainedIRStateUpdateOptimization andThen
-        UnconstrainedIRCommonSubExpressionElimination andThen
-        UnconstrainedDeadCodeElimination andThen
-        UnconstrainedNameChecker
+      UnconstrainedIRStateUpdateOptimization andThen
+      UnconstrainedIRCommonSubExpressionElimination andThen
+      UnconstrainedDeadCodeElimination andThen
+      UnconstrainedNameChecker
 
-    val controlLowering =
-      UnconstrainedJumpTableConstruction andThen
-        UnconstrainedNameChecker andThen
-        UnconstrainedIRParMuxDeconstructionTransform andThen
-        UnconstrainedNameChecker
+  val translation =
+    UnconstrainedToPlacedTransform
 
-    val widthLowering =
-      WidthConversion.transformation andThen
-        UnconstrainedIRConstantFolding andThen
-        UnconstrainedIRStateUpdateOptimization andThen
-        UnconstrainedIRCommonSubExpressionElimination andThen
-        UnconstrainedDeadCodeElimination andThen
-        UnconstrainedNameChecker
-
-    val translation =
-      UnconstrainedToPlacedTransform
-
-    val placedOptimizations =
-      PlacedIRConstantFolding andThen
+  val placedOptimizations =
+    PlacedIRConstantFolding andThen
       PlacedIRCommonSubExpressionElimination andThen
       PlacedIRDeadCodeElimination
 
-    val parallelization = ProcessSplittingTransform andThen PlacedNameChecker
-  }
+  val parallelization =
+    ProcessSplittingTransform andThen
+      PlacedNameChecker
+
+  val finalLowering =
+    RoundRobinPlacerTransform andThen Lowering.Transformation andThen
+      AbstractExecution
 
 }
