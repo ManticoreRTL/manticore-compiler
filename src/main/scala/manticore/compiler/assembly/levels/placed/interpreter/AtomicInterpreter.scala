@@ -313,8 +313,8 @@ object AtomicInterpreter extends PlacedIRChecker {
           missing_messages -= entry
         } else if (pedanticRecv) {
           // something is up
-          ctx.logger.warn(
-            s"@${pc} did not expect message, writing to " +
+          ctx.logger.error(
+            s"Did not expect message, writing to " +
               s"${msg.target_id}:${msg.target_register} value of ${msg.value} from process ${msg.source_id} (perhaps missing RECV)"
           )
           trap(InternalTrap)
@@ -392,7 +392,9 @@ object AtomicInterpreter extends PlacedIRChecker {
       // virtual cycle is done, or some error has occurred
       // roll every core back to their first instruction and consume any outstanding
       // messages
-      cores.foreach { _._2.roll() }
+      if (traps.isEmpty) {
+        cores.foreach { _._2.roll() }
+      }
       traps.toSeq
     }
 
