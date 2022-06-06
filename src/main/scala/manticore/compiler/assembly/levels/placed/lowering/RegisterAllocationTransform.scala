@@ -21,8 +21,7 @@ import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-private[lowering] object RegisterAllocationTransform
-    extends PlacedIRTransformer {
+private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer {
   import PlacedIR._
 
   override def transform(source: DefProgram)(implicit
@@ -212,18 +211,17 @@ private[lowering] object RegisterAllocationTransform
       util.LifetimeAnalysis(process)
     }
 
-    val immortals = allocateImmortals(process)
-    val numImmortals = immortals.length
+    val immortals        = allocateImmortals(process)
+    val numImmortals     = immortals.length
     val registerCapacity = ctx.max_registers
-    val carryCapacity = ctx.max_carries
+    val carryCapacity    = ctx.max_carries
     val allocatedCarries = scala.collection.mutable.Queue.empty[DefReg]
-    val allocatedNames = scala.collection.mutable.Queue.empty[DefReg]
+    val allocatedNames   = scala.collection.mutable.Queue.empty[DefReg]
 
     // create a list of register with
     val mainFreeList =
-      ArrayDeque.empty[Int] ++ Seq.tabulate(registerCapacity - numImmortals) {
-        i =>
-          i + numImmortals
+      ArrayDeque.empty[Int] ++ Seq.tabulate(registerCapacity - numImmortals) { i =>
+        i + numImmortals
       }
     val freeCarryList = ArrayDeque.empty[Int] ++ Range(0, carryCapacity)
 
@@ -244,7 +242,7 @@ private[lowering] object RegisterAllocationTransform
     val allocatedList = Queue.empty[DefReg] ++ immortals
 
     val moveQueue = Queue.empty[Mov]
-    val hints = createHintManager(process)
+    val hints     = createHintManager(process)
     @tailrec
     def tryRelease(
         currentInterval: IntervalSet
@@ -309,7 +307,7 @@ private[lowering] object RegisterAllocationTransform
     ): Seq[DefReg] = {
       if (unallocatedList.nonEmpty) {
         val currentRegToAllocate = unallocatedList.dequeue()
-        val currentInterval = lifetime(currentRegToAllocate.variable.name)
+        val currentInterval      = lifetime(currentRegToAllocate.variable.name)
 
         val freeListUsed =
           if (currentRegToAllocate.variable.varType == CarryType) {
@@ -325,7 +323,7 @@ private[lowering] object RegisterAllocationTransform
           def allocate(removeIndex: Int) = {
 
             val allocationId = freeListUsed.remove(removeIndex)
-            val regWithId = withId(currentRegToAllocate, allocationId)
+            val regWithId    = withId(currentRegToAllocate, allocationId)
             allocatedList += regWithId
             activeList += regWithId
             hints.tell(currentRegToAllocate.variable.name) {
@@ -444,7 +442,7 @@ private[lowering] object RegisterAllocationTransform
             // inst is some instruction that write to the output
             // but we could not elide its MOV to the input using register
             // allocation hints
-            val thisId = registers(rd).variable.id
+            val thisId   = registers(rd).variable.id
             val realRdId = registers(realRd).variable.id
             if (thisId != realRdId) {
               ctx.logger.debug(s"Can not elide MOV for ${rd} -> ${realRd}")
@@ -499,9 +497,21 @@ private[lowering] object RegisterAllocationTransform
       Nop
     } ++ moveQueue.map(_._1)
 
-    process.copy(
+    val result = process.copy(
       body = withMoves
     )
+
+    ctx.logger.dumpArtifact(s"${process.id}_shared_ids.txt") {
+      result.registers
+        .groupBy(_.variable.id)
+        .toSeq
+        .sortBy(_._1)
+        .map { case (id, regs) =>
+          s"${id}: ${regs.map(_.variable.name).mkString(", ")}"
+        }
+        .mkString("\n")
+    }
+    result
   }
 
 }

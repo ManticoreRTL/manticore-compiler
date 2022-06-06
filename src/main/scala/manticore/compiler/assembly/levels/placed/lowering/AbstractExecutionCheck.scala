@@ -9,16 +9,78 @@ import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
+import manticore.compiler.assembly.levels.CarryType
 
 object AbstractExecution extends PlacedIRChecker {
   import PlacedIR._
   override def check(source: DefProgram)(implicit
       context: AssemblyContext
-  ): Unit =  {
+  ): Unit = {
+
     source.processes.foreach(checkReadAfterWrite)
+    source.processes.foreach(checkWriteCollision)
     checkLinkUtilization(source)
   }
 
+  def checkWriteCollision(process: DefProcess)(implicit ctx: AssemblyContext): Unit = {
+
+    val registerFile = Array.fill(ctx.max_registers) { scala.collection.mutable.Stack.empty[Name] }
+    val carryRegisterFile = Array.fill(ctx.max_carries) {
+      scala.collection.mutable.Stack.empty[Name]
+    }
+
+    val lookup = process.registers.map { r =>
+      r.variable.name -> (r.variable.varType, r.variable.id)
+    }.toMap
+
+    def checkUse(use: Name, instr: Instruction) = {
+      val (tpe, id) = lookup(use)
+      val writes = if (tpe == CarryType) {
+        carryRegisterFile(id)
+      } else {
+        registerFile(id)
+      }
+
+      if (writes.nonEmpty) {
+        if (writes.top != use) {
+          ctx.logger.error(
+            s"Conflicted physical register sharing at id ${id}! Expected to read the value for " +
+              s"${use} but got the values for ${writes.top}",
+            instr
+          )
+        } else {
+          ctx.logger.debug(s"${use} is ok!")
+        }
+      } else if (tpe == ConstType || tpe == InputType || tpe == MemoryType) {
+        ctx.logger.debug(s"${use} is ok!")
+      } else {
+        ctx.logger.error(s"${use} is read but never defined!")
+      }
+    }
+    def appendDefined(rd: Name) = {
+      val (tpe, id) = lookup(rd)
+      if (tpe == CarryType) {
+        carryRegisterFile(id).push(rd)
+      } else {
+        registerFile(id).push(rd)
+      }
+    }
+    def execute(instructionBlock: Seq[Instruction]): Unit = instructionBlock match {
+      case (jtb @ JumpTable(t, results, caseBlocks, delaySlot, _)) +: rest =>
+        execute(delaySlot)
+        caseBlocks.foreach { case JumpCase(_, blk) => execute(blk) }
+        results.foreach { case Phi(rd, _) => appendDefined(rd) }
+        execute(rest)
+      case instr +: rest =>
+        NameDependence.regUses(instr).foreach { checkUse(_, instr) }
+        NameDependence.regDef(instr).foreach { appendDefined }
+        execute(rest)
+      case Nil => // nothing to do
+    }
+
+    execute(process.body)
+
+  }
   def checkReadAfterWrite(
       process: DefProcess
   )(implicit ctx: AssemblyContext): Unit = {
@@ -67,7 +129,10 @@ object AbstractExecution extends PlacedIRChecker {
                       instr
                     )
                   case None =>
-                    ctx.logger.error(s"${use} is never defined but read at ${cycle} in ${process.id}!", instr)
+                    ctx.logger.error(
+                      s"${use} is never defined but read at ${cycle} in ${process.id}!",
+                      instr
+                    )
                   case _ => // nothing to do, read is valid
                 }
               }

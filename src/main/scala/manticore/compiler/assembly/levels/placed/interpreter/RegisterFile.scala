@@ -19,20 +19,20 @@ final class NamedRegisterFile(
     vcd: Option[PlacedValueChangeWriter],
     monitor: Option[PlacedIRInterpreterMonitor]
 )(undefinedConstant: DefReg => Unit)
-    extends RegisterFile with InterpreterMonitor.CanUpdateMonitor[NamedRegisterFile]{
+    extends RegisterFile
+    with InterpreterMonitor.CanUpdateMonitor[NamedRegisterFile] {
 
   private val register_file =
-    scala.collection.mutable.Map.empty[Name, UInt16] ++ proc.registers.map {
-      r =>
-        if (r.variable.varType == ConstType && r.value.isEmpty) {
-          undefinedConstant(r)
-        }
-        r.variable.name -> r.value.getOrElse(UInt16(0))
+    scala.collection.mutable.Map.empty[Name, UInt16] ++ proc.registers.map { r =>
+      if (r.variable.varType == ConstType && r.value.isEmpty) {
+        undefinedConstant(r)
+      }
+      r.variable.name -> r.value.getOrElse(UInt16(0))
     }
   override def write(rd: Name, value: UInt16): Unit = {
     register_file(rd) = value
     vcd.foreach(_.update(rd, value))
-    monitor.foreach{ _.update(rd, value) }
+    monitor.foreach { _.update(rd, value) }
   }
   override def read(rs: Name): UInt16 = register_file(rs)
 
@@ -47,11 +47,12 @@ final class PhysicalRegisterFile(
     maxCarries: Int
 )(
     undefinedConstant: DefReg => Unit, // callback for undefined constant
-    badAlloc: DefReg => Unit, // callback for invalid register allocation
-    badInit: DefReg => Unit // callback for bad initialization
-) extends RegisterFile with InterpreterMonitor.CanUpdateMonitor[PhysicalRegisterFile] {
+    badAlloc: DefReg => Unit,          // callback for invalid register allocation
+    badInit: DefReg => Unit            // callback for bad initialization
+) extends RegisterFile
+    with InterpreterMonitor.CanUpdateMonitor[PhysicalRegisterFile] {
 
-  private val register_file = Array.fill(maxRegs) { UInt16(0) }
+  private val register_file       = Array.fill(maxRegs) { UInt16(0) }
   private val carry_register_file = Array.fill(maxCarries) { UInt16(0) }
 
   private val name_to_ids = proc.registers.map { r: DefReg =>
@@ -93,10 +94,7 @@ final class PhysicalRegisterFile(
     //look up the index
     val (index, container) = name_to_ids(rd)
     container(index) = value
-    vcd match {
-      case Some(handle) => handle.update(rd, value)
-      case None         => // do nothing
-    }
+    vcd.foreach { _.update(rd, value) }
     monitor.foreach { _.update(rd, value) }
 
   }

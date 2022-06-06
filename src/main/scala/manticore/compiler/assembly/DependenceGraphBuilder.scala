@@ -33,7 +33,6 @@ trait CanComputeNameDependence extends Flavored {
 
   object NameDependence {
 
-
     /** Extracts the registers read by the instruction.
       *
       * @param inst
@@ -96,17 +95,22 @@ trait CanComputeNameDependence extends Flavored {
           // assert(dslot.isEmpty, "dslot should only be used after scheduling!")
           val defs = blocks.flatMap { case JumpCase(_, blk) =>
             blk.flatMap(regDef)
-          } ++ dslot.flatMap { regDef }
+          }
           val allUses =
             target +:
               (blocks.flatMap { case JumpCase(_, body) =>
                 body.flatMap(regUses)
-              } ++
+              } ++ dslot.flatMap { regUses(_) } ++
                 phis.flatMap { case Phi(_, rss) => rss.map(_._2) })
           // a use in a JumpTable is considered a value that is defined outside
           // of the JumpTable blocks but used inside, so we need to find all
           // possible uses, including ones defined internally and then subtract
-          // all the definitions in the internal blocks.
+          // all the definitions in the internal blocks. Note that by construction
+          // if a value is defined in one of the block, it is guaranteed not be
+          // used outside of the JumpTable unless it goes through a Phi. However,
+          // this is not the case with the instructions in the delay slot, in fact
+          // it is likely that those instructions define something that is used
+          // outside.
           // We include the values used in the Phis nodes in the allUses because
           // a Phi node can directly use an externally defined value (e.g., if
           // a case block is empty).
@@ -160,7 +164,7 @@ trait CanComputeNameDependence extends Flavored {
           //   dslot.isEmpty || dslot.forall(_ == Nop),
           //   "dslot should only be used after scheduling!"
           // )
-          results.map(_.rd)
+          results.map(_.rd) ++ dslot.flatMap(regDef)
         case Lookup(rd, _, _, _) => Seq(rd)
         case _: BreakCase        => Seq.empty
         case _: PutSerial        => Seq.empty
@@ -200,6 +204,7 @@ trait CanComputeNameDependence extends Flavored {
 
       namesToKeep.toSet
     }
+
     /** Create mapping from names to the instruction defining them (i.e.,
       * instruction that have that name as the destination)
       *
@@ -226,13 +231,12 @@ trait CanComputeNameDependence extends Flavored {
   }
 }
 
-
 trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeNameDependence {
-
 
   object DependenceAnalysis {
 
     import flavor._
+
     /** Build a dependence graph
       *
       * @param process
@@ -256,7 +260,6 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeN
         ctx: AssemblyContext
     ): MutableGraph[Instruction, LDiEdge] = {
 
-
       // A map from registers to the instruction defining it (if any), useful for back tracking
       val def_instructions = NameDependence.definingInstructionMap(process)
 
@@ -277,8 +280,8 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeN
         }
       }
       // now add explicit orderings as dependencies
-      val hasOrder = process.body.collect {
-        case inst: ExplicitlyOrderedInstruction => inst
+      val hasOrder = process.body.collect { case inst: ExplicitlyOrderedInstruction =>
+        inst
       }
 
       val groups = hasOrder.groupBy { inst =>
@@ -361,8 +364,6 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeN
       g.nodes.length == process.body.length
     }
 
-
-
     def extractBlock(
         n: Instruction
     )(implicit ctx: AssemblyContext): Option[UMemBlock] = {
@@ -409,7 +410,6 @@ trait DependenceGraphBuilder extends CanCollectInputOutputPairs with CanComputeN
     //   Map.empty[Name, Set[DefReg]]
 
     // }
-
 
   }
 

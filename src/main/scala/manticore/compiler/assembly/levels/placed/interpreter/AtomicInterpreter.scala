@@ -193,7 +193,7 @@ object AtomicInterpreter extends PlacedIRChecker {
 
     override def updatePc(v: Int): Unit = {
       if (v <= pc) {
-        ctx.logger.info(s"invalid jump to ${v} when pc is ${pc}")
+        ctx.logger.error(s"invalid jump to ${v} when pc is ${pc}")
         trap(InternalTrap)
       }
       jumpPc = Some(v)
