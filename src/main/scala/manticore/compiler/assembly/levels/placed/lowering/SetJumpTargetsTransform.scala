@@ -24,7 +24,7 @@ private[lowering] object SetJumpTargetsTransform extends PlacedIRTransformer {
       case instr +: tail =>
         val nextPc = instr match {
           case jtb @ JumpTable(_, _, blocks, dslot, _) =>
-            val c1 = dslot.length + pc
+            val c1 = dslot.length + pc + 1
             val c2 = blocks.foldLeft(c1) { case (c, JumpCase(lbl, blk)) =>
               labelMap += (lbl -> c)
               resolveJumpLabels(blk, c)
@@ -38,54 +38,67 @@ private[lowering] object SetJumpTargetsTransform extends PlacedIRTransformer {
 
     // assign a pc to every label
     resolveJumpLabels(process.body)
-
-    val memories = process.registers.collect {
-      case DefReg(m: MemoryVariable, _, _) => m.name -> m
+    ctx.logger.dumpArtifact(s"${process.id}_labels.txt") {
+      labelMap.toSeq
+        .sortBy(_._2)
+        .map { case (lbl, pc) =>
+          s"${lbl} -> ${pc}"
+        }
+        .mkString("\n")
+    }
+    val memories = process.registers.collect { case DefReg(m: MemoryVariable, _, _) =>
+      m.name -> m
     }
     // go through every label group and create memory initialization contents
     // for each associated memory.
-    val newContents = process.labels.map {
-      case grp @ DefLabelGroup(mem, indexer, default, _) =>
-        val sortedLabels = indexer.sortBy(_._1.toInt)
+    val newContents = process.labels.map { case grp @ DefLabelGroup(mem, indexer, default, _) =>
+      val sortedLabels = indexer.sortBy(_._1.toInt)
 
-        val memContent = default match {
-          case None =>
-            val isLinearRange =
-              sortedLabels.map(_._1.toInt) == Range(0, sortedLabels.length)
-            if (!isLinearRange) {
+      val memContent = default match {
+        case None =>
+          val isLinearRange =
+            sortedLabels.map(_._1.toInt) == Range(0, sortedLabels.length)
+          if (!isLinearRange) {
+            ctx.logger.error(
+              "When there is no default case, labels should cover a linear range starting from 0!",
+              grp
+            )
+          }
+
+          val content = sortedLabels.map { case (index, lbl) =>
+            UInt16(labelMap(lbl))
+          }
+          content
+        case Some(catchall) =>
+          val sz = memories.find(mem == _._1) match {
+            case Some((_, memvar)) => memvar.size
+            case None =>
               ctx.logger.error(
-                "When there is no default case, labels should cover a linear range starting from 0!",
+                s"Failed looking up memory for label group!",
                 grp
               )
-            }
-
-            val content = sortedLabels.map { case (index, lbl) =>
-              UInt16(labelMap(lbl))
-            }
-            content
-          case Some(catchall) =>
-            val sz = memories.find(mem == _._1) match {
-              case Some((_, memvar)) => memvar.size
-              case None =>
-                ctx.logger.error(
-                  s"Failed looking up memory for label group!",
-                  grp
-                )
-                0
-            }
-            val content = Seq
-              .tabulate(sz) { index =>
-                sortedLabels.find { case (ix, _) => ix.toInt == index } match {
-                  case None           => labelMap(catchall)
-                  case Some((_, lbl)) => labelMap(lbl)
-                }
+              0
+          }
+          val content = Seq
+            .tabulate(sz) { index =>
+              sortedLabels.find { case (ix, _) => ix.toInt == index } match {
+                case None           => labelMap(catchall)
+                case Some((_, lbl)) => labelMap(lbl)
               }
-              .map(UInt16(_))
-            content
-        }
-        mem -> memContent
-    }.toMap
+            }
+            .map(UInt16(_))
+          content
+      }
 
+      mem -> memContent
+    }.toMap
+    ctx.logger.dumpArtifact(s"${process.id}_label_contents.txt") {
+      newContents
+        .map { case (mem, values) =>
+          s"${mem}: \n ${values.map(v => s"\t${v.toString}").mkString("\n")}"
+        }
+        .mkString("\n")
+    }
     // now scan the registers and replace the label group memories with new
     // ones that have the updated contents
 
@@ -107,7 +120,7 @@ private[lowering] object SetJumpTargetsTransform extends PlacedIRTransformer {
     def setBreakTarget(instructionBlock: Seq[Instruction], pc: Int = 0): Int =
       instructionBlock match {
         case (jtb @ JumpTable(_, _, blocks, dslot, _)) +: tail =>
-          val pc1 = dslot.length + pc
+          val pc1 = dslot.length + pc + 1
           val pc2 = blocks.map(_.block.length).sum + pc1
           val newBlocks = blocks.map { case JumpCase(lbl, blk) =>
             JumpCase(

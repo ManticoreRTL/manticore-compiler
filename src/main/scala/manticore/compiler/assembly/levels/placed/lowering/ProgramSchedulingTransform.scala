@@ -23,6 +23,7 @@ import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
 import manticore.compiler.assembly.levels.placed.lowering.util.RecvEvent
 import manticore.compiler.assembly.CanBuildDependenceGraph
 import manticore.compiler.assembly.levels.OutputType
+import manticore.compiler.assembly.levels.CarryType
 
 /** Program scheduler pass
   *
@@ -35,11 +36,10 @@ import manticore.compiler.assembly.levels.OutputType
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-private[lowering] object ProgramSchedulingTransform
-    extends PlacedIRTransformer {
+private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer {
   import PlacedIR._
 
-  private val jumpDelaySlotSize = 2
+  private val jumpDelaySlotSize  = 2
   private val breakDelaySlotSize = 2
   def transform(
       program: DefProgram
@@ -47,8 +47,7 @@ private[lowering] object ProgramSchedulingTransform
 
     val prepared = context.stats.recordRunTime("preparing processes") {
       program.copy(
-        processes =
-          program.processes.map(prepareProcessForScheduling(_)(context))
+        processes = program.processes.map(prepareProcessForScheduling(_)(context))
       )
     }
 
@@ -111,7 +110,7 @@ private[lowering] object ProgramSchedulingTransform
       ): Option[T] = {
         if (core.scheduleContext.readyList.nonEmpty) {
           val toSchedule = core.scheduleContext.readyList.dequeue()
-          val matched = matcher(toSchedule.toOuter)
+          val matched    = matcher(toSchedule.toOuter)
           if (matched.nonEmpty) {
             core.scheduleContext.readyList ++= notMatched
             matched
@@ -128,7 +127,7 @@ private[lowering] object ProgramSchedulingTransform
         val inst: Instruction
       }
       case class SendMatch(inst: Send, path: network.Path) extends MatchResult
-      case class AnyMatch(inst: Instruction) extends MatchResult
+      case class AnyMatch(inst: Instruction)               extends MatchResult
 
       def matchSend(send: Send) = {
         val path =
@@ -147,11 +146,10 @@ private[lowering] object ProgramSchedulingTransform
           case inst: Instruction => Some(AnyMatch(inst))
         }
 
-      def matchAnyButStore(inst: Instruction): Option[MatchResult] =
+      def matchAnyButSendAndStore(inst: Instruction): Option[MatchResult] =
         inst match {
-          case send: Send                          => matchSend(send)
-          case _ @(_: LocalStore | _: GlobalStore) => None
-          case inst                                => Some(AnyMatch(inst))
+          case _ @(_: LocalStore | _: GlobalStore | _: Send) => None
+          case inst                                          => Some(AnyMatch(inst))
         }
 
       def tryCommitting(): Unit = {
@@ -159,6 +157,7 @@ private[lowering] object ProgramSchedulingTransform
           case (n, t) if t <= core.currentCycle => n
         }
         // and remove them from the activeList
+        assert(nodesToCommit.forall(core.scheduleContext.activeList.contains))
         core.scheduleContext.activeList --= nodesToCommit
 
         for (nodeJustCommitted <- nodesToCommit) {
@@ -261,14 +260,22 @@ private[lowering] object ProgramSchedulingTransform
           // put a single and only a single instruction at the current position
           // i.e., this excludes LocalStore and GlobalStore because those ones
           // unpack into two instructions
-          val ready = findCompatible(matchAnyButStore)
-          val newInst = ready.map(_.inst).getOrElse(Nop)
+          val ready = findCompatible(matchAnyButSendAndStore)
           activateReady(ready)
-          core.scheduleContext +?= newInst // tell the context we scheduling
-          // a proxy for the original instruction, needed for correct "finish"
-          // condition
+          ready match {
+            case Some(readyToActivate) =>
+              val newInst = readyToActivate.inst
+              ctx.logger.debug((s"Delay slot: ${newInst}"))
+              // tell the context we scheduling a proxy for the original
+              // instruction, needed for correct "finish" condition
+              core.scheduleContext +?= newInst
+              core.jtbBuilder.dslot += newInst
+
+            case None => // nothing to do
+              core.jtbBuilder.dslot += Nop
+          }
+
           core.currentCycle += 1
-          core.jtbBuilder.dslot += newInst
 
           if (pos == jumpDelaySlotSize - 1) {
             core.state = Processor.CaseBlock(jtb, 0)
@@ -280,59 +287,80 @@ private[lowering] object ProgramSchedulingTransform
 
           // we can only bring new instruction from outside if all blocks
           // doing a Nop right now
-          val canScheduleInstFromOutside = core.jtbBuilder.blocks.forall {
-            case (lbl, blk) =>
-              blk(pos) == Nop
+          val canScheduleInstFromOutside = core.jtbBuilder.blocks.forall { case (lbl, blk) =>
+            blk(pos) == Nop
           }
 
           if (canScheduleInstFromOutside) {
-            val ready = findCompatible(matchAnyButStore)
-            val newInst = ready.map(_.inst).getOrElse(Nop)
+            val ready = findCompatible(matchAnyButSendAndStore)
             activateReady(ready)
-            // notify the context that this newInst is being scheduled
-            // in an opaque way
-            core.scheduleContext +?= newInst
+            ready match {
+              case Some(newActive) =>
+                val newInst = newActive.inst
+                ctx.logger.debug(s"Bringing in instruction to JumpTable ${jtb.target}", newInst)
+                assert(newInst != Nop)
+                // notify the context that this newInst is being scheduled
+                // in an opaque way
+                core.scheduleContext +?= newInst
+                // need to rename the output of newInst to a fresh name in every
+                // case block to keep the SSA-ness. This means we need to create
+                // new Phi outputs for each output of the instruction we are bringing
+                // in
+                val phiOutputs = NameDependence.regDef(newInst)
 
-            if (newInst != Nop) {
-              ctx.logger.debug("Bringing in instruction to JumpTable", newInst)
+                val phiInputs =
+                  for ((label, caseBlock) <- core.jtbBuilder.blocks) yield {
+
+                    val newOutputNames = phiOutputs.map { origOutput =>
+                      origOutput -> s"%w${ctx.uniqueNumber()}"
+                    }
+
+                    for ((origOutput, rdNew) <- newOutputNames) {
+                      val tpe =
+                        if (core.getDef(origOutput).variable.varType == CarryType) CarryType
+                        else WireType
+                      // create a new definition
+                      core.newDefs += DefReg(
+                        ValueVariable(rdNew, -1, tpe),
+                        None
+                      )
+                    }
+
+                    core.jtbBuilder.addMapping(label, newOutputNames)
+
+                    val renamedInst = Rename.asRenamed(newInst) {
+                      core.jtbBuilder.getMapping(label)
+                    }
+
+                    caseBlock(pos) = renamedInst
+                    newOutputNames.map { case (rd, rs) => label -> rs }
+                  }
+
+                // we create Phis for all the new outputs even though they may
+                // no longer be used outside. We have to remove the redundant ones
+                // later. If we don't, we screw up lifetime intervals for register
+                // allocation (i.e., we wrongfully extends lifetimes by keeping
+                // dead Phis and thus introduce artificial register pressure)
+
+                val newPhis = phiOutputs.zip(phiInputs.transpose).map {
+                  case (rd: Name, rsx: Seq[(Label, Name)]) => Phi(rd, rsx)
+                }
+
+                if (newInst != Nop && newPhis.isEmpty) {
+                  ctx.logger.debug("something is up", newInst)
+                }
+                ctx.logger.debug(s"new phis: \n${newPhis.mkString("\n")}")
+                val x = core.jtbBuilder.phis.length
+                core.jtbBuilder.phis ++= newPhis
+                if (core.jtbBuilder.phis.length != x + newPhis.length) {
+                  ctx.logger.error("something is up", newInst)
+                }
+
+              case None =>
+              // there is nothing we can do, no instruction can be brought in
+              // from the outside
 
             }
-            // need to rename the output of newInst to a fresh name in every
-            // case block
-            val phiOutputs = NameDependence.regDef(newInst)
-            val phiInputs =
-              for ((label, caseBlock) <- core.jtbBuilder.blocks) yield {
-
-                val newOutputNames = phiOutputs.map { origOutput =>
-                  origOutput -> s"%w${ctx.uniqueNumber()}"
-                }
-
-                for ((_, rdNew) <- newOutputNames) {
-                  // create a new definition
-                  core.newDefs += DefReg(
-                    ValueVariable(rdNew, -1, WireType),
-                    None
-                  )
-                }
-
-                core.jtbBuilder.addMapping(label, newOutputNames)
-
-                val renamedInst = Rename.asRenamed(newInst) {
-                  core.jtbBuilder.getMapping(label)
-                }
-
-                caseBlock(pos) = renamedInst
-                newOutputNames.map { case (rd, rs) => label -> rs }
-              }
-            // we create Phis for all the new outputs even though they may
-            // no longer be used outside. We have to remove the redundant ones
-            // later. If we don't, we screw up lifetime intervals for register
-            // allocation (i.e., we wrongfully extends lifetimes by keeping
-            // dead Phis and thus introduce artificial register pressure)
-            core.jtbBuilder.phis ++= phiOutputs.zip(phiInputs.transpose).map {
-              case (rd: Name, rsx: Seq[(Label, Name)]) => Phi(rd, rsx)
-            }
-
           }
           core.currentCycle += 1
           if (pos == maxPos) {
@@ -344,7 +372,7 @@ private[lowering] object ProgramSchedulingTransform
 
             val newJtb = jtb
               .copy(
-                results = jtb.results ++ core.jtbBuilder.phis,
+                results = jtb.results ++ core.jtbBuilder.phis.toSeq,
                 dslot = core.jtbBuilder.dslot.toSeq,
                 blocks = core.jtbBuilder.blocks.map { case (lbl, blk) =>
                   JumpCase(lbl, blk.toSeq)
@@ -370,7 +398,7 @@ private[lowering] object ProgramSchedulingTransform
             advanceCoreState(core)
           }
         }
-        ctx.logger.debug(s"finished ${globalCycle}")
+        // ctx.logger.debug(s"finished ${globalCycle}")
         globalCycle += 1
       }
     }
@@ -422,6 +450,7 @@ private[lowering] object ProgramSchedulingTransform
       process: DefProcess
   )(implicit ctx: AssemblyContext) = {
 
+
     // in the process of bringing instructions inside case body, we might have
     // created dead phi nodes. Now it is the time to go through all the dead
     // phi nodes and remove them.
@@ -438,7 +467,10 @@ private[lowering] object ProgramSchedulingTransform
           val (toKeep, toRemove) = jtb.results.partition { case Phi(rd, _) =>
             usedNames(rd)
           }
+          if (toRemove.nonEmpty)
+            ctx.logger.debug(s"removing dead phis:\n${toRemove.mkString("\n")}")
           namesToRemove ++= toRemove.map(_.rd)
+          usedNames ++= NameDependence.regUses(jtb)
           jtb.copy(results = toKeep)
         case inst => // nothing to do
           usedNames ++= NameDependence.regUses(inst)
@@ -489,7 +521,7 @@ private[lowering] object ProgramSchedulingTransform
         case Nil => (schedule, cycle)
       }
     }
-    val sortedRecvs = core.getReceivesSorted()
+    val sortedRecvs  = core.getReceivesSorted()
     val currentSched = core.scheduleContext.getSchedule()
     val currentCycle = core.currentCycle
 
@@ -524,57 +556,6 @@ private[lowering] object ProgramSchedulingTransform
 
   }
 
-  def createDotDependenceGraph(
-      graph: Graph[Instruction, GraphEdge.DiEdge]
-  )(implicit ctx: AssemblyContext): String = {
-    import scalax.collection.io.dot._
-    import scalax.collection.io.dot.implicits._
-    val dotRoot = DotRootGraph(
-      directed = true,
-      id = Some("List scheduling dependence graph")
-    )
-    val nodeIndex = graph.nodes.map(_.toOuter).zipWithIndex.toMap
-    def edgeTransform(
-        iedge: Graph[Instruction, GraphEdge.DiEdge]#EdgeT
-    ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
-      case GraphEdge.DiEdge(source, target) =>
-        Some(
-          (
-            dotRoot,
-            DotEdgeStmt(
-              nodeIndex(source.toOuter).toString,
-              nodeIndex(target.toOuter).toString
-            )
-          )
-        )
-      case t @ _ =>
-        ctx.logger.error(
-          s"An edge in the dependence could not be serialized! ${t}"
-        )
-        None
-    }
-    def nodeTransformer(
-        inode: Graph[Instruction, GraphEdge.DiEdge]#NodeT
-    ): Option[(DotGraph, DotNodeStmt)] =
-      Some(
-        (
-          dotRoot,
-          DotNodeStmt(
-            NodeId(nodeIndex(inode.toOuter)),
-            List(DotAttr("label", inode.toOuter.toString.trim.take(64)))
-          )
-        )
-      )
-
-    val dotExport: String = graph.toDot(
-      dotRoot = dotRoot,
-      edgeTransformer = edgeTransform,
-      cNodeTransformer = Some(nodeTransformer), // connected nodes
-      iNodeTransformer = Some(nodeTransformer) // isolated nodes
-    )
-    dotExport
-  }
-
   private def createProcessor(
       process: DefProcess
   )(implicit ctx: AssemblyContext): Processor = {
@@ -587,12 +568,8 @@ private[lowering] object ProgramSchedulingTransform
         GraphBuilder.defaultGraph(process.body)
       }
 
-    ctx.logger.dumpArtifact(s"scheduler_${process.id}.dot") {
-      createDotDependenceGraph(dependenceGraph)
-    }
-
     val priorities = ctx.stats.recordRunTime("estimating priorities") {
-      estimatePriority(dependenceGraph) { targetId =>
+      val dist = estimatePriority(dependenceGraph) { targetId =>
         // penalty of Send is a SetValue instruction and the number of hops
         // in the NoC
         LatencyAnalysis.manhattan(
@@ -601,9 +578,24 @@ private[lowering] object ProgramSchedulingTransform
           (ctx.max_dimx, ctx.max_dimy)
         ) + LatencyAnalysis.latency(SetValue("", UInt16(0)))
       }
+
+      ctx.logger.dumpArtifact(s"${process.id}_priorities.txt") {
+        val builder = new StringBuilder
+        val sortedBody = process.body.sorted {
+          Ordering.by { i: Instruction => dist(dependenceGraph.get(i)) }.reverse
+        }
+        for (inst <- sortedBody) {
+          builder ++= s"${inst.toString()} -> ${dist(dependenceGraph.get(inst))}\n"
+        }
+        builder.toString()
+      }
+      Ordering.by { dist }
     }
     val processor =
       new Processor(process, new ScheduleContext(dependenceGraph, priorities))
+    ctx.logger.dumpArtifact(s"scheduler_${process.id}.dot") {
+      GraphBuilder.toDotGraph(processor.scheduleContext.graph)
+    }
     processor
   }
 
@@ -719,7 +711,7 @@ private[lowering] object ProgramSchedulingTransform
           // recursively traverse the graph and get the distance to sink nodes
           val succDist = node.diSuccessors.toSeq.map { traverse }.max
           val thisDist = compute(node)
-          val dist = succDist + thisDist
+          val dist     = succDist + thisDist
           distance += (node -> dist)
           dist
         }
@@ -733,7 +725,8 @@ private[lowering] object ProgramSchedulingTransform
       traverse(sourceNode)
     }
 
-    Ordering.by { distance }
+    distance
+    // Ordering.by { distance }
   }
 
   /** Schedule the jump cases.
@@ -759,13 +752,15 @@ private[lowering] object ProgramSchedulingTransform
         // createDependenceGraph(block, definingInstruction)
       }
       val priorities = ctx.stats.recordRunTime(s"$lbl estimating priorities") {
-        estimatePriority(dependenceGraph) { _ =>
+        val dist = estimatePriority(dependenceGraph) { _ =>
           ctx.logger.fail("did not expect Send inside jump table!")
         }
+
+        Ordering.by { dist }
       }
 
       val scheduleContext = new ScheduleContext(dependenceGraph, priorities)
-      var time: Int = 0
+      var time: Int       = 0
       while (!scheduleContext.finished()) {
         // look at the activeList at collect the nodes that are ready to be committed
         val nodesToCommit = scheduleContext.activeList.collect {
@@ -810,7 +805,7 @@ private[lowering] object ProgramSchedulingTransform
         time += 1
       }
 
-      val schedule = scheduleContext.getSchedule()
+      val schedule       = scheduleContext.getSchedule()
       val scheduleLength = schedule.length
 
       if (scheduleLength <= breakDelaySlotSize) {

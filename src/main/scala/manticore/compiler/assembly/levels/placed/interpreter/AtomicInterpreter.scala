@@ -176,10 +176,26 @@ object AtomicInterpreter extends PlacedIRChecker {
       scala.collection.mutable.Queue.empty[InterpretationTrap]
 
     val instructionMemory = TaggedInstruction.indexedTaggedBlock(proc)
+
+    ctx.logger.dumpArtifact(s"${proc.id}_instruction_memory") {
+      val builder = new StringBuilder
+      var i = 0
+      for (taggedInstr <- instructionMemory) {
+
+        val tags = taggedInstr.tags.map { _.toString()}.mkString(", ")
+        builder ++= f"${i}%4d: ${taggedInstr.instruction.toString} | ${tags}\n"
+        i += 1
+      }
+      builder.toString()
+    }
     private var pc: Int = 0
     private var jumpPc: Option[Int] = None
 
     override def updatePc(v: Int): Unit = {
+      if (v <= pc) {
+        ctx.logger.info(s"invalid jump to ${v} when pc is ${pc}")
+        trap(InternalTrap)
+      }
       jumpPc = Some(v)
     }
     // private val instructions =
@@ -279,6 +295,7 @@ object AtomicInterpreter extends PlacedIRChecker {
                 ctx.logger.error(
                   s"Can not jump to ${target} when pc is ${pc}. Only forward jumping is semantically correct."
                 )
+                trap(InternalTrap)
               }
               pc = target
               val jumpTargetInst = instructionMemory(pc)

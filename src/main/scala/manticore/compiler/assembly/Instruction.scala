@@ -340,7 +340,7 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Seq()
   ) extends DataInstruction
       with ExplicitlyOrderedInstruction {
-    override def toString: String = s"LST ${rs}, ${base}[${address}], ${predicate
+    override def toString: String = s"LST ${rs}, ${base}[${address}] ${predicate
       .map(", " + _.toString())
       .getOrElse("")}"
   }

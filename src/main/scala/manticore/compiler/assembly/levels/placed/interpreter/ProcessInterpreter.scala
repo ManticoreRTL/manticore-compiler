@@ -256,6 +256,7 @@ trait ProcessInterpreter extends InterpreterBase {
         case UInt16(1) => rtrue_val
         case _ =>
           ctx.logger.error(s"Invalid select value ${sel_val}", instruction)
+          trap(InternalTrap)
           rtrue_val
       }
       write(rd, rd_val)

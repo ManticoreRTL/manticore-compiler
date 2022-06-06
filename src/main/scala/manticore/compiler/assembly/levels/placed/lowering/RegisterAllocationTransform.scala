@@ -14,6 +14,7 @@ import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import manticore.compiler.assembly.levels.CarryType
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
+import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
 
 /** Register allocation pass using a linear scan-like algorithm
   *
@@ -29,9 +30,11 @@ private[lowering] object RegisterAllocationTransform
   ): DefProgram = {
 
     val processes = source.processes.map(transform(_)(context))
-    source.copy(
+    val result = source.copy(
       processes = processes
     )
+    context.stats.record(ProgramStatistics.mkProgramStats(result))
+    result
   }
 
   private def withId(r: DefReg, new_id: Int): DefReg =
@@ -50,13 +53,12 @@ private[lowering] object RegisterAllocationTransform
     // ensure all constants are defined
     processConstants.foreach(checkValue)
 
-    def intValue(r: DefReg): Int = r.value.getOrElse(UInt16(0xffff)).toInt
+    def intValue(r: DefReg): Int = r.value.getOrElse(UInt16.MaxValue).toInt
     def defValue(v: Int) = DefReg(
       ValueVariable(s"%c_${ctx.uniqueNumber()}", -1, ConstType),
       Some(UInt16(v))
     )
-    val sortedConstants =
-      processConstants.sortBy(_.value.getOrElse(UInt16(0xffff)).toInt)
+    val sortedConstants = processConstants.sortBy(intValue)
     val withZeroAndOne = sortedConstants match {
       case first +: (second +: tail) =>
         if (intValue(first) == 0) {
@@ -69,7 +71,7 @@ private[lowering] object RegisterAllocationTransform
           if (intValue(first) == 1) {
             defValue(0) +: (first +: (second +: tail))
           } else {
-            defValue(0) +: (defValue(1) +: (second +: tail))
+            defValue(0) +: (defValue(1) +: sortedConstants)
           }
         }
       case first +: Nil =>

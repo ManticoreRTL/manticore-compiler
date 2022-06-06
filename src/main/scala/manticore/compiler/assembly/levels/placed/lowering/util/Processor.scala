@@ -47,7 +47,8 @@ private[lowering] class Processor(
   var jtbBuilder: JtbBuilder = _
   var currentCycle: Int = 0
   val newDefs = scala.collection.mutable.Queue.empty[DefReg]
-
+  private val oldDefs = process.registers.map { r => r.variable.name -> r }.toMap
+  def getDef(n: Name): DefReg = oldDefs(n)
   // keep a sorted queue of Recv events in increasing recv time
   // since the priority queue sorts the collection in decreasing priority
   // we need to use .reverse on the ordering
@@ -99,8 +100,9 @@ private[lowering] final class ScheduleContext(
   }
   // don't really add the instruction but advance the state
   def +?=(inst: Instruction): Unit = {
-    if (inst != Nop) {
-      assert(nodesToSchedule != 0)
+
+    if (inst != Nop && !inst.isInstanceOf[Predicate]) {
+      assert(nodesToSchedule != 0, s"did not expect instruction ${inst}")
       nodesToSchedule -= 1
     }
   }

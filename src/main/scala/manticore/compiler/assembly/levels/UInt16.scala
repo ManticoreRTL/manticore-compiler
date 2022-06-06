@@ -82,6 +82,7 @@ final class UInt16 private (private val v: Int) extends AnyVal {
 object UInt16 {
   def clipped(v: Int): UInt16 = UInt16(v & 0xffff)
 
+  val MaxValue = UInt16(0xffff)
   /**
     * Create a new [[UInt16]] value given [[v]].
     *

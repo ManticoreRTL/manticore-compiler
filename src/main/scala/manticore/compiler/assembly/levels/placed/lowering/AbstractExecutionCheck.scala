@@ -66,6 +66,8 @@ object AbstractExecution extends PlacedIRChecker {
                       s"${use} is available at ${t + 1} but read at ${cycle}",
                       instr
                     )
+                  case None =>
+                    ctx.logger.error(s"${use} is never defined but read at ${cycle} in ${process.id}!", instr)
                   case _ => // nothing to do, read is valid
                 }
               }
@@ -131,7 +133,7 @@ object AbstractExecution extends PlacedIRChecker {
     for ((send, (t, pid)) <- messages) {
       noc.tryReserve(pid, send, t) match {
         case None =>
-          ctx.logger.info(
+          ctx.logger.error(
             s"Could not reserve path in process ${pid} at ${t}",
             send
           )
