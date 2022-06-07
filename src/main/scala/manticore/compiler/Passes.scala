@@ -26,6 +26,8 @@ import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.ExpectIdInsertion
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
 import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElimination
+import manticore.compiler.assembly.levels.placed.lowering.Lowering
+import manticore.compiler.assembly.levels.placed.lowering.AbstractExecution
 
 object ManticorePasses {
 
@@ -34,42 +36,44 @@ object ManticorePasses {
       UnconstrainedInterpreter.withCondition(cond) andThen
       UnconstrainedBreakSequentialCycles
 
-  val frontend = UnconstrainedNameChecker andThen
-    UnconstrainedMakeDebugSymbols andThen
-    UnconstrainedOrderInstructions andThen
-    UnconstrainedIRConstantFolding andThen
-    UnconstrainedDeadCodeElimination andThen
-    UnconstrainedRenameVariables
+  val frontend =
+    UnconstrainedNameChecker andThen
+      UnconstrainedMakeDebugSymbols andThen
+      UnconstrainedOrderInstructions andThen
+      UnconstrainedIRConstantFolding andThen
+      UnconstrainedIRStateUpdateOptimization andThen
+      UnconstrainedIRCommonSubExpressionElimination andThen
+      UnconstrainedDeadCodeElimination andThen
+      UnconstrainedNameChecker andThen
+      UnconstrainedJumpTableConstruction.withCondition(false) andThen
+      UnconstrainedNameChecker andThen
+      UnconstrainedIRParMuxDeconstructionTransform andThen
+      UnconstrainedNameChecker
 
   val middleend =
     WidthConversion.transformation andThen
       UnconstrainedIRConstantFolding andThen
-      UnconstrainedDeadCodeElimination
+      UnconstrainedIRStateUpdateOptimization andThen
+      UnconstrainedIRCommonSubExpressionElimination andThen
+      UnconstrainedDeadCodeElimination andThen
+      UnconstrainedNameChecker
 
   def BackendInterpreter(cond: Boolean = true) =
     AtomicInterpreter.withCondition(cond)
 
-  val ExtractParallelism = // do not call DCE in the middle
+  val ExtractParallelism =
     ProcessSplittingTransform andThen
-      PlacedIROrderInstructions andThen
-      ProcessMergingTransform andThen
-      PlacedIROrderInstructions andThen
+      PlacedNameChecker andThen
       RoundRobinPlacerTransform
-  val BackendLowerEnd =
-      LocalMemoryAllocation andThen
-      SendInsertionTransform andThen
-      PlacedIRDeadCodeElimination andThen
-      ListSchedulerTransform andThen
-      PredicateInsertionTransform andThen
-      GlobalPacketSchedulerTransform andThen
-      RegisterAllocationTransform andThen
-      ExpectIdInsertion
+
+  val BackendLowerEnd = Lowering.Transformation andThen AbstractExecution
 
   def backend =
     UnconstrainedToPlacedTransform andThen
-    PlacedIRConstantFolding andThen
-    PlacedIRCommonSubExpressionElimination andThen
-    ExtractParallelism andThen
-    BackendLowerEnd
+      PlacedIRConstantFolding andThen
+      PlacedIRCommonSubExpressionElimination andThen
+      PlacedIRDeadCodeElimination andThen
+      ExtractParallelism andThen
+      BackendLowerEnd
 
 }

@@ -34,6 +34,7 @@ trait ProgramTester {
   }
 
   def mkReg(name: String, init: Option[UInt16]): String = {
+    // s".reg ${name} 16 .input ${name}_curr ${init.map(_.toString).getOrElse("")} .output ${name}_next"
     Seq(
       s"@REG [id = \"${name}\", type = \"\\REG_CURR\" ]",
       s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}",
@@ -50,13 +51,9 @@ trait ProgramTester {
   }
 
   def compiler =
-
     ManticorePasses.frontend andThen
       ManticorePasses.middleend andThen
-      UnconstrainedToPlacedTransform andThen
-      ManticorePasses.BackendLowerEnd andThen
-      ScheduleChecker andThen
-      LinkUtilizationChecker
+      ManticorePasses.backend
 
   def compile(source: String, context: AssemblyContext): PlacedIR.DefProgram = {
     (AssemblyParser andThen compiler)(source)(context)

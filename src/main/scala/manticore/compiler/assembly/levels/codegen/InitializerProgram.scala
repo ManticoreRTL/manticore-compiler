@@ -13,10 +13,9 @@ import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import scala.annotation.tailrec
 import java.io.File
 import java.nio.file.Files
+import manticore.compiler.assembly.BinaryOperator
 
-object InitializerProgram
-    extends ((DefProgram, AssemblyContext) => Unit)
-    with HasTransformationID {
+object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
   override def apply(program: DefProgram, context: AssemblyContext): Unit = {
 
@@ -195,7 +194,23 @@ object InitializerProgram
       )
     }
 
+    val counters = IndexedSeq.tabulate(mem_init_slider_size) { ix =>
+      DefReg(
+        variable = ValueVariable(
+          s"counter_${ctx.uniqueNumber()}",
+          first_free_index + temp_regs.length * ix,
+          WireType
+        ),
+        value = None
+      )
+    }
+
     initializer_regs.enqueueAll(temp_regs)
+    initializer_regs.enqueueAll(counters)
+
+    initializer_body ++ counters.zipWithIndex.map { case (cnt, ix) =>
+      SetValue(cnt.variable.name, UInt16(0))
+    }
 
     process.registers.foreach {
       case r @ DefReg(mvr: MemoryVariable, offset_opt, _) =>
@@ -204,11 +219,10 @@ object InitializerProgram
             mvr.initialContent.zipWithIndex
               .grouped(mem_init_slider_size)
               .foreach { window =>
-                val zipped_window = window.zip(temp_regs)
+                val zipped_window = window.zip(temp_regs).zip(counters)
 
-                initializer_body ++= zipped_window.map {
-                  case ((value, _), tmp) =>
-                    SetValue(tmp.variable.name, value)
+                initializer_body ++= zipped_window.map { case (((value, _), tmp), _) =>
+                  SetValue(tmp.variable.name, value)
                 }
 
                 // in case the sliding window is "incomplete" place Nops instead
@@ -220,16 +234,23 @@ object InitializerProgram
                 }
                 // perform the actual store (predicate is set to 1 before)
                 initializer_body ++=
-                  zipped_window.map { case ((value, ix), tmp) =>
-                    ???
-                    // LocalStore(
-                    //   rs = tmp.variable.name,
-                    //   base = mvr.name,
-                    //   offset = UInt16(ix),
-                    //   order = MemoryAccessOrder("", 0),
-                    //   predicate = None
-                    // )
+                  zipped_window.map { case (((value, ix), tmp), cnt) =>
+                    LocalStore(
+                      rs = tmp.variable.name,
+                      base = mvr.name,
+                      address = cnt.variable.name,
+                      order = MemoryAccessOrder("", 0),
+                      predicate = None
+                    )
                   }
+                initializer_body ++= counters.map { cnt =>
+                  BinaryArithmetic(
+                    BinaryOperator.ADD,
+                    cnt.variable.name,
+                    cnt.variable.name,
+                    const_1.variable.name
+                  )
+                }
 
               }
           case _ =>

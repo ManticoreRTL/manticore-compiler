@@ -17,8 +17,6 @@ import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.HasLoggerId
 
-
-
 /**
   * Base test trait to verify correctness of the compiler and the
   * manticore machine in interpreting binary arithmetic instruction
@@ -108,39 +106,34 @@ trait SingleInstructionTest
       expected_results,
       dir.toPath().resolve("expected_results.dat")
     )
-    val res_memblock = mkMemBlock("expected_results", expected_results.length)
+    // val res_memblock = mkMemBlock("expected_results", expected_results.length)
 
     val op1_meminit = mkMemInit(op1, dir.toPath().resolve("op1.dat"))
-    val op1_memblock = mkMemBlock("op1_values", op1.length)
+    // val op1_memblock = mkMemBlock("op1_values", op1.length)
     val op2_meminit = mkMemInit(op2, dir.toPath().resolve("op2.dat"))
-    val op2_memblock = mkMemBlock("op2_values", op1.length)
+    // val op2_memblock = mkMemBlock("op2_values", op1.length)
 
     s"""
         |.prog:
         |   @LOC [x = 0, y = 0]
         |   .proc proc_0_0:
         |       ${res_meminit}
-        |       ${res_memblock}
-        |       .mem res_ptr 16
-        |       .wire res_addr 16
+        |       .mem res_ptr 16 ${expected_results.length}
         |       .wire expected_res 16
         |
         |
         |       ${op1_meminit}
-        |       ${op1_memblock}
-        |       .mem op1_ptr 16
-        |       .wire op1_addr 16
+        |       .mem op1_ptr 16 ${op1.length}
         |       .wire op1_val  16
         |
         |       ${op2_meminit}
-        |       ${op2_memblock}
-        |       .mem op2_ptr 16
-        |       .wire op2_addr 16
+        |       .mem op2_ptr 16 ${op2.length}
         |       .wire op2_val  16
         |
         |       .const one 16 1
         |       .const zero 16 0
         |       .const test_length 16 ${op1.length}
+        |
         |
         |       ${mkReg("counter", Some(UInt16(0)))}
         |       ${mkReg("done", Some(UInt16(0)))}
@@ -148,36 +141,36 @@ trait SingleInstructionTest
         |       ${mkReg("correct", Some(UInt16(1)))}
         |
         |
-        |       ADD op1_addr, op1_ptr, counter_curr;
-        |       ADD op2_addr, op2_ptr, counter_curr;
-        |       ADD res_addr, res_ptr, counter_curr;
+        |       (op1_ptr, 0) LLD op1_val, op1_ptr[counter_curr];
         |
-        |       ${op1_memblock}
-        |       LLD op1_val, op1_addr[0];
-        |       ${op2_memblock}
-        |       LLD op2_val, op2_addr[0];
+        |       (op2_ptr, 0) LLD op2_val, op2_ptr[counter_curr];
         |
         |       ${operator} result_next, op1_val, op2_val;
         |
-        |       ${res_memblock}
-        |       LLD expected_res, res_addr[0];
+        |
+        |       (res_ptr, 0) LLD expected_res, res_ptr[counter_curr];
         |
         |       ADD counter_next, counter_curr, one;
         |       SEQ correct_next, result_next, expected_res;
         |
         |       SEQ done_next, counter_next, test_length;
         |
-        |       @TRAP [ type = "\\fail" ]
-        |       EXPECT correct_curr, one, ["failed"];
-        |       @TRAP [ type = "\\stop" ]
-        |       EXPECT done_curr, zero, ["stopped"];
+        |       (0) ASSERT correct_curr;
+        |       (1) FINISH done_curr;
+        |       // @TRAP [ type = "\\fail" ]
+        |       // EXPECT correct_curr, one, ["failed"];
+        |       // @TRAP [ type = "\\stop" ]
+        |       // EXPECT done_curr, zero, ["stopped"];
         |
         |
         |   @LOC [ x = 1, y = 0]
         |   .proc p_1_0:
-        |       ${mkReg("dummy", None)}
-        |       ${mkReg("result", None)}
-        |       MOV dummy_next, result_curr;
+        |       @REG [id = \"result\", type = \"\\REG_CURR\" ]
+        |
+        |       .input result_curr 16
+        |       @TRACK [ name = "dummy" ]
+        |       .wire dummy 16
+        |       MOV dummy, result_curr;
         """.stripMargin
   }
   def createTest(
@@ -194,13 +187,15 @@ trait SingleInstructionTest
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
       use_loc = true,
-      log_file = Some(fixture.test_dir.resolve("run.log").toFile())
+      // debug_message = true
+      // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
       // log_file = None
     )
     implicit val TestName = new HasLoggerId { val id = getTestName }
-    val expected_results = (op1 zip op2) map { case (a, b) => compute(a, b) }
-    val program =
-      compile(mkProgram(context, op1, op2, expected_results), context)
+    val expected_results  = (op1 zip op2) map { case (a, b) => compute(a, b) }
+    val text              = mkProgram(context, op1, op2, expected_results)
+    fixture.dump("main.masm", text)
+    val program = compile(text, context)
     // interpret the program to make sure it is correct before trying it
     // out on Verilator
     ManticorePasses.BackendInterpreter(true)(program)(context)
@@ -210,7 +205,7 @@ trait SingleInstructionTest
 
     val assembled_program =
       MachineCodeGenerator.assembleProgram(program)(context)
-    val sleep_cycles = 5
+    val sleep_cycles   = 5
     val countdown_time = 2
     val timeout =
       (assembled_program.head.total + sleep_cycles) * (expected_vcycles) + 500
@@ -238,20 +233,25 @@ trait SingleInstructionTest
 
     test(
       mkProcessor(context, 0, 0)
-    ).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) {
-      dut =>
-        dut.clock.setTimeout(timeout)
-        context.logger.info("Programing the processor")
-        programProcessor(
-          dut,
-          assembled_program.head,
-          sleep_cycles,
-          countdown_time
-        )
+    ).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
+      dut.clock.setTimeout(timeout)
+      context.logger.info("Programing the processor")
+      programProcessor(
+        dut,
+        assembled_program.head,
+        sleep_cycles,
+        countdown_time
+      )
 
-        @tailrec
-        def check(to_check: Seq[UInt16]): Unit = {
-          dut.clock.step()
+      @tailrec
+      def check(to_check: Seq[UInt16]): Unit = {
+        dut.clock.step()
+        if (!dut.io.periphery.exception.error.peek().litToBoolean) {
+          context.logger.error(
+            s"Got early exception with id ${dut.io.periphery.exception.id.peek().litValue.toInt}!"
+          )
+
+        } else {
           to_check match {
             case x +: tail =>
               if (dut.io.packet_out.valid.peek().litToBoolean) {
@@ -264,21 +264,19 @@ trait SingleInstructionTest
             case Nil =>
           }
         }
+      }
 
-        context.logger.info("Snooping results")
-        check(expected_results)
-        context.logger.info("Waiting for stop")
-        while (!dut.io.periphery.exception.error.peek().litToBoolean) {
-          dut.clock.step()
-        }
-        // ensure no EXPECTs failed
-        assert(dut.io.periphery.exception.id.peek().litValue.toInt < 0x8000)
-
+      context.logger.info("Snooping results")
+      check(expected_results)
+      context.logger.info("Waiting for finish")
+      while (!dut.io.periphery.exception.error.peek().litToBoolean) {
+        dut.clock.step()
+      }
+      // ensure no EXPECTs failed
+      assert(dut.io.periphery.exception.id.peek().litValue.toInt == 1)
 
     }
 
   }
-
-
 
 }

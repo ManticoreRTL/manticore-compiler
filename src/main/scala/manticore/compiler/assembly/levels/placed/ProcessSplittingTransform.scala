@@ -20,6 +20,9 @@ import scalax.collection.mutable.{Graph => MutableGraph}
 import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.collection.BitSet
+import manticore.compiler.assembly.annotations.Loc
+import manticore.compiler.assembly.levels.InputType
+import manticore.compiler.assembly.annotations.Reg
 
 object DisjointSets {
   def apply[T](elements: Iterable[T]) = {
@@ -76,6 +79,100 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
   val flavor = PlacedIR
   import flavor._
 
+  override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
+    if (ctx.use_loc) {
+      val allHaveLoc = program.processes.forall { p =>
+        p.annons.exists {
+          case _: Loc => true
+          case _      => false
+        }
+      }
+      if (!allHaveLoc) {
+        ctx.logger.error("not all processes have @LOC annotation!")
+        program
+      } else {
+        ctx.logger.info("Skipping process splitting because @LOC annotations are found")
+        createSends(program)
+      }
+
+    } else {
+      doSplit(program)
+    }
+
+  }
+
+  private def createSends(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
+
+    import scala.collection.mutable.ArrayBuffer
+    case class StateId(id: String, index: Int)
+    val stateUsers =
+      scala.collection.mutable.Map
+        .empty[StateId, ArrayBuffer[DefProcess]]
+
+    val currentState = scala.collection.mutable.Map.empty[StateId, Name]
+
+    def getStateId(r: DefReg) = r.annons.collectFirst { case x: Reg =>
+      StateId(x.getId(), x.getIndex().getOrElse(0))
+    }
+
+    program.processes.foreach { p =>
+      val currents = p.registers.collect { case r if r.variable.varType == InputType => r }
+      currents.foreach { curr =>
+        getStateId(curr) match {
+          case Some(id) =>
+            currentState += (id -> curr.variable.name)
+
+            if (!stateUsers.contains(id)) {
+              stateUsers += (id -> ArrayBuffer.empty[DefProcess])
+            }
+            if (stateUsers(id).contains(p)) {
+              ctx.logger.error(s"multiple definitions of the same current state register ${curr}!")
+            } else {
+              stateUsers(id) += p
+            }
+          case None =>
+            ctx.logger.error("Missing a valid @REG annotation", curr)
+
+        }
+      }
+    }
+
+    val withSends = program.processes.map { ownerProcess =>
+      val nextValues = ownerProcess.registers.collect {
+        case r if r.variable.varType == OutputType => r
+      }
+
+      val sends = nextValues.flatMap { next =>
+        getStateId(next) match {
+          case Some(id) =>
+            currentState.get(id) match {
+              case Some(curr) =>
+                if (stateUsers.contains(id)) {
+                  ctx.logger.debug(
+                    s"${id.id} is used by ${stateUsers(id).map { _.id }.mkString(",")}"
+                  )
+                  stateUsers(id).collect {
+                    case userProcess if (userProcess.id != ownerProcess.id) =>
+                      Send(curr, next.variable.name, userProcess.id)
+                  }
+                } else {
+                  Nil
+                }
+              case None =>
+                ctx.logger.warn("missing current value!", next)
+                Nil
+            }
+          case None =>
+            ctx.logger.error("Missing a valid @REG annotation", next)
+            Nil
+        }
+      }
+      ownerProcess.copy(
+        body = ownerProcess.body ++ sends
+      )
+    }
+    program.copy(processes = withSends)
+  }
   private case class ProcessorDescriptor(
       inSet: BitSet,
       outSet: BitSet,
@@ -85,8 +182,8 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
 
     def merged(other: ProcessorDescriptor): ProcessorDescriptor = {
       val newOutSet = other.outSet union outSet
-      val newInSet = (inSet union other.inSet) diff newOutSet
-      val newBody = body union other.body
+      val newInSet  = (inSet union other.inSet) diff newOutSet
+      val newBody   = body union other.body
       ProcessorDescriptor(newInSet, newOutSet, newBody, memory + other.memory)
     }
   }
@@ -117,12 +214,12 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       InputOutputPairs.createInputOutputPairs(process).toArray
 
     val outputIndices = scala.collection.mutable.Map.empty[Name, Int]
-    val inputIndices = scala.collection.mutable.Map.empty[Name, Int]
-    val instrIndices = scala.collection.mutable.Map.empty[Instruction, Int]
-    var idx = 0
+    val inputIndices  = scala.collection.mutable.Map.empty[Name, Int]
+    val instrIndices  = scala.collection.mutable.Map.empty[Instruction, Int]
+    var idx           = 0
     statePairs.foreach { case (current, next) =>
       inputIndices += (current.variable.name -> idx)
-      outputIndices += (next.variable.name -> idx)
+      outputIndices += (next.variable.name   -> idx)
       idx += 1
     }
     idx = 0
@@ -131,8 +228,8 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       idx += 1
     }
     val body = process.body.toArray
-    val memories = process.registers.collect {
-      case DefReg(MemoryVariable(n, sz, _, _), _, _) => (n, sz)
+    val memories = process.registers.collect { case DefReg(MemoryVariable(n, sz, _, _), _, _) =>
+      (n, sz)
     }.toArray
     idx = 0
     val memoryIndices = scala.collection.mutable.Map.empty[Name, Int]
@@ -144,17 +241,17 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       def numStateRegs(): Int = statePairs.size
 
       def instructionIndex(inst: Instruction): Int = instrIndices(inst)
-      def inputIndex(r: Name): Int = inputIndices(r)
-      def outputIndex(r: Name): Int = outputIndices(r)
-      def getInstruction(idx: Int): Instruction = body(idx)
-      def getInput(idx: Int): Name = statePairs(idx)._1.variable.name
-      def getOutput(idx: Int): Name = statePairs(idx)._2.variable.name
-      def isInput(r: Name): Boolean = inputIndices.contains(r)
-      def isOutput(r: Name): Boolean = outputIndices.contains(r)
+      def inputIndex(r: Name): Int                 = inputIndices(r)
+      def outputIndex(r: Name): Int                = outputIndices(r)
+      def getInstruction(idx: Int): Instruction    = body(idx)
+      def getInput(idx: Int): Name                 = statePairs(idx)._1.variable.name
+      def getOutput(idx: Int): Name                = statePairs(idx)._2.variable.name
+      def isInput(r: Name): Boolean                = inputIndices.contains(r)
+      def isOutput(r: Name): Boolean               = outputIndices.contains(r)
 
       def isMemory(r: Name): Boolean = memoryIndices.contains(r)
-      def memoryIndex(r: Name): Int = memoryIndices(r)
-      def memorySize(idx: Int): Int = memories(idx)._2
+      def memoryIndex(r: Name): Int  = memoryIndices(r)
+      def memorySize(idx: Int): Int  = memories(idx)._2
     }
   }
   private def extractIndependentInstructionSequences(
@@ -163,11 +260,10 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
   )(implicit ctx: AssemblyContext) = {
 
     sealed trait SetElement
-    case object Syscall extends SetElement
+    case object Syscall                  extends SetElement
     case class Instr(instr: Instruction) extends SetElement
-    case class Memory(name: Name) extends SetElement
-    case class State(name: Name) extends SetElement
-
+    case class Memory(name: Name)        extends SetElement
+    case class State(name: Name)         extends SetElement
 
     val executionGraph = ctx.stats.recordRunTime("creating raw graph") {
       GraphBuilder.rawGraph(proc.body)
@@ -246,8 +342,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
               }
             }
             instr match {
-              case _ @(_: Expect | _: Interrupt | _: PutSerial | _: GlobalLoad |
-                  _: GlobalStore) =>
+              case _ @(_: Expect | _: Interrupt | _: PutSerial | _: GlobalLoad | _: GlobalStore) =>
                 disjoint.union(Instr(sinkInst), Syscall)
               case load @ LocalLoad(_, mem, _, _, _) =>
                 disjoint.union(Instr(sinkInst), Memory(mem))
@@ -265,9 +360,9 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     def collectProcessBody(sinks: Iterable[Instruction]) = {
 
       val bodyBitSet = scala.collection.mutable.BitSet.empty
-      val inBitSet = scala.collection.mutable.BitSet.empty
-      val outBitSet = scala.collection.mutable.BitSet.empty
-      val memBitSet = scala.collection.mutable.BitSet.empty
+      val inBitSet   = scala.collection.mutable.BitSet.empty
+      val outBitSet  = scala.collection.mutable.BitSet.empty
+      val memBitSet  = scala.collection.mutable.BitSet.empty
 
       sinks.foreach { sinkInst =>
         val sinkNode = executionGraph.get(sinkInst)
@@ -332,7 +427,8 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     ctx.stats.record("Maximum number of independent processes" -> results.size)
     results
   }
-  override def transform(
+
+  private def doSplit(
       program: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
 
@@ -373,9 +469,8 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       scala.collection.mutable.Queue.empty[ProcessorDescriptor] ++ splitted
 
     sealed trait MergeResult
-    case class MergeChoice(result: ProcessorDescriptor, index: Int, cost: Int)
-        extends MergeResult
-    case object NoMerge extends MergeResult
+    case class MergeChoice(result: ProcessorDescriptor, index: Int, cost: Int) extends MergeResult
+    case object NoMerge                                                        extends MergeResult
     ctx.stats.recordRunTime("merging processes") {
       while (toMerge.nonEmpty) {
         val head = toMerge.dequeue()
@@ -384,7 +479,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
             case ((ix, prevBest), currentChoice) =>
               if (canMerge(currentChoice, head)) {
                 val possibleMerge = head merged currentChoice
-                val possibleCost = estimateCost(possibleMerge)
+                val possibleCost  = estimateCost(possibleMerge)
                 val nextBest = prevBest match {
                   case NoMerge => MergeChoice(possibleMerge, ix, possibleCost)
                   case other: MergeChoice if (other.cost > possibleCost) =>
@@ -409,11 +504,10 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     // val stateOwner =
     val stateUsers = Array.fill(bitSetIndexer.numStateRegs()) { BitSet.empty }
 
-    mergedProcesses.zipWithIndex.foreach {
-      case (ProcessorDescriptor(inSet, _, _, _), ix) =>
-        inSet.foreach { stateIndex =>
-          stateUsers(stateIndex) = stateUsers(stateIndex) | BitSet(ix)
-        }
+    mergedProcesses.zipWithIndex.foreach { case (ProcessorDescriptor(inSet, _, _, _), ix) =>
+      inSet.foreach { stateIndex =>
+        stateUsers(stateIndex) = stateUsers(stateIndex) | BitSet(ix)
+      }
     }
     def processId(index: Int) = ProcessIdImpl(s"p${index}", -1, -1)
     val finalProcesses = mergedProcesses.zipWithIndex.map {
@@ -429,12 +523,12 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
           stateUsers(nextStateIndex).toSeq.collect {
             case recipient if recipient != procIndex =>
               val currentStateInDest = bitSetIndexer.getInput(nextStateIndex)
-              val nextStateInHere = bitSetIndexer.getOutput(nextStateIndex)
+              val nextStateInHere    = bitSetIndexer.getOutput(nextStateIndex)
               Send(currentStateInDest, nextStateInHere, processId(recipient))
           }
         }
         val bodyWithSends = body ++ sends
-        val referenced = NameDependence.referencedNames(bodyWithSends)
+        val referenced    = NameDependence.referencedNames(bodyWithSends)
         val usedRegs = program.processes.head.registers.filter { r =>
           referenced(r.variable.name)
         }

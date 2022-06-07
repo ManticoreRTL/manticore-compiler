@@ -18,6 +18,7 @@ import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.Path
+import scalax.collection.constrained.BinaryOp
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
@@ -305,14 +306,14 @@ object MachineCodeGenerator
   sealed abstract class Field(val startIndex: Int, val bitLength: Int) {
     val endIndex = startIndex + bitLength - 1
   }
-  case object OpcodeField    extends Field(0, 4)
-  case object RdField        extends Field(OpcodeField.endIndex + 1, 11)
-  case object FunctField     extends Field(RdField.endIndex + 1, 5)
-  case object Rs1Field       extends Field(FunctField.endIndex + 1, 11)
-  case object Rs2Field       extends Field(Rs1Field.endIndex + 1, 11)
-  case object Rs3Field       extends Field(Rs2Field.endIndex + 1, 11)
-  case object Rs4Field       extends Field(Rs3Field.endIndex + 1, 11)
-  case object ImmField       extends Field(Rs1Field.endIndex + 1, 33)
+  case object OpcodeField extends Field(0, 4)
+  case object RdField     extends Field(OpcodeField.endIndex + 1, 11)
+  case object FunctField  extends Field(RdField.endIndex + 1, 5)
+  case object Rs1Field    extends Field(FunctField.endIndex + 1, 11)
+  case object Rs2Field    extends Field(Rs1Field.endIndex + 1, 11)
+  case object Rs3Field    extends Field(Rs2Field.endIndex + 1, 11)
+  case object Rs4Field    extends Field(Rs3Field.endIndex + 1, 11)
+  case object ImmField    extends Field(Rs1Field.endIndex + 1, 33)
 
   object Opcodes extends Enumeration {
     type Type = Value
@@ -404,17 +405,37 @@ object MachineCodeGenerator
     val res = inst match {
       case i: BinaryArithmetic => assemble(i)
       case LocalLoad(rd, base, offset, _, annons) =>
+        val memoryPointer =
+          proc.registers.collectFirst {
+            case DefReg(MemoryVariable(m, _, _, _), Some(v), _) if m == base => v.toInt
+          } match {
+            case None =>
+              ctx.logger.error(s"${base} is not allocated!", inst)
+              0
+            case Some(value) =>
+              value
+          }
         asm
           .Opcode(Opcodes.LLOAD)
           .Rd(local(rd))
           .Funct(BinaryOperator.ADD)
-          .Rs1(local(base))
+          .Rs1(local(offset))
           .Zero(
             Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 16
           )
-          .Immediate(offset.toInt)
+          .Immediate(memoryPointer)
           .toLong
       case LocalStore(rs, base, offset, predicate, _, annons) =>
+        val memoryPointer =
+          proc.registers.collectFirst {
+            case DefReg(MemoryVariable(m, _, _, _), Some(v), _) if m == base => v.toInt
+          } match {
+            case None =>
+              ctx.logger.error(s"${base} is not allocated!", inst)
+              0
+            case Some(value) =>
+              value
+          }
         if (predicate.nonEmpty) {
           ctx.logger.error("can not handle explicit predicate", inst)
         }
@@ -422,10 +443,10 @@ object MachineCodeGenerator
           .Opcode(Opcodes.LSTORE)
           .Zero(RdField.bitLength)
           .Funct(BinaryOperator.ADD)
-          .Rs1(local(base))
-          .Rs2(local(rs))
+          .Rs1(local(rs))
+          .Rs2(local(offset))
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
-          .Immediate(offset.toInt)
+          .Immediate(memoryPointer)
           .toLong
       case Send(rd, rs, dest_id, annons) =>
         // in the machine code, we don't really specify the
@@ -455,6 +476,25 @@ object MachineCodeGenerator
           .Rs2(local(got))
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
           .Immediate(error_id.id.toInt)
+          .toLong
+      case Interrupt(action, condition, order, annons) =>
+        val id = order.value
+        val rs2 = action match {
+          case AssertionInterrupt   => 1
+          case FinishInterrupt      => 0
+          case SerialInterrupt(fmt) =>
+            ctx.logger.error("Can not handle FLUSH yet!", inst)
+            0
+          case StopInterrupt        => 0
+        }
+        asm
+          .Opcode(Opcodes.EXPECT)
+          .Zero(RdField.bitLength)
+          .Funct(BinaryOperator.SEQ)
+          .Rs1(local(condition))
+          .Rs2(rs2)
+          .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
+          .Immediate(id)
           .toLong
       case Predicate(rs, annons) =>
         asm

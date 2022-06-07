@@ -2,6 +2,7 @@ package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.AssemblyContext
+import manticore.compiler.assembly.annotations.Loc
 
 /** Adhoc placer
   * @author
@@ -9,7 +10,28 @@ import manticore.compiler.AssemblyContext
   */
 object RoundRobinPlacerTransform extends PlacedIRTransformer {
   import PlacedIR._
-  override def transform(
+
+  override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
+
+    if (ctx.use_loc) {
+      val allHaveLoc = program.processes.forall { p =>
+        p.annons.exists {
+          case _: Loc => true
+          case _      => false
+        }
+      }
+      if (!allHaveLoc) {
+        ctx.logger.error("not all processes have @LOC annotation!")
+        program
+      } else {
+        program
+      }
+
+    } else {
+      doPlace(program)
+    }
+  }
+  def doPlace(
       program: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
     val places = Range(0, ctx.max_dimx).flatMap { x =>
@@ -19,8 +41,7 @@ object RoundRobinPlacerTransform extends PlacedIRTransformer {
     val sortedProcess = program.processes
       .sortBy { p =>
         p.body.count {
-          case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore |
-              _: PutSerial) =>
+          case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) =>
             true
           case _ => false
         }
@@ -35,15 +56,16 @@ object RoundRobinPlacerTransform extends PlacedIRTransformer {
       .toMap
 
     val placed = sortedProcess.map { process =>
-
-      val renamed =process.body.map {
+      val renamed = process.body.map {
         case send: Send => send.copy(dest_id = newProcessIds(send.dest_id)).setPos(send.pos)
-        case other => other
+        case other      => other
       }
-      process.copy(
-        id = newProcessIds(process.id),
-        body = renamed
-      ).setPos(process.pos)
+      process
+        .copy(
+          id = newProcessIds(process.id),
+          body = renamed
+        )
+        .setPos(process.pos)
     }
     program
       .copy(
