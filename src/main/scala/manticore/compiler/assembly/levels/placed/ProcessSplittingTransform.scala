@@ -550,6 +550,67 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     }
 
     val result = program.copy(finalProcesses.toSeq.filter(_.body.nonEmpty))
+
+    ctx.logger.dumpArtifact("connectivity.dot") {
+
+      import scalax.collection.mutable.Graph
+      import scalax.collection.GraphEdge.DiEdge
+      val g = Graph.empty[ProcessId, DiEdge]
+      g ++= result.processes.map(_.id)
+
+      result.processes.foreach { process =>
+        process.body.foreach {
+          case Send(_, _, dest, _) =>
+            g += DiEdge(process.id, dest)
+          case _ => // nothing
+        }
+      }
+      import scalax.collection.io.dot._
+      import scalax.collection.io.dot.implicits._
+      val dotRoot = DotRootGraph(
+        directed = true,
+        id = Some("Connectivity graph")
+      )
+      def edgeTransform(
+          iedge: scalax.collection.Graph[ProcessId, DiEdge]#EdgeT
+      ): Option[(DotGraph, DotEdgeStmt)] = iedge.edge match {
+        case DiEdge(source, target) =>
+          Some(
+            (
+              dotRoot,
+              DotEdgeStmt(
+                source.toOuter.toString,
+                target.toOuter.toString
+              )
+            )
+          )
+        case t @ _ =>
+          ctx.logger.error(
+            s"An edge in the dependence could not be serialized! ${t}"
+          )
+          None
+      }
+      def nodeTransformer(
+          inode: scalax.collection.Graph[ProcessId, DiEdge]#NodeT
+      ): Option[(DotGraph, DotNodeStmt)] =
+        Some(
+          (
+            dotRoot,
+            DotNodeStmt(
+              NodeId(inode.toOuter.toString()),
+              List(DotAttr("label", inode.toOuter.toString.trim.take(64)))
+            )
+          )
+        )
+
+      val dotExport: String = g.toDot(
+        dotRoot = dotRoot,
+        edgeTransformer = edgeTransform,
+        cNodeTransformer = Some(nodeTransformer), // connected nodes
+        iNodeTransformer = Some(nodeTransformer)  // isolated nodes
+      )
+      dotExport
+    }
     ctx.stats.record(ProgramStatistics.mkProgramStats(result))
     result
 

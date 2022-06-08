@@ -24,6 +24,7 @@ import manticore.compiler.assembly.levels.placed.lowering.util.RecvEvent
 import manticore.compiler.assembly.CanBuildDependenceGraph
 import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.CarryType
+import java.io.PrintWriter
 
 /** Program scheduler pass
   *
@@ -403,6 +404,10 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
       }
     }
 
+    ctx.logger.info(s"NoC:\n ${network.draw()}")
+
+    ctx.logger.dumpArtifact(s"paths.json") { NetworkOnChip.jsonDump(network) }
+
     @tailrec
     def createRecvSchedule(
         cycle: Int,
@@ -449,7 +454,6 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
   private def removeDeadPhis(
       process: DefProcess
   )(implicit ctx: AssemblyContext) = {
-
 
     // in the process of bringing instructions inside case body, we might have
     // created dead phi nodes. Now it is the time to go through all the dead

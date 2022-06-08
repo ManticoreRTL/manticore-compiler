@@ -2161,7 +2161,7 @@ object WidthConversionCore
         //   builder.originalWidth(offset) == addressBits,
         //   s"Expected ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
         // )
-        if (memVar.size >= ctx.max_local_memory) {
+        if (memVar.size * memVar.width >= ctx.max_local_memory * 8) {
           // promote to global memory
           ctx.logger.error(s"Can not handle large memories yet!", i)
           Nil
@@ -2202,7 +2202,7 @@ object WidthConversionCore
         //   builder.originalWidth(offset) == addressBits,
         //   s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
         // )
-        if (memVar.size >= ctx.max_local_memory) {
+        if (memVar.size * memVar.width >= ctx.max_local_memory * 8) {
           // promote to global memory
           ctx.logger.error(s"Can not handle large memories yet!", i)
           Nil
