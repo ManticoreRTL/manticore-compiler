@@ -443,7 +443,7 @@ object LatencyAnalysis {
   }
 
   def xHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =
-    if (source.x > target.x) dim._2 - source.x + target.x
+    if (source.x > target.x) dim._1 - source.x + target.x
     else target.x - source.x
   def yHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =
     if (source.y > target.y) dim._2 - source.y + target.y

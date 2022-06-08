@@ -463,7 +463,8 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
         }
       }
     def canMerge(p1: ProcessorDescriptor, p2: ProcessorDescriptor): Boolean =
-      (p1.memory + p2.memory) <= ctx.max_local_memory
+      // need the div because the context value is in bytes
+      (p1.memory + p2.memory) <= (ctx.max_local_memory / (16 / 8))
 
     val toMerge =
       scala.collection.mutable.Queue.empty[ProcessorDescriptor] ++ splitted

@@ -71,7 +71,7 @@ private[lowering] class NetworkOnChip(dimX: Int, dimY: Int) {
           // the two paths are non empty)
           assert(
             xHops.nonEmpty,
-            s"Can not have self messages send ${send.serialized}"
+            s"Can not have self messages send ${send.serialized} from ${from} with xdist = $xDist and ydist = $yDist"
           )
           Step((to.y + 1) % dimY, (xHops.last.t + 1))
       }
