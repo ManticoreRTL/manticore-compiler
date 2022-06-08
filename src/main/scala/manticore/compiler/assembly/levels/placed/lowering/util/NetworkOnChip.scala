@@ -1,6 +1,7 @@
 package manticore.compiler.assembly.levels.placed.lowering.util
 import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
+import java.io.PrintWriter
 
 private[lowering] case class RecvEvent(recv: Recv, cycle: Int)
 
@@ -13,10 +14,10 @@ private[lowering] case class RecvEvent(recv: Recv, cycle: Int)
   *
   * @author Mahyar emami <mahyar.emami@epfl.ch>
   */
-private[lowering] class NetworkOnChip(dimX: Int, dimY: Int) {
+private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
 
   sealed abstract trait Response
-  case object Denied extends Response
+  case object Denied               extends Response
   case class Granted(arrival: Int) extends Response
 
   // the start time given should be the cycle at which a Send gets scheduled
@@ -27,7 +28,7 @@ private[lowering] class NetworkOnChip(dimX: Int, dimY: Int) {
   class Path private[NetworkOnChip] (
       val from: ProcessId,
       val send: Send,
-      scheduleCycle: Int
+      val scheduleCycle: Int
   ) {
 
     val to = send.dest_id
@@ -80,8 +81,46 @@ private[lowering] class NetworkOnChip(dimX: Int, dimY: Int) {
 
   }
   private type LinkOccupancy = scala.collection.mutable.Set[Int]
-  private val linksX = Array.ofDim[LinkOccupancy](dimX, dimY)
-  private val linksY = Array.ofDim[LinkOccupancy](dimX, dimY)
+  private val linksX    = Array.ofDim[LinkOccupancy](dimX, dimY)
+  private val linksY    = Array.ofDim[LinkOccupancy](dimX, dimY)
+  private val usedPaths = scala.collection.mutable.ArrayBuffer.empty[Path]
+  def draw(): String = {
+
+    def renderLine(y: Int): String = {
+      val topY = new StringBuilder
+      val xln  = new StringBuilder
+      val botY = new StringBuilder
+
+      val ln = new StringBuilder
+      ln ++= "\n"
+      for (x <- 0 until dimX) {
+        ln ++= f"${"|"}%12s"
+      }
+      ln ++= "\n"
+      for (x <- 0 until dimX) {
+        ln ++= f"${linksX(x)(y).size}%7d->[ ]".replace(" ", "-")
+      }
+      ln ++= "\n"
+      for (x <- 0 until dimX) {
+        ln ++= f"${"|"}%12s"
+      }
+      ln ++= "\n"
+      for (x <- 0 until dimX) {
+        ln ++= f"${"v"}%12s"
+      }
+      ln ++= "\n"
+      for (x <- 0 until dimX) {
+        ln ++= f"    ${linksY(x)(y).size}%8d"
+      }
+      ln ++= "\n"
+      ln.toString()
+    }
+    val str = new StringBuilder
+    for (y <- 0 until dimY) { str ++= renderLine(y) }
+    str.toString()
+  }
+
+  def getPaths(): Iterable[Path] = usedPaths
 
   // initially no link is occupied
   for (x <- 0 until dimX; y <- 0 until dimY) {
@@ -116,6 +155,8 @@ private[lowering] class NetworkOnChip(dimX: Int, dimY: Int) {
     */
   def request(path: Path): RecvEvent = {
     // reserve the links
+    assert(tryReserve(path.from, path.send, path.scheduleCycle).nonEmpty)
+    usedPaths += path
     for (Step(x, t) <- path.xHops) {
       linksX(x)(path.from.y) += t
     }
@@ -132,4 +173,29 @@ private[lowering] class NetworkOnChip(dimX: Int, dimY: Int) {
     )
   }
 
+}
+
+object NetworkOnChip {
+
+  def jsonDump(network: NetworkOnChip): String = {
+
+    val printer = new StringBuilder
+    printer ++= (s"{\n\"topology\": [${network.dimX}, ${network.dimY}], \n\"paths\": [")
+
+    network.getPaths().foreach { p =>
+      val ln = s"\"source\": [${p.from.x}, ${p.from.y}],\n" +
+        s"\"cycle\": ${p.scheduleCycle},\n" +
+        s"\"xHops\": [${p.xHops.map(_.loc).mkString(", ")}],\n" +
+        s"\"yHops\": [${p.yHops.map(_.loc).mkString(", ")}],\n" +
+        s"\"target\": [${p.to.x}, ${p.to.y}]\n"
+      printer ++= ("{")
+      printer ++= (ln)
+      if (p != network.getPaths().last)
+        printer ++= ("},")
+      else
+        printer ++= ("}")
+    }
+    printer ++= ("]}")
+    printer.toString()
+  }
 }
