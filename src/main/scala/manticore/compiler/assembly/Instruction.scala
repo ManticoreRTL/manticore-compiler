@@ -45,14 +45,14 @@ trait HasWidth {
   */
 trait ManticoreAssemblyIR {
 
-  type Name // type defining names, e.g., String
+  type Name     // type defining names, e.g., String
   type Constant // type defining constants, e.g., UInt16 or BigInt
   type Variable <: HasVariableType with Named[
     Variable
   ] with HasSerialized with HasWidth // type defining Variables, should include variable type information
   type CustomFunction <: HasSerialized // type defining custom function, e.g., Seq[UInt16]
-  type ProcessId // type defining a process identifier, e.g., String
-  type ExceptionId // type defining an exception identifier, e.g., String
+  type ProcessId                       // type defining a process identifier, e.g., String
+  type ExceptionId                     // type defining an exception identifier, e.g., String
 
   type Label
 
@@ -87,16 +87,13 @@ trait ManticoreAssemblyIR {
   sealed abstract class IRNode
 
   // IRNode for declarations
-  sealed abstract class Declaration
-      extends IRNode
-      with HasAnnotations
-      with Positional
+  sealed abstract class Declaration extends IRNode with HasAnnotations with Positional
 
   // Function def/decl
   case class DefFunc(
       name: Name,
       value: CustomFunction,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends Declaration
       with HasSerialized {
     override def serialized: String =
@@ -107,7 +104,7 @@ trait ManticoreAssemblyIR {
   case class DefReg(
       variable: Variable,
       value: Option[Constant] = Option.empty[Constant],
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends Declaration
       with HasSerialized {
     override def serialized: String =
@@ -119,7 +116,7 @@ trait ManticoreAssemblyIR {
       memory: Name,
       indexer: Seq[(Constant, Label)],
       default: Option[Label],
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends Declaration
       with HasSerialized {
     override def serialized: String =
@@ -133,17 +130,29 @@ trait ManticoreAssemblyIR {
                              else "")
 
   }
+
+  case class DefGlobalMemory(
+      memory: Name,
+      size: Long,
+      base: Long,
+      content: IndexedSeq[Constant] = IndexedSeq.empty[Constant],
+      annons: Seq[AssemblyAnnotation] = Nil
+  ) extends Declaration
+      with HasSerialized {
+    override def serialized: String =
+      f"${serializedAnnons("\t\t")}\t\t.gmem ${memory} ${size} 0x${base}%048x"
+  }
   // program definition, single one
   case class DefProgram(
       processes: Seq[DefProcess],
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends Declaration
       with HasSerialized {
     override def serialized: String = {
 
       val builder = new StringBuilder
       builder ++= s"${serializedAnnons("")}.prog: \n"
-      for(p <- processes) {
+      for (p <- processes) {
         builder ++= p.serialized
         builder ++= "\n"
       }
@@ -158,8 +167,9 @@ trait ManticoreAssemblyIR {
       registers: Seq[DefReg],
       functions: Seq[DefFunc],
       body: Seq[Instruction],
-      labels: Seq[DefLabelGroup] = Seq(),
-      annons: Seq[AssemblyAnnotation] = Seq()
+      labels: Seq[DefLabelGroup] = Nil,
+      globalMemories: Seq[DefGlobalMemory] = Nil,
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends Declaration
       with HasSerialized {
     override def serialized: String = {
@@ -172,29 +182,25 @@ trait ManticoreAssemblyIR {
           builder ++= "\n"
         }
       }
-     append(registers)
-     append(functions)
-     append(labels)
-     append(body)
-     builder.toString()
+      append(registers)
+      append(functions)
+      append(labels)
+      append(body)
+      builder.toString()
 
     }
   }
 
   // base instruction class
-  sealed trait Instruction
-      extends IRNode
-      with HasSerialized
-      with Positional
-      with HasAnnotations {
+  sealed trait Instruction extends IRNode with HasSerialized with Positional with HasAnnotations {
     override def serialized: String =
       s"${serializedAnnons("\t\t")}\t\t${toString}; //@${pos}"
 
   }
 
-  sealed trait DataInstruction extends Instruction
-  sealed trait ControlInstruction extends Instruction
-  sealed trait PrivilegedInstruction extends Instruction
+  sealed trait DataInstruction            extends Instruction
+  sealed trait ControlInstruction         extends Instruction
+  sealed trait PrivilegedInstruction      extends Instruction
   sealed trait SynchronizationInstruction extends Instruction
   sealed trait ExplicitlyOrderedInstruction extends Instruction {
     val order: ExecutionOrder
@@ -213,7 +219,7 @@ trait ManticoreAssemblyIR {
       rd: Name,
       choices: Seq[ParMuxCase],
       default: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends ControlInstruction {
 
     override def toString: String =
@@ -251,8 +257,8 @@ trait ManticoreAssemblyIR {
       target: Name,
       results: Seq[Phi],
       blocks: Seq[JumpCase],
-      dslot: Seq[Instruction] = Seq(),
-      annons: Seq[AssemblyAnnotation] = Seq()
+      dslot: Seq[Instruction] = Nil,
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends ControlInstruction {
 
     override def toString: String = {
@@ -279,7 +285,7 @@ trait ManticoreAssemblyIR {
       rd: Name,
       index: Name,
       base: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends ControlInstruction {
     override def toString: String =
       s"LOOKUP ${rd}, ${base}[${index}]"
@@ -290,7 +296,7 @@ trait ManticoreAssemblyIR {
       rd: Name,
       rs1: Name,
       rs2: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
 
     override def toString: String = s"${operator
@@ -301,7 +307,7 @@ trait ManticoreAssemblyIR {
 
   case class BreakCase(
       target: Int = -1,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends ControlInstruction {
     override def toString: String = s"BREAK ${target}"
   }
@@ -311,7 +317,7 @@ trait ManticoreAssemblyIR {
       func: Name,
       rd: Name,
       rsx: Seq[Name],
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString: String =
       s"CUST ${rd}, [${func}], ${rsx.mkString(", ")}"
@@ -324,9 +330,10 @@ trait ManticoreAssemblyIR {
       base: Name,
       address: Name,
       order: MemoryAccessOrder,
-      annons: Seq[AssemblyAnnotation] = Seq()
-  ) extends DataInstruction with ExplicitlyOrderedInstruction {
-    override def toString: String = s"LLD ${rd}, ${base}[${address}]"
+      annons: Seq[AssemblyAnnotation] = Nil
+  ) extends DataInstruction
+      with ExplicitlyOrderedInstruction {
+    override def toString: String = s"${order} LLD ${rd}, ${base}[${address}]"
 
   }
 
@@ -337,10 +344,10 @@ trait ManticoreAssemblyIR {
       address: Name,
       predicate: Option[Name],
       order: MemoryAccessOrder,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction
       with ExplicitlyOrderedInstruction {
-    override def toString: String = s"LST ${rs}, ${base}[${address}] ${predicate
+    override def toString: String = s"${order} LST ${rs}, ${base}[${address}] ${predicate
       .map(", " + _.toString())
       .getOrElse("")}"
   }
@@ -348,25 +355,29 @@ trait ManticoreAssemblyIR {
   // Load from global memory (DRAM)
   case class GlobalLoad(
       rd: Name,
-      base: Tuple3[Name, Name, Name],
-      annons: Seq[AssemblyAnnotation] = Seq()
+      base: Seq[Name],
+      order: MemoryAccessOrder,
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction
-      with PrivilegedInstruction {
+      with PrivilegedInstruction
+      with ExplicitlyOrderedInstruction {
     override def toString: String =
-      s"GLD ${rd}, [${base._1}, ${base._2}, ${base._3}]"
+      s"${order} GLD ${rd}, {${base.mkString(", ")}}"
 
   }
 
   // Store to global memory (DRAM)
   case class GlobalStore(
       rs: Name,
-      base: Tuple3[Name, Name, Name],
+      base: Seq[Name],
       predicate: Option[Name],
-      annons: Seq[AssemblyAnnotation] = Seq()
+      order: MemoryAccessOrder,
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction
-      with PrivilegedInstruction {
+      with PrivilegedInstruction
+      with ExplicitlyOrderedInstruction {
     override def toString: String =
-      s"GST ${rs}, [${base._1}, ${base._2}, ${base._3}]${predicate
+      s"${order} GST ${rs}, {${base.mkString(", ")}}${predicate
         .map { x => ", " + x.toString() }
         .getOrElse("")}"
 
@@ -376,7 +387,7 @@ trait ManticoreAssemblyIR {
   case class SetValue(
       rd: Name,
       value: Constant,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString: String =
       s"SET ${rd}, ${value}"
@@ -384,10 +395,10 @@ trait ManticoreAssemblyIR {
 
   // send a register to a process
   case class Send(
-      rd: Name, // register name in the destination process
-      rs: Name, // register name in the source process
+      rd: Name,           // register name in the destination process
+      rs: Name,           // register name in the source process
       dest_id: ProcessId, // destination process id
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends SynchronizationInstruction {
     override def toString: String = s"SEND ${rd}, [${dest_id}], ${rs}"
 
@@ -400,7 +411,7 @@ trait ManticoreAssemblyIR {
       rd: Name,
       rs: Name,
       source_id: ProcessId,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends SynchronizationInstruction {
     override def toString: String = s"RECV ${rd}, [${source_id}], ${rs}"
   }
@@ -410,7 +421,7 @@ trait ManticoreAssemblyIR {
       ref: Name,
       got: Name,
       error_id: ExceptionId,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends ControlInstruction
       with PrivilegedInstruction {
     override def toString: String = s"EXPECT ${ref}, ${got}, [${error_id}]"
@@ -419,7 +430,7 @@ trait ManticoreAssemblyIR {
 
   case class Predicate(
       rs: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString: String = s"PREDICATE ${rs}"
 
@@ -430,7 +441,7 @@ trait ManticoreAssemblyIR {
       sel: Name,
       rfalse: Name,
       rtrue: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
 
     override def toString: String = s"MUX ${rd}, ${sel}, ${rfalse}, ${rtrue}"
@@ -438,8 +449,8 @@ trait ManticoreAssemblyIR {
   }
 
   case object Nop extends Instruction {
-    val annons: Seq[AssemblyAnnotation] = Seq()
-    override def toString: String = s"\t\tNOP;"
+    val annons: Seq[AssemblyAnnotation] = Nil
+    override def toString: String       = s"\t\tNOP;"
   }
 
   case class AddC(
@@ -448,7 +459,7 @@ trait ManticoreAssemblyIR {
       rs1: Name,
       rs2: Name,
       ci: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
 
     override def toString: String =
@@ -458,7 +469,7 @@ trait ManticoreAssemblyIR {
 
   case class ClearCarry(
       carry: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString(): String =
       s"CLEARCARRY ${carry}"
@@ -466,7 +477,7 @@ trait ManticoreAssemblyIR {
 
   case class SetCarry(
       carry: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString(): String =
       s"SETCARRY ${carry}"
@@ -477,7 +488,7 @@ trait ManticoreAssemblyIR {
       rd: Name,
       rs: Name,
       width: Constant,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString: String =
       s"PADZERO ${rd}, ${rs}, ${width}"
@@ -487,7 +498,7 @@ trait ManticoreAssemblyIR {
   case class Mov(
       rd: Name,
       rs: Name,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString: String =
       s"MOV ${rd}, ${rs}"
@@ -507,7 +518,7 @@ trait ManticoreAssemblyIR {
       rs: Name,
       offset: Int,
       length: Int,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString: String =
       s"SLICE ${rd}, ${rs}[${offset} +: ${length}]"
@@ -529,22 +540,21 @@ trait ManticoreAssemblyIR {
   }
 
   case class SystemCallOrder(value: Int) extends ExecutionOrder {
-    override def toString = s"($value)"
+    override def toString                  = s"($value)"
     def withValue(v: Int): SystemCallOrder = copy(value = v)
   }
 
-  case class MemoryAccessOrder(memory: Name, value: Int)
-      extends ExecutionOrder {
-    override def toString = s"($memory, $value)"
+  case class MemoryAccessOrder(memory: Name, value: Int) extends ExecutionOrder {
+    override def toString                      = s"($memory, $value)"
     def withMemory(m: Name): MemoryAccessOrder = copy(memory = m)
-    def withValue(v: Int): MemoryAccessOrder = copy(value = v)
+    def withValue(v: Int): MemoryAccessOrder   = copy(value = v)
   }
 
   case class PutSerial(
       rs: Name,
       pred: Name,
       order: SystemCallOrder,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends PrivilegedInstruction
       with ExplicitlyOrderedInstruction {
     override def toString: String =
@@ -552,9 +562,9 @@ trait ManticoreAssemblyIR {
   }
 
   sealed trait InterruptAction
-  case object FinishInterrupt extends InterruptAction
-  case object StopInterrupt extends InterruptAction
-  case object AssertionInterrupt extends InterruptAction
+  case object FinishInterrupt                   extends InterruptAction
+  case object StopInterrupt                     extends InterruptAction
+  case object AssertionInterrupt                extends InterruptAction
   case class SerialInterrupt(fmt: FormatString) extends InterruptAction
 
   // other things such as function calls are also interrupts and should be
@@ -564,7 +574,7 @@ trait ManticoreAssemblyIR {
       action: InterruptAction,
       condition: Name,
       order: SystemCallOrder,
-      annons: Seq[AssemblyAnnotation] = Seq()
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends PrivilegedInstruction
       with ExplicitlyOrderedInstruction {
     override def toString: String = {

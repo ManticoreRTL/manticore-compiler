@@ -46,7 +46,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
   sealed trait InterpretationTrap
 
   case object InterpretationFailure extends InterpretationTrap
-  case object InterpretationFinish extends InterpretationTrap
+  case object InterpretationFinish  extends InterpretationTrap
 
   private final class ProcessState(val proc: DefProcess)(implicit
       val ctx: AssemblyContext
@@ -108,12 +108,22 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         name -> BlockRam(content, width, size, name)
     }.toMap
 
+    val globalMemory = {
+      val requiredSize = proc.globalMemories.map { gmem => gmem.base + gmem.size }.maxOption.getOrElse(0L)
+      if (!requiredSize.isValidInt) {
+        ctx.logger.fail(
+          "GlobalMemory is too big for interpretation. Make sure JVM has enough heap space!"
+        )
+
+      }
+      Array.ofDim[BigInt](requiredSize.toInt)
+    }
     // a container to map .mem names to their allocated block ram (possibly many to one)
-    var predicate: Boolean = false
-    var carry: Boolean = false
-    var select: Boolean = false
+    var predicate: Boolean                             = false
+    var carry: Boolean                                 = false
+    var select: Boolean                                = false
     var exception_occurred: Option[InterpretationTrap] = None
-    var program_index: Int = 0
+    var program_index: Int                             = 0
     val label_bindings = scala.collection.mutable.Map.empty[Name, Label]
 
   }
@@ -135,7 +145,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
 
     sealed trait ExecutionEdgeLabel
     case class Conditional(l: Label) extends ExecutionEdgeLabel
-    case object Unconditional extends ExecutionEdgeLabel
+    case object Unconditional        extends ExecutionEdgeLabel
     class ExecutionVertex {
 
       val body = scala.collection.mutable.ArrayBuffer.empty[Instruction]
@@ -233,10 +243,10 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
     def interpret(inst: BinaryArithmetic): Unit = {
       import manticore.compiler.assembly.BinaryOperator._
       val BinaryArithmetic(op, rd, rs1, rs2, _) = inst
-      val rd_width = definitions(rd).variable.width
-      implicit val clip_width = ClipWidth(rd_width)
-      val rs1_val = state.register_file(rs1)
-      val rs2_val = state.register_file(rs2)
+      val rd_width                              = definitions(rd).variable.width
+      implicit val clip_width                   = ClipWidth(rd_width)
+      val rs1_val                               = state.register_file(rs1)
+      val rs2_val                               = state.register_file(rs2)
       val rd_val = op match {
         case ADD => clipped(rs1_val + rs2_val)
         case SUB => clipped(rs1_val - rs2_val)
@@ -279,7 +289,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
           // since all values are positive, we should manually handle
           // propagation of the sign bit
 
-          val rs1_val = state.register_file(rs1)
+          val rs1_val   = state.register_file(rs1)
           val rs1_width = definitions(rs1).variable.width
           assert(
             rs2_val >= 0,
@@ -292,9 +302,9 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
               val full_mask = (BigInt(1) << rs1_width) - 1
               val nonsigned_width =
                 if (rs2_val > rs1_width) 0 else rs1_width - rs2_val.toInt
-              val nonsign_mask = (BigInt(1) << nonsigned_width) - 1
-              val sign_mask = full_mask - nonsign_mask
-              val shifted = rs1_val >> rs2_val.toInt
+              val nonsign_mask   = (BigInt(1) << nonsigned_width) - 1
+              val sign_mask      = full_mask - nonsign_mask
+              val shifted        = rs1_val >> rs2_val.toInt
               val shifted_signed = sign_mask | shifted
               clipped(shifted_signed)
             } else {
@@ -323,8 +333,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
             s"both operands of SLTS should have the same width in: \n${inst}"
           )
 
-          val rs1_val = state.register_file(rs1)
-          val rs2_val = state.register_file(rs2)
+          val rs1_val  = state.register_file(rs1)
+          val rs2_val  = state.register_file(rs2)
           val rs1_sign = rs1_val.testBit(rs1_width - 1)
           val rs2_sign = rs2_val.testBit(rs2_width - 1)
 
@@ -348,7 +358,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
           } else if (!rs1_sign && rs2_sign) {
             BigInt(
               0
-            ) // rs1 is positive and rs2 negative. Therefore rs1 < rs2 is false
+            )      // rs1 is positive and rs2 negative. Therefore rs1 < rs2 is false
           } else { // both are positive
             if (rs1_val < rs2_val) {
               BigInt(1)
@@ -384,7 +394,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         ctx.logger.error("Custom instruction can not be interpreted yet!", i)
       case LocalLoad(rd, base, addr, _, _) =>
         val addrValue = state.register_file(addr);
-        val memory = state.memory_blocks(base)
+        val memory    = state.memory_blocks(base)
         if (addrValue >= memory.capacity) {
           ctx.logger.warn("Index out of bound")
           update(rd, BigInt(0))
@@ -395,7 +405,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
 
       case LocalStore(rs, base, addr, predicate, _, annons) =>
         val addrValue = state.register_file(addr);
-        val memory = state.memory_blocks(base)
+        val memory    = state.memory_blocks(base)
         if (addrValue >= memory.capacity) {
           ctx.logger.warn(
             s"Index out of bound, ignoring write to ${base} at address ${addrValue} >= ${memory.capacity}"
@@ -409,12 +419,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
             memory.content(addrValue.toInt) = rsv
           }
         }
-      case GlobalLoad(rd, base, annons) =>
-        ctx.logger.error("Can handle global memory access", instruction)
-        state.exception_occurred = Some(InterpretationFailure)
-      case GlobalStore(rs, base, predicate, annons) =>
-        ctx.logger.error("Can handle global memory access", instruction)
-        state.exception_occurred = Some(InterpretationFailure)
+
       case SetValue(rd, value, annons) =>
         ctx.logger.error("Can handle SET", instruction)
         state.exception_occurred = Some(InterpretationFailure)
@@ -429,7 +434,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         }
       case intr @ Interrupt(action, condition, _, _) =>
         val cond_val = state.register_file(condition)
-        val fires = cond_val == 1
+        val fires    = cond_val == 1
         action match {
           case AssertionInterrupt if !fires =>
             ctx.logger.error(s"Assertion failed!", intr)
@@ -441,7 +446,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
             ctx.logger.error(s"Stopped!", intr)
             state.exception_occurred = Some(InterpretationFailure)
           case SerialInterrupt(fmt) if fires =>
-            val values = state.serial_queue.dequeueAll(_ => true)
+            val values   = state.serial_queue.dequeueAll(_ => true)
             val resolved = fmt.consume(values)
             if (resolved.isLit) {
               serial match {
@@ -513,8 +518,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         ctx.logger.error(s"Can not handle predicate yet!", instruction)
 
       case Mux(rd, sel, rfalse, rtrue, annons) =>
-        val sel_val = state.register_file(sel)
-        val rtrue_val = state.register_file(rtrue)
+        val sel_val    = state.register_file(sel)
+        val rtrue_val  = state.register_file(rtrue)
         val rfalse_val = state.register_file(rfalse)
         val rd_val = if (sel_val == 1) {
           rtrue_val
@@ -533,7 +538,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         val rs_shifted = rs_val >> offset
         // Must use a BigInt for the mask otherwise it may
         // not hold in an Int.
-        val mask = (BigInt(1) << length) - 1
+        val mask   = (BigInt(1) << length) - 1
         val rd_val = rs_shifted & mask
         update(rd, rd_val)
 
@@ -542,9 +547,9 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         ctx.logger.warn("Nops are unnecessary for interpretation", instruction)
       case AddC(rd, co, rs1, rs2, ci, annons) =>
         val rd_width = definitions(rd).variable.width
-        val rs1_val = state.register_file(rs1)
-        val rs2_val = state.register_file(rs2)
-        val ci_val = state.register_file(ci)
+        val rs1_val  = state.register_file(rs1)
+        val rs2_val  = state.register_file(rs2)
+        val ci_val   = state.register_file(ci)
         if (ci_val > 1) {
           ctx.logger.error(
             "Internal interpreter error, carry computation is incorrect",
@@ -560,8 +565,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
           )
         }
         val rd_carry_val = rs1_val + rs2_val + ci_val
-        val rd_val = clipped(rd_carry_val)(ClipWidth(rd_width))
-        val co_val = BigInt(if (rd_carry_val.testBit(rd_width)) 1 else 0)
+        val rd_val       = clipped(rd_carry_val)(ClipWidth(rd_width))
+        val co_val       = BigInt(if (rd_carry_val.testBit(rd_width)) 1 else 0)
         update(rd, rd_val)
         update(co, co_val)
 
@@ -630,6 +635,34 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
                 }
             }
         }
+      case GlobalLoad(rd, base, _, _) =>
+        val addressParts = base.map(state.register_file(_))
+        assert(addressParts.length == 3, s"expected 3 registers in global memory address ${instruction}")
+        val concreteAddr =
+          addressParts(0) | (addressParts(1) << 16) | (addressParts(2) << 32)
+        if (!concreteAddr.isValidInt) {
+          ctx.logger.error(s"Invalid global memory address ${concreteAddr}!", instruction)
+          update(rd, BigInt(0))
+        } else {
+          val rdVal = state.globalMemory(concreteAddr.toInt)
+          update(rd, rdVal)
+        }
+      case GlobalStore(rs, base, pred, _, _) =>
+        val addressParts = base.map(state.register_file(_))
+        assert(addressParts.length == 3, s"expected 3 registers in global memory address ${instruction}")
+        val concreteAddr =
+          addressParts(0) | (addressParts(1) << 16) | (addressParts(2) << 32)
+        if (!concreteAddr.isValidInt) {
+          ctx.logger.error(s"Invalid global memory address ${concreteAddr}", instruction)
+        } else {
+          val enabled = pred
+            .map(state.register_file(_) == 1)
+            .getOrElse(state.predicate)
+          if (enabled) {
+            val rsVal = state.register_file(rs)
+            state.globalMemory(concreteAddr.toInt) = rsVal
+          }
+        }
       case i @ (_: Recv | _: BreakCase) =>
         ctx.logger.error("Illegal instruction", instruction)
         state.exception_occurred = Some(InterpretationFailure)
@@ -637,7 +670,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
     }
 
     sealed trait StepStatus
-    case object StepVCycleFinish extends StepStatus
+    case object StepVCycleFinish   extends StepStatus
     case object StepVCycleContinue extends StepStatus
 
     def step(): StepStatus = {

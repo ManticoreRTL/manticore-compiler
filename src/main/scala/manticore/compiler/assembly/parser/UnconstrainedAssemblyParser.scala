@@ -328,27 +328,9 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       LocalStore(rs.chars, base.chars, addr.chars, p.map(_.chars), order, a)
     }
 
-  def gstore_inst: Parser[GlobalStore] =
-    (annotations ~ keyword(
-      "GST"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]" ~ opt(
-      "," ~> ident
-    )) ^^ { case (a ~ _ ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _ ~ p) =>
-      GlobalStore(
-        rs.chars,
-        (rh.chars, rm.chars, rl.chars),
-        p.map(_.chars),
-        a
-      )
-    }
 
-  def gload_inst: Parser[GlobalLoad] =
-    (annotations ~ keyword(
-      "GLD"
-    ) ~ ident ~ "," ~ "[" ~ ident ~ "," ~ ident ~ "," ~ ident ~ "]") ^^ {
-      case (a ~ _ ~ rs ~ _ ~ _ ~ rh ~ _ ~ rm ~ _ ~ rl ~ _) =>
-        GlobalLoad(rs.chars, (rh.chars, rm.chars, rl.chars), a)
-    }
+
+
   def set_inst: Parser[SetValue] =
     (annotations ~ keyword("SET") ~ ident ~ "," ~ const_value) ^^ {
       case (a ~ _ ~ rd ~ _ ~ value) =>
@@ -460,7 +442,7 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def instruction(implicit ctx: AssemblyContext): Parser[Instruction] = positioned(
     arith_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
-      | gload_inst | gstore_inst | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst | slice_inst
+      | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst | slice_inst
       | interrupt_inst | put_inst
   ) <~ ";"
   def body(implicit ctx: AssemblyContext): Parser[Seq[Instruction]] = rep(instruction)
@@ -469,7 +451,7 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def process(implicit ctx: AssemblyContext): Parser[DefProcess] =
     (annotations ~ keyword(".proc") ~ ident ~ ":" ~ regs ~ body) ^^ {
       case (a ~ _ ~ id ~ _ ~ rs ~ insts) =>
-        DefProcess(id.chars, rs.flatten, Seq.empty, insts, Seq(), a)
+        DefProcess(id.chars, rs.flatten, Seq.empty, insts, Nil, Nil, a)
     }
 
   def program(implicit ctx: AssemblyContext): Parser[DefProgram] =

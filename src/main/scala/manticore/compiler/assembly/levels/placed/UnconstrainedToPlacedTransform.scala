@@ -4,18 +4,10 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.annotations.AssemblyAnnotation
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
-import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
-  Block => BlockField
-}
-import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
-  Capacity => CapacityField
-}
-import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
-  X => XField
-}
-import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{
-  Y => YField
-}
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{Block => BlockField}
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{Capacity => CapacityField}
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{X => XField}
+import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.{Y => YField}
 import manticore.compiler.assembly.annotations.MemInit
 import manticore.compiler.assembly.annotations.Memblock
 import manticore.compiler.assembly.annotations.Trap
@@ -56,21 +48,20 @@ object UnconstrainedToPlacedTransform
     val converted_processes = if (ctx.use_loc) {
       // probably in debug or test mode, check for @LOC annotations and
       // place the processes accordingly
-      val converted_ids: Map[S.ProcessId, T.ProcessId] = asm.processes.map {
-        p: S.DefProcess =>
-          val location: Option[LocAnnotation] = p.annons.collectFirst {
-            case l: LocAnnotation => l
-          }
-          if (location.isEmpty) {
-            ctx.logger.fail(
-              s"process ${p} is missing a ${LocAnnotation.name} annotation!"
-            )
-          }
-          p.id -> T.ProcessIdImpl(
-            p.id,
-            location.get.getX(),
-            location.get.getY()
+      val converted_ids: Map[S.ProcessId, T.ProcessId] = asm.processes.map { p: S.DefProcess =>
+        val location: Option[LocAnnotation] = p.annons.collectFirst { case l: LocAnnotation =>
+          l
+        }
+        if (location.isEmpty) {
+          ctx.logger.fail(
+            s"process ${p} is missing a ${LocAnnotation.name} annotation!"
           )
+        }
+        p.id -> T.ProcessIdImpl(
+          p.id,
+          location.get.getX(),
+          location.get.getY()
+        )
       }.toMap
 
       asm.processes.map(convert(converted_ids, _))
@@ -283,10 +274,10 @@ object UnconstrainedToPlacedTransform
         T.MemoryAccessOrder(order.memory, order.value),
         annons
       )
-    case S.GlobalLoad(rd, base, annons) =>
-      T.GlobalLoad(rd, base, annons)
-    case S.GlobalStore(rs, base, p, annons) =>
-      T.GlobalStore(rs, base, p, annons)
+    case S.GlobalLoad(rd, base, order, annons) =>
+      T.GlobalLoad(rd, base, T.MemoryAccessOrder(order.memory, order.value), annons)
+    case S.GlobalStore(rs, base, p, order, annons) =>
+      T.GlobalStore(rs, base, p, T.MemoryAccessOrder(order.memory, order.value), annons)
     case S.Send(rd, rs, dest_id, annons) =>
       T.Send(rd, rs, proc_map(dest_id), annons)
     case S.SetValue(rd, value, annons) =>

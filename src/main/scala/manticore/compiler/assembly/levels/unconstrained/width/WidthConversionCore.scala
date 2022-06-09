@@ -205,9 +205,7 @@ import scala.sys.process.processInternal
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
 
-object WidthConversionCore
-    extends ConversionBuilder
-    with UnconstrainedIRTransformer {
+object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransformer {
 
   import flavor._
 
@@ -243,8 +241,8 @@ object WidthConversionCore
     // }
     //
     val constFalse = builder.mkConstant(0)
-    val constTrue = builder.mkConstant(1)
-    val instQ = scala.collection.mutable.ArrayBuffer.empty[DataInstruction]
+    val constTrue  = builder.mkConstant(1)
+    val instQ      = scala.collection.mutable.ArrayBuffer.empty[DataInstruction]
     val (_, result) =
       rs1Array.zip(rs2Array).foldRight((constFalse, constFalse)) {
         case ((op1, op2), (foundPrev, resultPrev)) =>
@@ -305,9 +303,7 @@ object WidthConversionCore
   private def assert16Bit(
       uint16_array: Seq[Name],
       inst: Instruction
-  )(msg: => String)(implicit ctx: AssemblyContext): Unit = if (
-    uint16_array.length != 1
-  ) {
+  )(msg: => String)(implicit ctx: AssemblyContext): Unit = if (uint16_array.length != 1) {
     ctx.logger.error(msg, inst)
   }
 
@@ -396,7 +392,7 @@ object WidthConversionCore
 
     def assertAligned(inst: BinaryArithmetic): Unit = {
 
-      val rd_w = builder.originalWidth(inst.rd)
+      val rd_w  = builder.originalWidth(inst.rd)
       val rs1_w = builder.originalWidth(inst.rs1)
       val rs2_w = builder.originalWidth(inst.rs2)
       if (rs1_w != rs2_w) {
@@ -420,7 +416,7 @@ object WidthConversionCore
         val rs2_uint16_array: Seq[Name] =
           builder.getConversion(instruction.rs2).parts
 
-        val rd_width = builder.originalWidth(instruction.rd)
+        val rd_width  = builder.originalWidth(instruction.rd)
         val rs1_width = builder.originalWidth(instruction.rs1)
         val rs2_width = builder.originalWidth(instruction.rs2)
 
@@ -482,9 +478,7 @@ object WidthConversionCore
         // if the ADD has one MemoryType operand, it should not be masked
         // otherwise, when the memory is allocated (i.e., initial value is
         // set) we may end up truncating addresses.
-        if (
-          builder.originalDef(instruction.rs1).variable.varType != MemoryType
-        ) {
+        if (builder.originalDef(instruction.rs1).variable.varType != MemoryType) {
 
           inst_q ++= maskRd(rd_uint16_array_mutable.last, rd_mask, instruction)
         } else {
@@ -494,9 +488,7 @@ object WidthConversionCore
             ctx.logger.error(s"Global memory not implemented yet!", instruction)
           }
         }
-        if (
-          builder.originalDef(instruction.rs2).variable.varType == MemoryType
-        ) {
+        if (builder.originalDef(instruction.rs2).variable.varType == MemoryType) {
           ctx.logger.error(
             s"Can not have memory variable as the second operand!",
             instruction
@@ -520,7 +512,7 @@ object WidthConversionCore
         val rd_uint16_array_mutable = rd_uint16_array map { n =>
           builder.mkWire(n + "_mutable", 16)
         }
-        val rd_width = builder.originalWidth(instruction.rd)
+        val rd_width  = builder.originalWidth(instruction.rd)
         val rs1_width = builder.originalWidth(instruction.rs1)
         val rs2_width = builder.originalWidth(instruction.rs2)
 
@@ -551,30 +543,29 @@ object WidthConversionCore
           // them. However, unlike the ADD conversion, we initialize the first
           // carry to 1
           // val carry = builder.mkCarry()
-          val rs2_16_neg = builder.mkWire(instruction.rs2 + "_neg", 16)
+          val rs2_16_neg   = builder.mkWire(instruction.rs2 + "_neg", 16)
           val const_0xFFFF = builder.mkConstant(0xffff)
 
           // set the initial carry to 1
           // inst_q += SetCarry(carry)
 
           (rs1_uint16_array_aligned zip rs2_uint16_array_aligned zip rd_uint16_array_mutable)
-            .foldLeft(builder.mkCarry1()) {
-              case (cin, ((rs1_16, rs2_16), rd_16)) =>
-                inst_q += BinaryArithmetic(
-                  BinaryOperator.XOR,
-                  rs2_16_neg,
-                  rs2_16,
-                  const_0xFFFF
-                )
-                val cout = builder.mkCarry()
-                inst_q += AddC(
-                  co = cout,
-                  rd = rd_16,
-                  rs1 = rs1_16,
-                  rs2 = rs2_16_neg,
-                  ci = cin
-                )
-                cout
+            .foldLeft(builder.mkCarry1()) { case (cin, ((rs1_16, rs2_16), rd_16)) =>
+              inst_q += BinaryArithmetic(
+                BinaryOperator.XOR,
+                rs2_16_neg,
+                rs2_16,
+                const_0xFFFF
+              )
+              val cout = builder.mkCarry()
+              inst_q += AddC(
+                co = cout,
+                rd = rd_16,
+                rs1 = rs1_16,
+                rs2 = rs2_16_neg,
+                ci = cin
+              )
+              cout
 
             }
 
@@ -656,7 +647,7 @@ object WidthConversionCore
           )
         } else {
           val seq_partial_res = builder.mkWire("seq_partial_res", 16)
-          val seq_add_res = builder.mkWire("seq_add_res", 16)
+          val seq_add_res     = builder.mkWire("seq_add_res", 16)
           if (rs1_uint16_array.size >= (1 << 16)) {
             ctx.logger.error("SEQ is too wide!", instruction)
           }
@@ -669,20 +660,19 @@ object WidthConversionCore
           // compute partial equalities by computing the equality of
           // the partial operands and then summing up the results and
           // checking whether sum is equal to the number of partial results
-          rs1_uint16_array zip rs2_uint16_array foreach {
-            case (rs1_16, rs2_16) =>
-              inst_q += instruction.copy(
-                operator = BinaryOperator.SEQ,
-                rd = seq_partial_res,
-                rs1 = rs1_16,
-                rs2 = rs2_16
-              )
-              inst_q += BinaryArithmetic(
-                BinaryOperator.ADD,
-                seq_add_res,
-                seq_add_res,
-                seq_partial_res
-              )
+          rs1_uint16_array zip rs2_uint16_array foreach { case (rs1_16, rs2_16) =>
+            inst_q += instruction.copy(
+              operator = BinaryOperator.SEQ,
+              rd = seq_partial_res,
+              rs1 = rs1_16,
+              rs2 = rs2_16
+            )
+            inst_q += BinaryArithmetic(
+              BinaryOperator.ADD,
+              seq_add_res,
+              seq_add_res,
+              seq_partial_res
+            )
           }
 
           // zero out the upper bits
@@ -712,8 +702,8 @@ object WidthConversionCore
             ctx.logger.fail("I though shift amount was constant!")
           }
 
-        val rs = instruction.rs1
-        val rd = instruction.rd
+        val rs       = instruction.rs1
+        val rd       = instruction.rd
         val rs_width = builder.originalWidth(rs)
         val rd_width = builder.originalWidth(rd)
         if (shift_amount > 0xffff) {
@@ -779,9 +769,8 @@ object WidthConversionCore
             val computable_result_length = rd_uint16_array.length
 
             // create a bunch temp wires to keep the intermediate result of shifting
-            val result_builder_array = Seq.tabulate(computable_result_length) {
-              i =>
-                builder.mkWire(s"csll_builder_${i}", 16)
+            val result_builder_array = Seq.tabulate(computable_result_length) { i =>
+              builder.mkWire(s"csll_builder_${i}", 16)
             }
 
             // Conceptually, we should subdivide the shift_amount > 16 into a
@@ -864,29 +853,28 @@ object WidthConversionCore
                 result_builder_array.length - num_full_shifts
               )
 
-              non_zero_results.foldLeft(builder.mkConstant(0)) {
-                case (carry_in, rd_16) =>
-                  // compute the carry
-                  val carry_out = builder.mkWire("carry_out", 16)
-                  inst_q += instruction.copy(
-                    operator = BinaryOperator.SRL,
-                    rd = carry_out,
-                    rs1 = rd_16,
-                    rs2 = builder.mkConstant(16 - last_shift_amount)
-                  )
-                  inst_q += instruction.copy(
-                    operator = BinaryOperator.SLL,
-                    rd = rd_16,
-                    rs1 = rd_16,
-                    rs2 = builder.mkConstant(last_shift_amount)
-                  )
-                  inst_q += instruction.copy(
-                    operator = BinaryOperator.OR,
-                    rd = rd_16,
-                    rs1 = rd_16,
-                    rs2 = carry_in
-                  )
-                  carry_out
+              non_zero_results.foldLeft(builder.mkConstant(0)) { case (carry_in, rd_16) =>
+                // compute the carry
+                val carry_out = builder.mkWire("carry_out", 16)
+                inst_q += instruction.copy(
+                  operator = BinaryOperator.SRL,
+                  rd = carry_out,
+                  rs1 = rd_16,
+                  rs2 = builder.mkConstant(16 - last_shift_amount)
+                )
+                inst_q += instruction.copy(
+                  operator = BinaryOperator.SLL,
+                  rd = rd_16,
+                  rs1 = rd_16,
+                  rs2 = builder.mkConstant(last_shift_amount)
+                )
+                inst_q += instruction.copy(
+                  operator = BinaryOperator.OR,
+                  rd = rd_16,
+                  rs1 = rd_16,
+                  rs2 = carry_in
+                )
+                carry_out
               }
 
               inst_q ++= maskRd(
@@ -908,8 +896,8 @@ object WidthConversionCore
       // can only produce a single bit anyways.
       case BinaryOperator.SLL if !builder.isConstant(instruction.rs2) =>
         val shift_amount = instruction.rs2
-        val rs = instruction.rs1
-        val rd = instruction.rd
+        val rs           = instruction.rs1
+        val rd           = instruction.rd
         val ConvertedWire(shift_uint16, shift_amount_mask) =
           builder.getConversion(shift_amount)
 
@@ -959,8 +947,8 @@ object WidthConversionCore
             16
           )
 
-          val const_0 = builder.mkConstant(0)
-          val const_1 = builder.mkConstant(1)
+          val const_0  = builder.mkConstant(0)
+          val const_1  = builder.mkConstant(1)
           val const_16 = builder.mkConstant(16)
 
           val shift_amount_mutable_eq_0 =
@@ -975,11 +963,11 @@ object WidthConversionCore
             builder.mkWire("sh_mutable_minus_16", 16)
           val shift_right_amount_mutable =
             builder.mkWire("sh_right_mutable", 16)
-          val right_shifted = builder.mkWire("right_shifted", 16)
-          val carry_in = builder.mkWire("carry_in", 16)
-          val carry_out = builder.mkWire("carry_out", 16)
-          val tmp_res = builder.mkWire("tmp_res", 16)
-          val tmp_tmp_res = builder.mkWire("tmp_tmp_res", 16)
+          val right_shifted   = builder.mkWire("right_shifted", 16)
+          val carry_in        = builder.mkWire("carry_in", 16)
+          val carry_out       = builder.mkWire("carry_out", 16)
+          val tmp_res         = builder.mkWire("tmp_res", 16)
+          val tmp_tmp_res     = builder.mkWire("tmp_tmp_res", 16)
           val tmp_tmp_tmp_res = builder.mkWire("tmp_tmp_tmp_res", 16)
           // initialize the rd mutable array to the values of the rs
           // if rd_uint16_array is larger, we zero extend rs
@@ -1127,8 +1115,8 @@ object WidthConversionCore
           * takes care of that so we don't need to handle it here either.
           */
         val shift_amount = instruction.rs2
-        val rd = instruction.rd
-        val rs1 = instruction.rs1
+        val rd           = instruction.rd
+        val rs1          = instruction.rs1
 
         val ConvertedWire(shift_uint16, _) = builder.getConversion(shift_amount)
         assert16Bit(shift_uint16, instruction) {
@@ -1150,7 +1138,7 @@ object WidthConversionCore
         }
         // sign extension wire, maybe needed if the output is wider than the input
         val sign_replicated = builder.mkWire("sign_replicated", 16)
-        val sign_bit = builder.mkWire("sign", 1)
+        val sign_bit        = builder.mkWire("sign", 1)
 
         val msbits = rs_width % 16
         if (rd_width < 16) {
@@ -1203,9 +1191,8 @@ object WidthConversionCore
             * later sign extended and moved back to the result registers if
             * needed
             */
-          val rd_uint16_array_mutable = Seq.tabulate(rs1_uint16_array.length) {
-            i =>
-              builder.mkWire(s"sra_builder_${i}", 16)
+          val rd_uint16_array_mutable = Seq.tabulate(rs1_uint16_array.length) { i =>
+            builder.mkWire(s"sra_builder_${i}", 16)
           }
 
           inst_q ++= moveRegs(
@@ -1293,7 +1280,7 @@ object WidthConversionCore
 
             // handle the most significant short word, in this case we will actually
             // use the SRA instruction, but for the other short words we use SRL
-            val carry_out = builder.mkWire("carry_out", 16)
+            val carry_out       = builder.mkWire("carry_out", 16)
             val rd_left_shifted = builder.mkWire("rd_left_shifted", 16)
             inst_q += BinaryArithmetic(
               BinaryOperator.SLL,
@@ -1433,8 +1420,8 @@ object WidthConversionCore
           )
         }
 
-        val rd = instruction.rd
-        val rs = instruction.rs1
+        val rd       = instruction.rd
+        val rs       = instruction.rs1
         val rd_width = builder.originalWidth(rd)
         val rs_width = builder.originalWidth(rs)
 
@@ -1507,7 +1494,7 @@ object WidthConversionCore
             }
           } else { // rs_width > 16
 
-            val num_full_shifts = shift_amount.toInt / 16
+            val num_full_shifts   = shift_amount.toInt / 16
             val last_shift_amount = shift_amount.toInt % 16
             // num_full_shifts parts of the input are discarded so take the ones that remain
             val pre_shifted = rs_uint16_array.takeRight(
@@ -1727,7 +1714,7 @@ object WidthConversionCore
               mutable_sh,
               builder.mkConstant(0)
             )
-            val carry_in = builder.mkWire("carry_in", 16)
+            val carry_in            = builder.mkWire("carry_in", 16)
             val mutable_sh_gt_eq_16 = builder.mkWire("mutable_sh_gt_eq_16", 1)
             val sixteen_minus_shift_amount =
               builder.mkWire("sixteen_minus_shift_amount", 16)
@@ -1767,11 +1754,11 @@ object WidthConversionCore
                 builder.mkConstant(0)
               )
 
-            val new_res = builder.mkWire("new_res", 16)
-            val rd_left_shifted = builder.mkWire("rd_left_shifted", 16)
-            val carry_out = builder.mkWire("carry_out", 16)
+            val new_res          = builder.mkWire("new_res", 16)
+            val rd_left_shifted  = builder.mkWire("rd_left_shifted", 16)
+            val carry_out        = builder.mkWire("carry_out", 16)
             val rd_right_shifted = builder.mkWire("rd_right_shifted", 16)
-            val local_res = builder.mkWire("local_res", 16)
+            val local_res        = builder.mkWire("local_res", 16)
             // handle the rest (if any)
             for (jx <- (rd_uint16_array_mutable.length - 1) to 0 by -1) {
 
@@ -1867,7 +1854,7 @@ object WidthConversionCore
 
         val rs1Width = builder.originalWidth(instruction.rs1)
         val rs2Width = builder.originalWidth(instruction.rs2)
-        val rdWidth = builder.originalWidth(instruction.rd)
+        val rdWidth  = builder.originalWidth(instruction.rd)
         if (rdWidth != 1) {
           ctx.logger.warn(
             "Expected a single-bit as the comparison result!",
@@ -1876,9 +1863,9 @@ object WidthConversionCore
         }
         assert(rs1Width == rs2Width)
 
-        val rdArray = builder.getConversion(instruction.rd).parts
-        val rs1Array = builder.getConversion(instruction.rs1).parts
-        val rs2Array = builder.getConversion(instruction.rs2).parts
+        val rdArray         = builder.getConversion(instruction.rd).parts
+        val rs1Array        = builder.getConversion(instruction.rs1).parts
+        val rs2Array        = builder.getConversion(instruction.rs2).parts
         val (insts, result) = createLessThan(rs1Array, rs2Array)
         inst_q ++= insts
         inst_q += Mov(
@@ -1886,9 +1873,7 @@ object WidthConversionCore
           rs = result
         )
 
-        inst_q ++= rdArray.tail.map(r =>
-          Mov(rd = r, rs = builder.mkConstant(0))
-        )
+        inst_q ++= rdArray.tail.map(r => Mov(rd = r, rs = builder.mkConstant(0)))
 
       case BinaryOperator.SLTS =>
         // we should only handle SLTS rd, rs1, const_0, because this is the
@@ -1898,7 +1883,7 @@ object WidthConversionCore
 
         val rs1Width = builder.originalWidth(instruction.rs1)
         val rs2Width = builder.originalWidth(instruction.rs2)
-        val rdWidth = builder.originalWidth(instruction.rd)
+        val rdWidth  = builder.originalWidth(instruction.rd)
         if (rdWidth != 1) {
           ctx.logger.warn(
             "Expected a single-bit as the comparison result!",
@@ -1911,7 +1896,7 @@ object WidthConversionCore
             BigInt(0)
           ))
         )
-        val rdArray = builder.getConversion(instruction.rd).parts
+        val rdArray  = builder.getConversion(instruction.rd).parts
         val rs1Array = builder.getConversion(instruction.rs1).parts
         val rs2Array = builder.getConversion(instruction.rs2).parts
         // the next line should not really matter, put here for completeness
@@ -2133,6 +2118,38 @@ object WidthConversionCore
     other_annons :+ indexed_mblock
   }
 
+  def mkGlobalMemoryAddressCompute(
+      gMemory: DefGlobalMemory,
+      origAddr: Seq[Name],
+      subwordIndex: Int
+  )(implicit ctx: AssemblyContext, builder: Builder) = {
+    val constBase = Seq.tabulate(3) { index =>
+      val cte = ((gMemory.base + subwordIndex.toLong) >> (index * 16)) & 0xffff
+      builder.mkConstant(cte.toInt)
+    }
+
+    val globalAddress = Seq.tabulate(3) { _ => builder.mkWire("gmem_addr", 16) }
+    val padOrigAddr = origAddr ++ Seq.fill(3 - origAddr.length) {
+      builder.mkConstant(0)
+    }
+
+    val (_, carryChain) = padOrigAddr
+      .zip(globalAddress.zip(constBase))
+      .foldLeft(builder.mkCarry0(), Seq.empty[Instruction]) {
+        case ((carryIn, prev), (offset16, (addr16, base16))) =>
+          val carryOut = builder.mkCarry()
+          val adder = AddC(
+            rd = addr16,
+            co = carryOut,
+            rs1 = offset16,
+            rs2 = base16,
+            ci = carryIn
+          )
+          (carryOut, prev :+ adder)
+      }
+    (carryChain, globalAddress)
+  }
+
   def convert(instruction: Instruction)(implicit
       ctx: AssemblyContext,
       builder: Builder
@@ -2154,21 +2171,47 @@ object WidthConversionCore
         )
         Nil
       } else {
-        val memVar = memory.variable.asInstanceOf[MemoryVariable]
-        val wordWidth = memVar.width
+        val memVar      = memory.variable.asInstanceOf[MemoryVariable]
+        val wordWidth   = memVar.width
         val addressBits = if (memVar.size == 1) 1 else log2ceil(memVar.size)
-        // assert(
-        //   builder.originalWidth(offset) == addressBits,
-        //   s"Expected ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
-        // )
+
+        val offsetArray = builder.getConversion(offset).parts
+        val rdArray     = builder.getConversion(rd).parts
+
         if (memVar.size * memVar.width >= ctx.max_local_memory * 8) {
           // promote to global memory
-          ctx.logger.error(s"Can not handle large memories yet!", i)
-          Nil
+          val gMemory = builder.mkGlobalMemory(memVar.name)
+          ctx.logger.info(s"Converting ${memVar.name} to a global memory", gMemory)
+          // we need to convert the base of the global memory into multiple
+          // constants and create an adder chain of offset + base
+          if (gMemory.base >= (1L << (16 * 3).toLong) || gMemory.size >= (1L << (16 * 3).toLong)) {
+            ctx.logger.error(s"global memory base is too large!", gMemory)
+          }
+
+          rdArray.zipWithIndex.flatMap { case (rd16, subwordIndex) =>
+            if (offsetArray.length > 3) {
+              // if the size of the memory exceeds the capacity of our global memory
+              // we have already printed out an error. Basically since we can use 3 16-bit
+              // words to address the shorts in the global memory so we can not do any kind
+              // of memory (but I mean who really has so much memory in a real machine anyway?)
+              ctx.logger.warn(
+                "Throwing away bits of the memory address in converting to a global memory access",
+                i
+              )
+            }
+            val (carryChain, globalAddress) =
+              mkGlobalMemoryAddressCompute(gMemory, offsetArray, subwordIndex)
+            val gload = GlobalLoad(
+              rd = rd16,
+              base = globalAddress,
+              order = order,
+              annons = i.annons
+            )
+            carryChain :+ gload
+          }
+
         } else {
 
-          val offsetArray = builder.getConversion(offset).parts
-          val rdArray = builder.getConversion(rd).parts
           val baseArray = builder.getConversion(base).parts
           assert(baseArray.length == rdArray.length, "something is up!")
           if (offsetArray.length > 1) {
@@ -2195,29 +2238,60 @@ object WidthConversionCore
         )
         Nil
       } else {
-        val memVar = memory.variable.asInstanceOf[MemoryVariable]
-        val wordWidth = memVar.width
+        val memVar      = memory.variable.asInstanceOf[MemoryVariable]
+        val wordWidth   = memVar.width
         val addressBits = log2ceil(memVar.size)
         // assert(
         //   builder.originalWidth(offset) == addressBits,
         //   s"Expected the ${addressBits} bits as the offset in ${base} but got ${builder.originalWidth(offset)}"
         // )
+        val offsetArray = builder.getConversion(offset).parts
+        val rsArray     = builder.getConversion(rs).parts
+
+        val newPred = predicate.map { p =>
+          val t = builder.getConversion(p).parts
+          if (t.length != 1) {
+            ctx.logger.error(s"Bad predicate!", i)
+          }
+          t.head
+        }
         if (memVar.size * memVar.width >= ctx.max_local_memory * 8) {
           // promote to global memory
-          ctx.logger.error(s"Can not handle large memories yet!", i)
-          Nil
+          val gMemory = builder.mkGlobalMemory(memVar.name)
+          ctx.logger.info(s"Converting ${memVar.name} to a global memory", gMemory)
+          // we need to convert the base of the global memory into multiple
+          // constants and create an adder chain of offset + base
+
+          if (gMemory.base >= (1L << (16 * 3).toLong) || gMemory.size >= (1L << (16 * 3).toLong)) {
+            ctx.logger.error(s"global memory base is too large!", gMemory)
+          }
+
+          rsArray.zipWithIndex.flatMap { case (rs16, subwordIndex) =>
+            val offsetArray = builder.getConversion(offset).parts
+            if (offsetArray.length > 3) {
+              // if the size of the memory exceeds the capacity of our global memory
+              // we have already printed out an error. Basically since we can use 3 16-bit
+              // words to address the shorts in the global memory so we can not do any kind
+              // of memory (but I mean who really has so much memory in a real machine anyway?)
+              ctx.logger.warn(
+                "Throwing away bits of the memory address in converting to a global memory access",
+                i
+              )
+            }
+            val (carryChain, globalAddress) =
+              mkGlobalMemoryAddressCompute(gMemory, offsetArray, subwordIndex)
+            val gstore = GlobalStore(
+              rs = rs16,
+              base = globalAddress,
+              order = order,
+              predicate = newPred,
+              annons = i.annons
+            )
+            carryChain :+ gstore
+          }
         } else {
 
-          val offsetArray = builder.getConversion(offset).parts
-          val rsArray = builder.getConversion(rs).parts
           val baseArray = builder.getConversion(base).parts
-          val newPred = predicate.map { p =>
-            val t = builder.getConversion(p).parts
-            if (t.length != 1) {
-              ctx.logger.error(s"Bad predicate!", i)
-            }
-            t.head
-          }
           assert(baseArray.length == rsArray.length, "something is up!")
           if (offsetArray.length > 1) {
             ctx.logger.warn("Throwing away unused address bits", i)
@@ -2267,7 +2341,7 @@ object WidthConversionCore
               .setPos(intr.pos)
           )
         case SerialInterrupt(fmt) =>
-          val args = builder.flushSerial()
+          val args  = builder.flushSerial()
           val holes = fmt.holes
           if (holes.length != args.length) {
             ctx.logger.error(
@@ -2285,8 +2359,7 @@ object WidthConversionCore
             holes
               .zip(args)
               .collect {
-                case (hole: FormatString.FmtAtomArg, multiArg)
-                    if multiArg.length > 1 =>
+                case (hole: FormatString.FmtAtomArg, multiArg) if multiArg.length > 1 =>
                   val holeWidth = hole.width
                   hole -> FormatString.FmtConcat(
                     multiArg.map(_ => hole.withWidth(16)),
@@ -2314,12 +2387,12 @@ object WidthConversionCore
       }
     case i @ Mux(rd, sel, rfalse, rtrue, _) =>
       val ConvertedWire(rd_uint16_array, _) = builder.getConversion(rd)
-      val sel_uint16_array = builder.getConversion(sel).parts
+      val sel_uint16_array                  = builder.getConversion(sel).parts
       if (sel_uint16_array.size != 1) {
         ctx.logger.error("sel should be single bit!", i)
       }
       val rfalse_uint16_array = builder.getConversion(rfalse).parts
-      val rtrue_uint16_array = builder.getConversion(rtrue).parts
+      val rtrue_uint16_array  = builder.getConversion(rtrue).parts
       rd_uint16_array zip (rfalse_uint16_array zip rtrue_uint16_array) map {
         case (rd16, (rfalse16, rtrue16)) =>
           i.copy(
@@ -2419,8 +2492,7 @@ object WidthConversionCore
         case ((rd16, rs16_array), def16) =>
           i.copy(
             rd = rd16,
-            choices =
-              case_conds zip rs16_array map { case (a, b) => ParMuxCase(a, b) },
+            choices = case_conds zip rs16_array map { case (a, b) => ParMuxCase(a, b) },
             default = def16
           ).setPos(i.pos)
       }
@@ -2509,8 +2581,7 @@ object WidthConversionCore
 
     def replace(block: Iterable[Instruction]): Iterable[Instruction] = {
       block.map {
-        case s @ Slice(rd, rs, offset, length, annons)
-            if !sliceCoversOneWord(s) =>
+        case s @ Slice(rd, rs, offset, length, annons) if !sliceCoversOneWord(s) =>
           // We transform the slice into an unconstrained SRL with a narrower output.
           // The width conversion core can later take care of transforming the SRL into
           // multiple SRL / SLL / OR instructions.
@@ -2546,9 +2617,9 @@ object WidthConversionCore
 
   def convert(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
     val procWithoutMultiwordSlices = replaceWordCrossingSlices(proc)
-    implicit val builder = new Builder(procWithoutMultiwordSlices)
-    val insts: Seq[Instruction] = procWithoutMultiwordSlices.body.flatMap {
-      instr => convert(instr)
+    implicit val builder           = new Builder(procWithoutMultiwordSlices)
+    val insts: Seq[Instruction] = procWithoutMultiwordSlices.body.flatMap { instr =>
+      convert(instr)
     }
     builder.buildFrom(insts)
   }

@@ -35,14 +35,10 @@ trait CanRename extends Flavored {
             rs1 = renaming(rs1),
             rs2 = renaming(rs2)
           )
-        case i @ GlobalStore(rs, base, predicate, _) =>
+        case i @ GlobalStore(rs, base, predicate, _, _) =>
           i.copy(
             rs = renaming(rs),
-            base = (
-              renaming(base._1),
-              renaming(base._2),
-              renaming(base._3)
-            ),
+            base = base.map(renaming),
             predicate = predicate.map(renaming)
           )
         case i @ LocalStore(rs, base, offset, predicate, order, _) =>
@@ -80,14 +76,10 @@ trait CanRename extends Flavored {
           i.copy(
             rs = renaming(rs)
           )
-        case i @ GlobalLoad(rd, base, _) =>
+        case i @ GlobalLoad(rd, base, _, _) =>
           i.copy(
             rd = renaming(rd),
-            base = (
-              renaming(base._1),
-              renaming(base._2),
-              renaming(base._3)
-            )
+            base = base.map(renaming)
           )
         case i @ Mov(rd, rs, _) =>
           i.copy(

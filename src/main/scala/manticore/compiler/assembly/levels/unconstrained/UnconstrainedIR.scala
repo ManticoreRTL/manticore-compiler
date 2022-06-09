@@ -15,13 +15,22 @@ import manticore.compiler.assembly.HasSerialized
 import manticore.compiler.assembly.levels.HasVariableType
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.AssemblyChecker
+import manticore.compiler.assembly.CanBuildDependenceGraph
+import manticore.compiler.assembly.levels.CanRename
+import manticore.compiler.assembly.CanComputeNameDependence
+import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
+import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
   */
 object UnconstrainedIR extends ManticoreAssemblyIR {
 
-  trait UnconstrainedIRVariable extends Named[UnconstrainedIRVariable] with HasSerialized with HasVariableType with HasWidth
+  trait UnconstrainedIRVariable
+      extends Named[UnconstrainedIRVariable]
+      with HasSerialized
+      with HasVariableType
+      with HasWidth
   // case class ConstVariable(name: String, )
   case class LogicVariable(
       name: String,
@@ -30,16 +39,16 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
   ) extends UnconstrainedIRVariable {
     require(tpe != MemoryType)
     def serialized: String = s"${tpe.typeName} ${name} ${width}"
-    def varType = tpe
+    def varType            = tpe
 
     def withName(n: Name): LogicVariable = this.copy(name = n)
   }
 
   case class MemoryVariable(
-    name: String,
-    width: Int,
-    size: Int,
-    content: Seq[BigInt] = Seq()
+      name: String,
+      width: Int,
+      size: Int,
+      content: Seq[BigInt] = Seq()
   ) extends UnconstrainedIRVariable {
 
     override def withName(new_name: Name): UnconstrainedIRVariable = copy(name = new_name)
@@ -48,20 +57,27 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
 
     override def varType: VariableType = MemoryType
 
-
-
   }
 
   type Constant = BigInt // unlimited bits
   type Variable = UnconstrainedIRVariable
   // UnconstrainedIR does not support custom functions. Only lower IRs use such optimizations.
   type CustomFunction = Nothing
-  type Name = String
-  type ProcessId = String
-  type ExceptionId = String
+  type Name           = String
+  type ProcessId      = String
+  type ExceptionId    = String
 
   type Label = String
 }
 
 trait UnconstrainedIRTransformer extends AssemblyTransformer[UnconstrainedIR.DefProgram] {}
-trait UnconstrainedIRChecker extends AssemblyChecker[UnconstrainedIR.DefProgram] {}
+trait UnconstrainedIRChecker     extends AssemblyChecker[UnconstrainedIR.DefProgram]     {}
+
+object Helpers
+    extends CanBuildDependenceGraph
+    with CanRename
+    with CanComputeNameDependence
+    with CanCollectInputOutputPairs
+    with CanCollectProgramStatistics {
+  val flavor = UnconstrainedIR
+}

@@ -43,12 +43,12 @@ trait RenameTransformation extends Flavored {
         proc: DefProcess
     )(implicit ctx: AssemblyContext): DefProcess = {
 
-      val subst = scala.collection.mutable.Map.empty[Name, Name]
+      val subst           = scala.collection.mutable.Map.empty[Name, Name]
       val original_defreg = scala.collection.mutable.Map.empty[Name, DefReg]
       def appendNewDef(r: DefReg): DefReg = {
         val new_name = nextName(r)
         original_defreg += r.variable.name -> r
-        subst += (r.variable.name -> new_name)
+        subst += (r.variable.name          -> new_name)
         val new_def =
           r.copy(variable = r.variable.withName(new_name)).setPos(r.pos)
         new_def
@@ -56,8 +56,8 @@ trait RenameTransformation extends Flavored {
 
       val regs = proc.registers map appendNewDef
 
-      val new_regs = scala.collection.mutable.Queue.empty[DefReg]
-      val dirty_regs = scala.collection.mutable.Set.empty[Name]
+      val new_regs     = scala.collection.mutable.Queue.empty[DefReg]
+      val dirty_regs   = scala.collection.mutable.Set.empty[Name]
       val body_builder = scala.collection.mutable.Queue.empty[Instruction]
 
       trait RdRenamer {
@@ -70,7 +70,7 @@ trait RenameTransformation extends Flavored {
         val dirty_regs = scala.collection.mutable.Set.empty[Name]
         def apply(rd: Name): Name = {
           if (dirty_regs contains rd) {
-            val rd_def = original_defreg(rd)
+            val rd_def      = original_defreg(rd)
             val rd_new_name = nextName(rd_def)
             subst += (rd_def.variable.name -> rd_new_name)
             val new_rd_def = rd_def
@@ -106,6 +106,10 @@ trait RenameTransformation extends Flavored {
               address = subst(offset),
               order = order.withMemory(subst(order.memory))
             ).copy(rd = outerRenamer(rd))
+          case i @ GlobalLoad(rd, base, _, _) =>
+            i.copy(
+              base = base.map(subst)
+            ).copy(rd = outerRenamer(rd))
           case i @ LocalStore(rs, base, address, p, order, _) =>
             i.copy(
               rs = subst(rs),
@@ -114,14 +118,11 @@ trait RenameTransformation extends Flavored {
               order = order.withMemory(subst(order.memory)),
               predicate = p.map { subst }
             )
-          case i @ GlobalLoad(rd, (hh, h, l), _) =>
-            i.copy(base = (subst(hh), subst(h), subst(l)))
-              .copy(rd = outerRenamer(rd))
-          case i @ GlobalStore(rs, (hh, h, l), p, _) =>
+          case i @ GlobalStore(rs, base, pred, _, _) =>
             i.copy(
               rs = subst(rs),
-              base = (subst(hh), subst(h), subst(l)),
-              predicate = p map { subst }
+              base = base.map(subst),
+              predicate = pred.map(subst)
             )
           case i @ SetValue(rd, _, _) =>
             i.copy(rd = outerRenamer(rd))
@@ -200,8 +201,7 @@ trait RenameTransformation extends Flavored {
             i.copy(rs = subst(rs), pred = subst(pred))
           case i @ Interrupt(action, condition, _, _) =>
             action match {
-              case AssertionInterrupt | FinishInterrupt | _: SerialInterrupt |
-                  StopInterrupt =>
+              case AssertionInterrupt | FinishInterrupt | _: SerialInterrupt | StopInterrupt =>
                 i.copy(condition = subst(condition))
 
             }
@@ -219,8 +219,7 @@ trait RenameTransformation extends Flavored {
         .copy(
           registers = regs ++ new_regs.toSeq,
           body = body_builder.toSeq,
-          labels =
-            proc.labels.map(lgrp => lgrp.copy(memory = subst(lgrp.memory)))
+          labels = proc.labels.map(lgrp => lgrp.copy(memory = subst(lgrp.memory)))
         )
         .setPos(proc.pos)
 

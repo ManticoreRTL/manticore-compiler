@@ -6,7 +6,7 @@ import manticore.compiler.assembly.levels.placed.PlacedNameChecker
 
 import manticore.compiler.assembly.levels.placed.ListSchedulerTransform
 import manticore.compiler.assembly.levels.placed.GlobalPacketSchedulerTransform
-import manticore.compiler.assembly.levels.placed.PredicateInsertionTransform
+
 import manticore.compiler.assembly.levels.unconstrained._
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion

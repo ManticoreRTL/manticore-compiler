@@ -30,7 +30,7 @@ import manticore.compiler.assembly.annotations.Memblock
 trait ConversionBuilder extends Flavored {
 
   val flavor = UnconstrainedIR
-  import flavor._
+  import UnconstrainedIR._
 
   // The mask is that of the most significant word.
   protected case class ConvertedWire(parts: Seq[Name], mask: Option[Name])
@@ -39,14 +39,14 @@ trait ConversionBuilder extends Flavored {
       val ctx: AssemblyContext
   ) {
 
-    private var m_name_id = 0
+    private var m_name_id       = 0
     private var m_syscall_order = 0
-    private var m_serial_queue = scala.collection.mutable.Queue.empty[Seq[Name]]
+    private var m_serial_queue  = scala.collection.mutable.Queue.empty[Seq[Name]]
     // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
-    private val m_wires = scala.collection.mutable.Map.empty[Name, DefReg]
-    private val m_carries = scala.collection.mutable.Queue.empty[DefReg]
+    private val m_wires      = scala.collection.mutable.Map.empty[Name, DefReg]
+    private val m_carries    = scala.collection.mutable.Queue.empty[DefReg]
     private var m_carry_zero = Option.empty[DefReg]
-    private var m_carry_one = Option.empty[DefReg]
+    private var m_carry_one  = Option.empty[DefReg]
 
     private val m_constants =
       scala.collection.mutable.Map.empty[Int, DefReg]
@@ -57,6 +57,55 @@ trait ConversionBuilder extends Flavored {
     private val m_old_defs = proc.registers.map { r =>
       r.variable.name -> r
     }.toMap
+
+    private var m_gmem_user_base = 0x00004000L // the first 32Ki shorts are reserved for system.
+
+    private val m_gmem_allocations = scala.collection.mutable.Map.empty[Name, DefGlobalMemory]
+
+    // unlike the local memories, we do allocate the global memory bases right
+    // here in the width conversion pass. They are all going to be located
+    // on the same core, so there is no point delaying the allocation
+    def mkGlobalMemory(mem: Name): DefGlobalMemory =
+      m_gmem_allocations.get(mem) match {
+        case None =>
+          // do the allocation
+          val origMemDef    = originalDef(mem)
+          val origMemVar    = origMemDef.variable.asInstanceOf[MemoryVariable]
+          val shortsPerWord = (origMemVar.width - 1) / 16 + 1
+          val sizeInShorts  = origMemVar.size * shortsPerWord
+
+          val nextUserBase = m_gmem_user_base + sizeInShorts
+          assert(nextUserBase >= (1 << 40), "GlobalMemory too large!")
+
+          val newGlobalMem = DefGlobalMemory(
+            memory = mem,
+            base = nextUserBase,
+            size = sizeInShorts,
+            content = origMemDef.annons
+              .collectFirst { case x: MemInit =>
+                x.readFile()
+                  .flatMap { bigWord =>
+                    Seq.tabulate(shortsPerWord) { index =>
+                      (bigWord >> (index * 16)) & 0xffff
+                    }
+                  }
+                  .toIndexedSeq
+              // note the difference between handling of initial values in
+              // global and local memory. Here we do not need to transpose
+              // the initial values because we don't split the memory into
+              // multiple smaller ones, rather we just reorganize into
+              // 16-bit shorts
+
+              }
+              .getOrElse(IndexedSeq.empty[Constant])
+          ).setPos(origMemDef.pos)
+
+          // update the state
+          m_gmem_user_base = nextUserBase
+          m_gmem_allocations += (mem -> newGlobalMem)
+          newGlobalMem
+        case Some(gmemDef) => gmemDef
+      }
 
     def putSerial(ns: Seq[Name]): Seq[Int] = {
       val res = m_syscall_order
@@ -94,7 +143,8 @@ trait ConversionBuilder extends Flavored {
           body = preamble ++ instructions,
           labels = proc.labels.map { lgrp =>
             lgrp.copy(memory = getConversion(lgrp.memory).parts.head)
-          }
+          },
+          globalMemories = m_gmem_allocations.map(_._2).toSeq
         )
         .setPos(proc.pos)
     }
@@ -204,7 +254,7 @@ trait ConversionBuilder extends Flavored {
       require(m_subst.contains(original) == false, "conversion already exists!")
       val orig_def = m_old_defs(original)
 
-      val width = orig_def.variable.width
+      val width      = orig_def.variable.width
       val array_size = (width - 1) / 16 + 1
 
       def convertConstToArray(big_val: BigInt): Seq[BigInt] = {
@@ -265,70 +315,69 @@ trait ConversionBuilder extends Flavored {
             convertConstToArray(big_val).map { Some(_) }
         }
 
-        val conv_def = (uint16_vars zip values).zipWithIndex.map {
-          case ((cvar, cval), ix) =>
-            // check if a debug symbol annotation exits
-            val dbgsym = orig_def.annons.collect { case x: DebugSymbol =>
-              // if DebugSymbol annotation exits, append the index and width
-              // to it
-              x.getIndex() match {
-                case Some(i) if i != 0 =>
-                  // we don't want to have a non-zero index, it means this pass
-                  // was run before?
-                  ctx.logger.error(
-                    "Did not expect non-zero debug symbol index",
-                    orig_def
-                  )
-                case _ =>
-                // do nothing
-              }
-
-              val with_index = x.withIndex(ix).withGenerated(false)
-              with_index.getIntValue(AssemblyAnnotationFields.Width) match {
-                case Some(w) =>
-                  with_index
-                case None =>
-                  with_index.withWidth(width)
-              }
-            } match {
-              case Seq() => // if it does not exists, create one from scratch
-                DebugSymbol(orig_def.variable.name)
-                  .withIndex(ix)
-                  .withWidth(width)
-                  .withGenerated(true)
-              case org +: _ =>
-                org // return the original one with appended index and width
+        val conv_def = (uint16_vars zip values).zipWithIndex.map { case ((cvar, cval), ix) =>
+          // check if a debug symbol annotation exits
+          val dbgsym = orig_def.annons.collect { case x: DebugSymbol =>
+            // if DebugSymbol annotation exits, append the index and width
+            // to it
+            x.getIndex() match {
+              case Some(i) if i != 0 =>
+                // we don't want to have a non-zero index, it means this pass
+                // was run before?
+                ctx.logger.error(
+                  "Did not expect non-zero debug symbol index",
+                  orig_def
+                )
+              case _ =>
+              // do nothing
             }
 
-            // also append an index the reg annotation so that later passes
-            // could creating mapping from current to next registers
-            val reg_annon = orig_def.annons.collect { case x: RegAnnotation =>
-              x.withIndex(ix)
-            }.toSeq
-
-            val memblock_annon = orig_def.annons.collect { case x: Memblock =>
-              x.withIndex(ix)
+            val with_index = x.withIndex(ix).withGenerated(false)
+            with_index.getIntValue(AssemblyAnnotationFields.Width) match {
+              case Some(w) =>
+                with_index
+              case None =>
+                with_index.withWidth(width)
             }
+          } match {
+            case Seq() => // if it does not exists, create one from scratch
+              DebugSymbol(orig_def.variable.name)
+                .withIndex(ix)
+                .withWidth(width)
+                .withGenerated(true)
+            case org +: _ =>
+              org // return the original one with appended index and width
+          }
 
-            val other_annons = orig_def.annons.filter {
-              case _: DebugSymbol   => false
-              case _: RegAnnotation => false
-              case _: MemInit =>
-                false // remove memory init since we store them internally from now on
-              case _: Memblock => false
-              case _           => true
-            }
+          // also append an index the reg annotation so that later passes
+          // could creating mapping from current to next registers
+          val reg_annon = orig_def.annons.collect { case x: RegAnnotation =>
+            x.withIndex(ix)
+          }.toSeq
 
-            orig_def
-              .copy(
-                variable = cvar,
-                value = cval,
-                annons = other_annons ++ memblock_annon ++ reg_annon :+ dbgsym
-                  .withCount(
-                    uint16_vars.length
-                  )
-              )
-              .setPos(orig_def.pos)
+          val memblock_annon = orig_def.annons.collect { case x: Memblock =>
+            x.withIndex(ix)
+          }
+
+          val other_annons = orig_def.annons.filter {
+            case _: DebugSymbol   => false
+            case _: RegAnnotation => false
+            case _: MemInit =>
+              false // remove memory init since we store them internally from now on
+            case _: Memblock => false
+            case _           => true
+          }
+
+          orig_def
+            .copy(
+              variable = cvar,
+              value = cval,
+              annons = other_annons ++ memblock_annon ++ reg_annon :+ dbgsym
+                .withCount(
+                  uint16_vars.length
+                )
+            )
+            .setPos(orig_def.pos)
 
         }
 
@@ -370,7 +419,7 @@ trait ConversionBuilder extends Flavored {
             .map { bigWord =>
               Seq.tabulate(count) { index =>
                 val shifted = bigWord >> (index * 16)
-                val masked = shifted & 0xffff
+                val masked  = shifted & 0xffff
                 masked
               }
             }

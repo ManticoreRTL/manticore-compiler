@@ -49,21 +49,22 @@ trait CanComputeNameDependence extends Flavored {
         case CustomInstruction(func, rd, rsx, annons) =>
           rsx
         case LocalLoad(rd, base, offset, order, annons) =>
-          Seq(base, offset) :+ order.memory
+          assert(order.memory == base)
+          Seq(base, offset)
         case LocalStore(rs, base, offset, predicate, order, annons) =>
-          val pred = predicate match {
-            case None      => Seq(order.memory)
-            case Some(reg) => Seq(reg, order.memory)
-          }
-          Seq(rs, base, offset) ++ pred
-        case GlobalLoad(rd, base, annons) =>
-          Seq(base._1, base._2, base._3)
-        case GlobalStore(rs, base, predicate, annons) =>
+          // val pred = predicate match {
+          //   case None      => Seq(base)
+          //   case Some(reg) => Seq(reg)
+          // }
+          assert(order.memory == base)
+          Seq(rs, base, offset) ++ predicate.toSeq
+        case GlobalLoad(rd, base, order, annons) => base
+        case GlobalStore(rs, base, predicate, order, annons) =>
           val pred = predicate match {
             case None      => Seq.empty
             case Some(reg) => Seq(reg)
           }
-          Seq(rs, base._1, base._2, base._3) ++ pred
+          (base ++ pred) :+ rs
         case Send(rd, rs, dest_id, annons) =>
           Seq(rs)
         case _: SetValue | _: ClearCarry | _: SetCarry =>
@@ -143,8 +144,8 @@ trait CanComputeNameDependence extends Flavored {
         case CustomInstruction(func, rd, rsx, annons)         => Seq(rd)
         case LocalLoad(rd, base, offset, _, annons)           => Seq(rd)
         case LocalStore(rs, base, offset, p, _, annons)       => Nil
-        case GlobalLoad(rd, base, annons)                     => Seq(rd)
-        case GlobalStore(rs, base, pred, annons)              => Nil
+        case GlobalLoad(rd, base, _, annons)                  => Seq(rd)
+        case GlobalStore(rs, base, pred, _, annons)           => Nil
         case Send(rd, rs, dest_id, annons)                    => Nil
         case SetValue(rd, value, annons)                      => Seq(rd)
         case Mux(rd, sel, rs1, rs2, annons)                   => Seq(rd)

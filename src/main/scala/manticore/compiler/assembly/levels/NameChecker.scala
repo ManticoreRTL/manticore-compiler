@@ -66,21 +66,21 @@ trait AssemblyNameChecker extends Flavored {
               acc ++ Seq(ref, got).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
-            case GlobalLoad(rd, base, annons) =>
-              acc ++ Seq(rd, base._1, base._2, base._3).collect {
+            case GlobalLoad(rd, base, _, annons) =>
+              acc ++ (base :+ rd).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
-            case GlobalStore(rs, base, predicate, annons) =>
-              acc ++ (Seq(rs, base._1, base._2, base._3) ++ predicate.toSeq)
-                .collect { case n if !isDefinedReg(n) => (n -> inst) }
+            case GlobalStore(rs, base, predicate, _, annons) =>
+              acc ++ ((base :+ rs) ++ predicate.toSeq).collect {
+                case n if !isDefinedReg(n) => (n -> inst)
+              }
             case JumpTable(target, results, blocks, dslot, annons) =>
               val defTarget = isDefinedReg(target) match {
                 case true  => Seq.empty
                 case false => Seq((target -> inst))
               }
-              (blocks.map(_.block) :+ dslot).foldLeft(acc ++ defTarget) {
-                case (prev, blkc) =>
-                  checkBlock(prev, blkc)
+              (blocks.map(_.block) :+ dslot).foldLeft(acc ++ defTarget) { case (prev, blkc) =>
+                checkBlock(prev, blkc)
               }
 
             case Lookup(rd, index, base, annons) =>
@@ -198,9 +198,8 @@ trait AssemblyNameChecker extends Flavored {
       ): Set[Name] = {
         block.foldLeft(unassigned) { case (prev, instr) =>
           instr match {
-            case _ @(_: Interrupt | Nop | _: LocalStore | _: GlobalStore |
-                _: PutSerial | _: BreakCase | _: Expect | _: Recv | _: Send |
-                _: Predicate) =>
+            case _ @(_: Interrupt | Nop | _: LocalStore | _: GlobalStore | _: PutSerial |
+                _: BreakCase | _: Expect | _: Recv | _: Send | _: Predicate) =>
               prev
 
             case LocalLoad(rd, _, _, _, _) =>
@@ -212,15 +211,15 @@ trait AssemblyNameChecker extends Flavored {
               blocks.foldLeft(afterDslot) { case (un, JumpCase(_, blk)) =>
                 checkBlock(un, blk)
               } -- results.map(_.rd)
-            case ParMux(rd, _, _, _)   => prev - rd
-            case SetValue(rd, _, _)    => prev - rd
-            case PadZero(rd, _, _, _)  => prev - rd
-            case ClearCarry(carry, _)  => prev - carry
-            case Mov(rd, _, _)         => prev - rd
-            case SetCarry(carry, _)    => prev - carry
-            case Mux(rd, _, _, _, _)   => prev - rd
-            case GlobalLoad(rd, _, _)  => prev - rd
-            case Slice(rd, _, _, _, _) => prev - rd
+            case ParMux(rd, _, _, _)     => prev - rd
+            case SetValue(rd, _, _)      => prev - rd
+            case PadZero(rd, _, _, _)    => prev - rd
+            case ClearCarry(carry, _)    => prev - carry
+            case Mov(rd, _, _)           => prev - rd
+            case SetCarry(carry, _)      => prev - carry
+            case Mux(rd, _, _, _, _)     => prev - rd
+            case GlobalLoad(rd, _, _, _) => prev - rd
+            case Slice(rd, _, _, _, _)   => prev - rd
 
             case BinaryArithmetic(_, rd, _, _, _) => prev - rd
             case AddC(rd, co, _, _, _, _)         => prev -- Seq(rd, co)
@@ -230,8 +229,7 @@ trait AssemblyNameChecker extends Flavored {
       }
 
       val allUnassigned = process.registers.collect {
-        case r
-            if r.variable.varType == OutputType  =>
+        case r if r.variable.varType == OutputType =>
           r.variable.name
       }.toSet
 
@@ -283,7 +281,7 @@ trait AssemblyNameChecker extends Flavored {
       ): Map[Name, Seq[Instruction]] =
         block.foldLeft(dirty) { case (assigns, inst) =>
           inst match {
-            case GlobalLoad(rd, _, _) =>
+            case GlobalLoad(rd, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
             case JumpTable(_, results, blocks, dslot, _) =>
               checkSSA(
@@ -323,8 +321,8 @@ trait AssemblyNameChecker extends Flavored {
               assigns + (rd -> (assigns(rd) :+ inst))
             case Slice(rd, rs, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
-            case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect |
-                _: GlobalStore | _: BreakCase | _: PutSerial) =>
+            case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect | _: GlobalStore |
+                _: BreakCase | _: PutSerial) =>
               assigns
             case Interrupt(action, _, _, _) =>
               action match {
