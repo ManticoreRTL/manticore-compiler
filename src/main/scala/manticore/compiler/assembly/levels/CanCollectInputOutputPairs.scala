@@ -17,7 +17,8 @@ trait CanCollectInputOutputPairs extends Flavored {
     import flavor._
 
     def createInputOutputPairs(
-        proc: DefProcess
+        proc: DefProcess,
+        noInput: DefReg => Unit = _ => ()
     )(implicit ctx: AssemblyContext): Seq[(DefReg, DefReg)] = {
       val user_regs = proc.registers.collect {
         case r: DefReg if r.findAnnotation(RegAnnotation.name).nonEmpty => r
@@ -72,7 +73,8 @@ trait CanCollectInputOutputPairs extends Flavored {
                         currs_to_next_pairs += (curr_v -> r)
                       case _ =>
                         // either dead register or splitted processes
-                        // ctx.logger.warn("Register has no current value!", r)
+                        noInput(r)
+
                     }
                   case _ =>
                     ctx.logger.error("@REG annotation is missing id", r)

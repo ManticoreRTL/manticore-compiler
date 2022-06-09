@@ -25,12 +25,16 @@ final class DebugSymbol private (
   def withCount(l: Int) = new DebugSymbol(
     fields.updated(AssemblyAnnotationFields.Count, IntValue(l))
   )
+  def withSymbol(n: String) = new DebugSymbol(
+    fields.updated(AssemblyAnnotationFields.Symbol, StringValue(n))
+  )
 
   def getSymbol() = getStringValue(AssemblyAnnotationFields.Symbol).get
   def getIndex() = getIntValue(AssemblyAnnotationFields.Index)
   def getWidth() = getIntValue(AssemblyAnnotationFields.Width)
   def isGenerated() = getBoolValue(AssemblyAnnotationFields.Generated)
   def getCount() = getIntValue(AssemblyAnnotationFields.Count)
+
 
 }
 

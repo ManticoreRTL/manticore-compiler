@@ -301,30 +301,6 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
         // different output registers. This means we have to put o1 and o2
         // in the same process
 
-        val sinkSet = sink.toOuter match {
-          case store @ LocalStore(rs, mem, _, _, MemoryAccessOrder(m, _), _) =>
-            assert(m == mem)
-            disjoint.union(Instr(store), Memory(mem))
-          case meminst @ (_: GlobalStore | _: GlobalLoad) =>
-            disjoint.union(Instr(meminst), Syscall)
-          case instr @ (_: Expect | _: Interrupt | _: PutSerial) =>
-            disjoint.union(Instr(instr), Syscall)
-          case load @ LocalLoad(
-                rd,
-                base,
-                address,
-                MemoryAccessOrder(m, _),
-                annons
-              ) =>
-            assert(base == m)
-            if (parContext.isOutput(rd)) {
-              disjoint.union(Instr(load), State(rd))
-            } else {
-              ctx.logger.warn("Load without use is dead", load)
-            }
-          case _ => // nothing to do
-        }
-
         sink.outerNodeTraverser
           .withDirection(GraphTraversal.Predecessors)
           .foreach { instr =>
@@ -344,9 +320,11 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
             instr match {
               case _ @(_: Expect | _: Interrupt | _: PutSerial | _: GlobalLoad | _: GlobalStore) =>
                 disjoint.union(Instr(sinkInst), Syscall)
-              case load @ LocalLoad(_, mem, _, _, _) =>
+              case load @ LocalLoad(_, mem, _, order, _) =>
+                assert(order.memory == mem)
                 disjoint.union(Instr(sinkInst), Memory(mem))
-              case store @ LocalStore(_, mem, _, _, _, _) =>
+              case store @ LocalStore(_, mem, _, _, order, _) =>
+                assert(order.memory == mem)
                 disjoint.union(Instr(sinkInst), Memory(mem))
               case _ => // nothing special to do
             }
