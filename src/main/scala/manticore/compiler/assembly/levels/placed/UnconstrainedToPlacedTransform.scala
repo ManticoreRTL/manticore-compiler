@@ -83,6 +83,7 @@ object UnconstrainedToPlacedTransform
           registers = ps.flatMap(_.registers),
           body = ps.flatMap(_.body),
           labels = ps.flatMap(_.labels),
+          globalMemories = ps.flatMap(_.globalMemories),
           functions = ps.flatMap(_.functions),
           id = T.ProcessIdImpl(s"p_${x}_${y}", x, y),
           annons = ps.flatMap(_.annons)
@@ -138,6 +139,19 @@ object UnconstrainedToPlacedTransform
             lblgrp.indexer.map { case (v, l) => (UInt16(v.toInt), l) },
             lblgrp.default
           )
+        },
+        globalMemories = proc.globalMemories.map { gmem =>
+          T.DefGlobalMemory(
+            memory = gmem.memory,
+            base = gmem.base,
+            size = gmem.size,
+            content = gmem.content.map { bigWord =>
+              assert(bigWord < 0xffff)
+              UInt16(bigWord.toInt)
+            },
+            annons = gmem.annons
+          )
+
         },
         annons = proc.annons
       )

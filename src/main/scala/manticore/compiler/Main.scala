@@ -5,40 +5,36 @@ package manticore.compiler
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
   */
-import java.io.File
-import manticore.compiler.assembly.levels.unconstrained.{
-  UnconstrainedIR,
-  UnconstrainedNameChecker
-}
-import scopt.OParser
-import manticore.compiler.assembly.parser.AssemblyParser
-import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
-import manticore.compiler.assembly.levels.placed.PlacedIR
-import manticore.compiler.assembly.levels.placed.PlacedNameChecker
-import scala.language.postfixOps
-import manticore.compiler.assembly.levels.placed.ListSchedulerTransform
-import manticore.compiler.assembly.levels.placed.GlobalPacketSchedulerTransform
-import manticore.compiler.assembly.levels.unconstrained._
+import manticore.compiler.assembly.ManticoreAssemblyIR
+import manticore.compiler.assembly.levels.AssemblyPrinter
 import manticore.compiler.assembly.levels.DeadCodeElimination
-import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
-import java.io.PrintStream
-import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
+import manticore.compiler.assembly.levels.codegen.InitializerProgram
+import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
+import manticore.compiler.assembly.levels.placed.GlobalPacketSchedulerTransform
+import manticore.compiler.assembly.levels.placed.ListSchedulerTransform
+import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
+import manticore.compiler.assembly.levels.placed.PlacedIR
+import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
 import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
 import manticore.compiler.assembly.levels.placed.PlacedIROrderInstructions
-import manticore.compiler.assembly.levels.placed.ProcessMergingTransform
+import manticore.compiler.assembly.levels.placed.PlacedNameChecker
+import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
 import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
-import manticore.compiler.assembly.levels.placed.SendInsertionTransform
-import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
-import manticore.compiler.assembly.levels.placed.RegisterAllocationTransform
-import manticore.compiler.assembly.levels.AssemblyPrinter
-import manticore.compiler.assembly.ManticoreAssemblyIR
-import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
+import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
-import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
-import manticore.compiler.assembly.parser.AssemblyLexical
-import manticore.compiler.assembly.levels.codegen.InitializerProgram
-import java.io.PrintWriter
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
+import manticore.compiler.assembly.levels.unconstrained.UnconstrainedNameChecker
+import manticore.compiler.assembly.levels.unconstrained._
+import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.parser.AssemblyFileParser
+import manticore.compiler.assembly.parser.AssemblyLexical
+import manticore.compiler.assembly.parser.AssemblyParser
+import scopt.OParser
+
+import java.io.File
+import java.io.PrintStream
+import java.io.PrintWriter
+import scala.language.postfixOps
 sealed trait Mode
 case object CompileMode extends Mode
 case object ExecMode extends Mode

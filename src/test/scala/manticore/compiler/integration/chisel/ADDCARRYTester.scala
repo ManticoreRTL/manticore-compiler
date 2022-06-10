@@ -15,7 +15,7 @@ import chisel3._
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.HasLoggerId
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
-import manticore.compiler.assembly.levels.placed.ScheduleChecker
+
 
 
 class ADDCARRYTester
@@ -151,8 +151,7 @@ class ADDCARRYTester
     ManticorePasses.frontend andThen
       ManticorePasses.middleend andThen
       UnconstrainedToPlacedTransform andThen
-      ManticorePasses.BackendLowerEnd andThen
-      ScheduleChecker
+      ManticorePasses.BackendLowerEnd
 
   def compile(source: String, context: AssemblyContext): PlacedIR.DefProgram = {
 

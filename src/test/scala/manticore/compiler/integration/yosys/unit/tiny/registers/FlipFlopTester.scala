@@ -24,7 +24,7 @@ trait FlipFlopTester extends UnitFixtureTest with CancelAfterFailure {
         val testDir = f.test_dir
 
         override def yosysSelection = Seq(
-          Yosys.Select << "-asser-any" << s"t:$name"
+          Yosys.Select << "-assert-any" << s"t:$name"
         )
       }.run()
     }

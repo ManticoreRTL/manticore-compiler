@@ -109,7 +109,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
     }.toMap
 
     val globalMemory = {
-      val requiredSize = proc.globalMemories.map { gmem => gmem.base + gmem.size }.maxOption.getOrElse(0L)
+      val requiredSize =
+        proc.globalMemories.map { gmem => gmem.base + gmem.size }.maxOption.getOrElse(0L)
       if (!requiredSize.isValidInt) {
         ctx.logger.fail(
           "GlobalMemory is too big for interpretation. Make sure JVM has enough heap space!"
@@ -366,6 +367,32 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
               BigInt(0)
             }
           }
+        case mulOp @ (MUL | MULH) =>
+          assert(rs1_val >= 0 && rs2_val >= 0)
+          val wideResult = rs1_val * rs2_val
+          if (mulOp == MUL) {
+            clipped(wideResult)
+          } else {
+            clipped(wideResult >> rd_width)
+          }
+        case MULS =>
+          val rsWidth = definitions(rs1).variable.width
+          assert(rd_width == rsWidth)
+          assert(rsWidth == definitions(rs2).variable.width)
+          def sext(v: BigInt): BigInt = if (v.testBit(rsWidth - 1)) {
+            v | (((BigInt(1) << rsWidth) - 1) << rsWidth)
+          } else {
+            v
+          }
+          val rs1Sext = sext(rs1_val)
+          val rs2Sext = sext(rs2_val)
+          assert(rs1_val >= 0 && rs2_val >= 0)
+          assert(rs1Sext >= 0 && rs2Sext >= 0)
+          val wideResult = rs1Sext * rs2Sext
+          assert(wideResult >= 0)
+          clipped(wideResult)
+
+
       }
 
       update(rd, rd_val)
@@ -637,7 +664,10 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         }
       case GlobalLoad(rd, base, _, _) =>
         val addressParts = base.map(state.register_file(_))
-        assert(addressParts.length == 3, s"expected 3 registers in global memory address ${instruction}")
+        assert(
+          addressParts.length == 3,
+          s"expected 3 registers in global memory address ${instruction}"
+        )
         val concreteAddr =
           addressParts(0) | (addressParts(1) << 16) | (addressParts(2) << 32)
         if (!concreteAddr.isValidInt) {
@@ -649,7 +679,10 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         }
       case GlobalStore(rs, base, pred, _, _) =>
         val addressParts = base.map(state.register_file(_))
-        assert(addressParts.length == 3, s"expected 3 registers in global memory address ${instruction}")
+        assert(
+          addressParts.length == 3,
+          s"expected 3 registers in global memory address ${instruction}"
+        )
         val concreteAddr =
           addressParts(0) | (addressParts(1) << 16) | (addressParts(2) << 32)
         if (!concreteAddr.isValidInt) {

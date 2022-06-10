@@ -18,6 +18,7 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVaria
 
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process.processInternal
+import scalax.collection.constrained.BinaryOp
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
@@ -1979,7 +1980,9 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
 
           val signShiftAmount =
             if (rs1Width % 16 == 0) 15 else ((rs1Width % 16) - 1)
+
           val rs1Sign = builder.mkWire("rs1Sign", 16)
+
           inst_q += instruction.copy(
             operator = BinaryOperator.SRL,
             rd = rs1Sign,
@@ -2082,7 +2085,154 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
 
         }
       // no need to mask
+      case mulOperator @ (BinaryOperator.MUL | BinaryOperator.MULS) =>
 
+        val rs1Width = builder.originalWidth(instruction.rs1)
+        val rs2Width = builder.originalWidth(instruction.rs2)
+        val rdWidth  = builder.originalWidth(instruction.rd)
+
+        assert(
+          rs1Width == rs2Width && rs2Width == rdWidth,
+          s"Expected equal width in MUL ${instruction}"
+        )
+
+        def signExtended(operand: Name) = {
+          val operandArray = builder.getConversion(operand).parts
+          val operandWidth = builder.originalWidth(operand)
+          if (mulOperator == BinaryOperator.MULS && (operandWidth % 16 != 0)) {
+            val lastPart    = operandArray.last
+            val signBit     = builder.mkWire("sign", 16)
+            val shiftAmount = (operandWidth % 16) - 1
+            inst_q += BinaryArithmetic(
+              operator = BinaryOperator.SRL,
+              rd = signBit,
+              rs1 = operandArray.last,
+              rs2 = builder.mkConstant(shiftAmount)
+            )
+            val negativeMasked = builder.mkWire("negativeMasked", 16)
+
+            val signMask = 0xffff - ((1 << shiftAmount) - 1)
+            inst_q += BinaryArithmetic(
+              operator = BinaryOperator.OR,
+              rd = negativeMasked,
+              rs1 = operandArray.last,
+              rs2 = builder.mkConstant(signMask)
+            )
+            val extended = builder.mkWire("extended", 16)
+            inst_q += Mux(
+              rd = extended,
+              sel = signBit,
+              rfalse = operandArray.last,
+              rtrue = negativeMasked
+            )
+
+            operandArray.dropRight(1) :+ extended
+          } else {
+            operandArray
+          }
+
+        }
+        val rs1Array                       = signExtended(instruction.rs1)
+        val rs2Array                       = signExtended(instruction.rs2)
+        val ConvertedWire(rdArray, rdMask) = builder.getConversion(instruction.rd)
+
+        val resultLen = rdArray.length
+
+        if (resultLen == 1) {
+          // lucky! no need to create carry chains
+          // note that even though mulOperator may be MULS, we use MUL here!
+          // In general, after width conversion there shouldn't be any MULS at all
+          assert(rs1Array.length == 1 && rs2Array.length == 1)
+          rdMask match {
+            case None =>
+              inst_q += instruction.copy(
+                operator = BinaryOperator.MUL,
+                rd = rdArray.head,
+                rs1 = rs1Array.head,
+                rs2 = rs2Array.head
+              )
+            case Some(mask) =>
+              val unmaskedResult = builder.mkWire("unmaksed_mul", 16)
+              inst_q += instruction.copy(
+                operator = BinaryOperator.MUL,
+                rd = unmaskedResult,
+                rs1 = rs1Array.head,
+                rs2 = rs2Array.head
+              )
+              inst_q += instruction.copy(
+                operator = BinaryOperator.AND,
+                rd = rdArray.head,
+                rs1 = unmaskedResult,
+                rs2 = mask
+              )
+          }
+
+        } else {
+          // need to create the wide multiplication using MULH, MUL, and AddC
+
+          val indices =
+            (for (ix <- 0 until resultLen; jx <- 0 until resultLen) yield { (ix, jx) }).collect {
+              case (ix, jx) if ((ix + jx) < resultLen) => (ix, jx)
+            }
+          val partialResults = indices.map { case (ix, jx) =>
+            val resLow  = builder.mkWire("reslow", 16)
+            val resHigh = builder.mkWire("reshigh", 16)
+            inst_q += instruction.copy(
+              operator = BinaryOperator.MUL,
+              rd = resLow,
+              rs1 = rs1Array(ix),
+              rs2 = rs2Array(jx)
+            )
+            inst_q += instruction.copy(
+              operator = BinaryOperator.MULH,
+              rd = resHigh,
+              rs1 = rs1Array(ix),
+              rs2 = rs2Array(jx)
+            )
+
+            (Seq.fill(ix + jx) { builder.mkConstant(0) } ++ Seq(resLow, resHigh) ++ Seq.fill(
+              resultLen - 2 - ix - jx
+            ) { builder.mkConstant(0) }).take(resultLen)
+          }
+
+          val sumResult = partialResults.tail.foldLeft(partialResults.head) { case (prev, curr) =>
+            // create an adder chain
+            assert(prev.length == curr.length, s"${prev.length} != ${curr.length}")
+            val res = Seq.fill(prev.length) { builder.mkWire("adder_chain", 16) }
+
+            (res zip (prev zip curr)).foldLeft(builder.mkCarry0()) {
+              case (carryIn, (ro, (r1, r2))) =>
+                val carryOut = builder.mkCarry()
+                inst_q += AddC(
+                  rd = ro,
+                  co = carryOut,
+                  rs1 = r1,
+                  rs2 = r2,
+                  ci = carryIn
+                )
+                carryOut
+            }
+            res
+          }
+          assert(sumResult.length == rdArray.length)
+          rdMask match {
+            case None =>
+              inst_q ++= (sumResult zip rdArray).map { case (s16, rd16) =>
+                Mov(rd = rd16, rs = s16)
+              }
+            case Some(mask) =>
+              inst_q ++= (sumResult zip rdArray).dropRight(1).map { case (s16, rd16) =>
+                Mov(rd = rd16, rs = s16)
+              }
+              inst_q += BinaryArithmetic(
+                operator = BinaryOperator.AND,
+                rd = rdArray.last,
+                rs1 = sumResult.last,
+                rs2 = mask
+              )
+          }
+
+        }
     }
     // set the position
     inst_q.foreach(_.setPos(instruction.pos))

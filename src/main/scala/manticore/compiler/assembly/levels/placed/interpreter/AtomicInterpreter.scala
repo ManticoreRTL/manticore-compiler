@@ -104,10 +104,10 @@ object AtomicInterpreter extends PlacedIRChecker {
 
       def allocateIfNeeded(regs: Seq[DefReg]): (Int, Seq[DefReg]) = {
 
-        val memories = proc.registers.collect {
-          case m @ DefReg(v: MemoryVariable, _, _) => m
+        val memories = proc.registers.collect { case m @ DefReg(v: MemoryVariable, _, _) =>
+          m
         }
-        val max_avail = ctx.max_local_memory / (16 / 8)
+        val max_avail   = ctx.max_local_memory / (16 / 8)
         val needs_alloc = memories.exists(_.value.isEmpty)
         if (needs_alloc) {
           ctx.logger.warn(
@@ -120,7 +120,7 @@ object AtomicInterpreter extends PlacedIRChecker {
 
           val mem_with_offset = memories.foldLeft(0, Seq.empty[DefReg]) {
             case ((base, with_offset), m) =>
-              val memvar = m.variable.asInstanceOf[MemoryVariable]
+              val memvar   = m.variable.asInstanceOf[MemoryVariable]
               val new_base = base + memvar.size
               (new_base, with_offset :+ m.copy(value = Some(UInt16(base))))
           }
@@ -136,7 +136,7 @@ object AtomicInterpreter extends PlacedIRChecker {
         }
       }
       val (mem_size, memories) = allocateIfNeeded(proc.registers)
-      val underlying = Array.fill(mem_size) { UInt16(0) }
+      val underlying           = Array.fill(mem_size) { UInt16(0) }
       memories.foreach {
         case m @ DefReg(
               mvar @ MemoryVariable(_, _, _, initialContent),
@@ -161,6 +161,22 @@ object AtomicInterpreter extends PlacedIRChecker {
       underlying
     }
 
+    private val global_memory = {
+
+      val requiredSize =
+        proc.globalMemories.map { gmem => gmem.base + gmem.size }.maxOption.getOrElse(0L)
+      if (!requiredSize.isValidInt) {
+        ctx.logger.error(
+          s"Global memory is too large to be simulated. " +
+            s"Required size is ${requiredSize} but the maximum size is ${Int.MaxValue} shorts"
+        )
+        trap(InternalTrap)
+      }
+
+      val impl = Array.ofDim[UInt16](requiredSize.toInt)
+      impl
+    }
+
     private val outbox = scala.collection.mutable.Queue.empty[AtomicMessage]
 
     private val inbox = scala.collection.mutable.Queue.empty[AtomicMessage]
@@ -179,16 +195,16 @@ object AtomicInterpreter extends PlacedIRChecker {
 
     ctx.logger.dumpArtifact(s"${proc.id}_instruction_memory") {
       val builder = new StringBuilder
-      var i = 0
+      var i       = 0
       for (taggedInstr <- instructionMemory) {
 
-        val tags = taggedInstr.tags.map { _.toString()}.mkString(", ")
+        val tags = taggedInstr.tags.map { _.toString() }.mkString(", ")
         builder ++= f"${i}%4d: ${taggedInstr.instruction.toString} | ${tags}\n"
         i += 1
       }
       builder.toString()
     }
-    private var pc: Int = 0
+    private var pc: Int             = 0
     private var jumpPc: Option[Int] = None
 
     override def updatePc(v: Int): Unit = {
@@ -201,13 +217,36 @@ object AtomicInterpreter extends PlacedIRChecker {
     // private val instructions =
     //   proc.body.toArray // convert to array for faster indexing...
 
-    private val maxPc = instructionMemory.length
+    private val maxPc                   = instructionMemory.length
     override def read(rs: Name): UInt16 = register_file.read(rs)
 
     override def lload(address: UInt16): UInt16 = local_memory(address.toInt)
 
     override def lstore(address: UInt16, value: UInt16): Unit = {
       local_memory(address.toInt) = value
+    }
+
+    override def gload(address: Int): UInt16 = {
+      if (address < global_memory.size) {
+        global_memory(address)
+      } else {
+        ctx.logger.error(
+          f"Global memory address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x"
+        )
+        trap(InternalTrap)
+        UInt16(0)
+      }
+    }
+
+    override def gstore(address: Int, value: UInt16): Unit = {
+      if (address < global_memory.size) {
+        global_memory(address) = value
+      } else {
+        ctx.logger.error(
+          f"Global memory address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x"
+        )
+        trap(InternalTrap)
+      }
     }
 
     override def send(dest: ProcessId, rd: Name, value: UInt16): Unit = {
@@ -322,7 +361,7 @@ object AtomicInterpreter extends PlacedIRChecker {
       pc = 0
       jumpPc = None
       while (inbox.nonEmpty) {
-        val msg = inbox.dequeue()
+        val msg   = inbox.dequeue()
         val entry = (msg.target_register, msg.source_id)
         if (missing_messages.contains(entry)) {
           // great, we were expecting this message
@@ -386,8 +425,8 @@ object AtomicInterpreter extends PlacedIRChecker {
 
     override def interpretVirtualCycle(): Seq[InterpretationTrap] = {
 
-      val traps = scala.collection.mutable.Queue.empty[InterpretationTrap]
-      var break = false
+      val traps      = scala.collection.mutable.Queue.empty[InterpretationTrap]
+      var break      = false
       var cycle: Int = 0
       while (!break && cycle < vcycle_length) {
         // step through each core
@@ -472,9 +511,8 @@ object AtomicInterpreter extends PlacedIRChecker {
       source: DefProgram
   )(implicit context: AssemblyContext): Unit = {
 
-    val vcd = context.dump_dir.map(_ =>
-      PlacedValueChangeWriter(source, "atomic_trace.vcd")(context)
-    )
+    val vcd =
+      context.dump_dir.map(_ => PlacedValueChangeWriter(source, "atomic_trace.vcd")(context))
     val interp = instance(source, vcd, None, context.expected_cycles)(context)
 
     interp.interpretCompletion()

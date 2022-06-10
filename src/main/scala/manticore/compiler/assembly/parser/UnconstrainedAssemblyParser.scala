@@ -36,9 +36,8 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
     (defChar ~ identChar ~ rep(identChar) ^^ { case r ~ first ~ rest =>
       Keyword((r :: (first :: rest)) mkString "")
     }
-      | annotChar ~ identChar ~ rep(identChar | digit) ^^ {
-        case at ~ first ~ rest =>
-          AnnotationLiteral(first :: rest mkString "")
+      | annotChar ~ identChar ~ rep(identChar | digit) ^^ { case at ~ first ~ rest =>
+        AnnotationLiteral(first :: rest mkString "")
       }
       | identChar ~ rep(identChar | digit | '.') ^^ { case first ~ rest =>
         processIdent(first :: rest mkString "")
@@ -66,7 +65,7 @@ class UnconstrainedAssemblyLexer extends AssemblyLexical {
   def identChar =
     letter | elem('_') | elem('$') | elem('%') | elem('\\')
 
-  def defChar = elem('.')
+  def defChar   = elem('.')
   def annotChar = elem('@')
 
   /** Parses the final quote of a string literal or fails if it is unterminated.
@@ -133,17 +132,15 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     OutputType,
     ConstType
   }
-
+  private val privateOperators =
+    Set(BinaryOperator.MUX, BinaryOperator.ADDC, BinaryOperator.MULH)
   val arithOperator =
     Seq
       .tabulate(BinaryOperator.maxId) { i =>
         BinaryOperator(i).toString() -> BinaryOperator(i)
       }
-      .filter { case (k, _) => //
-        // we treat MUX and ADDC differently, because they are not
-        // really binops
-        k != BinaryOperator.MUX.toString() && k != BinaryOperator.ADDC
-          .toString()
+      .filter { case (_, op) => //
+        !privateOperators(op)
       }
       .toMap
 
@@ -189,13 +186,13 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   //   elem("annontation", _.isInstanceOf[AnnotationLiteral]) ^^ {
   //     _.chars
   //   }
-  def hex_value: Parser[BigInt] = hexLit ^^ { x => BigInt(x.chars, 16) }
-  def bin_value: Parser[BigInt] = binLit ^^ { x => BigInt(x.chars, 2) }
-  def dec_value: Parser[BigInt] = decLit ^^ { t => BigInt(t.chars) }
+  def hex_value: Parser[BigInt]   = hexLit ^^ { x => BigInt(x.chars, 16) }
+  def bin_value: Parser[BigInt]   = binLit ^^ { x => BigInt(x.chars, 2) }
+  def dec_value: Parser[BigInt]   = decLit ^^ { t => BigInt(t.chars) }
   def const_value: Parser[BigInt] = hex_value | dec_value | bin_value
 
-  def annon_int_value: Parser[AnnotationValue] = const_value ^^ {
-    case x: BigInt => IntValue(x.toInt)
+  def annon_int_value: Parser[AnnotationValue] = const_value ^^ { case x: BigInt =>
+    IntValue(x.toInt)
   }
   def annon_string_value: Parser[AnnotationValue] = stringLit ^^ { case x =>
     StringValue(x.chars)
@@ -206,13 +203,12 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
   def keyvalue: Parser[(String, AnnotationValue)] =
     (ident ~ "=" ~ annon_value) ^^ { case (k ~ _ ~ v) => (k.chars, v) }
   def single_annon: Parser[AssemblyAnnotation] =
-    (positioned(annotLiteral) ~ opt("[" ~> repsep(keyvalue, ",") <~ "]")) ^^ {
-      case (n ~ values) =>
-        AssemblyAnnotationBuilder(
-          n.chars,
-          if (values.nonEmpty) values.get.toMap
-          else Map.empty[String, AnnotationValue]
-        )
+    (positioned(annotLiteral) ~ opt("[" ~> repsep(keyvalue, ",") <~ "]")) ^^ { case (n ~ values) =>
+      AssemblyAnnotationBuilder(
+        n.chars,
+        if (values.nonEmpty) values.get.toMap
+        else Map.empty[String, AnnotationValue]
+      )
 
     }
 
@@ -249,8 +245,8 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     }
 
   def def_pair_input: Parser[(Token, Option[Constant])] =
-    (keyword(".input") ~ positioned(ident) ~ opt(const_value)) ^^ {
-      case _ ~ name ~ default_value => (name, default_value)
+    (keyword(".input") ~ positioned(ident) ~ opt(const_value)) ^^ { case _ ~ name ~ default_value =>
+      (name, default_value)
     }
   def def_pair_output: Parser[Token] =
     (keyword(".output") ~ positioned(ident)) ^^ { case _ ~ name =>
@@ -268,7 +264,7 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
             inp._2,
             Reg(
               Map(
-                AssemblyAnnotationFields.Id.name -> StringValue(nameId.chars),
+                AssemblyAnnotationFields.Id.name   -> StringValue(nameId.chars),
                 AssemblyAnnotationFields.Type.name -> Reg.Current
               )
             ) +: a
@@ -279,7 +275,7 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
             Seq(
               Reg(
                 Map(
-                  AssemblyAnnotationFields.Id.name -> StringValue(nameId.chars),
+                  AssemblyAnnotationFields.Id.name   -> StringValue(nameId.chars),
                   AssemblyAnnotationFields.Type.name -> Reg.Next
                 )
               )
@@ -288,8 +284,8 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         )
     }
   def def_reg: Parser[Seq[DefReg]] =
-    (positioned(def_const | def_wire | def_input | def_output | def_mem) ^^ {
-      case d => Seq(d)
+    (positioned(def_const | def_wire | def_input | def_output | def_mem) ^^ { case d =>
+      Seq(d)
     }) | def_pair
 
   def func_single_value: Parser[Seq[BigInt]] = const_value ^^ { x => Seq(x) }
@@ -328,13 +324,9 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       LocalStore(rs.chars, base.chars, addr.chars, p.map(_.chars), order, a)
     }
 
-
-
-
   def set_inst: Parser[SetValue] =
-    (annotations ~ keyword("SET") ~ ident ~ "," ~ const_value) ^^ {
-      case (a ~ _ ~ rd ~ _ ~ value) =>
-        SetValue(rd.chars, value, a)
+    (annotations ~ keyword("SET") ~ ident ~ "," ~ const_value) ^^ { case (a ~ _ ~ rd ~ _ ~ value) =>
+      SetValue(rd.chars, value, a)
     }
   def send_inst: Parser[Send] =
     (annotations ~ keyword(
@@ -344,9 +336,11 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         Send(rd.chars, rs.chars, dest_id.chars, a)
     }
   def expect_inst(implicit ctx: AssemblyContext): Parser[Expect] =
-    (annotations ~ positioned(keyword(
-      "EXPECT"
-    )) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> stringLit <~ "]")) ^^ {
+    (annotations ~ positioned(
+      keyword(
+        "EXPECT"
+      )
+    ) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> stringLit <~ "]")) ^^ {
       case (a ~ kword ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
         val instr = Expect(ref.chars, got.chars, ex_id.chars, a).setPos(kword.pos)
         ctx.logger.warn("EXPECT will be retired soon. Use ASSERT instead.", instr)
@@ -358,14 +352,13 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       Predicate(rs.chars, a)
     }
 
-  def syscall_order: Parser[SystemCallOrder] = ("(" ~> const_value <~ ")") ^^ {
-    case v1 => SystemCallOrder(v1.toInt)
+  def syscall_order: Parser[SystemCallOrder] = ("(" ~> const_value <~ ")") ^^ { case v1 =>
+    SystemCallOrder(v1.toInt)
   }
 
   def control_syscall(n: String, action: InterruptAction): Parser[Interrupt] =
-    (annotations ~ syscall_order ~ keyword(n) ~ ident) ^^ {
-      case (a ~ order ~ _ ~ rs) =>
-        Interrupt(action, rs.chars, order, a)
+    (annotations ~ syscall_order ~ keyword(n) ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
+      Interrupt(action, rs.chars, order, a)
     }
 
   def fmt_string: Parser[FormatString] = (stringLit ^^ { case str =>
@@ -404,23 +397,22 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
         Mux(rd.chars, sel.chars, rs1.chars, rs2.chars, a)
     } // only a pseudo instruction, should be translated to a binary mux later
 
-  def parmux_case: Parser[ParMuxCase] = (ident ~ "?" ~ ident) ^^ {
-    case (cond ~ _ ~ choice) => ParMuxCase(cond.chars, choice.chars)
+  def parmux_case: Parser[ParMuxCase] = (ident ~ "?" ~ ident) ^^ { case (cond ~ _ ~ choice) =>
+    ParMuxCase(cond.chars, choice.chars)
   }
   def parmux_inst: Parser[ParMux] =
     (annotations ~ keyword("PARMUX") ~ ident ~ "," ~ rep1sep(parmux_case, ",") ~
-      "," ~ ident) ^^ {
-      case (a ~ _ ~ rd ~ _ ~ (cases: Seq[ParMuxCase]) ~ _ ~ defcase) =>
-        ParMux(
-          rd.chars,
-          cases,
-          defcase.chars,
-          a
-        )
+      "," ~ ident) ^^ { case (a ~ _ ~ rd ~ _ ~ (cases: Seq[ParMuxCase]) ~ _ ~ defcase) =>
+      ParMux(
+        rd.chars,
+        cases,
+        defcase.chars,
+        a
+      )
     }
   def mov_inst: Parser[Mov] =
-    (annotations ~ keyword("MOV") ~ ident ~ "," ~ ident) ^^ {
-      case (a ~ _ ~ rd ~ _ ~ rs) => Mov(rd.chars, rs.chars, a)
+    (annotations ~ keyword("MOV") ~ ident ~ "," ~ ident) ^^ { case (a ~ _ ~ rd ~ _ ~ rs) =>
+      Mov(rd.chars, rs.chars, a)
     }
 
   def slice_inst: Parser[Slice] =
@@ -435,9 +427,8 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def padzero_inst: Parser[Instruction] = (annotations ~ keyword(
     "PADZERO"
-  ) ~ ident ~ "," ~ ident ~ "," ~ const_value) ^^ {
-    case (a ~ _ ~ rd ~ _ ~ rs ~ _ ~ width) =>
-      PadZero(rd.chars, rs.chars, width, a)
+  ) ~ ident ~ "," ~ ident ~ "," ~ const_value) ^^ { case (a ~ _ ~ rd ~ _ ~ rs ~ _ ~ width) =>
+    PadZero(rd.chars, rs.chars, width, a)
   }
 
   def instruction(implicit ctx: AssemblyContext): Parser[Instruction] = positioned(
@@ -455,12 +446,11 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     }
 
   def program(implicit ctx: AssemblyContext): Parser[DefProgram] =
-    (annotations ~ keyword(".prog") ~ ":" ~ rep(process)) ^^ {
-      case (a ~ _ ~ _ ~ p) =>
-        DefProgram(
-          p,
-          a
-        )
+    (annotations ~ keyword(".prog") ~ ":" ~ rep(process)) ^^ { case (a ~ _ ~ _ ~ p) =>
+      DefProgram(
+        p,
+        a
+      )
     }
   def apply(input: String)(implicit ctx: AssemblyContext): DefProgram = {
 

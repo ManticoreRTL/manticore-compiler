@@ -31,6 +31,9 @@ trait ProcessInterpreter extends InterpreterBase {
   // local load/store
   def lload(address: UInt16): UInt16
   def lstore(address: UInt16, value: UInt16): Unit
+  // global load/store
+  def gload(address: Int): UInt16
+  def gstore(address: Int, value: UInt16): Unit
 
   def send(dest: ProcessId, rd: Name, value: UInt16): Unit
   // read from a remote process
@@ -62,8 +65,8 @@ trait ProcessInterpreter extends InterpreterBase {
     import manticore.compiler.assembly.BinaryOperator._
 
     val BinaryArithmetic(op, rd, rs1, rs2, _) = inst
-    val rs1_val = read(rs1)
-    val rs2_val = read(rs2)
+    val rs1_val                               = read(rs1)
+    val rs2_val                               = read(rs2)
     def shiftAmount(v: UInt16): Int = {
       if (v.toInt >= 16) {
         // note that this is only a warning because the result of shift
@@ -99,7 +102,7 @@ trait ProcessInterpreter extends InterpreterBase {
         val shift_amount = shiftAmount(rs2_val)
         rs1_val >>> shift_amount
       case SLT =>
-        if(rs1_val < rs2_val) {
+        if (rs1_val < rs2_val) {
           UInt16(1)
         } else {
           UInt16(0)
@@ -142,7 +145,7 @@ trait ProcessInterpreter extends InterpreterBase {
     import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
 
     val CustomInstruction(name, rd, rsx, _) = instr
-    val func = getFunc(name)
+    val func                                = getFunc(name)
 
     // We must bind the arguments of the custom function to their concrete values
     // at the current cycle.
@@ -154,7 +157,7 @@ trait ProcessInterpreter extends InterpreterBase {
       .toMap[AtomArg, Atom]
 
     val exprWithArgs = substitute(func.expr)(substMap)
-    val rdVal = evaluate(exprWithArgs)
+    val rdVal        = evaluate(exprWithArgs)
 
     write(rd, rdVal)
   }
@@ -165,7 +168,7 @@ trait ProcessInterpreter extends InterpreterBase {
     case LocalLoad(rd, base, index, _, _) =>
       val base_val = read(base)
       val addr_val = read(index) + base_val
-      val rd_val = lload(addr_val)
+      val rd_val   = lload(addr_val)
       write(rd, rd_val)
     case LocalStore(rs, base, offset, predicate, _, annons) =>
       val wen = predicate match {
@@ -187,10 +190,48 @@ trait ProcessInterpreter extends InterpreterBase {
       }
       if (wen) {
         val base_val = read(base)
-        val addr = read(offset) + base_val
-        val rs_val = read(rs)
+        val addr     = read(offset) + base_val
+        val rs_val   = read(rs)
         lstore(addr, rs_val)
       }
+    case GlobalLoad(rd, base, _, _) =>
+      assert(base.length == 3, s"ill-formed base of GLD ${instruction}")
+      val addr =
+        read(base(0)).toLong | (read(base(1)).toLong << 16L) | (read(base(2)).toLong << 32L)
+      if (!addr.isValidInt) {
+        ctx.logger.error(s"address 0x${addr}048x is too large for the interpreter!")
+        write(rd, UInt16(0))
+        trap(InternalTrap)
+      } else {
+        val rdVal = gload(addr.toInt)
+        write(rd, rdVal)
+      }
+    case GlobalStore(rs, base, predicate, _, _) =>
+      assert(base.length == 3, s"ill-formed base of GST ${instruction}")
+      val wen = predicate match {
+        case None => getPred()
+        case Some(pred) =>
+          val pval = read(pred)
+          if (pval.toInt > 1) {
+            ctx.logger.error(s"invalid predicate value ${pval}!", instruction)
+            trap(InternalTrap)
+            true
+          } else {
+            pval == UInt16(1)
+          }
+      }
+
+      if (wen) {
+        val addr =
+          read(base(0)).toLong | (read(base(1)).toLong << 16L) | (read(base(2)).toLong << 32L)
+        if (!addr.isValidInt) {
+          ctx.logger.error(s"address 0x${addr}048x is too large for the interpreter!")
+          trap(InternalTrap)
+        } else {
+          gstore(addr.toInt, read(rs))
+        }
+      }
+
     case Send(rd, rs, dest_id, _) =>
       val rs_val = read(rs)
       send(dest_id, rd, rs_val)
@@ -226,8 +267,7 @@ trait ProcessInterpreter extends InterpreterBase {
           ctx.logger.info("Got stop!", intr)
           trap(FailureTrap)
         case SerialInterrupt(fmt) if en =>
-
-          val values = flushSerial().map(x => BigInt(x.toInt))
+          val values      = flushSerial().map(x => BigInt(x.toInt))
           val resolvedFmt = fmt.consume(values)
           if (resolvedFmt.isLit == false) {
             ctx.logger.error("Did not have enough value to in the serial queue!", intr)
@@ -248,9 +288,9 @@ trait ProcessInterpreter extends InterpreterBase {
         setPred(false)
       }
     case Mux(rd, sel, rfalse, rtrue, _) =>
-      val sel_val = read(sel)
+      val sel_val    = read(sel)
       val rfalse_val = read(rfalse)
-      val rtrue_val = read(rtrue)
+      val rtrue_val  = read(rtrue)
       val rd_val = sel_val match {
         case UInt16(0) => rfalse_val
         case UInt16(1) => rtrue_val
@@ -263,10 +303,10 @@ trait ProcessInterpreter extends InterpreterBase {
     case AddC(rd, co, rs1, rs2, ci, _) =>
       val rs1_val = read(rs1).toInt
       val rs2_val = read(rs2).toInt
-      val ci_val = read(ci).toInt
-      val sum = rs1_val + rs2_val + ci_val
-      val rd_val = UInt16.clipped(sum)
-      val co_val = sum >> 16
+      val ci_val  = read(ci).toInt
+      val sum     = rs1_val + rs2_val + ci_val
+      val rd_val  = UInt16.clipped(sum)
+      val co_val  = sum >> 16
       assert(co_val <= 1, "invalid carry computation")
       write(rd, rd_val)
       write(co, UInt16(co_val))
@@ -309,15 +349,15 @@ trait ProcessInterpreter extends InterpreterBase {
       }
 
     case Slice(rd, rs, offset, length, _) =>
-      val rs_val = read(rs)
+      val rs_val     = read(rs)
       val rs_shifted = rs_val >> offset
-      val mask = UInt16((1 << length) - 1)
-      val rd_val = rs_shifted & mask
+      val mask       = UInt16((1 << length) - 1)
+      val rd_val     = rs_shifted & mask
       write(rd, rd_val)
 
     case Lookup(rd, index, base, _) =>
       val address = read(index) + read(base)
-      val rd_val = lload(address)
+      val rd_val  = lload(address)
       write(rd, rd_val)
     case JumpTable(target, _, _, _, _) =>
       updatePc(read(target).toInt)

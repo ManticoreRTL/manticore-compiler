@@ -6,6 +6,9 @@ import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.parser.AssemblyParser
 import manticore.compiler.AssemblyContext
 
+
+
+
 class UnconstrainedWideGlobalMemoryTester extends UnitFixtureTest {
 
   behavior of "wide large memories"
@@ -95,7 +98,11 @@ class UnconstrainedWideGlobalMemoryTester extends UnitFixtureTest {
         UnconstrainedIRCommonSubExpressionElimination andThen
         UnconstrainedDeadCodeElimination andThen
         WidthConversion.transformation andThen
-        UnconstrainedNameChecker andThen UnconstrainedCloseSequentialCycles andThen UnconstrainedInterpreter
+        UnconstrainedNameChecker andThen
+        UnconstrainedCloseSequentialCycles andThen
+        UnconstrainedInterpreter
+
+
       implicit val ctx = AssemblyContext(
         dump_all = false,
         dump_dir = Some(fixture.test_dir.toFile()),
@@ -109,7 +116,7 @@ class UnconstrainedWideGlobalMemoryTester extends UnitFixtureTest {
 
     }
 
-  testCase(10, 10) // should be local
+  // testCase(10, 10) // should be local
   testCase(10, 800) // should be global
   testCase(40, 600) //...
   testCase(40, 256) //...

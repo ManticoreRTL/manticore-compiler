@@ -20,7 +20,11 @@ import manticore.compiler.FormatString
   */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC =
+  val ADD, SUB,
+    MUL, // unsigned mult
+    MULH,// unsigned mult but keep upper bits
+    MULS, // signed mult, only used in unconstrained flavor
+    AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC =
     Value
 }
 
@@ -140,7 +144,7 @@ trait ManticoreAssemblyIR {
   ) extends Declaration
       with HasSerialized {
     override def serialized: String =
-      f"${serializedAnnons("\t\t")}\t\t.gmem ${memory} ${size} 0x${base}%048x"
+      f"${serializedAnnons("\t\t")}\t\t.gmem ${memory} (0x${base}%048x :+ 0x${size}%048x)"
   }
   // program definition, single one
   case class DefProgram(
@@ -185,6 +189,7 @@ trait ManticoreAssemblyIR {
       append(registers)
       append(functions)
       append(labels)
+      append(globalMemories)
       append(body)
       builder.toString()
 

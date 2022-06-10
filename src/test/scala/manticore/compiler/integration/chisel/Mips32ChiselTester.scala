@@ -4,7 +4,7 @@ import manticore.compiler.integration.chisel.util.KernelTester
 import manticore.compiler.AssemblyContext
 import manticore.compiler.ManticorePasses
 import manticore.compiler.integration.chisel.util.ProcessorTester
-import manticore.compiler.assembly.levels.placed.ScheduleChecker
+
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.parser.AssemblyParser
@@ -16,8 +16,7 @@ class Mips32ChiselTester extends KernelTester with ProcessorTester {
   override def compiler =
     ManticorePasses.frontend andThen
       ManticorePasses.middleend andThen
-      ManticorePasses.backend andThen
-      ScheduleChecker
+      ManticorePasses.backend
 
 
   Seq(
