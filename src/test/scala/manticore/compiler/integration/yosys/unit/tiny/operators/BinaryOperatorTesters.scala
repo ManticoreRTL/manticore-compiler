@@ -54,6 +54,11 @@ class SubTester extends BinaryOperatorTestGenerator {
     override def operator: String = "-"
 }
 
+class MulTester extends BinaryOperatorTestGenerator {
+
+    override def operator: String = "*"
+}
+
 
 class AndTester extends BinaryOperatorTestGenerator {
     override def operator: String = "&"
