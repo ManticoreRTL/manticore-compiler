@@ -197,6 +197,74 @@ module sha256_transform #(parameter LOOP = 6'd4) (clk, feedback, cnt, rx_state, 
 	input [511:0] rx_input;
 	output reg [255:0] tx_hash;
 
+	reg [31:0] Ks [0 : 63];
+
+	initial begin
+	 	Ks[63] = 32'h428a2f98;
+	 	Ks[62] = 32'h71374491;
+	 	Ks[61] = 32'hb5c0fbcf;
+	 	Ks[60] = 32'he9b5dba5;
+	 	Ks[59] = 32'h3956c25b;
+	 	Ks[58] = 32'h59f111f1;
+	 	Ks[57] = 32'h923f82a4;
+	 	Ks[56] = 32'hab1c5ed5;
+	 	Ks[55] = 32'hd807aa98;
+	 	Ks[54] = 32'h12835b01;
+	 	Ks[53] = 32'h243185be;
+	 	Ks[52] = 32'h550c7dc3;
+	 	Ks[51] = 32'h72be5d74;
+	 	Ks[50] = 32'h80deb1fe;
+	 	Ks[49] = 32'h9bdc06a7;
+	 	Ks[48] = 32'hc19bf174;
+	 	Ks[47] = 32'he49b69c1;
+	 	Ks[46] = 32'hefbe4786;
+	 	Ks[45] = 32'h0fc19dc6;
+	 	Ks[44] = 32'h240ca1cc;
+	 	Ks[43] = 32'h2de92c6f;
+	 	Ks[42] = 32'h4a7484aa;
+	 	Ks[41] = 32'h5cb0a9dc;
+	 	Ks[40] = 32'h76f988da;
+	 	Ks[39] = 32'h983e5152;
+	 	Ks[38] = 32'ha831c66d;
+	 	Ks[37] = 32'hb00327c8;
+	 	Ks[36] = 32'hbf597fc7;
+	 	Ks[35] = 32'hc6e00bf3;
+	 	Ks[34] = 32'hd5a79147;
+	 	Ks[33] = 32'h06ca6351;
+	 	Ks[32] = 32'h14292967;
+	 	Ks[31] = 32'h27b70a85;
+	 	Ks[30] = 32'h2e1b2138;
+	 	Ks[29] = 32'h4d2c6dfc;
+	 	Ks[28] = 32'h53380d13;
+	 	Ks[27] = 32'h650a7354;
+	 	Ks[26] = 32'h766a0abb;
+	 	Ks[25] = 32'h81c2c92e;
+	 	Ks[24] = 32'h92722c85;
+	 	Ks[23] = 32'ha2bfe8a1;
+	 	Ks[22] = 32'ha81a664b;
+	 	Ks[21] = 32'hc24b8b70;
+	 	Ks[20] = 32'hc76c51a3;
+	 	Ks[19] = 32'hd192e819;
+	 	Ks[18] = 32'hd6990624;
+	 	Ks[17] = 32'hf40e3585;
+	 	Ks[16] = 32'h106aa070;
+	 	Ks[15] = 32'h19a4c116;
+	 	Ks[14] = 32'h1e376c08;
+	 	Ks[13] = 32'h2748774c;
+	 	Ks[12] = 32'h34b0bcb5;
+	 	Ks[11] = 32'h391c0cb3;
+	 	Ks[10] = 32'h4ed8aa4a;
+	 	Ks[9] = 32'h5b9cca4f;
+	 	Ks[8] = 32'h682e6ff3;
+	 	Ks[7] = 32'h748f82ee;
+	 	Ks[6] = 32'h78a5636f;
+	 	Ks[5] = 32'h84c87814;
+	 	Ks[4] = 32'h8cc70208;
+	 	Ks[3] = 32'h90befffa;
+	 	Ks[2] = 32'ha4506ceb;
+	 	Ks[1] = 32'hbef9a3f7;
+	 	Ks[0] = 32'hc67178f2;
+	end
 	// Constants defined by the SHA-2 standard.
 	// reg [31:0] ks
 
@@ -228,26 +296,18 @@ module sha256_transform #(parameter LOOP = 6'd4) (clk, feedback, cnt, rx_state, 
 			wire [255:0] state;
 			wire [31:0] k;
 			if(i == 0) begin
-				sha256_constants C(
-					.index(63 - cnt),
-					.k(k)
-				);
 				sha256_digester U (
 					.clk(clk),
-					.k(k),
+					.k(Ks[63 - cnt]),
           .rx_w(feedback ? W : rx_input),
           .rx_state(feedback ? state : rx_state),
 					.tx_w(W),
 					.tx_state(state)
 				);
 			end else begin
-				sha256_constants C(
-					.index(63-LOOP*i-cnt),
-					.k(k)
-				);
 				sha256_digester U (
 					.clk(clk),
-					.k(k),
+					.k(Ks[63 - LOOP * i - cnt]),
 					.rx_w(feedback ? W : HASHERS[i-1].W),
 					.rx_state(feedback ? state : HASHERS[i-1].state),
 					.tx_w(W),
