@@ -273,9 +273,18 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     // registers, stores or system calls. Anything else is basically dead code
     val sinkNodes = executionGraph.nodes.filter(_.outDegree == 0)
 
+    // Collect all the memories that are not read-only. We distinguish between
+    // read-only and read-write memory when we are trying to split the process.
+    // read-only memories can be easily copied and do not constrain parallelization.
+    val nonCopyableMemory: Name => Boolean = proc.body.collect { case store: LocalStore =>
+      assert(store.base == store.order.memory)
+      store.base
+    }.toSet
+
     val elements: Iterable[SetElement] = proc.registers.collect {
       case r if r.variable.varType == OutputType => State(r.variable.name)
-      case r if r.variable.varType == MemoryType => Memory(r.variable.name)
+      case r if r.variable.varType == MemoryType && nonCopyableMemory(r.variable.name) =>
+        Memory(r.variable.name)
     } ++ sinkNodes.map(n => Instr(n.toOuter)) :+ Syscall
 
     // initialize the disjoint sets with elements that are either sink instructions,
@@ -320,7 +329,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
             instr match {
               case _ @(_: Expect | _: Interrupt | _: PutSerial | _: GlobalLoad | _: GlobalStore) =>
                 disjoint.union(Instr(sinkInst), Syscall)
-              case load @ LocalLoad(_, mem, _, order, _) =>
+              case load @ LocalLoad(_, mem, _, order, _) if nonCopyableMemory(mem) =>
                 assert(order.memory == mem)
                 disjoint.union(Instr(sinkInst), Memory(mem))
               case store @ LocalStore(_, mem, _, _, order, _) =>
