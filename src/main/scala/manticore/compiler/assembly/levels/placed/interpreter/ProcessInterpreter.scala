@@ -136,6 +136,16 @@ trait ProcessInterpreter extends InterpreterBase {
             UInt16(0)
           }
         }
+      case MUL | MULS =>
+        if (op == MULS)
+          ctx.logger.warn(
+            s"Avoid using MULS in PlacedIR! MULS has the same behavior of MUL on lower 16 bits!",
+            inst
+          )
+        rs1_val * rs2_val
+      case MULH =>
+        val rd_val = rs1_val.toInt * rs2_val.toInt
+        UInt16(rd_val >> 16)
 
     }
     write(rd, rd_val)
