@@ -18,7 +18,6 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVaria
 
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process.processInternal
-import scalax.collection.constrained.BinaryOp
 
 /** Translates arbitrary width operations to 16-bit ones that match the machine
   * data width
