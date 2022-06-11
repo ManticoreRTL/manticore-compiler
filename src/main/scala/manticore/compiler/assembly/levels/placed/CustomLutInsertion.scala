@@ -52,23 +52,34 @@ object GraphDump {
   // "interface" type (SGraph) as the DOT exporter only supports this parent interface.
   private def jg2sc[V](
       jg: Graph[V, DefaultEdge]
-  ): SGraph[V, DiEdge] = {
-    val sg = MSGraph.empty[V, DiEdge]
+  ): (
+      SGraph[Int, DiEdge],
+      Map[V, Int],
+      Map[Int, V]
+  ) = {
+    val sg    = MSGraph.empty[Int, DiEdge]
+    val vToId = MHashMap.empty[V, Int]
+    val idToV = MHashMap.empty[Int, V]
 
-    jg.vertexSet().asScala.foreach { v =>
-      sg += v
+    jg.vertexSet().asScala.zipWithIndex.foreach { case (v, idx) =>
+      vToId += v   -> idx
+      idToV += idx -> v
+      sg += idx
     }
 
     jg.edgeSet().asScala.foreach { e =>
-      val src = jg.getEdgeSource(e)
-      val dst = jg.getEdgeTarget(e)
-      sg += DiEdge(src, dst)
+      val src   = jg.getEdgeSource(e)
+      val dst   = jg.getEdgeTarget(e)
+      val srcId = vToId(src)
+      val dstId = vToId(dst)
+      sg += DiEdge(srcId, dstId)
     }
 
-    sg
+    (sg, vToId.toMap, idToV.toMap)
   }
 
-  private def quote(s: String): String = s"\"${s}\""
+  private def escape(s: String): String = s.replaceAll("\"", "\\\\\"")
+  private def quote(s: String): String  = s"\"${s}\""
 
   def apply[V](
       g: Graph[V, DefaultEdge],
@@ -82,7 +93,10 @@ object GraphDump {
       ] = Map.empty[Int, String],
       vNameMap: Map[V, String] = Map.empty[V, String]
   ): String = {
-    val sg = jg2sc(g)
+    // Some vertices have quotes in them when represented as strings. These vertices
+    // cannot be used as graphviz identifiers, so we assign an index to all vertices
+    // instead.
+    val (sg, vToId, idToV) = jg2sc(g)
 
     val dotRoot = DotRootGraph(
       directed = true,
@@ -98,7 +112,7 @@ object GraphDump {
     }
 
     def edgeTransform(
-        iedge: scalax.collection.Graph[V, DiEdge]#EdgeT
+        iedge: scalax.collection.Graph[Int, DiEdge]#EdgeT
     ): Option[
       (
           DotGraph,   // The graph/subgraph to which this edge belongs.
@@ -111,8 +125,8 @@ object GraphDump {
             (
               dotRoot, // All edges are part of the root graph.
               DotEdgeStmt(
-                NodeId(source.toString()),
-                NodeId(target.toString())
+                NodeId(source.toOuter),
+                NodeId(target.toOuter)
               )
             )
           )
@@ -126,7 +140,7 @@ object GraphDump {
     }
 
     def nodeTransformer(
-        inode: scalax.collection.Graph[V, DiEdge]#NodeT
+        inode: scalax.collection.Graph[Int, DiEdge]#NodeT
     ): Option[
       (
           DotGraph,   // The graph/subgraph to which this node belongs.
@@ -135,7 +149,9 @@ object GraphDump {
     ] = {
       val clusterId = clusters
         .find { case (clusterId, vertices) =>
-          vertices.contains(inode.toOuter)
+          val vId = inode.toOuter
+          val v   = idToV(vId)
+          vertices.contains(v)
         }
         .map { case (clusterId, vertices) =>
           clusterId
@@ -144,27 +160,25 @@ object GraphDump {
       // If the vertex is part of a cluster, select the corresponding subgraph.
       // Otherwise add the vertex to the root graph.
       val dotGraph = clusterId
-        .map { id =>
-          dotSubgraphs(id)
-        }
+        .map(id => dotSubgraphs(id))
         .getOrElse(dotRoot)
 
-      val v      = inode.toOuter
-      val vLabel = vNameMap.getOrElse(v, v.toString())
+      val vId   = inode.toOuter
+      val v     = idToV(vId)
+      val vName = vNameMap.getOrElse(v, v.toString())
+      val vLabel = escape(vName)
 
       // If the vertex is part of a cluster, select its corresponding color.
       // Otherwise use white as the default color.
       val vColor = clusterId
-        .map { id =>
-          clusterColorMap(id)
-        }
+        .map(id => clusterColorMap(id))
         .getOrElse("white")
 
       Some(
         (
           dotGraph,
           DotNodeStmt(
-            NodeId(v.toString()),
+            NodeId(vId),
             Seq(
               DotAttr("label", quote(vLabel)),
               DotAttr("style", quote("filled")),
@@ -789,7 +803,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     //
     //         y_i \in {0, 1} for CT_i \in CT
     //
-    //   (3) Each vertex is covered by at most once.
+    //   (3) Each vertex is covered at most once.
     //
     //         sum_{C_i \in C : v \in C_i} x_i <= 1
     //
@@ -1159,10 +1173,24 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
         clusterId -> color.toCssHexString()
       }.toMap
 
+      // All vertices should use the string representation of the instruction
+      // that generates them, or the name itself (if a primary input).
+      val nameMap = dependenceGraph
+        .vertexSet()
+        .asScala
+        .map { v =>
+          v match {
+            case Left(name)   => v -> name
+            case Right(instr) => v -> instr.toString()
+          }
+        }
+        .toMap
+
       GraphDump(
         dependenceGraph,
         clusters = clusters,
-        clusterColorMap = clusterColorMap
+        clusterColorMap = clusterColorMap,
+        vNameMap = nameMap
       )
     }
 
