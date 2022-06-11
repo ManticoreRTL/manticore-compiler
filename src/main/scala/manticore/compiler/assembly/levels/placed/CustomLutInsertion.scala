@@ -13,6 +13,7 @@ import manticore.compiler.assembly.BinaryOperator.OR
 import manticore.compiler.assembly.BinaryOperator.XOR
 import manticore.compiler.assembly.DependenceGraphBuilder
 import manticore.compiler.assembly.levels.AssemblyTransformer
+import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.UInt16
 import org.jgrapht.Graph
@@ -199,7 +200,7 @@ object GraphDump {
   }
 }
 
-object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer {
+object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
 
   val flavor = PlacedIR
   import flavor._
@@ -1285,8 +1286,10 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
 
   override def transform(
       program: DefProgram
-  )(implicit context: AssemblyContext): DefProgram = {
-    val newProcesses = program.processes.map(proc => onProcess(proc)(context))
-    program.copy(processes = newProcesses)
+  )(implicit ctx: AssemblyContext): DefProgram = {
+    val newProcesses = program.processes.map(proc => onProcess(proc)(ctx))
+    val newProgram   = program.copy(processes = newProcesses)
+    ctx.stats.record(ProgramStatistics.mkProgramStats(newProgram))
+    newProgram
   }
 }
