@@ -163,9 +163,9 @@ object GraphDump {
         .map(id => dotSubgraphs(id))
         .getOrElse(dotRoot)
 
-      val vId   = inode.toOuter
-      val v     = idToV(vId)
-      val vName = vNameMap.getOrElse(v, v.toString())
+      val vId    = inode.toOuter
+      val v      = idToV(vId)
+      val vName  = vNameMap.getOrElse(v, v.toString())
       val vLabel = escape(vName)
 
       // If the vertex is part of a cluster, select its corresponding color.
@@ -588,8 +588,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
         subst.toMap
       }.toVector
     }
-    val maxArity = cones.values.maxBy(cone => cone.arity).arity
-    val arityPermutationSubstMap = (2 to maxArity).map { arity =>
+    val arityPermutationSubstMap = (2 to 6).map { arity =>
       arity -> generatePermutationSubstMap(arity)
     }.toMap
 
@@ -788,9 +787,13 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     // objective function
     // ------------------
     //
-    // Maximize the number of instructions that are saved through the use of custom functions.
+    // Maximize the number of instructions that are saved through the use of custom functions,
+    // while simultaneously minimizing the number of custom functions used.
     //
-    //     max sum_{C_i \in C} x_i * (|C_i|-1)
+    //     max {
+    //        (sum_{C_i \in C} x_i * (|C_i|-1)) -
+    //        (sum_{CT_i \in CT} y_i)
+    //     }
     //
     // constraints
     // -----------
@@ -807,7 +810,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     //
     //         sum_{C_i \in C : v \in C_i} x_i <= 1
     //
-    //   (4) The number of custom functions does not surprass the maximum available.
+    //   (4) The number of custom functions does not surpass the maximum available.
     //
     //         sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
@@ -872,7 +875,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
       }
     }
 
-    //   (4) The number of custom functions does not surprass the maximum available.
+    //   (4) The number of custom functions does not surpass the maximum available.
     //
     //         sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
@@ -888,7 +891,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     //         y_i <= sum_{C_i \in C : C_i \in CT_i} x_i
     //
 
-    //   (4) The number of custom functions does not surprass the maximum available.
+    //   (4) The number of custom functions does not surpass the maximum available.
     //
     //         sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
@@ -896,8 +899,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     //
     //         0 <= sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
-    val maxNumConesConstraint =
-      solver.makeConstraint(0, maxNumConeTypes, s"maxNumConeTypes_constraint")
+    val maxNumConesConstraint = solver.makeConstraint(0, maxNumConeTypes, s"maxNumConeTypes_constraint")
     categoryVars.keys.foreach { category =>
       val categoryVar = categoryVars(category)
       maxNumConesConstraint.setCoefficient(categoryVar, 1)
@@ -915,8 +917,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     //
     conesPerCategory.foreach { case (category, coneIds) =>
       coneIds.foreach { coneId =>
-        val constraint =
-          solver.makeConstraint(0, 1, s"y_${category} >= x_${coneId}")
+        val constraint  = solver.makeConstraint(0, 1, s"y_${category} >= x_${coneId}")
         val coneVar     = coneVars(coneId)
         val categoryVar = categoryVars(category)
         constraint.setCoefficient(categoryVar, 1)
@@ -951,9 +952,13 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     // objective function
     // ------------------
     //
-    // Maximize the number of instructions that are saved through the use of custom functions.
+    // Maximize the number of instructions that are saved through the use of custom functions,
+    // while simultaneously minimizing the number of custom functions used.
     //
-    //     max sum_{C_i \in C} x_i * (|C_i|-1)
+    //     max {
+    //        (sum_{C_i \in C} x_i * (|C_i|-1)) -
+    //        (sum_{CT_i \in CT} y_i)
+    //     }
     //
     val objective = solver.objective()
     cones.foreach { case (coneId, cone) =>
@@ -961,6 +966,10 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
       val coefficient = coneSize - 1
       val coneVar     = coneVars(coneId)
       objective.setCoefficient(coneVar, coefficient)
+    }
+    categoryVars.keys.foreach { category =>
+      val categoryVar = categoryVars(category)
+      objective.setCoefficient(categoryVar, -1)
     }
     objective.setMaximization()
 
@@ -981,10 +990,16 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
         categoryVar.solutionValue.toInt > 0
       }.keySet
 
+      // Important to transform to a Seq before calling map() as otherwise cones
+      // with identical size will be merged together due to the semantics of Set.
+      val instructionsSaved = conesUsed.toSeq.map { coneId =>
+        val cone = cones(coneId)
+        cone.size - 1
+      }.sum
+
       ctx.logger.info {
-        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective
-          .value()
-          .toInt} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
+        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms\n" +
+          s"Can reduce instruction count by ${instructionsSaved} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
       }
 
       conesUsed.toSet

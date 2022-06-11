@@ -46,7 +46,7 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
   val dims = Seq(
     (1, 1),
-    // (4, 4)
+    (4, 4)
   )
 
   val numLutInputs = Seq(
@@ -58,7 +58,7 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
   )
 
   val shareCustomFuncs = Seq(
-    // false,
+    false,
     true
   )
 
