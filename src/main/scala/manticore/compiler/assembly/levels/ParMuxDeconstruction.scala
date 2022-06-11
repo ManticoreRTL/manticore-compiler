@@ -95,22 +95,24 @@ trait ParMuxDeconstruction extends Flavored {
   def do_transform(
       process: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
-
+    import scala.collection.mutable.ArrayBuffer
     val regLookup = process.registers.map { r => r.variable.name -> r }.toMap
-    case class TransformBuilder(
-        block: Seq[Instruction] = Seq.empty,
-        newDefs: Seq[DefReg] = Seq.empty
+    class TransformBuilder(
+        val block: ArrayBuffer[Instruction] = ArrayBuffer.empty,
+        val newDefs: ArrayBuffer[DefReg] = ArrayBuffer.empty
     ) {
-      def add(inst: Instruction) = copy(
-        block = block :+ inst
-      )
-      def add(muxSeq: MuxSeq) = copy(
-        block = block ++ muxSeq.instructions,
-        newDefs = newDefs ++ muxSeq.tempWires
-      )
+      def add(inst: Instruction) = {
+        block += inst
+        this
+      }
+      def add(muxSeq: MuxSeq) = {
+        block ++= muxSeq.instructions
+        newDefs ++= muxSeq.tempWires
+        this
+      }
     }
 
-    val transformed = process.body.foldLeft(TransformBuilder()) {
+    val transformed = process.body.foldLeft(new TransformBuilder()) {
       case (builder, inst) =>
         inst match {
           case pmux: ParMux =>
@@ -123,7 +125,7 @@ trait ParMuxDeconstruction extends Flavored {
 
     process
       .copy(
-        body = transformed.block,
+        body = transformed.block.toSeq,
         registers = process.registers ++ transformed.newDefs
       )
       .setPos(process.pos)

@@ -7,6 +7,7 @@ import manticore.compiler.assembly.levels.CanRename
 import javax.xml.crypto.Data
 import manticore.compiler.assembly.CanComputeNameDependence
 import scala.collection.immutable.ListMap
+import scala.collection.mutable.ArrayBuffer
 
 /** Base trait to implement a constant folding pass
   * @author
@@ -56,9 +57,9 @@ trait ConstantFolding
     */
   val binOpEvaluator: PartialFunction[
     (
-        BinaryOperator.BinaryOperator, // operator
+        BinaryOperator.BinaryOperator,  // operator
         Either[Name, ConcreteConstant], // rs1
-        Either[Name, ConcreteConstant] // rs2
+        Either[Name, ConcreteConstant]  // rs2
     ),
     Either[Name, ConcreteConstant] // rd
   ]
@@ -94,13 +95,13 @@ trait ConstantFolding
     */
   def freshConst(v: ConcreteConstant)(implicit ctx: AssemblyContext): DefReg
 
-  case class ConstantFoldingBuilder(
-      constants: ListMap[ConcreteConstant, DefReg],
-      constBindings: Map[Name, ConcreteConstant],
-      nameBindings: Map[Name, Name],
-      keptInstructions: Seq[Instruction],
-      isUnopt: Name => Boolean,
-      getReg: Name => DefReg
+  class ConstantFoldingBuilder(
+      val constants: scala.collection.mutable.Map[ConcreteConstant, DefReg],
+      val constBindings: scala.collection.mutable.Map[Name, ConcreteConstant],
+      val nameBindings: scala.collection.mutable.Map[Name, Name],
+      val keptInstructions: scala.collection.mutable.ArrayBuffer[Instruction],
+      val isUnopt: Name => Boolean,
+      val getReg: Name => DefReg
   ) {
 
     def widthLookup(n: Name): Int = getReg(n).variable.width
@@ -110,9 +111,10 @@ trait ConstantFolding
       * @param n
       * @param m
       */
-    def bindName(n: Name, m: Name): ConstantFoldingBuilder = copy(
-      nameBindings = nameBindings + (n -> m)
-    )
+    def bindName(n: Name, m: Name): ConstantFoldingBuilder = {
+      nameBindings += (n -> m)
+      this
+    }
     def bindName(binding: (Name, Name)): ConstantFoldingBuilder =
       bindName(binding._1, binding._2)
 
@@ -125,17 +127,11 @@ trait ConstantFolding
         ctx: AssemblyContext
     ): ConstantFoldingBuilder = {
       // val concrete = asConcrete(v) { widthLookup(n) }
-      val newConstBindings = constBindings + (n -> v)
-      val newConstants =
-        // create a new constant if it not already available
-        constants.get(v) match {
-          case Some(m) => constants
-          case None    => constants + (v -> freshConst(v))
-        }
-      copy(
-        constBindings = newConstBindings,
-        constants = newConstants
-      )
+      constBindings += (n -> v)
+      if (!constants.contains(v)) {
+        constants += (v -> freshConst(v))
+      }
+      this
     }
     def bindConst(binding: (Name, ConcreteConstant))(implicit
         ctx: AssemblyContext
@@ -149,12 +145,14 @@ trait ConstantFolding
     def keep(
         inst: Instruction
     )(implicit ctx: AssemblyContext): ConstantFoldingBuilder = {
-      copy(keptInstructions = keptInstructions :+ inst)
+      keptInstructions += inst
+      this
     }
     def keepAll(
         instructions: IterableOnce[Instruction]
     )(implicit ctx: AssemblyContext): ConstantFoldingBuilder = {
-      copy(keptInstructions = keptInstructions ++ instructions)
+      keptInstructions ++= instructions
+      this
     }
 
     def computedValue(name: Name): Either[Name, ConcreteConstant] =
@@ -170,8 +168,16 @@ trait ConstantFolding
     // def concreteComputedValue(name: Name): Either[Name, ConcreteConstant] =
     //   computedValue(name).map { asConcrete(_) { widthLookup(name) } }
 
-    def withNewScope(): ConstantFoldingBuilder =
-      copy(keptInstructions = Seq.empty[Instruction])
+    def withNewScope(): ConstantFoldingBuilder = {
+      new ConstantFoldingBuilder(
+        constants = constants.clone(),
+        constBindings = constBindings.clone(),
+        nameBindings = nameBindings.clone(),
+        keptInstructions = ArrayBuffer.empty[Instruction],
+        isUnopt = isUnopt,
+        getReg = getReg
+      )
+    }
 
   }
 
@@ -182,9 +188,8 @@ trait ConstantFolding
 
     block.foldLeft(scope) { case (builder, inst) =>
       inst match {
-        case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore |
-            _: GlobalStore | _: PadZero | _: SetCarry | _: ClearCarry |
-            _: Predicate | _: PadZero | _: Lookup | _: PutSerial |
+        case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore | _: GlobalStore | _: PadZero |
+            _: SetCarry | _: ClearCarry | _: Predicate | _: PadZero | _: Lookup | _: PutSerial |
             _: Interrupt) =>
           builder.keep(i)
         case Nop =>
@@ -203,15 +208,14 @@ trait ConstantFolding
 
           }
         case i @ AddC(rd, co, rs1, rs2, ci, _) =>
-          val ci_val = builder.computedValue(ci)
+          val ci_val  = builder.computedValue(ci)
           val rs1_val = builder.computedValue(rs1)
           val rs2_val = builder.computedValue(rs2)
           (rs1_val, rs2_val, ci_val) match {
             case (Right(v1), Right(v2), Right(vci)) =>
               val (rd_val, co_val) = addCarryEvaluator(v1, v2, vci)
               builder.bindConst(rd, rd_val).bindConst(co, co_val)
-            case (Right(c0), Right(c1), Left(ci_subst))
-                if isFalse(c0) && isTrue(c1) =>
+            case (Right(c0), Right(c1), Left(ci_subst)) if isFalse(c0) && isTrue(c1) =>
               builder.bindName(co, ci_subst)
             case _ => builder.keep(i)
           }
@@ -225,7 +229,7 @@ trait ConstantFolding
             val rs_val = builder.computedValue(rs)
             rs_val match {
               case Left(name) =>
-                val rsWidth = builder.widthLookup(name)
+                val rsWidth          = builder.widthLookup(name)
                 val isFullWidthSlice = (offset == 0) && (rsWidth == length)
                 if (isFullWidthSlice) {
                   // We are slicing the full width of another name. The slice operation
@@ -266,8 +270,8 @@ trait ConstantFolding
             // need to keep rd as is
             builder.keep(i)
           } else {
-            val sel_value = builder.computedValue(sel)
-            val rtrue_value = builder.computedValue(rtrue)
+            val sel_value    = builder.computedValue(sel)
+            val rtrue_value  = builder.computedValue(rtrue)
             val rfalse_value = builder.computedValue(rfalse)
             sel_value match {
               case Right(c) =>
@@ -401,7 +405,7 @@ trait ConstantFolding
                   fld.withNewScope(),
                   cases :+ JumpCase(
                     lbl,
-                    fld.keptInstructions
+                    fld.keptInstructions.toSeq
                   )
                 )
             }
@@ -429,16 +433,18 @@ trait ConstantFolding
     val constants = process.registers.collect {
       case r if r.variable.varType == ConstType => r
     }
+    import scala.collection.mutable.{Map => MutableMap}
+
     val initScope =
-      ConstantFoldingBuilder(
-        constants = ListMap.from(constants.map { r =>
+      new ConstantFoldingBuilder(
+        constants = MutableMap.empty ++ (constants.map { r =>
           asConcrete(r.value.get) { r.variable.width } -> r
         }),
-        constBindings = constants.map { r =>
+        constBindings = MutableMap.empty ++ constants.map { r =>
           r.variable.name -> asConcrete(r.value.get) { r.variable.width }
-        }.toMap,
-        nameBindings = Map.empty[Name, Name],
-        keptInstructions = Seq.empty[Instruction],
+        },
+        nameBindings = MutableMap.empty,
+        keptInstructions = scala.collection.mutable.ArrayBuffer.empty,
         isUnopt = isUnopt,
         getReg = regMap
       )
@@ -466,7 +472,7 @@ trait ConstantFolding
     // now we need to remove any unused DefRegs
 
     val inputOutputPairs = InputOutputPairs.createInputOutputPairs(process)
-    val referenced = NameDependence.referencedNames(finalInstructions)
+    val referenced       = NameDependence.referencedNames(finalInstructions)
     def isIo(r: DefReg): Boolean =
       r.variable.varType == InputType || r.variable.varType == OutputType
     // keep a def if it was referenced or it is an actual register, note that
@@ -494,7 +500,7 @@ trait ConstantFolding
     }
 
     process.copy(
-      body = finalInstructions,
+      body = finalInstructions.toSeq,
       registers = newDefs,
       labels = newLabels
     )

@@ -17,7 +17,8 @@ trait CommonSubExpressionElimination
     with CanComputeNameDependence {
 
   import flavor._
-
+  import scala.collection.mutable.{Map => MutableMap}
+  import scala.collection.mutable.ArrayBuffer
   import BinaryOperator._
 
   sealed abstract class Expression
@@ -27,11 +28,11 @@ trait CommonSubExpressionElimination
   case class MuxExpr(sel: Name, rfalse: Name, rtrue: Name) extends Expression
   case class AddCarryExpr(rs1: Name, rs2: Name, ci: Name) extends Expression
 
-  case class EliminationContext(
-      noOpt: Name => Boolean,
-      expressions: Map[Expression, Name] = Map.empty[Expression, Name],
-      substitutions: Map[Name, Name] = Map.empty[Name, Name],
-      keptInstructions: Seq[Instruction] = Seq.empty[Instruction]
+  class EliminationContext(
+      val noOpt: Name => Boolean,
+      val expressions: MutableMap[Expression, Name] = MutableMap.empty[Expression, Name],
+      val substitutions: MutableMap[Name, Name] = MutableMap.empty[Name, Name],
+      val keptInstructions: ArrayBuffer[Instruction] = ArrayBuffer.empty[Instruction]
   ) {
 
     def getName(n: Name): Name = substitutions.getOrElse(n, n)
@@ -41,7 +42,9 @@ trait CommonSubExpressionElimination
         substitutions.contains(mapping._1) == false,
         "can not double bind!"
       )
-      copy(substitutions = substitutions + mapping)
+      substitutions += mapping
+      this
+
     }
     def available(expr: Expression): Option[Name] = expressions get expr
 
@@ -49,20 +52,26 @@ trait CommonSubExpressionElimination
         binding: (Instruction, (Expression, Name))
     ): EliminationContext = {
       assert(expressions.contains(binding._2._1) == false)
-      copy(
-        expressions = expressions + binding._2,
-        keptInstructions = keptInstructions :+ binding._1
-      )
+      expressions += binding._2
+      keptInstructions += binding._1
+      this
     }
-    def keep(inst: Instruction): EliminationContext = copy(
-      keptInstructions = keptInstructions :+ inst
-    )
+    def keep(inst: Instruction): EliminationContext = {
+      keptInstructions += inst
+      this
+    }
 
     def withNewScope(
-        availExprs: Map[Expression, Name] = expressions,
-        instructions: Seq[Instruction] = Seq.empty[Instruction]
-    ): EliminationContext =
-      copy(keptInstructions = instructions, expressions = availExprs)
+        availExprs: MutableMap[Expression, Name] = expressions,
+        instructions: ArrayBuffer[Instruction] = ArrayBuffer.empty[Instruction]
+    ): EliminationContext = {
+      new EliminationContext(
+        noOpt = noOpt,
+        expressions = expressions.clone(),
+        substitutions = substitutions.clone(),
+        keptInstructions = instructions
+      )
+    }
 
   }
 
@@ -131,7 +140,7 @@ trait CommonSubExpressionElimination
               // before the previous case and remove the instruction kept in the log
               cases :+ JumpCase(
                 lbl,
-                eliminated.keptInstructions
+                eliminated.keptInstructions.toSeq
               )
             )
           }
@@ -139,7 +148,7 @@ trait CommonSubExpressionElimination
           val optJtb = jtb.copy(
             blocks = newCases,
             dslot =
-              Seq.empty[DataInstruction] // dslot should only be used after scheduling where optimizations are not
+              Seq.empty[Instruction] // dslot should only be used after scheduling where optimizations are not
             // called anymore, so it makes sense to put them back in the original program body
           )
 
@@ -166,7 +175,7 @@ trait CommonSubExpressionElimination
         r.variable.name
     }.toSet
     val cseCtx = cseBlock(
-      EliminationContext(noOpt),
+      new EliminationContext(noOpt),
       process.body
     )
     val subst: Name => Name = cseCtx.substitutions orElse { n => n }
@@ -188,7 +197,7 @@ trait CommonSubExpressionElimination
 
     process
       .copy(
-        body = finalInstructions,
+        body = finalInstructions.toSeq,
         registers = newDefs
       )
       .setPos(process.pos)
