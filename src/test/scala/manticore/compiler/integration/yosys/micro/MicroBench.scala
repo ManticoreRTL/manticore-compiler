@@ -39,6 +39,7 @@ import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.placed.lowering.AbstractExecution
+import manticore.compiler.assembly.levels.placed.CustomLutInsertion
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -77,8 +78,9 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         max_dimy = 5,
         debug_message = true,
         max_registers = 512,
-        max_carries = 16
-        // log_file = None
+        max_carries = 16,
+        optimize_common_custom_functions = true,
+        // log_file = None,
       )
 
       val yosysCompiler = YosysVerilogReader andThen
@@ -106,9 +108,12 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program7 = CompilationStage.parallelization(program6)
       checkPlaced("parallelization", program7, reference, dumper)
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+      val program8 = CompilationStage.customLuts(program7)
+      checkPlaced("custom luts", program8, reference, dumper)
+      ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
       // temporary disabled until I fix the bugs with lowering passes :(
-      // val program8 = CompilationStage.finalLowering(program7)
+      // val program9 = CompilationStage.finalLowering(program8)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
       // // do one final interpretation to make sure register allocation is correct
@@ -119,7 +124,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
       // val serialOut = ArrayBuffer.empty[String]
       // val interp = AtomicInterpreter.instance(
-      //   program = program8,
+      //   program = program9,
       //   serial = Some(serialOut += _)
       // )
       // interp.interpretCompletion()
@@ -271,6 +276,10 @@ object CompilationStage {
   val parallelization =
     ProcessSplittingTransform andThen
       PlacedNameChecker
+
+  val customLuts =
+    CustomLutInsertion andThen
+      PlacedIRDeadCodeElimination
 
   val finalLowering =
     RoundRobinPlacerTransform andThen Lowering.Transformation andThen
