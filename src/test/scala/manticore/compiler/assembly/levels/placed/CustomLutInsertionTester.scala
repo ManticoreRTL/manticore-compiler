@@ -41,24 +41,24 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
     PicoRv32Circuit,
     Swizzle,
     XorReduce,
-    Xormix32
+    Xormix32,
   )
 
   val dims = Seq(
     (1, 1),
-    (4, 4)
+    // (4, 4)
   )
 
   val numLutInputs = Seq(
-    2,
-    3,
+    // 2,
+    // 3,
     4,
-    5,
-    6
+    // 5,
+    // 6
   )
 
   val shareCustomFuncs = Seq(
-    false,
+    // false,
     true
   )
 
@@ -83,11 +83,12 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
   def interpret(program: PlacedIR.DefProgram)(implicit ctx: AssemblyContext) = {
 
     val prepare = PlacedIRCloseSequentialCycles andThen
-        JumpTableNormalizationTransform andThen
-        JumpLabelAssignmentTransform
+      JumpTableNormalizationTransform andThen
+      JumpLabelAssignmentTransform
     val prepared = prepare(program)
     AtomicInterpreter(prepared)
   }
+
   sources.foreach { source =>
     dims.foreach { case (dimx, dimy) =>
       numLutInputs.foreach { numCustomInstrInputs =>
@@ -111,9 +112,6 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
               // Sanity check that the program interprets correctly without LUTs
               interpret(progLowered)
-              // (PlacedIRCloseSequentialCycles andThen AtomicInterpreter)(
-              //   progLowered
-              // )
 
               val progWithLuts = CustomLutInsertion(progLowered)
 
@@ -121,8 +119,7 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
               interpret(progWithLuts)
 
               // Since processes might be split, we need to insert Send instructions for correctness.
-              val progWithLutsDce =
-                PlacedIRDeadCodeElimination(progWithLuts)
+              val progWithLutsDce = PlacedIRDeadCodeElimination(progWithLuts)
 
               // Sanity check that the program interprets correctly without LUTs
               interpret(progWithLutsDce)
@@ -132,14 +129,14 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
               }
 
               def computePercentDelta(before: Int, after: Int): String = {
-                val delta = (after - before).toDouble
+                val delta           = (after - before).toDouble
                 val absPercentDelta = (math.abs(delta) / before) * 100
-                val sign = if (delta > 0) "+" else "-"
+                val sign            = if (delta > 0) "+" else "-"
                 s"${sign} %.2f %%".format(absPercentDelta)
               }
 
               val vCyclesBefore = computeVirtualCycle(progLowered)
-              val vCyclesAfter = computeVirtualCycle(progWithLutsDce)
+              val vCyclesAfter  = computeVirtualCycle(progWithLutsDce)
               val percentDeltaStr =
                 computePercentDelta(vCyclesBefore, vCyclesAfter)
 
