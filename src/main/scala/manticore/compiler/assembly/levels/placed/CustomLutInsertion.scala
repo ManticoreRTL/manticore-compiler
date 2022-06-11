@@ -589,7 +589,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
         subst.toMap
       }.toVector
     }
-    val arityPermutationSubstMap = (2 to 6).map { arity =>
+    val arityPermutationSubstMap = (1 to 6).map { arity =>
       arity -> generatePermutationSubstMap(arity)
     }.toMap
 
