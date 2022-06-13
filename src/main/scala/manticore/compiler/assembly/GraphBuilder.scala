@@ -176,7 +176,7 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
         }
 
         memoryGroups.foreach { case (_, blk) =>
-          blk.sliding(2).foreach {
+          blk.toSeq.sortBy(_.order).sliding(2).foreach {
             case Seq(prev, next) =>
               antiDependenceEdge.foreach { edgeBuilder =>
                 graph add edgeBuilder(prev, next)

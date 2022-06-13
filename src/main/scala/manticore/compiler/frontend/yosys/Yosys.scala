@@ -3,20 +3,21 @@ package manticore.compiler.frontend.yosys
 object Yosys {
 
   import Implicits.passProxyToTransformation
-  val Hierarchy = YosysPassProxy("hierarchy")
-  val Proc = YosysPassProxy("proc")
-  val Opt = YosysPassProxy("opt")
-  val WReduce = YosysPassProxy("wreduce")
-  val OptReduce = YosysPassProxy("opt_reduce")
-  val OptClean = YosysPassProxy("opt_clean")
-  val Flatten = YosysPassProxy("flatten")
-  val Check = YosysPassProxy("check")
+  val Hierarchy     = YosysPassProxy("hierarchy")
+  val Proc          = YosysPassProxy("proc")
+  val Opt           = YosysPassProxy("opt")
+  val WReduce       = YosysPassProxy("wreduce")
+  val OptReduce     = YosysPassProxy("opt_reduce")
+  val OptClean      = YosysPassProxy("opt_clean")
+  val Flatten       = YosysPassProxy("flatten")
+  val Check         = YosysPassProxy("check")
   val MemoryCollect = YosysPassProxy("memory_collect")
-  val MemoryUnpack = YosysPassProxy("memory_unpack") runsAfter MemoryCollect
-  val RtlIlWriter = YosysPassProxy("write_rtlil")
-  val Select = YosysPassProxy("select")
+  val MemoryUnpack  = YosysPassProxy("memory_unpack") runsAfter MemoryCollect
+  val MemoryDff     = YosysPassProxy("memory_dff") runsAfter MemoryUnpack
+  val RtlIlWriter   = YosysPassProxy("write_rtlil")
+  val Select        = YosysPassProxy("select")
 
-  val ManticoreInit = YosysPassProxy("manticore_init") runsAfter Check
+  val ManticoreInit    = YosysPassProxy("manticore_init") runsAfter Check
   val ManticoreMemInit = YosysPassProxy("manticore_meminit")
 
   val ManticoreDff = YosysPassProxy("manticore_dff") runsAfter ManticoreInit
@@ -28,7 +29,6 @@ object Yosys {
     "manticore_check"
   ) runsAfter (Flatten, ManticoreDff, MemoryUnpack)
 
-
   val PreparationPasses =
     (Hierarchy << "-auto-top" << "-check") andThen
       Proc andThen
@@ -37,7 +37,7 @@ object Yosys {
       OptReduce andThen
       OptClean andThen
       (Check << "-assert") andThen
-      MemoryCollect andThen MemoryUnpack
+      MemoryCollect andThen MemoryUnpack andThen MemoryDff
 
   val LoweringPasses = ManticoreInit andThen
     Flatten andThen

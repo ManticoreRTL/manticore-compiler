@@ -547,7 +547,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
 
     if (finalCycle + 1 + LatencyAnalysis.maxLatency() >= ctx.max_instructions) {
       ctx.logger.error(
-        s"Could not schedule process ${core.process.id} that requires ${finalCycle + 1}."
+        s"Could not schedule process ${core.process.id} that requires ${finalCycle + 1} instruction."
       )
     }
 

@@ -1133,7 +1133,7 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
         val rd_width = builder.originalWidth(rd)
         if (rd_width != rs_width) {
           ctx.logger.error(
-            "SRA operand and result should be aligned!",
+            s"SRA operand and result should be aligned! Result has ${rd_width} and operand has ${rs_width}",
             instruction
           )
         }
@@ -1664,7 +1664,7 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
 
         // we create a copy of RS1 and shift it in a mutable manner
         // and then move this array to the RD. In case width(rd) < width(rs1)
-        // we don't have any bits lost, so the shift operation can be use
+        // we don't have any bits lost, so the shift operation can be used
         // to extract ranges from a larger word (i.e., RS1) into a smaller one
         // (i.e., RD)
         val mutable_array_size = rs1_uint16_array.length

@@ -268,7 +268,9 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     val executionGraph = ctx.stats.recordRunTime("creating raw graph") {
       GraphBuilder.rawGraph(proc.body)
     }
-
+    ctx.logger.dumpArtifact("original_exeuction_graph.dot") {
+      GraphBuilder.toDotGraph(executionGraph)
+    }
     // Collect the sink nodes in the graph. These are either writes to OutputType
     // registers, stores or system calls. Anything else is basically dead code
     val sinkNodes = executionGraph.nodes.filter(_.outDegree == 0)
