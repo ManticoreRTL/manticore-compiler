@@ -3,8 +3,9 @@ package manticore.compiler.integration.yosys.unit.ripped
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 import manticore.compiler.integration.yosys.unit.CodeResource
+import org.scalatest.CancelAfterFailure
 
-class YosysMemoryTestsTester extends UnitFixtureTest {
+class YosysMemoryTestsTester extends UnitFixtureTest with CancelAfterFailure {
 
     def testCase(name: String): Unit = {
       name should "match verilator's output" in { f =>
@@ -39,5 +40,8 @@ class YosysMemoryTestsTester extends UnitFixtureTest {
   testCase("wide_read_trans")
   testCase("wide_thru_priority")
   testCase("wide_write")
+  testCase("chisel_queue32")
+  testCase("chisel_queue13")
+  testCase("xilinx_fifo")
 
 }

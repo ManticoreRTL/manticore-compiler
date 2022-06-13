@@ -85,9 +85,9 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
     ): MutableGraph[Node, Edge] = {
 
       val withAntiDependence = antiDependenceEdge.nonEmpty
-      val defInst = NameDependence.definingInstruction(instructionBlock)
-      val graph = MutableGraph.empty[Node, Edge]
-      val nodeLookup = scala.collection.mutable.Map.empty[Instruction, Node]
+      val defInst            = NameDependence.definingInstruction(instructionBlock)
+      val graph              = MutableGraph.empty[Node, Edge]
+      val nodeLookup         = scala.collection.mutable.Map.empty[Instruction, Node]
       instructionBlock.foreach { instruction =>
         val node = graphNode(instruction)
         if (withAntiDependence) { nodeLookup += (instruction -> node) }
@@ -101,8 +101,8 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
 
       if (withAntiDependence) {
         // now add explicit orderings as dependencies
-        val hasOrder = instructionBlock.collect {
-          case inst: ExplicitlyOrderedInstruction => inst
+        val hasOrder = instructionBlock.collect { case inst: ExplicitlyOrderedInstruction =>
+          inst
         }
 
         val groups = hasOrder.groupBy { inst =>
@@ -176,10 +176,12 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
         }
 
         memoryGroups.foreach { case (_, blk) =>
-          blk.toSeq.sortBy(_.order).sliding(2).foreach {
-            case Seq(prev, next) =>
-              antiDependenceEdge.foreach { edgeBuilder =>
-                graph add edgeBuilder(prev, next)
+          blk.groupBy(_.order).toSeq.sortBy(_._1).sliding(2).foreach {
+            case Seq((_, prevGrp), (_, nextGrp)) =>
+              for (p <- prevGrp; n <- nextGrp) {
+                antiDependenceEdge.foreach { edgeBuilder =>
+                  graph add edgeBuilder(p, n)
+                }
               }
             case _ => // nothing to do because there is a single instruction
             // in this group (i.e., read/write-only memory)
@@ -187,8 +189,8 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
         }
       }
       graph
-    } ensuring {
-      g => g.nodes.size == instructionBlock.size
+    } ensuring { g =>
+      g.nodes.size == instructionBlock.size
     }
 
     def toDotGraph[N](
@@ -237,7 +239,7 @@ trait CanBuildDependenceGraph extends CanComputeNameDependence {
         dotRoot = dotRoot,
         edgeTransformer = edgeTransform,
         cNodeTransformer = Some(nodeTransformer), // connected nodes
-        iNodeTransformer = Some(nodeTransformer) // isolated nodes
+        iNodeTransformer = Some(nodeTransformer)  // isolated nodes
       )
       dotExport
     }

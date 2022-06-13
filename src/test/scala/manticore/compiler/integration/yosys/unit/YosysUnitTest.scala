@@ -117,7 +117,7 @@ object YosysUnitTest {
           ctx.logger.info("Success")
         }
       } else {
-        if (index > results.length) {
+        if (index >= results.length) {
           ctx.logger.error(
             s"Not enough results, expected ${reference.length} but got ${results.length} lines!"
           )
