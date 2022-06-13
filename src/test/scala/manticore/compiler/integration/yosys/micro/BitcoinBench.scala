@@ -72,10 +72,10 @@ final class BitcoinBench extends MicroBench with CancelAfterFailure {
 
   override def timeOut: Int = 10000
 
-  val loopFactor = Range(0, 5) // 5 means fully unrolled and hugely parallel hardware
+  val loopFactor = Range(0, 5+1) // 5 means fully unrolled and hugely parallel hardware
 
   val configs = loopFactor.map { TestConfig(10, _) }
-  
+
   configs.reverseIterator.foreach { // do in reverse order because the
     // later ones run faster
     cfg => testCase(cfg.toString(), cfg)

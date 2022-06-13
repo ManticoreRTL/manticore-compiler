@@ -15,15 +15,20 @@ import manticore.compiler.assembly.levels.CanRename
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
+    with CanCollectProgramStatistics
     with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
   override def transform(
       source: DefProgram
-  )(implicit context: AssemblyContext): DefProgram = source
+  )(implicit context: AssemblyContext): DefProgram = {
+    val newProgram = source
     .copy(processes = source.processes.map { doDce(_)(context) })
     .setPos(source.pos)
+    context.stats.record(ProgramStatistics.mkProgramStats(newProgram))
+    newProgram
+  }
 }
 
 object PlacedIROrderInstructions

@@ -1,37 +1,43 @@
 package manticore.compiler.assembly.levels.placed
 
+import com.google.ortools.Loader
+import com.google.ortools.linearsolver.MPSolver
+import com.google.ortools.linearsolver.MPVariable
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.BinaryOperator.{AND, OR, XOR, BinaryOperator}
+import manticore.compiler.Color
+import manticore.compiler.CyclicColorGenerator
+import manticore.compiler.assembly.BinaryOperator
+import manticore.compiler.assembly.BinaryOperator.AND
+import manticore.compiler.assembly.BinaryOperator.BinaryOperator
+import manticore.compiler.assembly.BinaryOperator.OR
+import manticore.compiler.assembly.BinaryOperator.XOR
 import manticore.compiler.assembly.DependenceGraphBuilder
 import manticore.compiler.assembly.levels.AssemblyTransformer
-import manticore.compiler.{Color, CyclicColorGenerator}
-import org.jgrapht.{Graph, Graphs}
+import manticore.compiler.assembly.levels.CanCollectProgramStatistics
+import manticore.compiler.assembly.levels.ConstType
+import manticore.compiler.assembly.levels.UInt16
+import org.jgrapht.Graph
+import org.jgrapht.GraphMapping
+import org.jgrapht.Graphs
 import org.jgrapht.alg.util.UnionFind
-import org.jgrapht.graph.{AsSubgraph, DefaultEdge, DirectedAcyclicGraph}
+import org.jgrapht.graph.AsSubgraph
+import org.jgrapht.graph.AsUnmodifiableGraph
+import org.jgrapht.graph.DefaultEdge
+import org.jgrapht.graph.DirectedAcyclicGraph
+import org.jgrapht.nio.Attribute
+import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.traverse.TopologicalOrderIterator
 
 import java.io.StringWriter
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.function.Function
 import scala.collection.immutable.{BitSet => Cut}
-import scala.collection.mutable.{
-  ArrayBuffer,
-  HashMap => MHashMap,
-  HashSet => MHashSet
-}
-import scala.jdk.CollectionConverters._
-import com.google.ortools.Loader
-import com.google.ortools.linearsolver.{MPSolver, MPVariable}
-import org.jgrapht.nio.Attribute
+import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.LinkedHashMap
-import org.jgrapht.nio.DefaultAttribute
-import manticore.compiler.assembly.levels.ConstType
-import org.jgrapht.alg.isomorphism.AHURootedTreeIsomorphismInspector
-import manticore.compiler.assembly.BinaryOperator
-import org.jgrapht.alg.isomorphism.VF2GraphIsomorphismInspector
-import org.jgrapht.GraphMapping
-import manticore.compiler.assembly.levels.UInt16
-import org.jgrapht.graph.AsUnmodifiableGraph
+import scala.collection.mutable.{HashMap => MHashMap}
+import scala.collection.mutable.{HashSet => MHashSet}
+import scala.jdk.CollectionConverters._
 
 object GraphDump {
   // The jgrapht library does not support emitting graphviz `subgraph`s.
@@ -47,37 +53,51 @@ object GraphDump {
   // "interface" type (SGraph) as the DOT exporter only supports this parent interface.
   private def jg2sc[V](
       jg: Graph[V, DefaultEdge]
-  ): SGraph[V, DiEdge] = {
-    val sg = MSGraph.empty[V, DiEdge]
+  ): (
+      SGraph[Int, DiEdge],
+      Map[V, Int],
+      Map[Int, V]
+  ) = {
+    val sg    = MSGraph.empty[Int, DiEdge]
+    val vToId = MHashMap.empty[V, Int]
+    val idToV = MHashMap.empty[Int, V]
 
-    jg.vertexSet().asScala.foreach { v =>
-      sg += v
+    jg.vertexSet().asScala.zipWithIndex.foreach { case (v, idx) =>
+      vToId += v   -> idx
+      idToV += idx -> v
+      sg += idx
     }
 
     jg.edgeSet().asScala.foreach { e =>
-      val src = jg.getEdgeSource(e)
-      val dst = jg.getEdgeTarget(e)
-      sg += DiEdge(src, dst)
+      val src   = jg.getEdgeSource(e)
+      val dst   = jg.getEdgeTarget(e)
+      val srcId = vToId(src)
+      val dstId = vToId(dst)
+      sg += DiEdge(srcId, dstId)
     }
 
-    sg
+    (sg, vToId.toMap, idToV.toMap)
   }
 
-  private def quote(s: String): String = s"\"${s}\""
+  private def escape(s: String): String = s.replaceAll("\"", "\\\\\"")
+  private def quote(s: String): String  = s"\"${s}\""
 
   def apply[V](
       g: Graph[V, DefaultEdge],
       clusters: Map[
-        Int, // Cluster ID
+        Int,   // Cluster ID
         Set[V] // Vertices in cluster
       ] = Map.empty[Int, Set[V]],
       clusterColorMap: Map[
-        Int, // Cluster ID
+        Int,   // Cluster ID
         String // Color to be assigned to cluster
       ] = Map.empty[Int, String],
       vNameMap: Map[V, String] = Map.empty[V, String]
   ): String = {
-    val sg = jg2sc(g)
+    // Some vertices have quotes in them when represented as strings. These vertices
+    // cannot be used as graphviz identifiers, so we assign an index to all vertices
+    // instead.
+    val (sg, vToId, idToV) = jg2sc(g)
 
     val dotRoot = DotRootGraph(
       directed = true,
@@ -93,10 +113,10 @@ object GraphDump {
     }
 
     def edgeTransform(
-        iedge: scalax.collection.Graph[V, DiEdge]#EdgeT
+        iedge: scalax.collection.Graph[Int, DiEdge]#EdgeT
     ): Option[
       (
-          DotGraph, // The graph/subgraph to which this edge belongs.
+          DotGraph,   // The graph/subgraph to which this edge belongs.
           DotEdgeStmt // Statements to modify the edge's representation.
       )
     ] = {
@@ -106,8 +126,8 @@ object GraphDump {
             (
               dotRoot, // All edges are part of the root graph.
               DotEdgeStmt(
-                NodeId(source.toString()),
-                NodeId(target.toString())
+                NodeId(source.toOuter),
+                NodeId(target.toOuter)
               )
             )
           )
@@ -121,16 +141,18 @@ object GraphDump {
     }
 
     def nodeTransformer(
-        inode: scalax.collection.Graph[V, DiEdge]#NodeT
+        inode: scalax.collection.Graph[Int, DiEdge]#NodeT
     ): Option[
       (
-          DotGraph, // The graph/subgraph to which this node belongs.
+          DotGraph,   // The graph/subgraph to which this node belongs.
           DotNodeStmt // Statements to modify the node's representation.
       )
     ] = {
       val clusterId = clusters
         .find { case (clusterId, vertices) =>
-          vertices.contains(inode.toOuter)
+          val vId = inode.toOuter
+          val v   = idToV(vId)
+          vertices.contains(v)
         }
         .map { case (clusterId, vertices) =>
           clusterId
@@ -139,27 +161,25 @@ object GraphDump {
       // If the vertex is part of a cluster, select the corresponding subgraph.
       // Otherwise add the vertex to the root graph.
       val dotGraph = clusterId
-        .map { id =>
-          dotSubgraphs(id)
-        }
+        .map(id => dotSubgraphs(id))
         .getOrElse(dotRoot)
 
-      val v = inode.toOuter
-      val vLabel = vNameMap.getOrElse(v, v.toString())
+      val vId    = inode.toOuter
+      val v      = idToV(vId)
+      val vName  = vNameMap.getOrElse(v, v.toString())
+      val vLabel = escape(vName)
 
       // If the vertex is part of a cluster, select its corresponding color.
       // Otherwise use white as the default color.
       val vColor = clusterId
-        .map { id =>
-          clusterColorMap(id)
-        }
+        .map(id => clusterColorMap(id))
         .getOrElse("white")
 
       Some(
         (
           dotGraph,
           DotNodeStmt(
-            NodeId(v.toString()),
+            NodeId(vId),
             Seq(
               DotAttr("label", quote(vLabel)),
               DotAttr("style", quote("filled")),
@@ -180,9 +200,7 @@ object GraphDump {
   }
 }
 
-object CustomLutInsertion
-    extends DependenceGraphBuilder
-    with PlacedIRTransformer {
+object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
 
   val flavor = PlacedIR
   import flavor._
@@ -192,7 +210,7 @@ object CustomLutInsertion
   // We want vertices for every element that could be used as a primary input. The highest-level names are not generated
   // by instructions, so we store `Name` directly for those. For all other vertices we store the `Instruction`.
   type DepVertex = Either[Name, Instruction]
-  type DepGraph = Graph[DepVertex, DefaultEdge]
+  type DepGraph  = Graph[DepVertex, DefaultEdge]
 
   // Represents a rooted cone of vertices in a graph.
   // The constructor is private as I want to force callers to go through the factory method in the Cone object.
@@ -264,10 +282,10 @@ object CustomLutInsertion
                   case None =>
                     // This named argument has not been seen before, so we
                     // create a new positional argument for it.
-                    val pos = nextPos()
-                    val posArg = PositionalArg(pos)
+                    val pos      = nextPos()
+                    val posArg   = PositionalArg(pos)
                     val namedArg = NamedArg(name)
-                    posArgToNamedArg += posArg -> namedArg
+                    posArgToNamedArg += posArg   -> namedArg
                     namedArgToPosArg += namedArg -> posArg
                     IdExpr(posArg)
 
@@ -339,7 +357,7 @@ object CustomLutInsertion
       }
 
       val verticesInclPrimaryInputs = getConeGraphVertices()
-      val vertices = verticesInclPrimaryInputs -- primaryInputs
+      val vertices                  = verticesInclPrimaryInputs -- primaryInputs
       val nameToInstrMap = vertices.flatMap {
         case Right(instr) =>
           val regDefs = NameDependence.regDef(instr)
@@ -476,7 +494,7 @@ object CustomLutInsertion
         }
 
       val subgraphVertices = inputs ++ logicVertices
-      val subgraph = new AsSubgraph(dependenceGraph, subgraphVertices.asJava)
+      val subgraph         = new AsSubgraph(dependenceGraph, subgraphVertices.asJava)
 
       (subgraph, inputs)
     }
@@ -560,6 +578,22 @@ object CustomLutInsertion
       ]
   ) = {
 
+    // We are going to look for permutations of cone inputs often. We therefore pre-compute
+    // the possible permutations so we do not have to do it again each time we want to compare
+    // two cones.
+    def generatePermutationSubstMap(arity: Int): Vector[Map[PositionalArg, PositionalArg]] = {
+      (0 until arity).permutations.map { inputPermutation =>
+        val subst = inputPermutation.zipWithIndex.map { case (inputIdx, idx) =>
+          PositionalArg(inputIdx) -> PositionalArg(idx)
+        }
+        subst.toMap
+      }.toVector
+    }
+    val arityPermutationSubstMap = (1 to 6).map { arity =>
+      arity -> generatePermutationSubstMap(arity)
+    }.toMap
+
+    // Cache of expression equations.
     val exprToEquCache = MHashMap.empty[ExprTree, Seq[BigInt]]
 
     def fullFuncEqualityCheck(
@@ -592,26 +626,14 @@ object CustomLutInsertion
       // We use Iterator.find() so we can exit the expensive permutation generation as
       // soon as we find a valid input permutation (instead of computing all permutations
       // and filtering them afterwards, which is very expensive).
-      val matchingPermutation =
-        (0 until f1.arity).view // @TODO (skashani: Check if using `.view` helps performance).
-          .permutations
-          .map { inputPermutation =>
-            val subst = inputPermutation.zipWithIndex.map {
-              case (inputIdx, idx) =>
-                PositionalArg(inputIdx) -> PositionalArg(idx)
-            }
-            subst.toMap
-          }
-          .find { subst =>
-            val f1NewExpr = CustomFunctionImpl.substitute(f1.expr)(
-              subst.toMap[AtomArg, AtomArg]
-            )
-            val f1NewFunc = CustomFunctionImpl(f1NewExpr)
-            // Cache the substituted expression and equation to save execution time in future calls.
-            val f1NewEqu =
-              exprToEquCache.getOrElseUpdate(f1NewExpr, f1NewFunc.equation)
-            f1NewEqu == equ2
-          }
+      val matchingPermutation = arityPermutationSubstMap(f1.arity)
+        .find { subst =>
+          val f1NewExpr = CustomFunctionImpl.substitute(f1.expr)(subst.toMap[AtomArg, AtomArg])
+          val f1NewFunc = CustomFunctionImpl(f1NewExpr)
+          // Cache the substituted expression and equation to save execution time in future calls.
+          val f1NewEqu = exprToEquCache.getOrElseUpdate(f1NewExpr, f1NewFunc.equation)
+          f1NewEqu == equ2
+        }
 
       matchingPermutation
     }
@@ -628,7 +650,7 @@ object CustomLutInsertion
     }
 
     val equalCones = MHashMap.empty[
-      (Int, Int), // (cone1Id, cone2Id)
+      (Int, Int),                       // (cone1Id, cone2Id)
       Map[PositionalArg, PositionalArg] // (cone1AtomArg, cone2AtomArg)
     ]
 
@@ -666,7 +688,7 @@ object CustomLutInsertion
       // A cone is equal to itself.
       coneGroup.foreach { case (coneId, cone) =>
         exprToEquCache += cone.func.expr -> cone.func.equation
-        equalCones += (coneId, coneId) -> identityArgMap
+        equalCones += (coneId, coneId)   -> identityArgMap
       }
 
       // Pairwise cone comparisons (with redundant comparisons skipped).
@@ -733,7 +755,7 @@ object CustomLutInsertion
       // chosen.
       coneIdToReprId: Map[
         Int, // Cone ID
-        Int // Category
+        Int  // Category
       ],
       maxNumConeTypes: Int
   )(implicit
@@ -766,9 +788,13 @@ object CustomLutInsertion
     // objective function
     // ------------------
     //
-    // Maximize the number of instructions that are saved through the use of custom functions.
+    // Maximize the number of instructions that are saved through the use of custom functions,
+    // while simultaneously minimizing the number of custom functions used.
     //
-    //     max sum_{C_i \in C} x_i * (|C_i|-1)
+    //     max {
+    //        (sum_{C_i \in C} x_i * (|C_i|-1)) -
+    //        (sum_{CT_i \in CT} y_i)
+    //     }
     //
     // constraints
     // -----------
@@ -781,11 +807,11 @@ object CustomLutInsertion
     //
     //         y_i \in {0, 1} for CT_i \in CT
     //
-    //   (3) Each vertex is covered by at most once.
+    //   (3) Each vertex is covered at most once.
     //
     //         sum_{C_i \in C : v \in C_i} x_i <= 1
     //
-    //   (4) The number of custom functions does not surprass the maximum available.
+    //   (4) The number of custom functions does not surpass the maximum available.
     //
     //         sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
@@ -844,13 +870,13 @@ object CustomLutInsertion
     allVertices.foreach { v =>
       val constraint = solver.makeConstraint(0, 1, s"covered_v${v}")
       cones.foreach { case (coneId, cone) =>
-        val coneVar = coneVars(coneId)
+        val coneVar     = coneVars(coneId)
         val coefficient = if (cone.contains(v)) 1 else 0
         constraint.setCoefficient(coneVar, coefficient)
       }
     }
 
-    //   (4) The number of custom functions does not surprass the maximum available.
+    //   (4) The number of custom functions does not surpass the maximum available.
     //
     //         sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
@@ -866,7 +892,7 @@ object CustomLutInsertion
     //         y_i <= sum_{C_i \in C : C_i \in CT_i} x_i
     //
 
-    //   (4) The number of custom functions does not surprass the maximum available.
+    //   (4) The number of custom functions does not surpass the maximum available.
     //
     //         sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
@@ -874,8 +900,7 @@ object CustomLutInsertion
     //
     //         0 <= sum_{CT_i \in CT} y_i <= maxNumConeTypes
     //
-    val maxNumConesConstraint =
-      solver.makeConstraint(0, maxNumConeTypes, s"maxNumConeTypes_constraint")
+    val maxNumConesConstraint = solver.makeConstraint(0, maxNumConeTypes, s"maxNumConeTypes_constraint")
     categoryVars.keys.foreach { category =>
       val categoryVar = categoryVars(category)
       maxNumConesConstraint.setCoefficient(categoryVar, 1)
@@ -893,9 +918,8 @@ object CustomLutInsertion
     //
     conesPerCategory.foreach { case (category, coneIds) =>
       coneIds.foreach { coneId =>
-        val constraint =
-          solver.makeConstraint(0, 1, s"y_${category} >= x_${coneId}")
-        val coneVar = coneVars(coneId)
+        val constraint  = solver.makeConstraint(0, 1, s"y_${category} >= x_${coneId}")
+        val coneVar     = coneVars(coneId)
         val categoryVar = categoryVars(category)
         constraint.setCoefficient(categoryVar, 1)
         constraint.setCoefficient(coneVar, -1)
@@ -929,16 +953,24 @@ object CustomLutInsertion
     // objective function
     // ------------------
     //
-    // Maximize the number of instructions that are saved through the use of custom functions.
+    // Maximize the number of instructions that are saved through the use of custom functions,
+    // while simultaneously minimizing the number of custom functions used.
     //
-    //     max sum_{C_i \in C} x_i * (|C_i|-1)
+    //     max {
+    //        (sum_{C_i \in C} x_i * (|C_i|-1)) -
+    //        (sum_{CT_i \in CT} y_i)
+    //     }
     //
     val objective = solver.objective()
     cones.foreach { case (coneId, cone) =>
-      val coneSize = cone.size
+      val coneSize    = cone.size
       val coefficient = coneSize - 1
-      val coneVar = coneVars(coneId)
+      val coneVar     = coneVars(coneId)
       objective.setCoefficient(coneVar, coefficient)
+    }
+    categoryVars.keys.foreach { category =>
+      val categoryVar = categoryVars(category)
+      objective.setCoefficient(categoryVar, -1)
     }
     objective.setMaximization()
 
@@ -955,15 +987,20 @@ object CustomLutInsertion
       }.keySet
 
       // The "types" of custom functions used.
-      val customFuncsUsed = categoryVars.filter {
-        case (category, categoryVar) =>
-          categoryVar.solutionValue.toInt > 0
+      val customFuncsUsed = categoryVars.filter { case (category, categoryVar) =>
+        categoryVar.solutionValue.toInt > 0
       }.keySet
 
+      // Important to transform to a Seq before calling map() as otherwise cones
+      // with identical size will be merged together due to the semantics of Set.
+      val instructionsSaved = conesUsed.toSeq.map { coneId =>
+        val cone = cones(coneId)
+        cone.size - 1
+      }.sum
+
       ctx.logger.info {
-        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms.\nCan reduce instruction count by ${objective
-          .value()
-          .toInt} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
+        s"Solved non-overlapping cone covering problem in ${solver.wallTime()}ms\n" +
+          s"Can reduce instruction count by ${instructionsSaved} using ${conesUsed.size} cones covered by ${customFuncsUsed.size} custom functions."
       }
 
       conesUsed.toSet
@@ -997,9 +1034,7 @@ object CustomLutInsertion
 
     // Identify logic clusters in the graph.
     val logicClusters = findLogicClusters(dependenceGraph)
-      .filter(cluster =>
-        cluster.size > 1
-      ) // No point in creating a LUT vector to replace a single instruction.
+      .filter(cluster => cluster.size > 1) // No point in creating a LUT vector to replace a single instruction.
 
     ctx.logger.debug {
       val clusterSizesStr = logicClusters.toSeq
@@ -1150,21 +1185,35 @@ object CustomLutInsertion
       // Color all vertices of a cone with its color.
       val clusterColorMap = clusters.keys.map { clusterId =>
         val reprId = coneIdToReprId(clusterId)
-        val color = reprIdToColor(reprId)
+        val color  = reprIdToColor(reprId)
         clusterId -> color.toCssHexString()
       }.toMap
+
+      // All vertices should use the string representation of the instruction
+      // that generates them, or the name itself (if a primary input).
+      val nameMap = dependenceGraph
+        .vertexSet()
+        .asScala
+        .map { v =>
+          v match {
+            case Left(name)   => v -> name
+            case Right(instr) => v -> instr.toString()
+          }
+        }
+        .toMap
 
       GraphDump(
         dependenceGraph,
         clusters = clusters,
-        clusterColorMap = clusterColorMap
+        clusterColorMap = clusterColorMap,
+        vNameMap = nameMap
       )
     }
 
     // The custom functions to emit. We only emit the representative function of the best cones.
     val reprIdToFunc = bestConeIds.map { coneId =>
       val reprId = coneIdToReprId(coneId)
-      val repr = cones(reprId)
+      val repr   = cones(reprId)
       reprId -> DefFunc(s"func_${reprId}", repr.func)
     }.toMap
 
@@ -1200,8 +1249,8 @@ object CustomLutInsertion
             case Some(coneId) =>
               // Replace instruction with a custom instruction. The custom instruction
               // is the one defined by the cone's representative.
-              val cone = cones(coneId)
-              val reprId = coneIdToReprId(coneId)
+              val cone     = cones(coneId)
+              val reprId   = coneIdToReprId(coneId)
               val reprFunc = reprIdToFunc(reprId)
 
               val coneToReprInputMap = coneToReprArgMap(coneId)
@@ -1237,8 +1286,10 @@ object CustomLutInsertion
 
   override def transform(
       program: DefProgram
-  )(implicit context: AssemblyContext): DefProgram = {
-    val newProcesses = program.processes.map(proc => onProcess(proc)(context))
-    program.copy(processes = newProcesses)
+  )(implicit ctx: AssemblyContext): DefProgram = {
+    val newProcesses = program.processes.map(proc => onProcess(proc)(ctx))
+    val newProgram   = program.copy(processes = newProcesses)
+    ctx.stats.record(ProgramStatistics.mkProgramStats(newProgram))
+    newProgram
   }
 }

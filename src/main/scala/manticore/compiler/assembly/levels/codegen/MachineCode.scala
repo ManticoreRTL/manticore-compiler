@@ -18,7 +18,6 @@ import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.Path
-import scalax.collection.constrained.BinaryOp
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)

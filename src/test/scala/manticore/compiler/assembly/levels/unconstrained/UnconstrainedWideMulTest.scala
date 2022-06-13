@@ -3,7 +3,6 @@ package manticore.compiler.assembly.levels.unconstrained
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.AssemblyContext
 import org.scalatest.CancelAfterFailure
-import scalax.collection.constrained.BinaryOp
 
 class UnconstrainedWideMulTest extends UnconstrainedWideTest with CancelAfterFailure {
 

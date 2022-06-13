@@ -11,7 +11,8 @@ case class ProcessStatistic(
     instructions: Seq[(String, Int)],
     length: Int,
     registers: Seq[(String, Int)],
-    vcycle: Int = 0
+    functs: Int,
+    vcycle: Int = 0,
 )
 
 trait CanCollectProgramStatistics extends Flavored {
@@ -172,7 +173,8 @@ trait CanCollectProgramStatistics extends Flavored {
         length = proc.body.length,
         instructions = instStat.count,
         registers = mkRegStats(proc),
-        vcycle = instStat.vcycle
+        functs = proc.functions.size,
+        vcycle = instStat.vcycle,
       )
     }
 
@@ -403,6 +405,7 @@ object StatisticCollector {
             tabs(3) { s"- ${p.name}: " }
             tabs(4) { s"length: ${p.length}" }
             tabs(4) { s"vcycle: ${p.vcycle}" }
+            tabs(4) { s"functs: ${p.functs}" }
             tabs(4) { s"instructions:" }
             p.instructions.foreach { case (k, v) => tabs(5) { s"${k}: ${v} " } }
             tabs(4) { s"registers:" }
