@@ -131,7 +131,7 @@ module axi4_full_slave
   localparam MEM_ADDR_WIDTH = G_ADDR_WIDTH - OFST;
   localparam MEM_NUM_WORDS = 2 ** MEM_ADDR_WIDTH;
 
-  enum {
+  enum logic [2:0] {
     STATE_WRITE_IDLE = 0,
     STATE_WRITE_ACK_AWREADY = 1,
     STATE_WRITE_WAIT_WVALID = 2,
@@ -139,7 +139,7 @@ module axi4_full_slave
     STATE_WRITE_SEND_BVALID = 4
   } reg_write_state, next_write_state;
 
-  enum {
+  enum logic [1:0] {
     STATE_READ_IDLE = 0,
     STATE_READ_ACK_ARREADY = 1,
     STATE_READ_BURST = 2
@@ -258,6 +258,10 @@ module axi4_full_slave
           next_write_state = STATE_WRITE_IDLE;
         end
       end
+
+      default :
+      begin
+      end
     endcase
   end
 
@@ -305,9 +309,14 @@ module axi4_full_slave
           next_read_addr = reg_read_addr + 1'b1;
 
           if (reg_read_len_cnt >= reg_read_len) begin
+            s_rlast = 1;
             next_read_state = STATE_READ_IDLE;
           end
         end
+      end
+
+      default :
+      begin
       end
 
     endcase
