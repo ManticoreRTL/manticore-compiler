@@ -173,7 +173,17 @@ object AtomicInterpreter extends PlacedIRChecker {
         trap(InternalTrap)
       }
 
-      val impl = Array.ofDim[UInt16](requiredSize.toInt)
+      if (requiredSize > 0) {
+        ctx.logger.info(s"Allocating ${requiredSize} shorts for global memory")
+      }
+      val impl = Array.fill[UInt16](requiredSize.toInt) { UInt16(0) }
+      for (gmem <- proc.globalMemories) {
+        var index = gmem.base
+        for (value <- gmem.content) {
+          impl(index.toInt) = value
+          index += 1
+        }
+      }
       impl
     }
 

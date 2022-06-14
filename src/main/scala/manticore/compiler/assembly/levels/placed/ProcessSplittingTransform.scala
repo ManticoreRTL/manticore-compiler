@@ -465,21 +465,20 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       while (toMerge.nonEmpty) {
         val head = toMerge.dequeue()
         val (_, best) =
-          mergedProcesses.foldLeft[(Int, MergeResult)](0, NoMerge) {
-            case ((ix, prevBest), currentChoice) =>
-              if (canMerge(currentChoice, head)) {
-                val possibleMerge = head merged currentChoice
-                val possibleCost  = estimateCost(possibleMerge)
-                val nextBest = prevBest match {
-                  case NoMerge => MergeChoice(possibleMerge, ix, possibleCost)
-                  case other: MergeChoice if (other.cost > possibleCost) =>
-                    MergeChoice(possibleMerge, ix, possibleCost)
-                  case other => other
-                }
-                (ix + 1, nextBest)
-              } else {
-                (ix + 1, prevBest)
+          mergedProcesses.foldLeft[(Int, MergeResult)](0, NoMerge) { case ((ix, prevBest), currentChoice) =>
+            if (canMerge(currentChoice, head)) {
+              val possibleMerge = head merged currentChoice
+              val possibleCost  = estimateCost(possibleMerge)
+              val nextBest = prevBest match {
+                case NoMerge => MergeChoice(possibleMerge, ix, possibleCost)
+                case other: MergeChoice if (other.cost > possibleCost) =>
+                  MergeChoice(possibleMerge, ix, possibleCost)
+                case other => other
               }
+              (ix + 1, nextBest)
+            } else {
+              (ix + 1, prevBest)
+            }
           }
         best match {
           case MergeChoice(result, index, _) => mergedProcesses(index) = result
@@ -533,7 +532,15 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
             id = procId,
             registers = usedRegs,
             labels = usedLabelGrps,
-            body = bodyWithSends
+            body = bodyWithSends,
+            globalMemories =
+              if (
+                bodyWithSends.exists { inst: Instruction =>
+                  inst.isInstanceOf[GlobalLoad] || inst.isInstanceOf[GlobalStore]
+                }
+              ) {
+                program.processes.head.globalMemories
+              } else Nil
           )
           .setPos(program.processes.head.pos)
     }

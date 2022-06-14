@@ -117,7 +117,15 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         )
 
       }
-      Array.ofDim[BigInt](requiredSize.toInt)
+      val impl =Array.ofDim[BigInt](requiredSize.toInt)
+      for(gmem <- proc.globalMemories) {
+        var index = gmem.base
+        for (value <- gmem.content) {
+          impl(index.toInt) = value
+          index += 1
+        }
+      }
+      impl
     }
     // a container to map .mem names to their allocated block ram (possibly many to one)
     var predicate: Boolean                             = false

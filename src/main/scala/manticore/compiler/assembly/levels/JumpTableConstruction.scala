@@ -39,7 +39,7 @@ trait JumpTableConstruction
   def do_transform(prog: DefProgram)(implicit
       ctx: AssemblyContext
   ): DefProgram = {
-
+    ctx.logger.fail("This pass is probably broken or breaks something else! Don't use it.")
     prog.copy(processes = prog.processes.map(do_transform))
   }
 

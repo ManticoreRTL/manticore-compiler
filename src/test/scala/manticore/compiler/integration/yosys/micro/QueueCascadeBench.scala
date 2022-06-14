@@ -8,7 +8,9 @@ import manticore.compiler.AssemblyContext
 
 final class QueueCascadeBench extends MicroBench {
 
-  case class TestConfig(levels: Int, cycles: Int)
+  case class TestConfig(levels: Int, cycles: Int) {
+    override def toString = s"$levels cascaded queues running for ${cycles}"
+  }
   override def benchName: String = "Cascade Queues"
 
   override def resource: String = "integration/yosys/micro/QueueCascade.v"
@@ -77,6 +79,14 @@ final class QueueCascadeBench extends MicroBench {
   override def timeOut: Int = 5000
 
   // println(outputReference(sum1to9).mkString("\n"))
-  testCase(s"4 Queues", TestConfig(20, 4000))
+  val configs = Seq(
+    TestConfig(5, 300),
+    TestConfig(12, 300),
+    TestConfig(20, 400),
+    TestConfig(40, 500)
+  )
+
+  configs.foreach { cfg => testCase(cfg.toString(), cfg) }
+
 
 }
