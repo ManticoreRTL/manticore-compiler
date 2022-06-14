@@ -243,7 +243,7 @@ module axi4_full_slave
           next_write_addr = reg_write_addr + 1'b1;
           mem_we = 1;
 
-          if (reg_write_len_cnt >= reg_write_len) begin
+          if (reg_write_len_cnt == reg_write_len) begin
             next_write_state = STATE_WRITE_SEND_BVALID;
           end
         end
