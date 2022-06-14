@@ -26,16 +26,22 @@ module Main(input wire clk);
   localparam C_NUM_SINGLE_READS = 3;
   localparam C_NUM_SINGLE_WRITES = 4;
 
-  // Generate addresses used for single-read and single-write transactions.
+  // Generate addresses/data used for single-read and single-write transactions.
   logic [G_ADDR_WIDTH - 1 : 0] RD_ADDRS [0 : C_NUM_SINGLE_READS - 1];
   logic [G_ADDR_WIDTH - 1 : 0] WR_ADDRS [0 : C_NUM_SINGLE_WRITES - 1];
+  logic [G_DATA_WIDTH - 1 : 0] WR_DATAS [0 : C_NUM_SINGLE_WRITES - 1];
   initial begin
-    // Generated addresses must be a multiple of the data width, so we mask the addresses.
     for (int i = 0; i < C_NUM_SINGLE_READS; i = i + 1) begin
+      // Generated addresses must be a multiple of the data width, so we mask the addresses.
       RD_ADDRS[i] = G_ADDR_WIDTH'($urandom_range(0, 2**G_ADDR_WIDTH - 1) & C_ADDR_MASK);
     end
     for (int i = 0; i < C_NUM_SINGLE_WRITES; i = i + 1) begin
+      // Generated addresses must be a multiple of the data width, so we mask the addresses.
       WR_ADDRS[i] = G_ADDR_WIDTH'($urandom_range(0, 2**G_ADDR_WIDTH - 1) & C_ADDR_MASK);
+    end
+    for (int i = 0; i < C_NUM_SINGLE_WRITES; i = i + 1) begin
+      // This is data, not an address. No masking necessary.
+      WR_DATAS[i] = G_DATA_WIDTH'($urandom_range(0, 2**G_DATA_WIDTH - 1));
     end
   end
 
@@ -51,7 +57,7 @@ module Main(input wire clk);
     int addr
   );
     logic [G_ADDR_WIDTH - $clog2(G_DATA_WIDTH / 8) - 1 : 0] mem_addr = addr[G_ADDR_WIDTH - 1 : $clog2(G_DATA_WIDTH / 8)];
-    $display("mem[%d] = %h", addr, mem[mem_addr]);
+    // $display("mem[%d] = %h", addr, mem[mem_addr]);
     return mem[mem_addr];
   endfunction
 
@@ -60,6 +66,7 @@ module Main(input wire clk);
     logic [G_DATA_WIDTH - 1 : 0] data
   );
     logic [G_ADDR_WIDTH - $clog2(G_DATA_WIDTH / 8) - 1 : 0] mem_addr = addr[G_ADDR_WIDTH - 1 : $clog2(G_DATA_WIDTH / 8)];
+    // $display("mem[%d] = %h --> %h", addr, mem[mem_addr], data);
     mem[mem_addr] = data;
   endfunction
 
@@ -169,7 +176,7 @@ module Main(input wire clk);
     STATE_SINGLE_READ_END = 7,
     // Single writes.
     STATE_SINGLE_WRITE_START = 8,
-    STATE_SINGLE_WRITE_ARVALID = 9,
+    STATE_SINGLE_WRITE_AWVALID = 9,
     STATE_SINGLE_WRITE_WVALID = 10,
     STATE_SINGLE_WRITE_BREADY = 11,
     STATE_SINGLE_WRITE_CHECK = 12,
@@ -194,7 +201,8 @@ module Main(input wire clk);
   int reg_single_rd_cnt, next_single_rd_cnt;
   int reg_single_wr_cnt, next_single_wr_cnt;
   logic [G_DATA_WIDTH - 1 : 0] reg_rdata, next_rdata;
-  logic [1 : 0] reg_rresp, next_rresp;
+  logic [C_RESPBITS - 1 : 0] reg_rresp, next_rresp;
+  logic [C_RESPBITS - 1 : 0] reg_bresp, next_bresp;
 
   // State update.
   always_ff @(posedge clk) begin
@@ -203,6 +211,7 @@ module Main(input wire clk);
     reg_single_wr_cnt <= next_single_wr_cnt;
     reg_rdata <= next_rdata;
     reg_rresp <= next_rresp;
+    reg_bresp <= next_bresp;
   end
 
   // Next state logic.
@@ -222,7 +231,7 @@ module Main(input wire clk);
     s_wvalid = 0;
     s_wid = 0;
     s_wdata = 0;
-    s_wstrb = 0;
+    s_wstrb = {(G_DATA_WIDTH / 8) {1'b1}};
     s_wlast = 0;
     s_bready = 0;
     s_arvalid = 0;
@@ -242,6 +251,7 @@ module Main(input wire clk);
     next_single_wr_cnt = reg_single_wr_cnt;
     next_rdata = reg_rdata;
     next_rresp = reg_rresp;
+    next_bresp = reg_bresp;
 
     case (reg_state)
       STATE_IDLE:
@@ -278,7 +288,7 @@ module Main(input wire clk);
 
       STATE_SINGLE_READ_CHECK:
       begin
-        if ((reg_rdata == read_mem(RD_ADDRS[reg_single_rd_cnt])) && (reg_rresp == 0)) begin
+        if ((reg_rdata == read_mem(RD_ADDRS[reg_single_rd_cnt])) && (reg_rresp == C_RESP_OKAY)) begin
           next_state = STATE_SINGLE_READ_INCR;
         end else begin
           next_state = STATE_SINGLE_READ_FAIL;
@@ -302,87 +312,136 @@ module Main(input wire clk);
         if (reg_single_rd_cnt < C_NUM_SINGLE_READS) begin
           next_state = STATE_SINGLE_READ_ARVALID;
         end else begin
-          next_state = STATE_SUCCESS;
+          next_state = STATE_SINGLE_WRITE_START;
         end
       end
 
       STATE_SINGLE_WRITE_START:
       begin
-
+        next_single_wr_cnt = 0;
+        next_state = STATE_SINGLE_WRITE_AWVALID;
       end
 
-      STATE_SINGLE_WRITE_ARVALID:
+      STATE_SINGLE_WRITE_AWVALID:
       begin
-
+        s_awvalid = 1;
+        s_awaddr = WR_ADDRS[reg_single_wr_cnt];
+        s_awlen = 0; // no burst
+        if (s_awready == 1) begin
+          next_state = STATE_SINGLE_WRITE_WVALID;
+        end
       end
 
       STATE_SINGLE_WRITE_WVALID:
       begin
-
+        s_wvalid = 1;
+        s_wdata = WR_DATAS[reg_single_wr_cnt];
+        s_wlast = 1;
+        write_mem(WR_ADDRS[reg_single_wr_cnt], WR_DATAS[reg_single_wr_cnt]);
+        if (s_wready == 1) begin
+          next_state = STATE_SINGLE_WRITE_BREADY;
+        end
       end
 
       STATE_SINGLE_WRITE_BREADY:
       begin
-
+        s_bready = 1;
+        next_bresp = s_bresp;
+        if (s_bvalid == 1) begin
+          next_state = STATE_SINGLE_WRITE_CHECK;
+        end
       end
 
       STATE_SINGLE_WRITE_CHECK:
       begin
-
+        if (reg_bresp == C_RESP_OKAY) begin
+          next_state = STATE_SINGLE_WRITE_INCR;
+        end else begin
+          next_state = STATE_SINGLE_WRITE_FAIL;
+        end
       end
 
       STATE_SINGLE_WRITE_INCR:
       begin
-
+        next_single_wr_cnt = reg_single_wr_cnt + 1;
+        next_state = STATE_SINGLE_WRITE_END;
       end
 
       STATE_SINGLE_WRITE_FAIL:
       begin
-
+        $display("single-write failed");
+        $finish;
       end
 
       STATE_SINGLE_WRITE_END:
       begin
-
+        if (reg_single_wr_cnt < C_NUM_SINGLE_WRITES) begin
+          next_state = STATE_SINGLE_WRITE_AWVALID;
+        end else begin
+          next_state = STATE_SINGLE_WRITE_CHECK_START;
+        end
       end
 
       STATE_SINGLE_WRITE_CHECK_START:
       begin
-
+        next_single_rd_cnt = 0;
+        next_state = STATE_SINGLE_WRITE_CHECK_ARVALID;
       end
 
       STATE_SINGLE_WRITE_CHECK_ARVALID:
       begin
-
+        s_araddr = WR_ADDRS[reg_single_rd_cnt]; // We are reading back what we wrote, hence WR_ADDRS here instead of RD_ADDRS.
+        s_arvalid = 1;
+        s_arlen = 0; // no burst
+        if (s_arready == 1) begin
+          next_state = STATE_SINGLE_WRITE_CHECK_RECV;
+        end
       end
 
       STATE_SINGLE_WRITE_CHECK_RECV:
       begin
-
+        s_rready = 1;
+        next_rdata = s_rdata;
+        next_rresp = s_rresp;
+        if (s_rvalid == 1) begin
+          next_state = STATE_SINGLE_WRITE_CHECK_VERIFY;
+        end
       end
 
       STATE_SINGLE_WRITE_CHECK_VERIFY:
       begin
-
+        // We are reading back the address at which we wrote, hence WR_ADDRS instead of RD_ADDRS.
+        if (reg_rdata == WR_DATAS[reg_single_rd_cnt]) begin
+          next_state = STATE_SINGLE_WRITE_CHECK_INCR;
+        end else begin
+          next_state = STATE_SINGLE_WRITE_CHECK_FAIL;
+        end
       end
 
       STATE_SINGLE_WRITE_CHECK_INCR:
       begin
-
+        next_single_rd_cnt = reg_single_rd_cnt + 1;
+        next_state = STATE_SINGLE_WRITE_CHECK_END;
       end
 
       STATE_SINGLE_WRITE_CHECK_FAIL:
       begin
-
+        $display("single-write check failed");
+        $finish;
       end
 
       STATE_SINGLE_WRITE_CHECK_END:
       begin
-
+        if (reg_single_rd_cnt < C_NUM_SINGLE_WRITES) begin
+          next_state = STATE_SINGLE_WRITE_CHECK_ARVALID;
+        end else begin
+          next_state = STATE_SUCCESS;
+        end
       end
 
       STATE_SUCCESS:
       begin
+        $display("AXI4 slave works as intended");
         $finish;
       end
 
