@@ -22,40 +22,42 @@ module xormix32 #(
 
 );
 
-  localparam [32 * 32 - 1 : 0] salts = {
-    32'h00af1456,
-    32'h73674eb7,
-    32'he90488a4,
-    32'h965c4507,
-    32'hab0e51e1,
-    32'h618cbc79,
-    32'ha71d489e,
-    32'h51c0c69b,
-    32'h234a07b4,
-    32'h854f0980,
-    32'h59752549,
-    32'hd8449f2a,
-    32'h95f13c50,
-    32'h3afaca18,
-    32'hee211518,
-    32'hfeed780c,
-    32'h352df180,
-    32'h9ceeb1dd,
-    32'hf3fb7189,
-    32'hd6c99ef7,
-    32'hd113a2d8,
-    32'h0fc77197,
-    32'h232b8463,
-    32'h9baafefa,
-    32'h0cef1f8b,
-    32'h990053fe,
-    32'hb9969e83,
-    32'h5fda94c2,
-    32'hcb246290,
-    32'h57f90206,
-    32'h46d9b8ac,
-    32'h198f8d32
-  };
+  reg [31:0] salts [0:31];
+  initial begin
+    salts[31] = 32'h00af1456;
+    salts[30] = 32'h73674eb7;
+    salts[29] = 32'he90488a4;
+    salts[28] = 32'h965c4507;
+    salts[27] = 32'hab0e51e1;
+    salts[26] = 32'h618cbc79;
+    salts[25] = 32'ha71d489e;
+    salts[24] = 32'h51c0c69b;
+    salts[23] = 32'h234a07b4;
+    salts[22] = 32'h854f0980;
+    salts[21] = 32'h59752549;
+    salts[20] = 32'hd8449f2a;
+    salts[19] = 32'h95f13c50;
+    salts[18] = 32'h3afaca18;
+    salts[17] = 32'hee211518;
+    salts[16] = 32'hfeed780c;
+    salts[15] = 32'h352df180;
+    salts[14] = 32'h9ceeb1dd;
+    salts[13] = 32'hf3fb7189;
+    salts[12] = 32'hd6c99ef7;
+    salts[11] = 32'hd113a2d8;
+    salts[10] = 32'h0fc77197;
+    salts[9] = 32'h232b8463;
+    salts[8] = 32'h9baafefa;
+    salts[7] = 32'h0cef1f8b;
+    salts[6] = 32'h990053fe;
+    salts[5] = 32'hb9969e83;
+    salts[4] = 32'h5fda94c2;
+    salts[3] = 32'hcb246290;
+    salts[2] = 32'h57f90206;
+    salts[1] = 32'h46d9b8ac;
+    salts[0] = 32'h198f8d32;
+  end
+
 
   reg [31 : 0] r_state_x;
   reg [32 * streams - 1 : 0] r_state_y;
@@ -223,19 +225,12 @@ module xormix32_tb (
       ictr <= ictr + 1;
       if (ictr < NUM) begin
         if (result != expected) begin
-`ifdef VERILATOR
-          $error("Invalid %dth result %d != %d", ictr, result, expected);
-`else
-          $masm_expect(0, "Invalid result!");
-`endif
+          $display("Invalid %dth result %d != %d", ictr, result, expected);
+          $stop;
         end
       end else begin
-`ifdef VERILATOR
+        $display("Finished at %d", ictr);
         $finish;
-`else
-        $masm_stop;
-`endif
-
       end
     end
   end

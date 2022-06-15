@@ -39,8 +39,6 @@ object ManticorePasses {
       UnconstrainedIRCommonSubExpressionElimination andThen
       UnconstrainedDeadCodeElimination andThen
       UnconstrainedNameChecker andThen
-      UnconstrainedJumpTableConstruction.withCondition(false) andThen
-      UnconstrainedNameChecker andThen
       UnconstrainedIRParMuxDeconstructionTransform andThen
       UnconstrainedNameChecker
 

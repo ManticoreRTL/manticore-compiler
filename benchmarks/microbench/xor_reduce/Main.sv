@@ -46,22 +46,13 @@ module Main (
 
   always_ff @(posedge clock) begin
     counter <= counter + 1;
-
-`ifdef VERILATOR
     if (out_val != out_val_expected) begin
       $display("[%d] Expected parity(%d) = %d but got %d", counter, in_val, out_val_expected, out_val);
+      $stop;
     end
-    assert (out_val == out_val_expected);
-`else
-    $masm_expect(out_val == out_val_expected, "invalid result");
-`endif
-
     if (counter == TEST_SIZE - 1) begin
-`ifdef VERILATOR
+      $display("Finished after %d cycles");
       $finish;
-`else
-      $masm_stop;
-`endif
     end
   end
 

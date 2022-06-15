@@ -187,7 +187,7 @@ object MachineCodeGenerator
 
     }
     Files.createDirectories(dir_name)
-    val exe_file = dir_name.resolve("exec.dat").toFile()
+    val exe_file = dir_name.resolve("exec.ascii.bin").toFile()
     if (ctx.dump_ascii) {
       writeToFile(exe_file, binary_stream)
     }

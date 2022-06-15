@@ -294,18 +294,19 @@ object StatisticCollector {
       def nonEmpty: Boolean = runtime.nonEmpty || pairs.nonEmpty
       def toYaml(indent: Int): String = {
         val str = new StringBuilder
-        val tabs: String = "\t" * indent
+        val tab: String = "    "
+        val tabs: String = tab * indent
         str ++= s"${tabs}user:\n"
         if (runtime.nonEmpty) {
-          str ++= s"${tabs}\truntime:\n"
+          str ++= s"${tabs}${tab}runtime:\n"
           runtime.foreach { case (k, v) =>
-            str ++= s"${tabs}\t\t- ${k}: ${prettyPrintRuntime(v)}\n"
+            str ++= s"${tabs}${tab}${tab}- ${k}: ${prettyPrintRuntime(v)}\n"
           }
         }
         if (pairs.nonEmpty) {
-          str ++= s"${tabs}\tdata: \n"
+          str ++= s"${tabs}${tab}data: \n"
           pairs.foreach { case (k, v) =>
-            str ++= s"${tabs}\t\t- ${k}: ${v}\n"
+            str ++= s"${tabs}${tab}${tab}- ${k}: ${v}\n"
           }
         }
         str.toString()
@@ -377,7 +378,7 @@ object StatisticCollector {
     override def asYaml: String = {
       val str = new StringBuilder
 
-      def tabs(n: Int)(s: => String): Unit = str ++= (("\t" * n) + s + "\n")
+      def tabs(n: Int)(s: => String): Unit = str ++= (("    " * n) + s + "\n")
       tabs(0) { s"transformations: " }
 
       transStatBuilder.foreach { stat =>
