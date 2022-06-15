@@ -99,7 +99,7 @@ module axi4_full_slave
   input                               s_wvalid;
   input [G_ID_WIDTH - 1 : 0]          s_wid;
   input [G_DATA_WIDTH - 1 : 0]        s_wdata;
-  input [3:0]                         s_wstrb;
+  input [(G_DATA_WIDTH / 8) - 1 : 0]  s_wstrb;
   input                               s_wlast;
 
   input                               s_bready;
