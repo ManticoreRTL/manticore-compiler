@@ -35,10 +35,13 @@ trait CompilerTransformation[
   def transform(program: S)(implicit ctx: AssemblyContext): T
 
   protected def dumpResults(res: T)(implicit ctx: AssemblyContext): Unit = {
-    ctx.logger.dumpArtifact(
-      s"dump_post.masm"
-    ) {
-      res.serialized
+    if (ctx.dump_all && ctx.dump_dir.nonEmpty) {
+      val dumpFile = ctx.logger.openFile("dump_post.masm")
+      val printer = new PrintWriter(dumpFile)
+      ctx.logger.info(s"Dumping ${dumpFile.toPath().toAbsolutePath().toString()}")
+      res.dump(printer)
+      printer.flush()
+      printer.close()
     }
   }
 

@@ -40,7 +40,10 @@ abstract class ValueChangeWriterBase extends ValueChangeWriter {
     val dbg = getDebugSymbol(r)
     dbg match {
       case Some(sym) =>
-        !sym.isGenerated().getOrElse(true)
+        sym.isGenerated() match {
+          case Some(gen) => !gen
+          case None => false
+        }
       case _ => false
     }
   }

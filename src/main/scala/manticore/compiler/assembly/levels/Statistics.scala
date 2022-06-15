@@ -88,6 +88,8 @@ trait CanCollectProgramStatistics extends Flavored {
             case SEQ  => incr("SEQ")
             case SLTS => incr("SLTS")
             case SLT  => incr("SLT")
+            case MULH => incr("MULH")
+            case MULS => incr("MULHS")
             case _ =>
               ctx.logger.error(s"invalid operator ${op}!")
               0

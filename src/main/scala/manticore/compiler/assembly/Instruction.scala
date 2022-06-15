@@ -10,6 +10,8 @@ import manticore.compiler.assembly.annotations.AnnotationValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields.FieldName
 import manticore.compiler.assembly.annotations.Sourceinfo
 import manticore.compiler.FormatString
+import java.io.File
+import java.io.PrintWriter
 
 /** Base classes for the various IR flavors.
   * @author
@@ -20,11 +22,10 @@ import manticore.compiler.FormatString
   */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val ADD, SUB,
-    MUL, // unsigned mult
-    MULH,// unsigned mult but keep upper bits
-    MULS, // signed mult, only used in unconstrained flavor
-    AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC =
+  val ADD, SUB, MUL, // unsigned mult
+  MULH,              // unsigned mult but keep upper bits
+  MULS,              // signed mult, only used in unconstrained flavor
+  AND, OR, XOR, SLL, SRL, SRA, SEQ, SLT, SLTS, MUX, ADDC =
     Value
 }
 
@@ -53,7 +54,7 @@ trait ManticoreAssemblyIR {
   type Constant // type defining constants, e.g., UInt16 or BigInt
   type Variable <: HasVariableType with Named[
     Variable
-  ] with HasSerialized with HasWidth // type defining Variables, should include variable type information
+  ] with HasSerialized with HasWidth   // type defining Variables, should include variable type information
   type CustomFunction <: HasSerialized // type defining custom function, e.g., Seq[UInt16]
   type ProcessId                       // type defining a process identifier, e.g., String
   type ExceptionId                     // type defining an exception identifier, e.g., String
@@ -163,6 +164,15 @@ trait ManticoreAssemblyIR {
       builder.toString()
 
     }
+
+    def dump(fileName: PrintWriter): Unit = {
+      val printer = new PrintWriter(fileName)
+      for (p <- processes) {
+        p.dump(printer)
+
+      }
+      printer.flush()
+    }
   }
 
   // process definition, can be multiple
@@ -193,6 +203,19 @@ trait ManticoreAssemblyIR {
       append(body)
       builder.toString()
 
+    }
+
+    def dump(printer: PrintWriter): Unit = {
+      def append[T <: HasSerialized](elems: Seq[T]): Unit = {
+        for (e <- elems) {
+          printer.println(e.serialized)
+        }
+      }
+      append(registers)
+      append(functions)
+      append(labels)
+      append(globalMemories)
+      append(body)
     }
   }
 

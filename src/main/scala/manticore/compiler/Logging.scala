@@ -14,14 +14,14 @@ import java.io.PrintStream
   */
 class CompilationFailureException(msg: String) extends Exception(msg)
 
-
 trait HasLoggerId {
   val id: String
   override def toString(): String = id
 }
 object LoggerId {
-  def apply(name: String) = new HasLoggerId {val id = name }
+  def apply(name: String) = new HasLoggerId { val id = name }
 }
+
 /** Fully self-contained reported class
   */
 
@@ -91,20 +91,20 @@ object Logger {
 
   object Colored extends ColorCollection {
     import io.AnsiColor
-    override val RED: String = AnsiColor.RED
-    override val BLUE: String = AnsiColor.BLUE
+    override val RED: String    = AnsiColor.RED
+    override val BLUE: String   = AnsiColor.BLUE
     override val YELLOW: String = AnsiColor.YELLOW
-    override val CYAN: String = AnsiColor.CYAN
-    override val BOLD: String = AnsiColor.BOLD
-    override val RESET: String = AnsiColor.RESET
+    override val CYAN: String   = AnsiColor.CYAN
+    override val BOLD: String   = AnsiColor.BOLD
+    override val RESET: String  = AnsiColor.RESET
   }
   object NoColor extends ColorCollection {
-    override val RED: String = ""
-    override val BLUE: String = ""
+    override val RED: String    = ""
+    override val BLUE: String   = ""
     override val YELLOW: String = ""
-    override val CYAN: String = ""
-    override val BOLD: String = ""
-    override val RESET: String = ""
+    override val CYAN: String   = ""
+    override val BOLD: String   = ""
+    override val RESET: String  = ""
   }
 
   private class VerbosePrintLogger(
@@ -119,10 +119,9 @@ object Logger {
     val color_pallette = if (no_colors) NoColor else Colored
     import color_pallette._
 
-
     private var transform_index: Int = 0
-    private var error_count: Int = 0
-    private var warn_count: Int = 0
+    private var error_count: Int     = 0
+    private var warn_count: Int      = 0
 
     override protected def message[N <: HasSerialized with Positional](
         msg: => String,
@@ -131,7 +130,7 @@ object Logger {
       printer.println(
         s"${msg} \n at \n${node.serialized}:${node.pos}\n\t\t reported by ${BOLD}${phase_id}${RESET}"
       )
-      flush()
+    flush()
 
     override protected def message(
         msg: => String
@@ -139,7 +138,7 @@ object Logger {
       printer.println(
         s"${msg} \n\t\treported by ${BOLD}${phase_id}${RESET}"
       )
-      flush()
+    flush()
 
     def error[N <: HasSerialized with Positional](
         msg: => String,
@@ -154,7 +153,7 @@ object Logger {
       error_count += 1
     }
     flush()
-    def countErrors(): Int = error_count
+    def countErrors(): Int   = error_count
     def countWarnings(): Int = warn_count
     def countProgress(): Int = transform_index
 
@@ -164,24 +163,22 @@ object Logger {
       flush()
     }
 
-    def warn[N <: HasSerialized with Positional](msg: => String, node: N)(
-        implicit phase_id: HasLoggerId
+    def warn[N <: HasSerialized with Positional](msg: => String, node: N)(implicit
+        phase_id: HasLoggerId
     ): Unit = {
       message(s"[${YELLOW}warn${RESET}] ${msg}", node)
       warn_count += 1
       flush()
     }
 
-    def info[N <: HasSerialized with Positional](msg: => String, node: N)(
-        implicit phase_id: HasLoggerId
+    def info[N <: HasSerialized with Positional](msg: => String, node: N)(implicit
+        phase_id: HasLoggerId
     ): Unit = if (info_en) {
       message(s"[${BLUE}info${RESET}] ${msg}", node)
       flush()
     }
 
-    def info(msg: => String)(implicit phase_id: HasLoggerId): Unit = if (
-      info_en
-    ) {
+    def info(msg: => String)(implicit phase_id: HasLoggerId): Unit = if (info_en) {
       message(s"[${BLUE}info${RESET}] ${msg}")
       flush()
     }
@@ -221,7 +218,7 @@ object Logger {
           Files.createDirectories(dir.toPath())
           val actualFileName = s"${countProgress()}_${phase_id}_${file_name}"
           info(s"Dumping ${dir.toPath.toAbsolutePath}/${actualFileName}")
-          val xpath = dir.toPath().resolve(actualFileName)
+          val xpath  = dir.toPath().resolve(actualFileName)
           val writer = new PrintWriter(xpath.toFile)
           writer.print(gen)
           writer.close()
@@ -236,7 +233,8 @@ object Logger {
       dump_dir match {
         case Some(dir) =>
           Files.createDirectories(dir.toPath())
-          val fpath = dir.toPath().resolve(file_name)
+          val actualFileName = s"${countProgress()}_${phase_id}_${file_name}"
+          val fpath          = dir.toPath().resolve(actualFileName)
           fpath.toFile()
         case None =>
           fail("Could not open file, make sure dump directory is defined!")
@@ -269,7 +267,7 @@ object Logger {
       case Some(f: File) =>
         Files.createDirectories(f.toPath().toAbsolutePath.getParent())
         new PrintWriter(f)
-      case None          => new PrintWriter(System.out, true)
+      case None => new PrintWriter(System.out, true)
     }
     new VerbosePrintLogger(
       db_en,
