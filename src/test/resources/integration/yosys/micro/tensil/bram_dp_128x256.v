@@ -1,14 +1,14 @@
 // Dual-Port Block RAM with Two Write Ports
 // File: rams_tdp_rf_rf.v
-module bram_dp_128x256 (clk,ena,enb,wea,web,addra,addrb,dia,dib,doa,dob);
-input clk,ena,enb,wea,web;
+module bram_dp_128x256 (clka,clkb,ena,enb,wea,web,addra,addrb,dia,dib,doa,dob);
+input clka,clkb,ena,enb,wea,web;
 input [7:0] addra,addrb;
 input [127:0] dia,dib;
 output [127:0] doa,dob;
 reg [127:0] ram [255:0];
 reg [127:0] doa,dob;
 
-always @(posedge clk)
+always @(posedge clka)
 begin
   if (ena)
     begin
@@ -18,7 +18,7 @@ begin
     end
 end
 
-always @(posedge clk)
+always @(posedge clkb)
 begin
   if (enb)
     begin
