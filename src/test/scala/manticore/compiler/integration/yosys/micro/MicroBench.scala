@@ -77,7 +77,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val vFilePath = fixture.dump("benchmark.sv", finalVerilog)
 
       implicit val ctx = AssemblyContext(
-        dump_all = false,
+        dump_all = true,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
@@ -254,11 +254,11 @@ object CompilationStage {
     UnconstrainedOrderInstructions
 
   val unconstrainedOptimizations =
-    UnconstrainedIRConstantFolding// andThen
-      // UnconstrainedIRStateUpdateOptimization andThen
-      // UnconstrainedIRCommonSubExpressionElimination andThen
-      // UnconstrainedDeadCodeElimination andThen
-      // UnconstrainedNameChecker
+    UnconstrainedIRConstantFolding andThen
+      UnconstrainedIRStateUpdateOptimization andThen
+      UnconstrainedIRCommonSubExpressionElimination andThen
+      UnconstrainedDeadCodeElimination andThen
+      UnconstrainedNameChecker
 
   val controlLowering =
     UnconstrainedJumpTableConstruction.withCondition(false) andThen
