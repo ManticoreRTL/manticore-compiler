@@ -1,5 +1,13 @@
 module Main(input wire clk);
 
+  // DUT generics.
+  localparam G_ADDR_WIDTH = 7;
+  localparam G_DATA_WIDTH = 32;
+  localparam G_ID_WIDTH = 1;
+  localparam MEM_INIT_FILE = "mem.hex";
+
+  localparam C_NUM_BYTES_PER_WORD = G_DATA_WIDTH / 8;
+
   // These are all fixed by the standard.
   localparam C_LENBITS = 8;
   localparam C_SIZEBITS = 3;
@@ -11,15 +19,11 @@ module Main(input wire clk);
   localparam C_RESPBITS = 2;
 
   localparam [C_RESPBITS - 1 : 0] C_RESP_OKAY = 0;
+  localparam C_AXSIZE = C_SIZEBITS'($clog2(C_NUM_BYTES_PER_WORD));
+  localparam C_AXBURST = C_BURSTBITS'(1); // INCR
+  localparam C_WSTRB = {(C_NUM_BYTES_PER_WORD) {1'b1}};
   localparam C_MAX_BURST_LEN = 2**C_LENBITS;
 
-  // DUT generics.
-  localparam G_ADDR_WIDTH = 7;
-  localparam G_DATA_WIDTH = 32;
-  localparam G_ID_WIDTH = 1;
-  localparam MEM_INIT_FILE = "mem.hex";
-
-  localparam C_NUM_BYTES_PER_WORD = G_DATA_WIDTH / 8;
   // Addresses issued to the DUT must be G_DATA_WIDTH-aligned.
   localparam C_ADDR_MASK = ~((1 << $clog2(C_NUM_BYTES_PER_WORD)) - 1);
   localparam C_MEM_DEPTH = 2 ** (G_ADDR_WIDTH - $clog2(C_NUM_BYTES_PER_WORD));
@@ -274,8 +278,8 @@ module Main(input wire clk);
     s_awid = 0;
     s_awaddr = 0;
     s_awlen = 0;
-    s_awsize = 0;
-    s_awburst = 0;
+    s_awsize = C_AXSIZE;
+    s_awburst = C_AXBURST;
     s_awlock = 0;
     s_awcache = 0;
     s_awprot = 0;
@@ -283,15 +287,15 @@ module Main(input wire clk);
     s_wvalid = 0;
     s_wid = 0;
     s_wdata = 0;
-    s_wstrb = {(C_NUM_BYTES_PER_WORD) {1'b1}};
+    s_wstrb = C_WSTRB;
     s_wlast = 0;
     s_bready = 0;
     s_arvalid = 0;
     s_arid = 0;
     s_araddr = 0;
     s_arlen = 0;
-    s_arsize = C_SIZEBITS'($clog2(C_NUM_BYTES_PER_WORD));
-    s_arburst = 0;
+    s_arsize = C_AXSIZE;
+    s_arburst = C_AXBURST;
     s_arlock = 0;
     s_arcache = 0;
     s_arprot = 0;
