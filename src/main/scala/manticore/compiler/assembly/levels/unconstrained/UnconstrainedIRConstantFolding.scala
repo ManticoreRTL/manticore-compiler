@@ -21,6 +21,7 @@ object UnconstrainedIRConstantFolding
   override def isFalse(v: UIntWide): Boolean = v == UIntWide(0)
   def asConcrete(const: Constant)(width: => Int): ConcreteConstant =
     UIntWide(const, width)
+  def asConstant(const: ConcreteConstant): Constant = const.toBigInt
 
   val binOpEvaluator: PartialFunction[
     (
@@ -41,8 +42,9 @@ object UnconstrainedIRConstantFolding
         if (c1 == c2) UIntWide(1, 1) else UIntWide(0, 1)
       )
 
-    case (SLL, Right(c1), Right(c2)) => Right((c1 >> c2.toIntChecked))
-    case (SRL, Right(c1), Right(c2)) => Right((c1 << c2.toIntChecked))
+    case (SLL, Right(c1), Right(c2)) => Right((c1 << c2.toIntChecked))
+    case (SRL, Right(c1), Right(c2)) => Right((c1 >> c2.toIntChecked))
+
     case (SLTS, Right(c1), Right(c2)) =>
       val sign1 = (c1 >> (c1.width - 1)) == 1
       val sign2 = (c2 >> (c2.width - 1)) == 1

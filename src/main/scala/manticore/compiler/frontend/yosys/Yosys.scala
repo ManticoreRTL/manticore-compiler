@@ -33,7 +33,7 @@ object Yosys {
     (Hierarchy << "-auto-top" << "-check") andThen
       Proc andThen
       Opt andThen
-      WReduce andThen
+      (WReduce << "-memx")  andThen
       OptReduce andThen
       OptClean andThen
       (Check << "-assert") andThen

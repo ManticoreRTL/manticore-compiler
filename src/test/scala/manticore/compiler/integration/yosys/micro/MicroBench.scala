@@ -77,14 +77,14 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val vFilePath = fixture.dump("benchmark.sv", finalVerilog)
 
       implicit val ctx = AssemblyContext(
-        dump_all = true,
+        dump_all = false,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
         max_dimx = 5,
         max_dimy = 5,
-        debug_message = true,
+        debug_message = false,
         max_registers = 2048,
         max_carries = 64,
         optimize_common_custom_functions = true
@@ -195,6 +195,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
   )(implicit ctx: AssemblyContext) = {
     val got = interpretUnconstrained(program)
     if (ctx.logger.countErrors() > 0) {
+      ctx.logger.flush()
       dumper("reference.txt", reference.mkString("\n"))
       dumper("results.txt", got.mkString("\n"))
       fail(s"${clue}: failed due to earlier errors")
@@ -253,11 +254,11 @@ object CompilationStage {
     UnconstrainedOrderInstructions
 
   val unconstrainedOptimizations =
-    UnconstrainedIRConstantFolding andThen
-      UnconstrainedIRStateUpdateOptimization andThen
-      UnconstrainedIRCommonSubExpressionElimination andThen
-      UnconstrainedDeadCodeElimination andThen
-      UnconstrainedNameChecker
+    UnconstrainedIRConstantFolding// andThen
+      // UnconstrainedIRStateUpdateOptimization andThen
+      // UnconstrainedIRCommonSubExpressionElimination andThen
+      // UnconstrainedDeadCodeElimination andThen
+      // UnconstrainedNameChecker
 
   val controlLowering =
     UnconstrainedJumpTableConstruction.withCondition(false) andThen

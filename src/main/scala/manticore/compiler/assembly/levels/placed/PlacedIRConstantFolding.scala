@@ -30,8 +30,8 @@ object PlacedIRConstantFolding
 
   // PlacedIR uses UInt16 with its width being trivially 16, so Constant = ConcreteConstant
   override def asConcrete(v: UInt16)(w: => Int) = v
-
-  private def shftAmount(v: UInt16): Int = {
+  override def asConstant(v: UInt16) = v
+  private def shiftAmount(v: UInt16): Int = {
     v.toInt & 0xf
   }
   override val binOpEvaluator: PartialFunction[
@@ -50,9 +50,9 @@ object PlacedIRConstantFolding
     case (XOR, Right(c1), Right(c2)) => Right(c1 ^ c2)
     case (SEQ, Right(c1), Right(c2)) =>
       Right(if (c1 == c2) UInt16(1) else UInt16(0))
-    case (SLL, Right(c1), Right(c2)) => Right(c1 << shftAmount(c2))
-    case (SRL, Right(c1), Right(c2)) => Right(c1 >> shftAmount(c2))
-    case (SRA, Right(c1), Right(c2)) => Right(c1 >>> shftAmount(c2))
+    case (SLL, Right(c1), Right(c2)) => Right(c1 << shiftAmount(c2))
+    case (SRL, Right(c1), Right(c2)) => Right(c1 >> shiftAmount(c2))
+    case (SRA, Right(c1), Right(c2)) => Right(c1 >>> shiftAmount(c2))
     case (SLTS, Right(c1), Right(c2)) =>
       val rs1_sign = (c1 >> 15) == UInt16(1)
       val rs2_sign = (c2 >> 15) == UInt16(1)

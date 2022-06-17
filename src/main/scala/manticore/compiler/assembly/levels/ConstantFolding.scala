@@ -43,6 +43,7 @@ trait ConstantFolding
   def isTrue(v: ConcreteConstant): Boolean
   def isFalse(v: ConcreteConstant): Boolean
   def asConcrete(const: Constant)(width: => Int): ConcreteConstant
+  def asConstant(concrete: ConcreteConstant): Constant
 
   /** A partial function to either fully or partially evaluate binary operators.
     *
@@ -126,7 +127,7 @@ trait ConstantFolding
     def bindConst(n: Name, v: ConcreteConstant)(implicit
         ctx: AssemblyContext
     ): ConstantFoldingBuilder = {
-      // val concrete = asConcrete(v) { widthLookup(n) }
+
       constBindings += (n -> v)
       if (!constants.contains(v)) {
         constants += (v -> freshConst(v))
@@ -166,7 +167,7 @@ trait ConstantFolding
       }
 
     // def concreteComputedValue(name: Name): Either[Name, ConcreteConstant] =
-    //   computedValue(name).map { asConcrete(_) { widthLookup(name) } }
+    //   computedValue(name).map { asConcrete(_ ) { widthLookup(name) } }
 
     def withNewScope(): ConstantFoldingBuilder = {
       new ConstantFoldingBuilder(
@@ -188,9 +189,8 @@ trait ConstantFolding
 
     block.foldLeft(scope) { case (builder, inst) =>
       inst match {
-        case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore | _: GlobalStore | _: PadZero |
-            _: SetCarry | _: ClearCarry | _: Predicate | _: PadZero | _: Lookup | _: PutSerial |
-            _: Interrupt) =>
+        case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore | _: GlobalStore | _: PadZero | _: SetCarry |
+            _: ClearCarry | _: Predicate | _: PadZero | _: Lookup | _: PutSerial | _: Interrupt) =>
           builder.keep(i)
         case Nop =>
           // don't keep
@@ -241,7 +241,15 @@ trait ConstantFolding
                 }
               case Right(const) =>
                 val res = sliceEvaluator(const, offset, length)
-                builder.bindConst(rd, res)
+                // sliceEvaluator returns the true width of the results, i.e.,
+                // narrows the operand. But this pass is generic constant folding
+                // optimization and should not change the width of the registers
+                // even if they are evaluated to constants. Therefore we need
+                // to potentially increase the result's width back to its original
+                // width. Note that this only happens for slices after WidthConversion
+                // in UnconstrainedIR.
+                assert(builder.widthLookup(rd) >= length)
+                builder.bindConst(rd, asConcrete(asConstant(res)) { builder.widthLookup(rd) })
             }
           }
 
@@ -331,21 +339,25 @@ trait ConstantFolding
             }
           }
         case i @ BinaryArithmetic(operator, rd, rs1, rs2, _) =>
+          // builder.keep(i)
           if (builder.isUnopt(rd)) {
             // keep this instruction
             builder.keep(i)
+
           } else {
 
             // try to compute it
             val rs1_val = builder.computedValue(rs1)
             val rs2_val = builder.computedValue(rs2)
             if (binOpEvaluator.isDefinedAt(operator, rs1_val, rs2_val)) {
+
               binOpEvaluator(operator, rs1_val, rs2_val) match {
                 case Right(ct) =>
                   builder.bindConst(rd, ct)
                 case Left(n) =>
                   builder.bindName(rd, n)
               }
+
             } else {
               // can not simplify
               builder.keep(i)
@@ -423,7 +435,7 @@ trait ConstantFolding
       process: DefProcess
   )(implicit ctx: AssemblyContext): DefProcess = {
 
-    val regMap = process.registers.map { case r => r.variable.name -> r }.toMap
+    val regMap                       = process.registers.map { case r => r.variable.name -> r }.toMap
     def hasTrack(r: DefReg): Boolean = r.annons.exists { _.isInstanceOf[Track] }
 
     val isUnopt = process.registers.collect {

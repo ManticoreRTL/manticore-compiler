@@ -80,7 +80,7 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
     * @return
     */
   def <<(shamnt: Int): UIntWide = {
-      require(shamnt < width)
+      require(shamnt < width, s"${shamnt} >= ${width}")
       UIntWide.clipped(v << shamnt, width)
   }
 
@@ -91,7 +91,7 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
     * @return
     */
   def >>(shamnt: Int): UIntWide = {
-      require(shamnt < width)
+      require(shamnt < width, s"${shamnt} >= ${width}")
       UIntWide.clipped(v >> shamnt, width)
   }
 
@@ -102,7 +102,7 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
     * @return
     */
   def >>>(shamnt: Int): UIntWide = {
-    require(shamnt < width)
+    require(shamnt < width, s"${shamnt} >= ${width}")
     val sign = v >> (width - 1)
     if (sign == 1) {
         val wideMask = UIntWide.clipMask(width)
@@ -163,41 +163,3 @@ object UIntWide {
 
 }
 
-trait TrueFalse {
-
-  type Constant
-  val False: Constant
-  val True: Constant
-  def isFalse(x: Constant): Boolean = x == 0
-  def isTrue(x: Constant): Boolean = x == 1
-
-  def isFalseObj(x: Constant): Boolean = x == False
-  def isTrueObj(x: Constant): Boolean = x == True
-}
-
-
-object Tester extends App {
-
-  object ForUIntWide extends TrueFalse {
-    type Constant = UIntWide
-    val False = UIntWide(0)
-    val True = UIntWide(1)
-
-
-  }
-
-  object ForUInt16 extends TrueFalse {
-    type Constant = UInt16
-    val False = UInt16(0)
-    val True = UInt16(1)
-
-  }
-
-  println(ForUInt16.isFalse(UInt16(0)))
-  println(ForUInt16.isFalseObj(UInt16(0)))
-
-  println(ForUIntWide.isFalse(UIntWide(0)))
-  println(ForUIntWide.isFalseObj(UIntWide(0)))
-
-
-}
