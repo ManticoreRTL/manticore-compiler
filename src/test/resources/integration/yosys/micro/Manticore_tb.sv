@@ -1,5 +1,5 @@
 module Main#(
-    parameter GMEM_SIZE = 2048,
+    parameter GMEM_SIZE = 64,
     GMEM_FILE = "gmem.hex",
     PROGRAM_SIZE = 7,
     RESET_CYCLES = 10

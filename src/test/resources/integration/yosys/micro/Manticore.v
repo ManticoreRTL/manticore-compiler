@@ -84,16 +84,17 @@ module WrappedLut6
   reg [63:0] equ = INIT;
   wire [5:0] index;
   assign index = {a5, a4, a3, a2, a1, a0};
-
+  integer i;
+  wire [63:0] clear = ~(64'b1 << index);
+  wire [63:0] set = (data << index);
   always @(posedge clock) begin
-
     if (we) begin
-      equ[index] = data;
+        equ = (equ & clear) | set;
+        // equ[index]= data;
     end
   end
 
   assign out = equ >> index;
-
 
 
 endmodule
