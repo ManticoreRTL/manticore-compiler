@@ -73,9 +73,7 @@ object YosysUnitTest {
       cwd = runDir.toFile()
     ) ! ProcessLogger(msg => ctx.logger.info(msg))
     if (ret != 0) {
-      if (ret != 0) {
-        ctx.logger.fail("Failed compiling with verilator")
-      }
+      ctx.logger.fail("Failed compiling with verilator")
     }
 
     // if we have been successful with verilator compilation, we should now
