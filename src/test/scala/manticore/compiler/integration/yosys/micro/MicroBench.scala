@@ -77,7 +77,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val vFilePath = fixture.dump("benchmark.sv", finalVerilog)
 
       implicit val ctx = AssemblyContext(
-        dump_all = false,
+        dump_all = true,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
@@ -85,8 +85,8 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         max_dimx = 5,
         max_dimy = 5,
         debug_message = true,
-        max_registers = 512,
-        max_carries = 16,
+        max_registers = 2048,
+        max_carries = 64,
         optimize_common_custom_functions = true
         // log_file = None,
       )
@@ -121,8 +121,8 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
     // temporary disabled until I fix the bugs with lowering passes :(
-    // val program9 = CompilationStage.finalLowering(program8)
-    // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+    val program9 = CompilationStage.finalLowering(program8)
+    ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
     // // do one final interpretation to make sure register allocation is correct
     // // checking whether a schedule is correct (i.e., enough Nops, contention

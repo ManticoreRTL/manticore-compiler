@@ -547,6 +547,11 @@ module Main(input wire clk);
     reg_state = next_state;
     reg_nop_cnt = next_nop_cnt;
     reg_iteration_cnt = next_iteration_cnt;
+
+    if (reg_state == STATE_END) begin
+      $display("done");
+      $finish;
+    end
   end
 
   always_comb begin
@@ -623,8 +628,6 @@ module Main(input wire clk);
 
       STATE_END:
       begin
-        $display("done");
-        $finish;
       end
     endcase
   end
