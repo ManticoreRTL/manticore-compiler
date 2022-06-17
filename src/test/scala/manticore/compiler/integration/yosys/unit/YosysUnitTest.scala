@@ -48,7 +48,10 @@ object YosysUnitTest {
       "--build",
       "-Os",
       "-x-assign 0",
+      // "--trace",
       "-Wno-WIDTH",
+      "-Wno-UNOPTFLAT",
+      "-Wno-MULTIDRIVEN",
       "--top-module Main"
     ).mkString(" ")
 

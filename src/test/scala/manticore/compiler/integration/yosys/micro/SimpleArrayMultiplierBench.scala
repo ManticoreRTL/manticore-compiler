@@ -1,5 +1,9 @@
 package manticore.compiler.integration.yosys.micro
 
+import manticore.compiler.FileDescriptor
+import manticore.compiler.WithInlineVerilog
+import manticore.compiler.WithResource
+
 import scala.collection.mutable.ArrayBuffer
 
 final class SimpleArrayMultiplierBench extends MicroBench {
@@ -8,9 +12,11 @@ final class SimpleArrayMultiplierBench extends MicroBench {
 
   override def benchName: String = "Simple array multiplier"
 
-  override def resource: String = "integration/yosys/micro/array_mult.sv"
+  override def verilogSources: Seq[FileDescriptor] = Seq(
+    WithResource("integration/yosys/micro/array_mult.sv")
+  )
 
-  override def testBench(config: TestConfig): String = {
+  override def testBench(config: TestConfig): FileDescriptor = {
 
     assert(config.width <= 64)
     val maxOperandValue = (BigInt(1) << config.width) - 1
@@ -86,7 +92,7 @@ final class SimpleArrayMultiplierBench extends MicroBench {
                  |  end
                  |
                  |endmodule""".stripMargin
-    tb
+    WithInlineVerilog(tb)
   }
 
   override def outputReference(config: TestConfig): ArrayBuffer[String] = ArrayBuffer(

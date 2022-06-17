@@ -1,5 +1,9 @@
 package manticore.compiler.integration.yosys.micro
 
+import manticore.compiler.FileDescriptor
+import manticore.compiler.WithInlineVerilog
+import manticore.compiler.WithResource
+
 import scala.collection.mutable.ArrayBuffer
 
 final class RiscVMiniBench extends MicroBench {
@@ -9,54 +13,55 @@ final class RiscVMiniBench extends MicroBench {
   }
   override def benchName: String = "RISCV MINI"
 
-  override def resource: String = "integration/yosys/micro/riscv-mini.v"
+  override def verilogSources: Seq[FileDescriptor] = Seq(
+    WithResource("integration/yosys/micro/riscv-mini.v")
+  )
 
-  override def testBench(cfg: TestConfig): String = {
+  override def testBench(cfg: TestConfig): FileDescriptor = {
 
-
-    s"""|
-        |module Main(input wire clk);
-        |
-        |
-        |    wire clock = clk;
-        |    reg reset = 0;
-        |    wire [31:0] tohost;
-        |
-        |
-        |    localparam TIMEOUT = ${cfg.timeout};
-        |    TileWithMemory dut(
-        |        .clock(clock),
-        |        .reset(reset),
-        |        .io_fromhost_valid(0),
-        |        .io_fromhost_bits(0),
-        |        .io_tohost(tohost)
-        |    );
-        |
-        |
-        |    reg [31:0] cycle_counter = 0;
-        |
-        |    always @(posedge clock) begin
-        |        cycle_counter <= cycle_counter + 1;
-        |        if (cycle_counter < 5) begin
-        |            reset = 1;
-        |        end else begin
-        |            reset = 0;
-        |            if (tohost > 1) begin
-        |                $$stop;
-        |            end else if (tohost == 1) begin
-        |                $$finish;
-        |            end
-        |            if (cycle_counter >= TIMEOUT) begin
-        |                $$finish;
-        |            end
-        |        end
-        |    end
-        |
-        |endmodule
-        |
-        |""".stripMargin
-
-
+    WithInlineVerilog(
+      s"""|
+          |module Main(input wire clk);
+          |
+          |
+          |    wire clock = clk;
+          |    reg reset = 0;
+          |    wire [31:0] tohost;
+          |
+          |
+          |    localparam TIMEOUT = ${cfg.timeout};
+          |    TileWithMemory dut(
+          |        .clock(clock),
+          |        .reset(reset),
+          |        .io_fromhost_valid(0),
+          |        .io_fromhost_bits(0),
+          |        .io_tohost(tohost)
+          |    );
+          |
+          |
+          |    reg [31:0] cycle_counter = 0;
+          |
+          |    always @(posedge clock) begin
+          |        cycle_counter <= cycle_counter + 1;
+          |        if (cycle_counter < 5) begin
+          |            reset = 1;
+          |        end else begin
+          |            reset = 0;
+          |            if (tohost > 1) begin
+          |                $$stop;
+          |            end else if (tohost == 1) begin
+          |                $$finish;
+          |            end
+          |            if (cycle_counter >= TIMEOUT) begin
+          |                $$finish;
+          |            end
+          |        end
+          |    end
+          |
+          |endmodule
+          |
+          |""".stripMargin
+    )
   }
 
   override def outputReference(testSize: TestConfig): ArrayBuffer[String] = ArrayBuffer.empty

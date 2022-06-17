@@ -1,5 +1,9 @@
 package manticore.compiler.integration.yosys.micro
 
+import manticore.compiler.FileDescriptor
+import manticore.compiler.WithInlineVerilog
+import manticore.compiler.WithResource
+
 import scala.collection.mutable.ArrayBuffer
 
 final class SwizzleBench extends MicroBench {
@@ -7,9 +11,11 @@ final class SwizzleBench extends MicroBench {
   type TestConfig = Unit
   override def benchName: String = "swizzle"
 
-  override def resource: String = "integration/yosys/micro/swizzle.sv"
+  override def verilogSources: Seq[FileDescriptor] = Seq(
+    WithResource("integration/yosys/micro/swizzle.sv")
+  )
 
-  override def testBench(cfg: TestConfig): String = {
+  override def testBench(cfg: TestConfig): FileDescriptor = {
 
     val inputs = Seq(
       "10000100",
@@ -121,51 +127,54 @@ final class SwizzleBench extends MicroBench {
         .map { case (ln, ix) => s"${name}[${ix}] = 8'b${ln}; " }
         .mkString("\n")
     }
-    s"""|
-        |module Main (
-        |    input wire clock
-        |);
-        |
-        |  localparam W = 8;
-        |  localparam TEST_SIZE = 50;
-        |
-        |  logic [    W - 1 : 0] in_rom        [0 : TEST_SIZE - 1];
-        |  logic [    W - 1 : 0] out_rom       [0 : TEST_SIZE - 1];
-        |
-        |  wire  [    W - 1 : 0] in_val;
-        |  wire  [    W - 1 : 0] out_val;
-        |  wire  [    W - 1 : 0] out_val_expected;
-        |
-        |  logic [       15 : 0] counter = 0;
-        |
-        |  initial begin
-        |   ${mkInit("in_rom", inputs)}
-        |   ${mkInit("out_rom", outputs)}
-        |  end
-        |  assign in_val = in_rom[counter];
-        |  assign out_val_expected = out_rom[counter];
-        |
-        |  Swizzle #(
-        |      .WIDTH(W)
-        |  ) dut (
-        |      .IN(in_val),
-        |      .OUT(out_val)
-        |  );
-        |
-        |  always_ff @(posedge clock) begin
-        |    counter <= counter + 1;
-        |    if (out_val != out_val_expected) begin
-        |      $$display("[%d] Expected swizzle(%d) = %d but got %d", counter, in_val, out_val_expected, out_val);
-        |      $$stop;
-        |    end
-        |    if (counter == TEST_SIZE - 1) begin
-        |      $$display("Finished after %d cycles", counter);
-        |      $$finish;
-        |    end
-        |  end
-        |
-        |endmodule
-        |""".stripMargin
+
+    WithInlineVerilog(
+      s"""|
+          |module Main (
+          |    input wire clock
+          |);
+          |
+          |  localparam W = 8;
+          |  localparam TEST_SIZE = 50;
+          |
+          |  logic [    W - 1 : 0] in_rom        [0 : TEST_SIZE - 1];
+          |  logic [    W - 1 : 0] out_rom       [0 : TEST_SIZE - 1];
+          |
+          |  wire  [    W - 1 : 0] in_val;
+          |  wire  [    W - 1 : 0] out_val;
+          |  wire  [    W - 1 : 0] out_val_expected;
+          |
+          |  logic [       15 : 0] counter = 0;
+          |
+          |  initial begin
+          |   ${mkInit("in_rom", inputs)}
+          |   ${mkInit("out_rom", outputs)}
+          |  end
+          |  assign in_val = in_rom[counter];
+          |  assign out_val_expected = out_rom[counter];
+          |
+          |  Swizzle #(
+          |      .WIDTH(W)
+          |  ) dut (
+          |      .IN(in_val),
+          |      .OUT(out_val)
+          |  );
+          |
+          |  always_ff @(posedge clock) begin
+          |    counter <= counter + 1;
+          |    if (out_val != out_val_expected) begin
+          |      $$display("[%d] Expected swizzle(%d) = %d but got %d", counter, in_val, out_val_expected, out_val);
+          |      $$stop;
+          |    end
+          |    if (counter == TEST_SIZE - 1) begin
+          |      $$display("Finished after %d cycles", counter);
+          |      $$finish;
+          |    end
+          |  end
+          |
+          |endmodule
+          |""".stripMargin
+    )
   }
 
   override def outputReference(testSize: TestConfig): ArrayBuffer[String] =
