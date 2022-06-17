@@ -92,17 +92,12 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
       val botY = new StringBuilder
 
       val ln = new StringBuilder
-      ln ++= "\n"
       for (x <- 0 until dimX) {
         ln ++= f"${"|"}%12s"
       }
       ln ++= "\n"
       for (x <- 0 until dimX) {
-        ln ++= f"${linksX(x)(y).size}%7d->[ ]".replace(" ", "-")
-      }
-      ln ++= "\n"
-      for (x <- 0 until dimX) {
-        ln ++= f"${"|"}%12s"
+        ln ++= f"    ${linksY(x)(y).size}%8d"
       }
       ln ++= "\n"
       for (x <- 0 until dimX) {
@@ -110,12 +105,13 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
       }
       ln ++= "\n"
       for (x <- 0 until dimX) {
-        ln ++= f"    ${linksY(x)(y).size}%8d"
+        ln ++= f"${linksX(x)(y).size}%7d->[ ]".replace(" ", "-")
       }
       ln ++= "\n"
       ln.toString()
     }
     val str = new StringBuilder
+    str ++= "\n"
     for (y <- 0 until dimY) { str ++= renderLine(y) }
     str.toString()
   }
