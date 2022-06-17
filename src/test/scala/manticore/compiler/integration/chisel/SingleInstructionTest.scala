@@ -246,9 +246,9 @@ trait SingleInstructionTest
       @tailrec
       def check(to_check: Seq[UInt16]): Unit = {
         dut.clock.step()
-        if (!dut.io.periphery.exception.error.peek().litToBoolean) {
+        if (dut.io.periphery.exception.error.peek().litToBoolean && to_check.nonEmpty) {
           context.logger.error(
-            s"Got early exception with id ${dut.io.periphery.exception.id.peek().litValue.toInt}!"
+            s"Got early exception with id ${dut.io.periphery.exception.id.peek().litValue.toInt} while there were ${to_check.length} packets left to check!"
           )
 
         } else {

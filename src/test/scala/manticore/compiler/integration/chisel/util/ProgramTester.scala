@@ -17,6 +17,7 @@ import manticore.machine.ManticoreBaseISA
 import manticore.compiler.assembly.levels.placed.LinkUtilizationChecker
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
 
+
 trait ProgramTester {
 
   // def mkProgram(context: AssemblyContext): String
@@ -40,6 +41,12 @@ trait ProgramTester {
       s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}",
       s"@REG [id = \"${name}\", type = \"\\REG_NEXT\" ]",
       s".output ${name}_next 16 "
+    ).mkString("\n")
+  }
+  def mkReceiver(name: String, init: Option[UInt16]): String = {
+    Seq(
+      s"@REG [id = \"${name}\", type = \"\\REG_CURR\" ]",
+      s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}",
     ).mkString("\n")
   }
 
