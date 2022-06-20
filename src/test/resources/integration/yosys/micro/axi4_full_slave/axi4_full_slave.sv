@@ -1,4 +1,4 @@
-module ram #(
+module axi4_full_slave_mem #(
   parameter G_DATA_WIDTH,
   parameter G_ADDR_WIDTH,
   parameter MEM_INIT_FILE = ""
@@ -157,7 +157,7 @@ module axi4_full_slave
 
   logic mem_we;
 
-  ram #(
+  axi4_full_slave_mem #(
     .G_ADDR_WIDTH(MEM_ADDR_WIDTH),
     .G_DATA_WIDTH(G_DATA_WIDTH),
     .MEM_INIT_FILE(MEM_INIT_FILE)
