@@ -5,19 +5,21 @@ module Main(input wire clk);
   localparam G_ADDR_WIDTH = 10;
   localparam G_DATA_WIDTH = 64;
   localparam G_ID_WIDTH = 6;
+  localparam MEM_INIT_FILE_0 = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/integration/yosys/micro/tensil/dram0.hex";
+  localparam MEM_INIT_FILE_1 = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/integration/yosys/micro/tensil/dram1.hex";
 
   // Number of iterations to perform in the test. One iteration is sending some NOPS, followed by reading
   // from DRAM1, followed by an invalid instruction. We reset the circuit after each iteration.
-  localparam C_NUM_ITERATIONS = 10;
-  localparam C_NUM_NOPS = 10;
+  localparam C_NUM_ITERATIONS = 1;
+  localparam C_NUM_INSTRS = 2894;
+
+  localparam C_INSTR_WIDTH = 64;
+  logic [C_INSTR_WIDTH - 1 : 0] INSTRS [0 : C_NUM_INSTRS - 1];
+  initial begin
+    $readmemh("/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/integration/yosys/micro/tensil/instrs.hex", INSTRS);
+  end
 
   logic reset = 0;
-
-  // Instructions.
-  localparam C_INSTR_WIDTH = 64;
-  localparam [C_INSTR_WIDTH - 1 : 0] INSTR_NOP = 64'h0000000000000000;
-  localparam [C_INSTR_WIDTH - 1 : 0] INSTR_MOVE_DATA_DRAM1_TO_MEM = 64'h2200481000000000;
-  localparam [C_INSTR_WIDTH - 1 : 0] INSTR_INVALID = 64'h6000000000000000;
 
   // AXI stream master (that will send instructions to DUT).
   logic [G_DATA_WIDTH - 1 : 0] tdata;
@@ -36,13 +38,13 @@ module Main(input wire clk);
   logic         dut_instruction_valid;
   logic  [3:0]  dut_instruction_bits_opcode;
   logic  [3:0]  dut_instruction_bits_flags;
-  logic  [47:0] dut_instruction_bits_arguments;
+  logic  [55:0] dut_instruction_bits_arguments;
   logic         dut_status_ready;
   wire          dut_status_valid;
   wire          dut_status_bits_last;
   wire [3:0]    dut_status_bits_bits_opcode;
   wire [3:0]    dut_status_bits_bits_flags;
-  wire [47:0]   dut_status_bits_bits_arguments;
+  wire [55:0]   dut_status_bits_bits_arguments;
   logic         dut_dram0_writeAddress_ready;
   wire          dut_dram0_writeAddress_valid;
   wire [5:0]    dut_dram0_writeAddress_bits_id;
@@ -343,7 +345,7 @@ module Main(input wire clk);
   assign dut_instruction_valid = tvalid;
   assign dut_instruction_bits_opcode = tdata[63:60];
   assign dut_instruction_bits_flags = tdata[59:56];
-  assign dut_instruction_bits_arguments = tdata[55:8];
+  assign dut_instruction_bits_arguments = tdata[55:0];
   assign dut_status_ready = status_ready;
   assign dut_dram0_writeAddress_ready = dram0_s_awready;
   assign dut_dram0_writeData_ready = dram0_s_wready;
@@ -372,7 +374,8 @@ module Main(input wire clk);
   axi4_full_slave #(
     .G_ADDR_WIDTH(G_ADDR_WIDTH),
     .G_DATA_WIDTH(G_DATA_WIDTH),
-    .G_ID_WIDTH(G_ID_WIDTH)
+    .G_ID_WIDTH(G_ID_WIDTH),
+    .MEM_INIT_FILE(MEM_INIT_FILE_0)
   ) dram0 (
     .clock(dram0_clock),
     .resetn(dram0_resetn),
@@ -449,7 +452,8 @@ module Main(input wire clk);
   axi4_full_slave #(
     .G_ADDR_WIDTH(G_ADDR_WIDTH),
     .G_DATA_WIDTH(G_DATA_WIDTH),
-    .G_ID_WIDTH(G_ID_WIDTH)
+    .G_ID_WIDTH(G_ID_WIDTH),
+    .MEM_INIT_FILE(MEM_INIT_FILE_1)
   ) dram1 (
     .clock(dram1_clock),
     .resetn(dram1_resetn),
@@ -527,38 +531,59 @@ module Main(input wire clk);
   typedef enum {
     STATE_IDLE = 0,
     STATE_RESET = 1,
-    STATE_SEND_NOPS = 2,
-    STATE_MOVE_DATA = 3,
-    STATE_SEND_INVALID_INSTR = 4,
-    STATE_WAIT_ERROR = 5,
-    STATE_CHECK_END = 6,
-    STATE_END = 100
+    STATE_SEND_INSTRS = 2,
+    STATE_ERROR = 3,
+    STATE_CHECK_END = 4,
+    STATE_END = 5
   } state_t;
 
+  int reg_clk_cnt = 0, next_clk_cnt;
+
   state_t reg_state = STATE_IDLE, next_state;
-  int reg_nop_cnt, next_nop_cnt;
+  int reg_instr_cnt, next_instr_cnt;
   int reg_iteration_cnt, next_iteration_cnt;
+  int reg_error_cnt, next_error_cnt;
 
   assign tready = dut_instruction_ready;
   assign status_ready = 1;
   assign sample_ready = 1;
 
   always_ff @(posedge clk) begin
+    reg_clk_cnt = next_clk_cnt;
+
     reg_state = next_state;
-    reg_nop_cnt = next_nop_cnt;
+    reg_instr_cnt = next_instr_cnt;
     reg_iteration_cnt = next_iteration_cnt;
+    reg_error_cnt = next_error_cnt;
+
+    if (dram0_s_awvalid && dram0_s_awready) $display("[%d] dram0 waddr 0x%x, wlen 0x%x", reg_clk_cnt, dram0_s_awaddr, dram0_s_awlen);
+    if (dram0_s_wvalid && dram0_s_wready) $display("[%d] dram0 wdata 0x%x", reg_clk_cnt, dram0_s_wdata);
+    if (dram0_s_bvalid && dram0_s_bready) $display("[%d] dram0 bresp 0x%x", reg_clk_cnt, dram0_s_bresp);
+    if (dram0_s_arvalid && dram0_s_arready) $display("[%d] dram0 raddr 0x%x, rlen 0x%x", reg_clk_cnt, dram0_s_araddr, dram0_s_arlen);
+    if (dram0_s_rvalid && dram0_s_rready) $display("[%d] dram0 rdata 0x%x, rresp 0x%x", reg_clk_cnt, dram0_s_rdata, dram0_s_rresp);
+    if (dram1_s_awvalid && dram0_s_awready) $display("[%d] dram1 waddr 0x%x, wlen 0x%x", reg_clk_cnt, dram0_s_awaddr, dram0_s_awlen);
+    if (dram0_s_wvalid && dram0_s_wready) $display("[%d] dram1 wdata 0x%x", reg_clk_cnt, dram0_s_wdata);
+    if (dram0_s_bvalid && dram0_s_bready) $display("[%d] dram1 bresp 0x%x", reg_clk_cnt, dram0_s_bresp);
+    if (dram0_s_arvalid && dram0_s_arready) $display("[%d] dram1 raddr 0x%x, rlen 0x%x", reg_clk_cnt, dram0_s_araddr, dram0_s_arlen);
+    if (dram0_s_rvalid && dram0_s_rready) $display("[%d] dram1 rdata 0x%x, rresp 0x%x", reg_clk_cnt, dram0_s_rdata, dram0_s_rresp);
 
     if (reg_state == STATE_END) begin
-      $display("done");
+      if (reg_error_cnt == reg_iteration_cnt) begin
+        $display("pass");
+      end else begin
+        $display("fail");
+      end
       $finish;
     end
   end
 
   always_comb begin
     // Default values.
+    next_clk_cnt = reg_clk_cnt + 1;
     next_state = reg_state;
-    next_nop_cnt = reg_nop_cnt;
+    next_instr_cnt = reg_instr_cnt;
     next_iteration_cnt = reg_iteration_cnt;
+    next_error_cnt = reg_error_cnt;
 
     reset = 0;
     tdata = 0;
@@ -568,60 +593,49 @@ module Main(input wire clk);
     case (reg_state)
       STATE_IDLE:
       begin
+        next_instr_cnt = 0;
         next_iteration_cnt = 0;
+        next_error_cnt = 0;
         next_state = STATE_RESET;
       end
 
       STATE_RESET:
       begin
         reset = 1;
-        next_nop_cnt = 0;
-        next_state = STATE_SEND_NOPS;
+        // next_instr_cnt = 0;
+        next_state = STATE_SEND_INSTRS;
       end
 
-      STATE_SEND_NOPS:
+      STATE_SEND_INSTRS:
       begin
         tvalid = 1;
-        tdata = INSTR_NOP;
-        if (tready == 1) begin
-          next_nop_cnt = reg_nop_cnt + 1;
-          if (reg_nop_cnt == C_NUM_NOPS - 1) begin
-            next_state = STATE_MOVE_DATA;
+        tdata = INSTRS[reg_instr_cnt];
+        // We are expecting an error after a while as the instructions
+        // are not all valid for the given accelerator's hardware configuration.
+        if (dut_error == 1) begin
+          next_state = STATE_ERROR;
+        end else begin
+          if (tready == 1) begin
+            next_instr_cnt = reg_instr_cnt + 1;
+            if (reg_instr_cnt == C_NUM_INSTRS - 1) begin
+              next_state = STATE_CHECK_END;
+            end
           end
         end
       end
 
-      STATE_MOVE_DATA:
+      STATE_ERROR:
       begin
-        tvalid = 1;
-        tdata = INSTR_MOVE_DATA_DRAM1_TO_MEM;
-        if (tready == 1) begin
-          next_state = STATE_SEND_INVALID_INSTR;
-        end
-      end
-
-      STATE_SEND_INVALID_INSTR:
-      begin
-        tvalid = 1;
-        tdata = INSTR_INVALID;
-        if (tready == 1) begin
-          next_state = STATE_WAIT_ERROR;
-        end
-      end
-
-      STATE_WAIT_ERROR:
-      begin
-        if (dut_error == 1) begin
-          next_state = STATE_CHECK_END;
-        end
+        next_error_cnt = reg_error_cnt + 1;
+        next_state = STATE_CHECK_END;
       end
 
       STATE_CHECK_END:
       begin
+        next_iteration_cnt = reg_iteration_cnt + 1;
         if (reg_iteration_cnt == C_NUM_ITERATIONS - 1) begin
           next_state = STATE_END;
         end else begin
-          next_iteration_cnt = reg_iteration_cnt + 1;
           next_state = STATE_RESET;
         end
       end

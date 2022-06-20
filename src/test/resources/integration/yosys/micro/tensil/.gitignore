@@ -1,0 +1,4 @@
+quartus/
+vivado/
+obj_dir/
+yosys*
