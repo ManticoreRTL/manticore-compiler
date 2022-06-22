@@ -5,12 +5,12 @@ module Queue(
   input         io_enq_valid,
   input  [3:0]  io_enq_bits_opcode,
   input  [3:0]  io_enq_bits_flags,
-  input  [55:0] io_enq_bits_arguments,
+  input  [47:0] io_enq_bits_arguments,
   input         io_deq_ready,
   output        io_deq_valid,
   output [3:0]  io_deq_bits_opcode,
   output [3:0]  io_deq_bits_flags,
-  output [55:0] io_deq_bits_arguments
+  output [47:0] io_deq_bits_arguments
 );
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_0;
@@ -36,10 +36,10 @@ module Queue(
   wire  ram_flags_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_flags_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_flags_MPORT_en; // @[Decoupled.scala 218:16]
-  reg [55:0] ram_arguments [0:1]; // @[Decoupled.scala 218:16]
-  wire [55:0] ram_arguments_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [47:0] ram_arguments [0:1]; // @[Decoupled.scala 218:16]
+  wire [47:0] ram_arguments_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_arguments_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [55:0] ram_arguments_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [47:0] ram_arguments_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_arguments_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_arguments_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_arguments_MPORT_en; // @[Decoupled.scala 218:16]
@@ -144,7 +144,7 @@ initial begin
     ram_flags[initvar] = _RAND_1[3:0];
   _RAND_2 = {2{`RANDOM}};
   for (initvar = 0; initvar < 2; initvar = initvar+1)
-    ram_arguments[initvar] = _RAND_2[55:0];
+    ram_arguments[initvar] = _RAND_2[47:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_3 = {1{`RANDOM}};
@@ -168,13 +168,13 @@ module Queue_1(
   input         io_enq_valid,
   input  [3:0]  io_enq_bits_bits_opcode,
   input  [3:0]  io_enq_bits_bits_flags,
-  input  [55:0] io_enq_bits_bits_arguments,
+  input  [47:0] io_enq_bits_bits_arguments,
   input         io_deq_ready,
   output        io_deq_valid,
   output        io_deq_bits_last,
   output [3:0]  io_deq_bits_bits_opcode,
   output [3:0]  io_deq_bits_bits_flags,
-  output [55:0] io_deq_bits_bits_arguments
+  output [47:0] io_deq_bits_bits_arguments
 );
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_0;
@@ -206,10 +206,10 @@ module Queue_1(
   wire  ram_bits_flags_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_bits_flags_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_bits_flags_MPORT_en; // @[Decoupled.scala 218:16]
-  reg [55:0] ram_bits_arguments [0:0]; // @[Decoupled.scala 218:16]
-  wire [55:0] ram_bits_arguments_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [47:0] ram_bits_arguments [0:0]; // @[Decoupled.scala 218:16]
+  wire [47:0] ram_bits_arguments_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_bits_arguments_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [55:0] ram_bits_arguments_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [47:0] ram_bits_arguments_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_bits_arguments_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_bits_arguments_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_bits_arguments_MPORT_en; // @[Decoupled.scala 218:16]
@@ -324,7 +324,7 @@ initial begin
     ram_bits_flags[initvar] = _RAND_2[3:0];
   _RAND_3 = {2{`RANDOM}};
   for (initvar = 0; initvar < 1; initvar = initvar+1)
-    ram_bits_arguments[initvar] = _RAND_3[55:0];
+    ram_bits_arguments[initvar] = _RAND_3[47:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_4 = {1{`RANDOM}};
@@ -597,26 +597,26 @@ module StrideHandler(
   assign handler_io_out_ready = io_in_bits_stride == 3'h0 ? 1'h0 : io_out_ready; // @[StrideHandler.scala 41:32 StrideHandler.scala 39:24 StrideHandler.scala 60:26]
 endmodule
 module Counter_2(
-  input         clock,
-  input         reset,
-  input         io_value_ready,
-  output [12:0] io_value_bits,
-  input         io_resetValue
+  input        clock,
+  input        reset,
+  input        io_value_ready,
+  output [5:0] io_value_bits,
+  input        io_resetValue
 );
 `ifdef RANDOMIZE_REG_INIT
   reg [31:0] _RAND_0;
 `endif // RANDOMIZE_REG_INIT
-  reg [12:0] value; // @[Counter.scala 16:22]
-  wire [12:0] _value_T_1 = value + 13'h1; // @[Counter.scala 24:22]
+  reg [5:0] value; // @[Counter.scala 16:22]
+  wire [5:0] _value_T_1 = value + 6'h1; // @[Counter.scala 24:22]
   assign io_value_bits = value; // @[Counter.scala 18:17]
   always @(posedge clock) begin
     if (reset) begin // @[Counter.scala 16:22]
-      value <= 13'h0; // @[Counter.scala 16:22]
+      value <= 6'h0; // @[Counter.scala 16:22]
     end else if (io_resetValue) begin // @[Counter.scala 27:23]
-      value <= 13'h0; // @[Counter.scala 28:11]
+      value <= 6'h0; // @[Counter.scala 28:11]
     end else if (io_value_ready) begin // @[Counter.scala 20:24]
-      if (value == 13'h1fff) begin // @[Counter.scala 21:31]
-        value <= 13'h0; // @[Counter.scala 22:13]
+      if (value == 6'h3f) begin // @[Counter.scala 21:31]
+        value <= 6'h0; // @[Counter.scala 22:13]
       end else begin
         value <= _value_T_1; // @[Counter.scala 24:13]
       end
@@ -659,7 +659,7 @@ initial begin
     `endif
 `ifdef RANDOMIZE_REG_INIT
   _RAND_0 = {1{`RANDOM}};
-  value = _RAND_0[12:0];
+  value = _RAND_0[5:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -669,30 +669,30 @@ end // initial
 `endif // SYNTHESIS
 endmodule
 module CountBy_2(
-  input         clock,
-  input         reset,
-  input         io_value_ready,
-  output [12:0] io_value_bits,
-  input  [12:0] io_step,
-  input         io_resetValue
+  input        clock,
+  input        reset,
+  input        io_value_ready,
+  output [5:0] io_value_bits,
+  input  [5:0] io_step,
+  input        io_resetValue
 );
 `ifdef RANDOMIZE_REG_INIT
   reg [31:0] _RAND_0;
 `endif // RANDOMIZE_REG_INIT
-  reg [12:0] value; // @[CountBy.scala 17:22]
-  wire [13:0] _GEN_3 = {{1'd0}, io_step}; // @[CountBy.scala 22:24]
-  wire [13:0] _T_1 = 14'h2000 - _GEN_3; // @[CountBy.scala 22:24]
-  wire [13:0] _GEN_4 = {{1'd0}, value}; // @[CountBy.scala 22:16]
-  wire [12:0] _value_T_1 = value + io_step; // @[CountBy.scala 25:22]
+  reg [5:0] value; // @[CountBy.scala 17:22]
+  wire [6:0] _GEN_3 = {{1'd0}, io_step}; // @[CountBy.scala 22:24]
+  wire [6:0] _T_1 = 7'h40 - _GEN_3; // @[CountBy.scala 22:24]
+  wire [6:0] _GEN_4 = {{1'd0}, value}; // @[CountBy.scala 22:16]
+  wire [5:0] _value_T_1 = value + io_step; // @[CountBy.scala 25:22]
   assign io_value_bits = value; // @[CountBy.scala 19:17]
   always @(posedge clock) begin
     if (reset) begin // @[CountBy.scala 17:22]
-      value <= 13'h0; // @[CountBy.scala 17:22]
+      value <= 6'h0; // @[CountBy.scala 17:22]
     end else if (io_resetValue) begin // @[CountBy.scala 28:23]
-      value <= 13'h0; // @[CountBy.scala 29:11]
+      value <= 6'h0; // @[CountBy.scala 29:11]
     end else if (io_value_ready) begin // @[CountBy.scala 21:24]
       if (_GEN_4 >= _T_1) begin // @[CountBy.scala 22:36]
-        value <= 13'h0; // @[CountBy.scala 23:13]
+        value <= 6'h0; // @[CountBy.scala 23:13]
       end else begin
         value <= _value_T_1; // @[CountBy.scala 25:13]
       end
@@ -735,7 +735,7 @@ initial begin
     `endif
 `ifdef RANDOMIZE_REG_INIT
   _RAND_0 = {1{`RANDOM}};
-  value = _RAND_0[12:0];
+  value = _RAND_0[5:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -745,34 +745,34 @@ end // initial
 `endif // SYNTHESIS
 endmodule
 module SizeAndStrideHandler_2(
-  input         clock,
-  input         reset,
-  output        io_in_ready,
-  input         io_in_valid,
-  input         io_in_bits_write,
-  input  [12:0] io_in_bits_address,
-  input  [12:0] io_in_bits_size,
-  input  [2:0]  io_in_bits_stride,
-  input         io_in_bits_reverse,
-  input         io_out_ready,
-  output        io_out_valid,
-  output        io_out_bits_write,
-  output [12:0] io_out_bits_address
+  input        clock,
+  input        reset,
+  output       io_in_ready,
+  input        io_in_valid,
+  input        io_in_bits_write,
+  input  [5:0] io_in_bits_address,
+  input  [5:0] io_in_bits_size,
+  input  [2:0] io_in_bits_stride,
+  input        io_in_bits_reverse,
+  input        io_out_ready,
+  output       io_out_valid,
+  output       io_out_bits_write,
+  output [5:0] io_out_bits_address
 );
   wire  sizeCounter_clock; // @[Counter.scala 34:19]
   wire  sizeCounter_reset; // @[Counter.scala 34:19]
   wire  sizeCounter_io_value_ready; // @[Counter.scala 34:19]
-  wire [12:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
+  wire [5:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
   wire  sizeCounter_io_resetValue; // @[Counter.scala 34:19]
   wire  addressCounter_clock; // @[CountBy.scala 35:19]
   wire  addressCounter_reset; // @[CountBy.scala 35:19]
   wire  addressCounter_io_value_ready; // @[CountBy.scala 35:19]
-  wire [12:0] addressCounter_io_value_bits; // @[CountBy.scala 35:19]
-  wire [12:0] addressCounter_io_step; // @[CountBy.scala 35:19]
+  wire [5:0] addressCounter_io_value_bits; // @[CountBy.scala 35:19]
+  wire [5:0] addressCounter_io_step; // @[CountBy.scala 35:19]
   wire  addressCounter_io_resetValue; // @[CountBy.scala 35:19]
   wire [7:0] stride = 8'h1 << io_in_bits_stride; // @[SizeAndStrideHandler.scala 30:20]
-  wire [12:0] _io_out_bits_address_T_1 = io_in_bits_address - addressCounter_io_value_bits; // @[SizeAndStrideHandler.scala 46:44]
-  wire [12:0] _io_out_bits_address_T_3 = io_in_bits_address + addressCounter_io_value_bits; // @[SizeAndStrideHandler.scala 48:44]
+  wire [5:0] _io_out_bits_address_T_1 = io_in_bits_address - addressCounter_io_value_bits; // @[SizeAndStrideHandler.scala 46:44]
+  wire [5:0] _io_out_bits_address_T_3 = io_in_bits_address + addressCounter_io_value_bits; // @[SizeAndStrideHandler.scala 48:44]
   wire  fire = io_in_valid & io_out_ready; // @[SizeAndStrideHandler.scala 51:23]
   Counter_2 sizeCounter ( // @[Counter.scala 34:19]
     .clock(sizeCounter_clock),
@@ -800,26 +800,26 @@ module SizeAndStrideHandler_2(
   assign addressCounter_clock = clock;
   assign addressCounter_reset = reset;
   assign addressCounter_io_value_ready = sizeCounter_io_value_bits == io_in_bits_size ? 1'h0 : fire; // @[SizeAndStrideHandler.scala 53:52 Counter.scala 36:22 SizeAndStrideHandler.scala 59:32]
-  assign addressCounter_io_step = {{5'd0}, stride}; // @[SizeAndStrideHandler.scala 30:20]
+  assign addressCounter_io_step = stride[5:0]; // @[CountBy.scala 36:15]
   assign addressCounter_io_resetValue = sizeCounter_io_value_bits == io_in_bits_size & fire; // @[SizeAndStrideHandler.scala 53:52 SizeAndStrideHandler.scala 55:31 Counter.scala 35:21]
 endmodule
 module Queue_2(
-  input         clock,
-  input         reset,
-  output        io_enq_ready,
-  input         io_enq_valid,
-  input         io_enq_bits_write,
-  input  [12:0] io_enq_bits_address,
-  input  [12:0] io_enq_bits_size,
-  input  [2:0]  io_enq_bits_stride,
-  input         io_enq_bits_reverse,
-  input         io_deq_ready,
-  output        io_deq_valid,
-  output        io_deq_bits_write,
-  output [12:0] io_deq_bits_address,
-  output [12:0] io_deq_bits_size,
-  output [2:0]  io_deq_bits_stride,
-  output        io_deq_bits_reverse
+  input        clock,
+  input        reset,
+  output       io_enq_ready,
+  input        io_enq_valid,
+  input        io_enq_bits_write,
+  input  [5:0] io_enq_bits_address,
+  input  [5:0] io_enq_bits_size,
+  input  [2:0] io_enq_bits_stride,
+  input        io_enq_bits_reverse,
+  input        io_deq_ready,
+  output       io_deq_valid,
+  output       io_deq_bits_write,
+  output [5:0] io_deq_bits_address,
+  output [5:0] io_deq_bits_size,
+  output [2:0] io_deq_bits_stride,
+  output       io_deq_bits_reverse
 );
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_0;
@@ -840,17 +840,17 @@ module Queue_2(
   wire  ram_write_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_write_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_write_MPORT_en; // @[Decoupled.scala 218:16]
-  reg [12:0] ram_address [0:1]; // @[Decoupled.scala 218:16]
-  wire [12:0] ram_address_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [5:0] ram_address [0:1]; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_address_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_address_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [12:0] ram_address_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_address_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_en; // @[Decoupled.scala 218:16]
-  reg [12:0] ram_size [0:1]; // @[Decoupled.scala 218:16]
-  wire [12:0] ram_size_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [5:0] ram_size [0:1]; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_size_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_size_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [12:0] ram_size_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_size_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_size_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_size_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_size_MPORT_en; // @[Decoupled.scala 218:16]
@@ -986,10 +986,10 @@ initial begin
     ram_write[initvar] = _RAND_0[0:0];
   _RAND_1 = {1{`RANDOM}};
   for (initvar = 0; initvar < 2; initvar = initvar+1)
-    ram_address[initvar] = _RAND_1[12:0];
+    ram_address[initvar] = _RAND_1[5:0];
   _RAND_2 = {1{`RANDOM}};
   for (initvar = 0; initvar < 2; initvar = initvar+1)
-    ram_size[initvar] = _RAND_2[12:0];
+    ram_size[initvar] = _RAND_2[5:0];
   _RAND_3 = {1{`RANDOM}};
   for (initvar = 0; initvar < 2; initvar = initvar+1)
     ram_stride[initvar] = _RAND_3[2:0];
@@ -1012,203 +1012,55 @@ end // initial
 `endif
 `endif // SYNTHESIS
 endmodule
-module Counter_4(
-  input         clock,
-  input         reset,
-  input         io_value_ready,
-  output [10:0] io_value_bits,
-  input         io_resetValue
-);
-`ifdef RANDOMIZE_REG_INIT
-  reg [31:0] _RAND_0;
-`endif // RANDOMIZE_REG_INIT
-  reg [10:0] value; // @[Counter.scala 16:22]
-  wire [10:0] _value_T_1 = value + 11'h1; // @[Counter.scala 24:22]
-  assign io_value_bits = value; // @[Counter.scala 18:17]
-  always @(posedge clock) begin
-    if (reset) begin // @[Counter.scala 16:22]
-      value <= 11'h0; // @[Counter.scala 16:22]
-    end else if (io_resetValue) begin // @[Counter.scala 27:23]
-      value <= 11'h0; // @[Counter.scala 28:11]
-    end else if (io_value_ready) begin // @[Counter.scala 20:24]
-      if (value == 11'h7ff) begin // @[Counter.scala 21:31]
-        value <= 11'h0; // @[Counter.scala 22:13]
-      end else begin
-        value <= _value_T_1; // @[Counter.scala 24:13]
-      end
-    end
-  end
-// Register and memory initialization
-`ifdef RANDOMIZE_GARBAGE_ASSIGN
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_INVALID_ASSIGN
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_REG_INIT
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_MEM_INIT
-`define RANDOMIZE
-`endif
-`ifndef RANDOM
-`define RANDOM $random
-`endif
-`ifdef RANDOMIZE_MEM_INIT
-  integer initvar;
-`endif
-`ifndef SYNTHESIS
-`ifdef FIRRTL_BEFORE_INITIAL
-`FIRRTL_BEFORE_INITIAL
-`endif
-initial begin
-  `ifdef RANDOMIZE
-    `ifdef INIT_RANDOM
-      `INIT_RANDOM
-    `endif
-    `ifndef VERILATOR
-      `ifdef RANDOMIZE_DELAY
-        #`RANDOMIZE_DELAY begin end
-      `else
-        #0.002 begin end
-      `endif
-    `endif
-`ifdef RANDOMIZE_REG_INIT
-  _RAND_0 = {1{`RANDOM}};
-  value = _RAND_0[10:0];
-`endif // RANDOMIZE_REG_INIT
-  `endif // RANDOMIZE
-end // initial
-`ifdef FIRRTL_AFTER_INITIAL
-`FIRRTL_AFTER_INITIAL
-`endif
-`endif // SYNTHESIS
-endmodule
-module CountBy_4(
-  input         clock,
-  input         reset,
-  input         io_value_ready,
-  output [10:0] io_value_bits,
-  input  [10:0] io_step,
-  input         io_resetValue
-);
-`ifdef RANDOMIZE_REG_INIT
-  reg [31:0] _RAND_0;
-`endif // RANDOMIZE_REG_INIT
-  reg [10:0] value; // @[CountBy.scala 17:22]
-  wire [11:0] _GEN_3 = {{1'd0}, io_step}; // @[CountBy.scala 22:24]
-  wire [11:0] _T_1 = 12'h800 - _GEN_3; // @[CountBy.scala 22:24]
-  wire [11:0] _GEN_4 = {{1'd0}, value}; // @[CountBy.scala 22:16]
-  wire [10:0] _value_T_1 = value + io_step; // @[CountBy.scala 25:22]
-  assign io_value_bits = value; // @[CountBy.scala 19:17]
-  always @(posedge clock) begin
-    if (reset) begin // @[CountBy.scala 17:22]
-      value <= 11'h0; // @[CountBy.scala 17:22]
-    end else if (io_resetValue) begin // @[CountBy.scala 28:23]
-      value <= 11'h0; // @[CountBy.scala 29:11]
-    end else if (io_value_ready) begin // @[CountBy.scala 21:24]
-      if (_GEN_4 >= _T_1) begin // @[CountBy.scala 22:36]
-        value <= 11'h0; // @[CountBy.scala 23:13]
-      end else begin
-        value <= _value_T_1; // @[CountBy.scala 25:13]
-      end
-    end
-  end
-// Register and memory initialization
-`ifdef RANDOMIZE_GARBAGE_ASSIGN
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_INVALID_ASSIGN
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_REG_INIT
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_MEM_INIT
-`define RANDOMIZE
-`endif
-`ifndef RANDOM
-`define RANDOM $random
-`endif
-`ifdef RANDOMIZE_MEM_INIT
-  integer initvar;
-`endif
-`ifndef SYNTHESIS
-`ifdef FIRRTL_BEFORE_INITIAL
-`FIRRTL_BEFORE_INITIAL
-`endif
-initial begin
-  `ifdef RANDOMIZE
-    `ifdef INIT_RANDOM
-      `INIT_RANDOM
-    `endif
-    `ifndef VERILATOR
-      `ifdef RANDOMIZE_DELAY
-        #`RANDOMIZE_DELAY begin end
-      `else
-        #0.002 begin end
-      `endif
-    `endif
-`ifdef RANDOMIZE_REG_INIT
-  _RAND_0 = {1{`RANDOM}};
-  value = _RAND_0[10:0];
-`endif // RANDOMIZE_REG_INIT
-  `endif // RANDOMIZE
-end // initial
-`ifdef FIRRTL_AFTER_INITIAL
-`FIRRTL_AFTER_INITIAL
-`endif
-`endif // SYNTHESIS
-endmodule
 module SizeAndStrideHandler_4(
-  input         clock,
-  input         reset,
-  output        io_in_ready,
-  input         io_in_valid,
-  input  [3:0]  io_in_bits_instruction_op,
-  input         io_in_bits_instruction_sourceLeft,
-  input         io_in_bits_instruction_sourceRight,
-  input         io_in_bits_instruction_dest,
-  input  [10:0] io_in_bits_address,
-  input  [10:0] io_in_bits_altAddress,
-  input         io_in_bits_read,
-  input         io_in_bits_write,
-  input         io_in_bits_accumulate,
-  input  [10:0] io_in_bits_size,
-  input  [2:0]  io_in_bits_stride,
-  input         io_out_ready,
-  output        io_out_valid,
-  output [3:0]  io_out_bits_instruction_op,
-  output        io_out_bits_instruction_sourceLeft,
-  output        io_out_bits_instruction_sourceRight,
-  output        io_out_bits_instruction_dest,
-  output [10:0] io_out_bits_address,
-  output [10:0] io_out_bits_altAddress,
-  output        io_out_bits_read,
-  output        io_out_bits_write,
-  output        io_out_bits_accumulate
+  input        clock,
+  input        reset,
+  output       io_in_ready,
+  input        io_in_valid,
+  input  [3:0] io_in_bits_instruction_op,
+  input        io_in_bits_instruction_sourceLeft,
+  input        io_in_bits_instruction_sourceRight,
+  input        io_in_bits_instruction_dest,
+  input  [5:0] io_in_bits_address,
+  input  [5:0] io_in_bits_altAddress,
+  input        io_in_bits_read,
+  input        io_in_bits_write,
+  input        io_in_bits_accumulate,
+  input  [5:0] io_in_bits_size,
+  input  [2:0] io_in_bits_stride,
+  input        io_out_ready,
+  output       io_out_valid,
+  output [3:0] io_out_bits_instruction_op,
+  output       io_out_bits_instruction_sourceLeft,
+  output       io_out_bits_instruction_sourceRight,
+  output       io_out_bits_instruction_dest,
+  output [5:0] io_out_bits_address,
+  output [5:0] io_out_bits_altAddress,
+  output       io_out_bits_read,
+  output       io_out_bits_write,
+  output       io_out_bits_accumulate
 );
   wire  sizeCounter_clock; // @[Counter.scala 34:19]
   wire  sizeCounter_reset; // @[Counter.scala 34:19]
   wire  sizeCounter_io_value_ready; // @[Counter.scala 34:19]
-  wire [10:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
+  wire [5:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
   wire  sizeCounter_io_resetValue; // @[Counter.scala 34:19]
   wire  addressCounter_clock; // @[CountBy.scala 35:19]
   wire  addressCounter_reset; // @[CountBy.scala 35:19]
   wire  addressCounter_io_value_ready; // @[CountBy.scala 35:19]
-  wire [10:0] addressCounter_io_value_bits; // @[CountBy.scala 35:19]
-  wire [10:0] addressCounter_io_step; // @[CountBy.scala 35:19]
+  wire [5:0] addressCounter_io_value_bits; // @[CountBy.scala 35:19]
+  wire [5:0] addressCounter_io_step; // @[CountBy.scala 35:19]
   wire  addressCounter_io_resetValue; // @[CountBy.scala 35:19]
   wire [7:0] stride = 8'h1 << io_in_bits_stride; // @[SizeAndStrideHandler.scala 30:20]
   wire  fire = io_in_valid & io_out_ready; // @[SizeAndStrideHandler.scala 51:23]
-  Counter_4 sizeCounter ( // @[Counter.scala 34:19]
+  Counter_2 sizeCounter ( // @[Counter.scala 34:19]
     .clock(sizeCounter_clock),
     .reset(sizeCounter_reset),
     .io_value_ready(sizeCounter_io_value_ready),
     .io_value_bits(sizeCounter_io_value_bits),
     .io_resetValue(sizeCounter_io_resetValue)
   );
-  CountBy_4 addressCounter ( // @[CountBy.scala 35:19]
+  CountBy_2 addressCounter ( // @[CountBy.scala 35:19]
     .clock(addressCounter_clock),
     .reset(addressCounter_reset),
     .io_value_ready(addressCounter_io_value_ready),
@@ -1234,26 +1086,26 @@ module SizeAndStrideHandler_4(
   assign addressCounter_clock = clock;
   assign addressCounter_reset = reset;
   assign addressCounter_io_value_ready = sizeCounter_io_value_bits == io_in_bits_size ? 1'h0 : fire; // @[SizeAndStrideHandler.scala 53:52 Counter.scala 36:22 SizeAndStrideHandler.scala 59:32]
-  assign addressCounter_io_step = {{3'd0}, stride}; // @[SizeAndStrideHandler.scala 30:20]
+  assign addressCounter_io_step = stride[5:0]; // @[CountBy.scala 36:15]
   assign addressCounter_io_resetValue = sizeCounter_io_value_bits == io_in_bits_size & fire; // @[SizeAndStrideHandler.scala 53:52 SizeAndStrideHandler.scala 55:31 Counter.scala 35:21]
 endmodule
 module SizeHandler(
-  input         clock,
-  input         reset,
-  output        io_in_ready,
-  input         io_in_valid,
-  input         io_in_bits_load,
-  input         io_in_bits_zeroes,
-  input  [12:0] io_in_bits_size,
-  input         io_out_ready,
-  output        io_out_valid,
-  output        io_out_bits_load,
-  output        io_out_bits_zeroes
+  input        clock,
+  input        reset,
+  output       io_in_ready,
+  input        io_in_valid,
+  input        io_in_bits_load,
+  input        io_in_bits_zeroes,
+  input  [5:0] io_in_bits_size,
+  input        io_out_ready,
+  output       io_out_valid,
+  output       io_out_bits_load,
+  output       io_out_bits_zeroes
 );
   wire  sizeCounter_clock; // @[Counter.scala 34:19]
   wire  sizeCounter_reset; // @[Counter.scala 34:19]
   wire  sizeCounter_io_value_ready; // @[Counter.scala 34:19]
-  wire [12:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
+  wire [5:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
   wire  sizeCounter_io_resetValue; // @[Counter.scala 34:19]
   wire  fire = io_in_valid & io_out_ready; // @[SizeHandler.scala 32:23]
   Counter_2 sizeCounter ( // @[Counter.scala 34:19]
@@ -1273,20 +1125,20 @@ module SizeHandler(
   assign sizeCounter_io_resetValue = sizeCounter_io_value_bits == io_in_bits_size & fire; // @[SizeHandler.scala 34:52 SizeHandler.scala 36:31 Counter.scala 35:21]
 endmodule
 module SizeHandler_1(
-  input         clock,
-  input         reset,
-  output        io_in_ready,
-  input         io_in_valid,
-  input  [1:0]  io_in_bits_kind,
-  input  [12:0] io_in_bits_size,
-  input         io_out_ready,
-  output        io_out_valid,
-  output [1:0]  io_out_bits_kind
+  input        clock,
+  input        reset,
+  output       io_in_ready,
+  input        io_in_valid,
+  input  [1:0] io_in_bits_kind,
+  input  [5:0] io_in_bits_size,
+  input        io_out_ready,
+  output       io_out_valid,
+  output [1:0] io_out_bits_kind
 );
   wire  sizeCounter_clock; // @[Counter.scala 34:19]
   wire  sizeCounter_reset; // @[Counter.scala 34:19]
   wire  sizeCounter_io_value_ready; // @[Counter.scala 34:19]
-  wire [12:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
+  wire [5:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
   wire  sizeCounter_io_resetValue; // @[Counter.scala 34:19]
   wire  fire = io_in_valid & io_out_ready; // @[SizeHandler.scala 32:23]
   Counter_2 sizeCounter ( // @[Counter.scala 34:19]
@@ -1691,34 +1543,34 @@ module Validator(
   input         io_instruction_valid,
   input  [3:0]  io_instruction_bits_opcode,
   input  [3:0]  io_instruction_bits_flags,
-  input  [55:0] io_instruction_bits_arguments,
+  input  [47:0] io_instruction_bits_arguments,
   output        io_error
 );
   wire  flags_accumulate = io_instruction_bits_flags[0]; // @[Validator.scala 38:47]
   wire [1:0] flags__unused = io_instruction_bits_flags[3:2]; // @[Validator.scala 38:47]
-  wire [12:0] args_memAddress = io_instruction_bits_arguments[12:0]; // @[Validator.scala 39:50]
+  wire [5:0] args_memAddress = io_instruction_bits_arguments[5:0]; // @[Validator.scala 39:50]
   wire [19:0] args_accAddress = io_instruction_bits_arguments[35:16]; // @[Validator.scala 39:50]
-  wire [15:0] args_size = io_instruction_bits_arguments[55:40]; // @[Validator.scala 39:50]
-  wire  _T_1 = args_size >= 16'h800; // @[Validator.scala 41:22]
-  wire  _T_2 = args_accAddress >= 20'h800; // @[Validator.scala 43:34]
-  wire [19:0] _GEN_36 = {{4'd0}, args_size}; // @[Validator.scala 48:25]
+  wire [7:0] args_size = io_instruction_bits_arguments[47:40]; // @[Validator.scala 39:50]
+  wire  _T_1 = args_size >= 8'h40; // @[Validator.scala 41:22]
+  wire  _T_2 = args_accAddress >= 20'h40; // @[Validator.scala 43:34]
+  wire [19:0] _GEN_36 = {{12'd0}, args_size}; // @[Validator.scala 48:25]
   wire [19:0] _T_5 = args_accAddress + _GEN_36; // @[Validator.scala 48:25]
-  wire  _T_6 = _T_5 >= 20'h800; // @[Validator.scala 48:37]
-  wire [15:0] _GEN_37 = {{3'd0}, args_memAddress}; // @[Validator.scala 51:34]
-  wire [15:0] _T_8 = _GEN_37 + args_size; // @[Validator.scala 51:34]
-  wire  _T_9 = _T_8 >= 16'h2000; // @[Validator.scala 51:46]
+  wire  _T_6 = _T_5 >= 20'h40; // @[Validator.scala 48:37]
+  wire [7:0] _GEN_37 = {{2'd0}, args_memAddress}; // @[Validator.scala 51:34]
+  wire [7:0] _T_8 = _GEN_37 + args_size; // @[Validator.scala 51:34]
+  wire  _T_9 = _T_8 >= 8'h40; // @[Validator.scala 51:46]
   wire  _T_10 = flags__unused != 2'h0; // @[Validator.scala 53:32]
-  wire  _GEN_1 = _T_8 >= 16'h2000 | _T_10; // @[Validator.scala 51:75 Validator.scala 52:18]
+  wire  _GEN_1 = _T_8 >= 8'h40 | _T_10; // @[Validator.scala 51:75 Validator.scala 52:18]
   wire  _GEN_2 = _T_6 | _GEN_1; // @[Validator.scala 49:9 Validator.scala 50:18]
-  wire  _GEN_4 = args_accAddress >= 20'h800 | _GEN_2; // @[Validator.scala 43:69 Validator.scala 44:18]
-  wire  _GEN_5 = args_size >= 16'h800 | _GEN_4; // @[Validator.scala 41:57 Validator.scala 42:18]
+  wire  _GEN_4 = args_accAddress >= 20'h40 | _GEN_2; // @[Validator.scala 43:69 Validator.scala 44:18]
+  wire  _GEN_5 = args_size >= 8'h40 | _GEN_4; // @[Validator.scala 41:57 Validator.scala 42:18]
   wire [2:0] flags_1__unused = io_instruction_bits_flags[3:1]; // @[Validator.scala 62:47]
-  wire [12:0] args_1_address = io_instruction_bits_arguments[12:0]; // @[Validator.scala 63:50]
+  wire [5:0] args_1_address = io_instruction_bits_arguments[5:0]; // @[Validator.scala 63:50]
   wire [23:0] args_1_size = io_instruction_bits_arguments[39:16]; // @[Validator.scala 63:50]
-  wire [23:0] _GEN_38 = {{11'd0}, args_1_address}; // @[Validator.scala 69:31]
+  wire [23:0] _GEN_38 = {{18'd0}, args_1_address}; // @[Validator.scala 69:31]
   wire [23:0] _T_15 = _GEN_38 + args_1_size; // @[Validator.scala 69:31]
   wire  _T_17 = flags_1__unused != 3'h0; // @[Validator.scala 71:32]
-  wire  _GEN_7 = _T_15 >= 24'h2000 | _T_17; // @[Validator.scala 69:72 Validator.scala 70:18]
+  wire  _GEN_7 = _T_15 >= 24'h40 | _T_17; // @[Validator.scala 69:72 Validator.scala 70:18]
   wire  _GEN_9 = args_1_size > 24'h9 | _GEN_7; // @[Validator.scala 65:55 Validator.scala 66:18]
   wire  _T_20 = io_instruction_bits_flags == 4'h1; // @[Validator.scala 85:22]
   wire  _T_21 = io_instruction_bits_flags == 4'h0 | _T_20; // @[Validator.scala 84:51]
@@ -1726,7 +1578,7 @@ module Validator(
   wire  _T_23 = _T_21 | _T_22; // @[Validator.scala 85:53]
   wire  _T_24 = io_instruction_bits_flags == 4'h3; // @[Validator.scala 87:22]
   wire  _T_25 = _T_23 | _T_24; // @[Validator.scala 86:53]
-  wire  _GEN_12 = args_size >= 16'h2000 | _T_9; // @[Validator.scala 89:53 Validator.scala 90:20]
+  wire  _GEN_12 = _T_1 | _T_9; // @[Validator.scala 89:53 Validator.scala 90:20]
   wire  _T_32 = io_instruction_bits_flags == 4'hd; // @[Validator.scala 100:22]
   wire  _T_33 = io_instruction_bits_flags == 4'hc | _T_32; // @[Validator.scala 99:57]
   wire  _T_34 = io_instruction_bits_flags == 4'hf; // @[Validator.scala 101:22]
@@ -1746,8 +1598,8 @@ module Validator(
   wire  _T_62 = ~flags_accumulate & _T_55; // @[Validator.scala 154:21]
   wire  _GEN_21 = _T_57 | _T_62; // @[Validator.scala 149:9 Validator.scala 152:18]
   wire  _GEN_22 = flags_3__unused | _GEN_21; // @[Validator.scala 145:41 Validator.scala 146:18]
-  wire  _GEN_27 = args_3_accWriteAddress >= 16'h800 | _GEN_22; // @[Validator.scala 131:74 Validator.scala 132:18]
-  wire  _GEN_28 = args_3_accReadAddress >= 24'h800 | _GEN_27; // @[Validator.scala 129:67 Validator.scala 130:18]
+  wire  _GEN_27 = args_3_accWriteAddress >= 16'h40 | _GEN_22; // @[Validator.scala 131:74 Validator.scala 132:18]
+  wire  _GEN_28 = args_3_accReadAddress >= 24'h40 | _GEN_27; // @[Validator.scala 129:67 Validator.scala 130:18]
   wire  _GEN_29 = io_instruction_bits_opcode == 4'h0 ? 1'h0 : 1'h1; // @[Validator.scala 165:57 Validator.scala 166:16 Validator.scala 168:16]
   wire  _GEN_30 = io_instruction_bits_opcode == 4'hf ? 1'h0 : _GEN_29; // @[Validator.scala 163:62 Validator.scala 164:16]
   wire  _GEN_31 = io_instruction_bits_opcode == 4'h4 ? _GEN_28 : _GEN_30; // @[Validator.scala 122:57]
@@ -1763,15 +1615,15 @@ module Decoder(
   input         io_instruction_valid,
   input  [3:0]  io_instruction_bits_opcode,
   input  [3:0]  io_instruction_bits_flags,
-  input  [55:0] io_instruction_bits_arguments,
+  input  [47:0] io_instruction_bits_arguments,
   input         io_memPortA_ready,
   output        io_memPortA_valid,
   output        io_memPortA_bits_write,
-  output [12:0] io_memPortA_bits_address,
+  output [5:0]  io_memPortA_bits_address,
   input         io_memPortB_ready,
   output        io_memPortB_valid,
   output        io_memPortB_bits_write,
-  output [12:0] io_memPortB_bits_address,
+  output [5:0]  io_memPortB_bits_address,
   input         io_dram0_ready,
   output        io_dram0_valid,
   output        io_dram0_bits_write,
@@ -1785,7 +1637,7 @@ module Decoder(
   input         io_dataflow_ready,
   output        io_dataflow_valid,
   output [3:0]  io_dataflow_bits_kind,
-  output [12:0] io_dataflow_bits_size,
+  output [5:0]  io_dataflow_bits_size,
   input         io_hostDataflow_ready,
   output        io_hostDataflow_valid,
   output [1:0]  io_hostDataflow_bits_kind,
@@ -1795,8 +1647,8 @@ module Decoder(
   output        io_acc_bits_instruction_sourceLeft,
   output        io_acc_bits_instruction_sourceRight,
   output        io_acc_bits_instruction_dest,
-  output [10:0] io_acc_bits_readAddress,
-  output [10:0] io_acc_bits_writeAddress,
+  output [5:0]  io_acc_bits_readAddress,
+  output [5:0]  io_acc_bits_writeAddress,
   output        io_acc_bits_accumulate,
   output        io_acc_bits_write,
   output        io_acc_bits_read,
@@ -1813,7 +1665,7 @@ module Decoder(
   output        io_status_bits_last,
   output [3:0]  io_status_bits_bits_opcode,
   output [3:0]  io_status_bits_bits_flags,
-  output [55:0] io_status_bits_bits_arguments,
+  output [47:0] io_status_bits_bits_arguments,
   output        io_timeout,
   output        io_error,
   output        io_tracepoint,
@@ -1835,25 +1687,25 @@ module Decoder(
   wire  instruction_io_enq_valid; // @[Decoupled.scala 296:21]
   wire [3:0] instruction_io_enq_bits_opcode; // @[Decoupled.scala 296:21]
   wire [3:0] instruction_io_enq_bits_flags; // @[Decoupled.scala 296:21]
-  wire [55:0] instruction_io_enq_bits_arguments; // @[Decoupled.scala 296:21]
+  wire [47:0] instruction_io_enq_bits_arguments; // @[Decoupled.scala 296:21]
   wire  instruction_io_deq_ready; // @[Decoupled.scala 296:21]
   wire  instruction_io_deq_valid; // @[Decoupled.scala 296:21]
   wire [3:0] instruction_io_deq_bits_opcode; // @[Decoupled.scala 296:21]
   wire [3:0] instruction_io_deq_bits_flags; // @[Decoupled.scala 296:21]
-  wire [55:0] instruction_io_deq_bits_arguments; // @[Decoupled.scala 296:21]
+  wire [47:0] instruction_io_deq_bits_arguments; // @[Decoupled.scala 296:21]
   wire  status_clock; // @[Decoder.scala 78:23]
   wire  status_reset; // @[Decoder.scala 78:23]
   wire  status_io_enq_ready; // @[Decoder.scala 78:23]
   wire  status_io_enq_valid; // @[Decoder.scala 78:23]
   wire [3:0] status_io_enq_bits_bits_opcode; // @[Decoder.scala 78:23]
   wire [3:0] status_io_enq_bits_bits_flags; // @[Decoder.scala 78:23]
-  wire [55:0] status_io_enq_bits_bits_arguments; // @[Decoder.scala 78:23]
+  wire [47:0] status_io_enq_bits_bits_arguments; // @[Decoder.scala 78:23]
   wire  status_io_deq_ready; // @[Decoder.scala 78:23]
   wire  status_io_deq_valid; // @[Decoder.scala 78:23]
   wire  status_io_deq_bits_last; // @[Decoder.scala 78:23]
   wire [3:0] status_io_deq_bits_bits_opcode; // @[Decoder.scala 78:23]
   wire [3:0] status_io_deq_bits_bits_flags; // @[Decoder.scala 78:23]
-  wire [55:0] status_io_deq_bits_bits_arguments; // @[Decoder.scala 78:23]
+  wire [47:0] status_io_deq_bits_bits_arguments; // @[Decoder.scala 78:23]
   wire  dram0Handler_clock; // @[Decoder.scala 135:28]
   wire  dram0Handler_reset; // @[Decoder.scala 135:28]
   wire  dram0Handler_io_in_ready; // @[Decoder.scala 135:28]
@@ -1885,41 +1737,41 @@ module Decoder(
   wire  memPortAHandler_io_in_ready; // @[Decoder.scala 160:31]
   wire  memPortAHandler_io_in_valid; // @[Decoder.scala 160:31]
   wire  memPortAHandler_io_in_bits_write; // @[Decoder.scala 160:31]
-  wire [12:0] memPortAHandler_io_in_bits_address; // @[Decoder.scala 160:31]
-  wire [12:0] memPortAHandler_io_in_bits_size; // @[Decoder.scala 160:31]
+  wire [5:0] memPortAHandler_io_in_bits_address; // @[Decoder.scala 160:31]
+  wire [5:0] memPortAHandler_io_in_bits_size; // @[Decoder.scala 160:31]
   wire [2:0] memPortAHandler_io_in_bits_stride; // @[Decoder.scala 160:31]
   wire  memPortAHandler_io_in_bits_reverse; // @[Decoder.scala 160:31]
   wire  memPortAHandler_io_out_ready; // @[Decoder.scala 160:31]
   wire  memPortAHandler_io_out_valid; // @[Decoder.scala 160:31]
   wire  memPortAHandler_io_out_bits_write; // @[Decoder.scala 160:31]
-  wire [12:0] memPortAHandler_io_out_bits_address; // @[Decoder.scala 160:31]
+  wire [5:0] memPortAHandler_io_out_bits_address; // @[Decoder.scala 160:31]
   wire  memPortBHandler_clock; // @[Decoder.scala 169:31]
   wire  memPortBHandler_reset; // @[Decoder.scala 169:31]
   wire  memPortBHandler_io_in_ready; // @[Decoder.scala 169:31]
   wire  memPortBHandler_io_in_valid; // @[Decoder.scala 169:31]
   wire  memPortBHandler_io_in_bits_write; // @[Decoder.scala 169:31]
-  wire [12:0] memPortBHandler_io_in_bits_address; // @[Decoder.scala 169:31]
-  wire [12:0] memPortBHandler_io_in_bits_size; // @[Decoder.scala 169:31]
+  wire [5:0] memPortBHandler_io_in_bits_address; // @[Decoder.scala 169:31]
+  wire [5:0] memPortBHandler_io_in_bits_size; // @[Decoder.scala 169:31]
   wire [2:0] memPortBHandler_io_in_bits_stride; // @[Decoder.scala 169:31]
   wire  memPortBHandler_io_in_bits_reverse; // @[Decoder.scala 169:31]
   wire  memPortBHandler_io_out_ready; // @[Decoder.scala 169:31]
   wire  memPortBHandler_io_out_valid; // @[Decoder.scala 169:31]
   wire  memPortBHandler_io_out_bits_write; // @[Decoder.scala 169:31]
-  wire [12:0] memPortBHandler_io_out_bits_address; // @[Decoder.scala 169:31]
+  wire [5:0] memPortBHandler_io_out_bits_address; // @[Decoder.scala 169:31]
   wire  memPortA_clock; // @[Mem.scala 23:19]
   wire  memPortA_reset; // @[Mem.scala 23:19]
   wire  memPortA_io_enq_ready; // @[Mem.scala 23:19]
   wire  memPortA_io_enq_valid; // @[Mem.scala 23:19]
   wire  memPortA_io_enq_bits_write; // @[Mem.scala 23:19]
-  wire [12:0] memPortA_io_enq_bits_address; // @[Mem.scala 23:19]
-  wire [12:0] memPortA_io_enq_bits_size; // @[Mem.scala 23:19]
+  wire [5:0] memPortA_io_enq_bits_address; // @[Mem.scala 23:19]
+  wire [5:0] memPortA_io_enq_bits_size; // @[Mem.scala 23:19]
   wire [2:0] memPortA_io_enq_bits_stride; // @[Mem.scala 23:19]
   wire  memPortA_io_enq_bits_reverse; // @[Mem.scala 23:19]
   wire  memPortA_io_deq_ready; // @[Mem.scala 23:19]
   wire  memPortA_io_deq_valid; // @[Mem.scala 23:19]
   wire  memPortA_io_deq_bits_write; // @[Mem.scala 23:19]
-  wire [12:0] memPortA_io_deq_bits_address; // @[Mem.scala 23:19]
-  wire [12:0] memPortA_io_deq_bits_size; // @[Mem.scala 23:19]
+  wire [5:0] memPortA_io_deq_bits_address; // @[Mem.scala 23:19]
+  wire [5:0] memPortA_io_deq_bits_size; // @[Mem.scala 23:19]
   wire [2:0] memPortA_io_deq_bits_stride; // @[Mem.scala 23:19]
   wire  memPortA_io_deq_bits_reverse; // @[Mem.scala 23:19]
   wire  memPortB_clock; // @[Mem.scala 23:19]
@@ -1927,15 +1779,15 @@ module Decoder(
   wire  memPortB_io_enq_ready; // @[Mem.scala 23:19]
   wire  memPortB_io_enq_valid; // @[Mem.scala 23:19]
   wire  memPortB_io_enq_bits_write; // @[Mem.scala 23:19]
-  wire [12:0] memPortB_io_enq_bits_address; // @[Mem.scala 23:19]
-  wire [12:0] memPortB_io_enq_bits_size; // @[Mem.scala 23:19]
+  wire [5:0] memPortB_io_enq_bits_address; // @[Mem.scala 23:19]
+  wire [5:0] memPortB_io_enq_bits_size; // @[Mem.scala 23:19]
   wire [2:0] memPortB_io_enq_bits_stride; // @[Mem.scala 23:19]
   wire  memPortB_io_enq_bits_reverse; // @[Mem.scala 23:19]
   wire  memPortB_io_deq_ready; // @[Mem.scala 23:19]
   wire  memPortB_io_deq_valid; // @[Mem.scala 23:19]
   wire  memPortB_io_deq_bits_write; // @[Mem.scala 23:19]
-  wire [12:0] memPortB_io_deq_bits_address; // @[Mem.scala 23:19]
-  wire [12:0] memPortB_io_deq_bits_size; // @[Mem.scala 23:19]
+  wire [5:0] memPortB_io_deq_bits_address; // @[Mem.scala 23:19]
+  wire [5:0] memPortB_io_deq_bits_size; // @[Mem.scala 23:19]
   wire [2:0] memPortB_io_deq_bits_stride; // @[Mem.scala 23:19]
   wire  memPortB_io_deq_bits_reverse; // @[Mem.scala 23:19]
   wire  accHandler_clock; // @[Decoder.scala 185:26]
@@ -1946,12 +1798,12 @@ module Decoder(
   wire  accHandler_io_in_bits_instruction_sourceLeft; // @[Decoder.scala 185:26]
   wire  accHandler_io_in_bits_instruction_sourceRight; // @[Decoder.scala 185:26]
   wire  accHandler_io_in_bits_instruction_dest; // @[Decoder.scala 185:26]
-  wire [10:0] accHandler_io_in_bits_address; // @[Decoder.scala 185:26]
-  wire [10:0] accHandler_io_in_bits_altAddress; // @[Decoder.scala 185:26]
+  wire [5:0] accHandler_io_in_bits_address; // @[Decoder.scala 185:26]
+  wire [5:0] accHandler_io_in_bits_altAddress; // @[Decoder.scala 185:26]
   wire  accHandler_io_in_bits_read; // @[Decoder.scala 185:26]
   wire  accHandler_io_in_bits_write; // @[Decoder.scala 185:26]
   wire  accHandler_io_in_bits_accumulate; // @[Decoder.scala 185:26]
-  wire [10:0] accHandler_io_in_bits_size; // @[Decoder.scala 185:26]
+  wire [5:0] accHandler_io_in_bits_size; // @[Decoder.scala 185:26]
   wire [2:0] accHandler_io_in_bits_stride; // @[Decoder.scala 185:26]
   wire  accHandler_io_out_ready; // @[Decoder.scala 185:26]
   wire  accHandler_io_out_valid; // @[Decoder.scala 185:26]
@@ -1959,8 +1811,8 @@ module Decoder(
   wire  accHandler_io_out_bits_instruction_sourceLeft; // @[Decoder.scala 185:26]
   wire  accHandler_io_out_bits_instruction_sourceRight; // @[Decoder.scala 185:26]
   wire  accHandler_io_out_bits_instruction_dest; // @[Decoder.scala 185:26]
-  wire [10:0] accHandler_io_out_bits_address; // @[Decoder.scala 185:26]
-  wire [10:0] accHandler_io_out_bits_altAddress; // @[Decoder.scala 185:26]
+  wire [5:0] accHandler_io_out_bits_address; // @[Decoder.scala 185:26]
+  wire [5:0] accHandler_io_out_bits_altAddress; // @[Decoder.scala 185:26]
   wire  accHandler_io_out_bits_read; // @[Decoder.scala 185:26]
   wire  accHandler_io_out_bits_write; // @[Decoder.scala 185:26]
   wire  accHandler_io_out_bits_accumulate; // @[Decoder.scala 185:26]
@@ -1970,7 +1822,7 @@ module Decoder(
   wire  arrayHandler_io_in_valid; // @[Decoder.scala 202:28]
   wire  arrayHandler_io_in_bits_load; // @[Decoder.scala 202:28]
   wire  arrayHandler_io_in_bits_zeroes; // @[Decoder.scala 202:28]
-  wire [12:0] arrayHandler_io_in_bits_size; // @[Decoder.scala 202:28]
+  wire [5:0] arrayHandler_io_in_bits_size; // @[Decoder.scala 202:28]
   wire  arrayHandler_io_out_ready; // @[Decoder.scala 202:28]
   wire  arrayHandler_io_out_valid; // @[Decoder.scala 202:28]
   wire  arrayHandler_io_out_bits_load; // @[Decoder.scala 202:28]
@@ -1980,7 +1832,7 @@ module Decoder(
   wire  hostDataflowHandler_io_in_ready; // @[Decoder.scala 216:35]
   wire  hostDataflowHandler_io_in_valid; // @[Decoder.scala 216:35]
   wire [1:0] hostDataflowHandler_io_in_bits_kind; // @[Decoder.scala 216:35]
-  wire [12:0] hostDataflowHandler_io_in_bits_size; // @[Decoder.scala 216:35]
+  wire [5:0] hostDataflowHandler_io_in_bits_size; // @[Decoder.scala 216:35]
   wire  hostDataflowHandler_io_out_ready; // @[Decoder.scala 216:35]
   wire  hostDataflowHandler_io_out_valid; // @[Decoder.scala 216:35]
   wire [1:0] hostDataflowHandler_io_out_bits_kind; // @[Decoder.scala 216:35]
@@ -2023,7 +1875,7 @@ module Decoder(
   wire  validator_io_instruction_valid; // @[Decoder.scala 571:27]
   wire [3:0] validator_io_instruction_bits_opcode; // @[Decoder.scala 571:27]
   wire [3:0] validator_io_instruction_bits_flags; // @[Decoder.scala 571:27]
-  wire [55:0] validator_io_instruction_bits_arguments; // @[Decoder.scala 571:27]
+  wire [47:0] validator_io_instruction_bits_arguments; // @[Decoder.scala 571:27]
   wire  validator_io_error; // @[Decoder.scala 571:27]
   reg [15:0] timeout; // @[Decoder.scala 91:24]
   reg [15:0] timer; // @[Decoder.scala 92:24]
@@ -2037,25 +1889,23 @@ module Decoder(
   reg [31:0] dram1AddressOffset; // @[Decoder.scala 123:36]
   reg [3:0] dram1CacheBehaviour; // @[Decoder.scala 124:36]
   wire  io_acc_bits_isMemControl = accHandler_io_out_bits_instruction_op == 4'h0; // @[AccumulatorWithALUArrayControl.scala 101:39]
-  wire [10:0] _GEN_3 = accHandler_io_out_bits_write ? accHandler_io_out_bits_altAddress : accHandler_io_out_bits_address
-    ; // @[AccumulatorWithALUArrayControl.scala 111:21 AccumulatorWithALUArrayControl.scala 112:25 AccumulatorWithALUArrayControl.scala 115:25]
-  wire [10:0] _GEN_4 = accHandler_io_out_bits_write ? accHandler_io_out_bits_address : accHandler_io_out_bits_altAddress
-    ; // @[AccumulatorWithALUArrayControl.scala 111:21 AccumulatorWithALUArrayControl.scala 113:26 AccumulatorWithALUArrayControl.scala 116:26]
-  wire [10:0] _GEN_5 = accHandler_io_out_bits_read ? accHandler_io_out_bits_address : _GEN_3; // @[AccumulatorWithALUArrayControl.scala 107:18 AccumulatorWithALUArrayControl.scala 108:23]
-  wire [10:0] _GEN_6 = accHandler_io_out_bits_read ? accHandler_io_out_bits_altAddress : _GEN_4; // @[AccumulatorWithALUArrayControl.scala 107:18 AccumulatorWithALUArrayControl.scala 109:24]
+  wire [5:0] _GEN_3 = accHandler_io_out_bits_write ? accHandler_io_out_bits_altAddress : accHandler_io_out_bits_address; // @[AccumulatorWithALUArrayControl.scala 111:21 AccumulatorWithALUArrayControl.scala 112:25 AccumulatorWithALUArrayControl.scala 115:25]
+  wire [5:0] _GEN_4 = accHandler_io_out_bits_write ? accHandler_io_out_bits_address : accHandler_io_out_bits_altAddress; // @[AccumulatorWithALUArrayControl.scala 111:21 AccumulatorWithALUArrayControl.scala 113:26 AccumulatorWithALUArrayControl.scala 116:26]
+  wire [5:0] _GEN_5 = accHandler_io_out_bits_read ? accHandler_io_out_bits_address : _GEN_3; // @[AccumulatorWithALUArrayControl.scala 107:18 AccumulatorWithALUArrayControl.scala 108:23]
+  wire [5:0] _GEN_6 = accHandler_io_out_bits_read ? accHandler_io_out_bits_altAddress : _GEN_4; // @[AccumulatorWithALUArrayControl.scala 107:18 AccumulatorWithALUArrayControl.scala 109:24]
   wire [3:0] _flags_WIRE_1 = instruction_io_deq_bits_flags;
   wire  flags_accumulate = _flags_WIRE_1[0]; // @[Decoder.scala 250:45]
   wire  flags_zeroes = _flags_WIRE_1[1]; // @[Decoder.scala 250:45]
-  wire [55:0] _args_WIRE_1 = instruction_io_deq_bits_arguments;
-  wire [12:0] args_memAddress = _args_WIRE_1[12:0]; // @[Decoder.scala 251:48]
-  wire [2:0] args_memStride = _args_WIRE_1[15:13]; // @[Decoder.scala 251:48]
+  wire [47:0] _args_WIRE_1 = instruction_io_deq_bits_arguments;
+  wire [5:0] args_memAddress = _args_WIRE_1[5:0]; // @[Decoder.scala 251:48]
+  wire [2:0] args_memStride = _args_WIRE_1[8:6]; // @[Decoder.scala 251:48]
   wire [19:0] args_accAddress = _args_WIRE_1[35:16]; // @[Decoder.scala 251:48]
   wire [2:0] args_accStride = _args_WIRE_1[38:36]; // @[Decoder.scala 251:48]
-  wire [15:0] args_size = _args_WIRE_1[55:40]; // @[Decoder.scala 251:48]
+  wire [7:0] args_size = _args_WIRE_1[47:40]; // @[Decoder.scala 251:48]
   wire  _GEN_9 = flags_zeroes & instruction_io_deq_valid; // @[Decoder.scala 253:24 MultiEnqueue.scala 114:17 MultiEnqueue.scala 40:17]
   wire  _GEN_10 = flags_zeroes & io_dataflow_ready; // @[Decoder.scala 253:24 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [12:0] instruction_io_deq_ready_w_size = args_size[12:0]; // @[Decoder.scala 673:17 Decoder.scala 675:12]
-  wire [12:0] _GEN_11 = flags_zeroes ? instruction_io_deq_ready_w_size : instruction_io_deq_ready_w_size; // @[Decoder.scala 253:24 MultiEnqueue.scala 115:10 MultiEnqueue.scala 151:10]
+  wire [5:0] instruction_io_deq_ready_w_size = args_size[5:0]; // @[Decoder.scala 673:17 Decoder.scala 675:12]
+  wire [5:0] _GEN_11 = flags_zeroes ? instruction_io_deq_ready_w_size : instruction_io_deq_ready_w_size; // @[Decoder.scala 253:24 MultiEnqueue.scala 115:10 MultiEnqueue.scala 151:10]
   wire [3:0] _GEN_12 = flags_zeroes ? 4'h3 : 4'h2; // @[Decoder.scala 253:24 MultiEnqueue.scala 115:10 MultiEnqueue.scala 151:10]
   wire  instruction_io_deq_ready_io_dataflow_w_valid = enqueuer3_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  instruction_io_deq_ready_io_dataflow_w_1_valid = enqueuer4_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
@@ -2069,10 +1919,8 @@ module Decoder(
     instruction_io_deq_ready_arrayHandler_io_in_w_1_valid; // @[Decoder.scala 253:24 MultiEnqueue.scala 116:10 MultiEnqueue.scala 153:10]
   wire  instruction_io_deq_ready_accHandler_io_in_w_ready = accHandler_io_in_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 117:10]
   wire  _GEN_19 = flags_zeroes & instruction_io_deq_ready_accHandler_io_in_w_ready; // @[Decoder.scala 253:24 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [10:0] instruction_io_deq_ready_w_2_size = args_size[10:0]; // @[Decoder.scala 656:17 Decoder.scala 663:12]
-  wire [10:0] _GEN_22 = flags_zeroes ? instruction_io_deq_ready_w_2_size : instruction_io_deq_ready_w_2_size; // @[Decoder.scala 253:24 MultiEnqueue.scala 117:10 MultiEnqueue.scala 154:10]
-  wire [10:0] instruction_io_deq_ready_w_2_address = args_accAddress[10:0]; // @[Decoder.scala 656:17 Decoder.scala 658:15]
-  wire [10:0] _GEN_27 = flags_zeroes ? instruction_io_deq_ready_w_2_address : instruction_io_deq_ready_w_2_address; // @[Decoder.scala 253:24 MultiEnqueue.scala 117:10 MultiEnqueue.scala 154:10]
+  wire [5:0] instruction_io_deq_ready_w_2_address = args_accAddress[5:0]; // @[Decoder.scala 656:17 Decoder.scala 658:15]
+  wire [5:0] _GEN_27 = flags_zeroes ? instruction_io_deq_ready_w_2_address : instruction_io_deq_ready_w_2_address; // @[Decoder.scala 253:24 MultiEnqueue.scala 117:10 MultiEnqueue.scala 154:10]
   wire  instruction_io_deq_ready_accHandler_io_in_w_valid = enqueuer3_io_out_2_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  instruction_io_deq_ready_accHandler_io_in_w_1_valid = enqueuer4_io_out_3_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_32 = flags_zeroes ? instruction_io_deq_ready_accHandler_io_in_w_valid :
@@ -2083,39 +1931,39 @@ module Decoder(
   wire  instruction_io_deq_ready_memPortA_io_enq_w_ready = memPortA_io_enq_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 152:10]
   wire  _GEN_36 = flags_zeroes ? 1'h0 : instruction_io_deq_ready_memPortA_io_enq_w_ready; // @[Decoder.scala 253:24 MultiEnqueue.scala 42:18 ReadyValid.scala 19:11]
   wire [2:0] _GEN_38 = flags_zeroes ? 3'h0 : args_memStride; // @[Decoder.scala 253:24 Decoder.scala 609:15 MultiEnqueue.scala 152:10]
-  wire [12:0] _GEN_39 = flags_zeroes ? 13'h0 : instruction_io_deq_ready_w_size; // @[Decoder.scala 253:24 Decoder.scala 609:15 MultiEnqueue.scala 152:10]
-  wire [12:0] _GEN_40 = flags_zeroes ? 13'h0 : args_memAddress; // @[Decoder.scala 253:24 Decoder.scala 609:15 MultiEnqueue.scala 152:10]
+  wire [5:0] _GEN_39 = flags_zeroes ? 6'h0 : instruction_io_deq_ready_w_size; // @[Decoder.scala 253:24 Decoder.scala 609:15 MultiEnqueue.scala 152:10]
+  wire [5:0] _GEN_40 = flags_zeroes ? 6'h0 : args_memAddress; // @[Decoder.scala 253:24 Decoder.scala 609:15 MultiEnqueue.scala 152:10]
   wire  instruction_io_deq_ready_memPortA_io_enq_w_valid = enqueuer4_io_out_1_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_42 = flags_zeroes ? 1'h0 : instruction_io_deq_ready_memPortA_io_enq_w_valid; // @[Decoder.scala 253:24 Decoder.scala 610:16 MultiEnqueue.scala 152:10]
   wire  _GEN_43 = flags_zeroes ? 1'h0 : instruction_io_deq_ready_arrayHandler_io_in_w_ready; // @[Decoder.scala 253:24 MultiEnqueue.scala 42:18 ReadyValid.scala 19:11]
   wire  _GEN_44 = flags_zeroes ? 1'h0 : instruction_io_deq_ready_accHandler_io_in_w_ready; // @[Decoder.scala 253:24 MultiEnqueue.scala 42:18 ReadyValid.scala 19:11]
   wire  _T_3 = instruction_io_deq_bits_opcode == 4'h3; // @[Decoder.scala 292:38]
-  wire [12:0] args_1_address = instruction_io_deq_bits_arguments[12:0]; // @[Decoder.scala 300:48]
-  wire [2:0] args_1_stride = instruction_io_deq_bits_arguments[15:13]; // @[Decoder.scala 300:48]
+  wire [5:0] args_1_address = instruction_io_deq_bits_arguments[5:0]; // @[Decoder.scala 300:48]
+  wire [2:0] args_1_stride = instruction_io_deq_bits_arguments[8:6]; // @[Decoder.scala 300:48]
   wire [23:0] args_1_size = instruction_io_deq_bits_arguments[39:16]; // @[Decoder.scala 300:48]
   wire [7:0] stride = 8'h1 << args_1_stride; // @[Decoder.scala 309:24]
   wire [31:0] _instruction_io_deq_ready_T = args_1_size * stride; // @[Decoder.scala 321:37]
-  wire [31:0] _GEN_603 = {{19'd0}, args_1_address}; // @[Decoder.scala 321:24]
+  wire [31:0] _GEN_603 = {{26'd0}, args_1_address}; // @[Decoder.scala 321:24]
   wire [31:0] _instruction_io_deq_ready_T_2 = _GEN_603 + _instruction_io_deq_ready_T; // @[Decoder.scala 321:24]
   wire  _GEN_45 = flags_accumulate & instruction_io_deq_valid; // @[Decoder.scala 302:24 MultiEnqueue.scala 60:17 MultiEnqueue.scala 40:17]
   wire  _GEN_46 = flags_accumulate & instruction_io_deq_ready_arrayHandler_io_in_w_ready; // @[Decoder.scala 302:24 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [12:0] instruction_io_deq_ready_w_7_size = args_1_size[12:0]; // @[Decoder.scala 684:17 Decoder.scala 687:12]
-  wire [12:0] _GEN_47 = flags_accumulate ? instruction_io_deq_ready_w_7_size : instruction_io_deq_ready_w_7_size; // @[Decoder.scala 302:24 MultiEnqueue.scala 61:10 MultiEnqueue.scala 116:10]
+  wire [5:0] instruction_io_deq_ready_w_7_size = args_1_size[5:0]; // @[Decoder.scala 684:17 Decoder.scala 687:12]
+  wire [5:0] _GEN_47 = flags_accumulate ? instruction_io_deq_ready_w_7_size : instruction_io_deq_ready_w_7_size; // @[Decoder.scala 302:24 MultiEnqueue.scala 61:10 MultiEnqueue.scala 116:10]
   wire  instruction_io_deq_ready_arrayHandler_io_in_w_2_valid = enqueuer1_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_50 = flags_accumulate ? instruction_io_deq_ready_arrayHandler_io_in_w_2_valid :
     instruction_io_deq_ready_arrayHandler_io_in_w_valid; // @[Decoder.scala 302:24 MultiEnqueue.scala 61:10 MultiEnqueue.scala 116:10]
   wire  _GEN_51 = flags_accumulate ? enqueuer1_io_in_ready : enqueuer3_io_in_ready; // @[Decoder.scala 302:24 Decoder.scala 303:25 Decoder.scala 310:25]
   wire  _GEN_52 = flags_accumulate ? 1'h0 : instruction_io_deq_valid; // @[Decoder.scala 302:24 MultiEnqueue.scala 40:17 MultiEnqueue.scala 114:17]
   wire  _GEN_53 = flags_accumulate ? 1'h0 : io_dataflow_ready; // @[Decoder.scala 302:24 MultiEnqueue.scala 42:18 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_54 = flags_accumulate ? 13'h0 : instruction_io_deq_ready_w_7_size; // @[Decoder.scala 302:24 Decoder.scala 609:15 MultiEnqueue.scala 115:10]
+  wire [5:0] _GEN_54 = flags_accumulate ? 6'h0 : instruction_io_deq_ready_w_7_size; // @[Decoder.scala 302:24 Decoder.scala 609:15 MultiEnqueue.scala 115:10]
   wire [3:0] _GEN_55 = flags_accumulate ? 4'h0 : 4'h1; // @[Decoder.scala 302:24 Decoder.scala 609:15 MultiEnqueue.scala 115:10]
   wire  _GEN_56 = flags_accumulate ? 1'h0 : instruction_io_deq_ready_io_dataflow_w_valid; // @[Decoder.scala 302:24 Decoder.scala 610:16 MultiEnqueue.scala 115:10]
   wire  _GEN_57 = flags_accumulate ? 1'h0 : instruction_io_deq_ready_arrayHandler_io_in_w_ready; // @[Decoder.scala 302:24 MultiEnqueue.scala 42:18 ReadyValid.scala 19:11]
   wire  _GEN_58 = flags_accumulate ? 1'h0 : instruction_io_deq_ready_memPortA_io_enq_w_ready; // @[Decoder.scala 302:24 MultiEnqueue.scala 42:18 ReadyValid.scala 19:11]
   wire  _GEN_59 = flags_accumulate ? 1'h0 : 1'h1; // @[Decoder.scala 302:24 Decoder.scala 609:15 MultiEnqueue.scala 117:10]
   wire [2:0] _GEN_60 = flags_accumulate ? 3'h0 : args_1_stride; // @[Decoder.scala 302:24 Decoder.scala 609:15 MultiEnqueue.scala 117:10]
-  wire [12:0] instruction_io_deq_ready_w_10_address = _instruction_io_deq_ready_T_2[12:0]; // @[MemControl.scala 39:19 MemControl.scala 40:17]
-  wire [12:0] _GEN_62 = flags_accumulate ? 13'h0 : instruction_io_deq_ready_w_10_address; // @[Decoder.scala 302:24 Decoder.scala 609:15 MultiEnqueue.scala 117:10]
+  wire [5:0] instruction_io_deq_ready_w_10_address = _instruction_io_deq_ready_T_2[5:0]; // @[MemControl.scala 39:19 MemControl.scala 40:17]
+  wire [5:0] _GEN_62 = flags_accumulate ? 6'h0 : instruction_io_deq_ready_w_10_address; // @[Decoder.scala 302:24 Decoder.scala 609:15 MultiEnqueue.scala 117:10]
   wire  _GEN_64 = flags_accumulate ? 1'h0 : instruction_io_deq_ready_accHandler_io_in_w_valid; // @[Decoder.scala 302:24 Decoder.scala 610:16 MultiEnqueue.scala 117:10]
   wire  _T_6 = _flags_WIRE_1 == 4'h1; // @[Decoder.scala 365:27]
   wire  _T_7 = _flags_WIRE_1 == 4'h2; // @[Decoder.scala 391:27]
@@ -2125,93 +1973,89 @@ module Decoder(
   wire  _T_11 = _flags_WIRE_1 == 4'hf; // @[Decoder.scala 487:18]
   wire  _GEN_65 = _T_11 & instruction_io_deq_valid; // @[Decoder.scala 488:7 MultiEnqueue.scala 114:17 MultiEnqueue.scala 40:17]
   wire  _GEN_66 = _T_11 & io_dataflow_ready; // @[Decoder.scala 488:7 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [12:0] _GEN_67 = _T_11 ? instruction_io_deq_ready_w_size : 13'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 115:10 Decoder.scala 609:15]
+  wire [5:0] _GEN_67 = _T_11 ? instruction_io_deq_ready_w_size : 6'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 115:10 Decoder.scala 609:15]
   wire [3:0] _GEN_68 = _T_11 ? 4'h5 : 4'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 115:10 Decoder.scala 609:15]
   wire  _GEN_69 = _T_11 & instruction_io_deq_ready_io_dataflow_w_valid; // @[Decoder.scala 488:7 MultiEnqueue.scala 115:10 Decoder.scala 610:16]
   wire  _GEN_70 = _T_11 & instruction_io_deq_ready_memPortA_io_enq_w_ready; // @[Decoder.scala 488:7 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
   wire [2:0] _GEN_72 = _T_11 ? args_memStride : 3'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 116:10 Decoder.scala 609:15]
-  wire [12:0] _GEN_74 = _T_11 ? args_memAddress : 13'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 116:10 Decoder.scala 609:15]
+  wire [5:0] _GEN_74 = _T_11 ? args_memAddress : 6'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 116:10 Decoder.scala 609:15]
   wire  _GEN_76 = _T_11 & instruction_io_deq_ready_arrayHandler_io_in_w_valid; // @[Decoder.scala 488:7 MultiEnqueue.scala 116:10 Decoder.scala 610:16]
   wire  _GEN_77 = _T_11 & instruction_io_deq_ready_accHandler_io_in_w_ready; // @[Decoder.scala 488:7 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
   wire [2:0] _GEN_79 = _T_11 ? args_accStride : 3'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 117:10 Decoder.scala 609:15]
-  wire [10:0] _GEN_80 = _T_11 ? instruction_io_deq_ready_w_2_size : 11'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 117:10 Decoder.scala 609:15]
-  wire [10:0] _GEN_85 = _T_11 ? instruction_io_deq_ready_w_2_address : 11'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 117:10 Decoder.scala 609:15]
+  wire [5:0] _GEN_85 = _T_11 ? instruction_io_deq_ready_w_2_address : 6'h0; // @[Decoder.scala 488:7 MultiEnqueue.scala 117:10 Decoder.scala 609:15]
   wire  _GEN_90 = _T_11 & instruction_io_deq_ready_accHandler_io_in_w_valid; // @[Decoder.scala 488:7 MultiEnqueue.scala 117:10 Decoder.scala 610:16]
   wire  _GEN_91 = _T_11 ? enqueuer3_io_in_ready : 1'h1; // @[Decoder.scala 488:7 Decoder.scala 490:25 Decoder.scala 510:25]
   wire  _GEN_92 = _T_10 ? instruction_io_deq_valid : _GEN_65; // @[Decoder.scala 466:7 MultiEnqueue.scala 114:17]
   wire  _GEN_93 = _T_10 ? io_dataflow_ready : _GEN_66; // @[Decoder.scala 466:7 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_94 = _T_10 ? instruction_io_deq_ready_w_size : _GEN_67; // @[Decoder.scala 466:7 MultiEnqueue.scala 115:10]
+  wire [5:0] _GEN_94 = _T_10 ? instruction_io_deq_ready_w_size : _GEN_67; // @[Decoder.scala 466:7 MultiEnqueue.scala 115:10]
   wire [3:0] _GEN_95 = _T_10 ? 4'h5 : _GEN_68; // @[Decoder.scala 466:7 MultiEnqueue.scala 115:10]
   wire  _GEN_96 = _T_10 ? instruction_io_deq_ready_io_dataflow_w_valid : _GEN_69; // @[Decoder.scala 466:7 MultiEnqueue.scala 115:10]
   wire  _GEN_97 = _T_10 ? instruction_io_deq_ready_memPortA_io_enq_w_ready : _GEN_70; // @[Decoder.scala 466:7 ReadyValid.scala 19:11]
   wire [2:0] _GEN_99 = _T_10 ? args_memStride : _GEN_72; // @[Decoder.scala 466:7 MultiEnqueue.scala 116:10]
-  wire [12:0] _GEN_101 = _T_10 ? args_memAddress : _GEN_74; // @[Decoder.scala 466:7 MultiEnqueue.scala 116:10]
+  wire [5:0] _GEN_101 = _T_10 ? args_memAddress : _GEN_74; // @[Decoder.scala 466:7 MultiEnqueue.scala 116:10]
   wire  _GEN_103 = _T_10 ? instruction_io_deq_ready_arrayHandler_io_in_w_valid : _GEN_76; // @[Decoder.scala 466:7 MultiEnqueue.scala 116:10]
   wire  _GEN_104 = _T_10 ? instruction_io_deq_ready_accHandler_io_in_w_ready : _GEN_77; // @[Decoder.scala 466:7 ReadyValid.scala 19:11]
   wire [2:0] _GEN_106 = _T_10 ? args_accStride : _GEN_79; // @[Decoder.scala 466:7 MultiEnqueue.scala 117:10]
-  wire [10:0] _GEN_107 = _T_10 ? instruction_io_deq_ready_w_2_size : _GEN_80; // @[Decoder.scala 466:7 MultiEnqueue.scala 117:10]
   wire  _GEN_108 = _T_10 ? 1'h0 : _T_11; // @[Decoder.scala 466:7 MultiEnqueue.scala 117:10]
   wire  _GEN_109 = _T_10 | _T_11; // @[Decoder.scala 466:7 MultiEnqueue.scala 117:10]
-  wire [10:0] _GEN_112 = _T_10 ? instruction_io_deq_ready_w_2_address : _GEN_85; // @[Decoder.scala 466:7 MultiEnqueue.scala 117:10]
+  wire [5:0] _GEN_112 = _T_10 ? instruction_io_deq_ready_w_2_address : _GEN_85; // @[Decoder.scala 466:7 MultiEnqueue.scala 117:10]
   wire  _GEN_117 = _T_10 ? instruction_io_deq_ready_accHandler_io_in_w_valid : _GEN_90; // @[Decoder.scala 466:7 MultiEnqueue.scala 117:10]
   wire  _GEN_118 = _T_10 ? enqueuer3_io_in_ready : _GEN_91; // @[Decoder.scala 466:7 Decoder.scala 468:25]
   wire  _GEN_119 = _T_9 ? instruction_io_deq_valid : _GEN_92; // @[Decoder.scala 444:7 MultiEnqueue.scala 114:17]
   wire  _GEN_120 = _T_9 ? io_dataflow_ready : _GEN_93; // @[Decoder.scala 444:7 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_121 = _T_9 ? instruction_io_deq_ready_w_size : _GEN_94; // @[Decoder.scala 444:7 MultiEnqueue.scala 115:10]
+  wire [5:0] _GEN_121 = _T_9 ? instruction_io_deq_ready_w_size : _GEN_94; // @[Decoder.scala 444:7 MultiEnqueue.scala 115:10]
   wire [3:0] _GEN_122 = _T_9 ? 4'h4 : _GEN_95; // @[Decoder.scala 444:7 MultiEnqueue.scala 115:10]
   wire  _GEN_123 = _T_9 ? instruction_io_deq_ready_io_dataflow_w_valid : _GEN_96; // @[Decoder.scala 444:7 MultiEnqueue.scala 115:10]
   wire  _GEN_124 = _T_9 ? instruction_io_deq_ready_memPortA_io_enq_w_ready : _GEN_97; // @[Decoder.scala 444:7 ReadyValid.scala 19:11]
   wire [2:0] _GEN_126 = _T_9 ? args_memStride : _GEN_99; // @[Decoder.scala 444:7 MultiEnqueue.scala 116:10]
-  wire [12:0] _GEN_128 = _T_9 ? args_memAddress : _GEN_101; // @[Decoder.scala 444:7 MultiEnqueue.scala 116:10]
+  wire [5:0] _GEN_128 = _T_9 ? args_memAddress : _GEN_101; // @[Decoder.scala 444:7 MultiEnqueue.scala 116:10]
   wire  _GEN_130 = _T_9 ? instruction_io_deq_ready_arrayHandler_io_in_w_valid : _GEN_103; // @[Decoder.scala 444:7 MultiEnqueue.scala 116:10]
   wire  _GEN_131 = _T_9 ? instruction_io_deq_ready_accHandler_io_in_w_ready : _GEN_104; // @[Decoder.scala 444:7 ReadyValid.scala 19:11]
   wire [2:0] _GEN_133 = _T_9 ? args_accStride : _GEN_106; // @[Decoder.scala 444:7 MultiEnqueue.scala 117:10]
-  wire [10:0] _GEN_134 = _T_9 ? instruction_io_deq_ready_w_2_size : _GEN_107; // @[Decoder.scala 444:7 MultiEnqueue.scala 117:10]
   wire  _GEN_135 = _T_9 ? 1'h0 : _GEN_108; // @[Decoder.scala 444:7 MultiEnqueue.scala 117:10]
   wire  _GEN_136 = _T_9 ? 1'h0 : _GEN_109; // @[Decoder.scala 444:7 MultiEnqueue.scala 117:10]
-  wire [10:0] _GEN_139 = _T_9 ? instruction_io_deq_ready_w_2_address : _GEN_112; // @[Decoder.scala 444:7 MultiEnqueue.scala 117:10]
+  wire [5:0] _GEN_139 = _T_9 ? instruction_io_deq_ready_w_2_address : _GEN_112; // @[Decoder.scala 444:7 MultiEnqueue.scala 117:10]
   wire  _GEN_144 = _T_9 ? instruction_io_deq_ready_accHandler_io_in_w_valid : _GEN_117; // @[Decoder.scala 444:7 MultiEnqueue.scala 117:10]
   wire  _GEN_145 = _T_9 ? enqueuer3_io_in_ready : _GEN_118; // @[Decoder.scala 444:7 Decoder.scala 446:25]
   wire  _GEN_146 = _flags_WIRE_1 == 4'h3 ? instruction_io_deq_valid : _GEN_119; // @[Decoder.scala 417:59 MultiEnqueue.scala 114:17]
   wire  instruction_io_deq_ready_hostDataflowHandler_io_in_w_3_ready = hostDataflowHandler_io_in_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 115:10]
   wire  _GEN_147 = _flags_WIRE_1 == 4'h3 ? instruction_io_deq_ready_hostDataflowHandler_io_in_w_3_ready : _GEN_120; // @[Decoder.scala 417:59 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_148 = _flags_WIRE_1 == 4'h3 ? instruction_io_deq_ready_w_size : 13'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 115:10 Decoder.scala 609:15]
+  wire [5:0] _GEN_148 = _flags_WIRE_1 == 4'h3 ? instruction_io_deq_ready_w_size : 6'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 115:10 Decoder.scala 609:15]
   wire [1:0] _GEN_149 = _flags_WIRE_1 == 4'h3 ? 2'h3 : 2'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 115:10 Decoder.scala 609:15]
   wire  _GEN_150 = _flags_WIRE_1 == 4'h3 & instruction_io_deq_ready_io_dataflow_w_valid; // @[Decoder.scala 417:59 MultiEnqueue.scala 115:10 Decoder.scala 610:16]
   wire  instruction_io_deq_ready_memPortB_io_enq_w_3_ready = memPortB_io_enq_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 116:10]
   wire  _GEN_151 = _flags_WIRE_1 == 4'h3 ? instruction_io_deq_ready_memPortB_io_enq_w_3_ready : _GEN_124; // @[Decoder.scala 417:59 ReadyValid.scala 19:11]
   wire [2:0] _GEN_153 = _flags_WIRE_1 == 4'h3 ? args_memStride : 3'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 116:10 Decoder.scala 609:15]
-  wire [12:0] _GEN_155 = _flags_WIRE_1 == 4'h3 ? args_memAddress : 13'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 116:10 Decoder.scala 609:15]
+  wire [5:0] _GEN_155 = _flags_WIRE_1 == 4'h3 ? args_memAddress : 6'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 116:10 Decoder.scala 609:15]
   wire  _GEN_157 = _flags_WIRE_1 == 4'h3 & instruction_io_deq_ready_arrayHandler_io_in_w_valid; // @[Decoder.scala 417:59 MultiEnqueue.scala 116:10 Decoder.scala 610:16]
   wire  instruction_io_deq_ready_dram1Handler_io_in_w_1_ready = dram1Handler_io_in_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 117:10]
   wire  _GEN_158 = _flags_WIRE_1 == 4'h3 ? instruction_io_deq_ready_dram1Handler_io_in_w_1_ready : _GEN_131; // @[Decoder.scala 417:59 ReadyValid.scala 19:11]
   wire [2:0] _GEN_160 = _flags_WIRE_1 == 4'h3 ? args_accStride : 3'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 117:10 Decoder.scala 609:15]
-  wire [19:0] instruction_io_deq_ready_w_22_size = {{4'd0}, args_size}; // @[MemControl.scala 39:19 MemControl.scala 41:14]
+  wire [19:0] instruction_io_deq_ready_w_22_size = {{12'd0}, args_size}; // @[MemControl.scala 39:19 MemControl.scala 41:14]
   wire [19:0] _GEN_161 = _flags_WIRE_1 == 4'h3 ? instruction_io_deq_ready_w_22_size : 20'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 117:10 Decoder.scala 609:15]
   wire [19:0] _GEN_162 = _flags_WIRE_1 == 4'h3 ? args_accAddress : 20'h0; // @[Decoder.scala 417:59 MultiEnqueue.scala 117:10 Decoder.scala 609:15]
   wire  _GEN_164 = _flags_WIRE_1 == 4'h3 & instruction_io_deq_ready_accHandler_io_in_w_valid; // @[Decoder.scala 417:59 MultiEnqueue.scala 117:10 Decoder.scala 610:16]
   wire  _GEN_165 = _flags_WIRE_1 == 4'h3 ? enqueuer3_io_in_ready : _GEN_145; // @[Decoder.scala 417:59 Decoder.scala 418:25]
-  wire [12:0] _GEN_166 = _flags_WIRE_1 == 4'h3 ? 13'h0 : _GEN_121; // @[Decoder.scala 417:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_166 = _flags_WIRE_1 == 4'h3 ? 6'h0 : _GEN_121; // @[Decoder.scala 417:59 Decoder.scala 609:15]
   wire [3:0] _GEN_167 = _flags_WIRE_1 == 4'h3 ? 4'h0 : _GEN_122; // @[Decoder.scala 417:59 Decoder.scala 609:15]
   wire  _GEN_168 = _flags_WIRE_1 == 4'h3 ? 1'h0 : _GEN_123; // @[Decoder.scala 417:59 Decoder.scala 610:16]
   wire [2:0] _GEN_170 = _flags_WIRE_1 == 4'h3 ? 3'h0 : _GEN_126; // @[Decoder.scala 417:59 Decoder.scala 609:15]
-  wire [12:0] _GEN_172 = _flags_WIRE_1 == 4'h3 ? 13'h0 : _GEN_128; // @[Decoder.scala 417:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_172 = _flags_WIRE_1 == 4'h3 ? 6'h0 : _GEN_128; // @[Decoder.scala 417:59 Decoder.scala 609:15]
   wire  _GEN_173 = _flags_WIRE_1 == 4'h3 ? 1'h0 : _T_9; // @[Decoder.scala 417:59 Decoder.scala 609:15]
   wire  _GEN_174 = _flags_WIRE_1 == 4'h3 ? 1'h0 : _GEN_130; // @[Decoder.scala 417:59 Decoder.scala 610:16]
   wire [2:0] _GEN_176 = _flags_WIRE_1 == 4'h3 ? 3'h0 : _GEN_133; // @[Decoder.scala 417:59 Decoder.scala 609:15]
-  wire [10:0] _GEN_177 = _flags_WIRE_1 == 4'h3 ? 11'h0 : _GEN_134; // @[Decoder.scala 417:59 Decoder.scala 609:15]
   wire  _GEN_178 = _flags_WIRE_1 == 4'h3 ? 1'h0 : _GEN_135; // @[Decoder.scala 417:59 Decoder.scala 609:15]
   wire  _GEN_179 = _flags_WIRE_1 == 4'h3 ? 1'h0 : _GEN_136; // @[Decoder.scala 417:59 Decoder.scala 609:15]
-  wire [10:0] _GEN_182 = _flags_WIRE_1 == 4'h3 ? 11'h0 : _GEN_139; // @[Decoder.scala 417:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_182 = _flags_WIRE_1 == 4'h3 ? 6'h0 : _GEN_139; // @[Decoder.scala 417:59 Decoder.scala 609:15]
   wire  _GEN_187 = _flags_WIRE_1 == 4'h3 ? 1'h0 : _GEN_144; // @[Decoder.scala 417:59 Decoder.scala 610:16]
   wire  _GEN_188 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_valid : _GEN_146; // @[Decoder.scala 391:59 MultiEnqueue.scala 114:17]
   wire  _GEN_189 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_hostDataflowHandler_io_in_w_3_ready : _GEN_147; // @[Decoder.scala 391:59 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_190 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_w_size : _GEN_148; // @[Decoder.scala 391:59 MultiEnqueue.scala 115:10]
+  wire [5:0] _GEN_190 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_w_size : _GEN_148; // @[Decoder.scala 391:59 MultiEnqueue.scala 115:10]
   wire [1:0] _GEN_191 = _flags_WIRE_1 == 4'h2 ? 2'h2 : _GEN_149; // @[Decoder.scala 391:59 MultiEnqueue.scala 115:10]
   wire  _GEN_192 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_io_dataflow_w_valid : _GEN_150; // @[Decoder.scala 391:59 MultiEnqueue.scala 115:10]
   wire  _GEN_193 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_memPortB_io_enq_w_3_ready : _GEN_151; // @[Decoder.scala 391:59 ReadyValid.scala 19:11]
   wire [2:0] _GEN_195 = _flags_WIRE_1 == 4'h2 ? args_memStride : _GEN_153; // @[Decoder.scala 391:59 MultiEnqueue.scala 116:10]
-  wire [12:0] _GEN_197 = _flags_WIRE_1 == 4'h2 ? args_memAddress : _GEN_155; // @[Decoder.scala 391:59 MultiEnqueue.scala 116:10]
+  wire [5:0] _GEN_197 = _flags_WIRE_1 == 4'h2 ? args_memAddress : _GEN_155; // @[Decoder.scala 391:59 MultiEnqueue.scala 116:10]
   wire  _GEN_199 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_arrayHandler_io_in_w_valid : _GEN_157; // @[Decoder.scala 391:59 MultiEnqueue.scala 116:10]
   wire  _GEN_200 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_dram1Handler_io_in_w_1_ready : _GEN_158; // @[Decoder.scala 391:59 ReadyValid.scala 19:11]
   wire [2:0] _GEN_202 = _flags_WIRE_1 == 4'h2 ? args_accStride : _GEN_160; // @[Decoder.scala 391:59 MultiEnqueue.scala 117:10]
@@ -2220,27 +2064,26 @@ module Decoder(
   wire  _GEN_205 = _flags_WIRE_1 == 4'h2 ? 1'h0 : _T_8; // @[Decoder.scala 391:59 MultiEnqueue.scala 117:10]
   wire  _GEN_206 = _flags_WIRE_1 == 4'h2 ? instruction_io_deq_ready_accHandler_io_in_w_valid : _GEN_164; // @[Decoder.scala 391:59 MultiEnqueue.scala 117:10]
   wire  _GEN_207 = _flags_WIRE_1 == 4'h2 ? enqueuer3_io_in_ready : _GEN_165; // @[Decoder.scala 391:59 Decoder.scala 393:25]
-  wire [12:0] _GEN_208 = _flags_WIRE_1 == 4'h2 ? 13'h0 : _GEN_166; // @[Decoder.scala 391:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_208 = _flags_WIRE_1 == 4'h2 ? 6'h0 : _GEN_166; // @[Decoder.scala 391:59 Decoder.scala 609:15]
   wire [3:0] _GEN_209 = _flags_WIRE_1 == 4'h2 ? 4'h0 : _GEN_167; // @[Decoder.scala 391:59 Decoder.scala 609:15]
   wire  _GEN_210 = _flags_WIRE_1 == 4'h2 ? 1'h0 : _GEN_168; // @[Decoder.scala 391:59 Decoder.scala 610:16]
   wire [2:0] _GEN_212 = _flags_WIRE_1 == 4'h2 ? 3'h0 : _GEN_170; // @[Decoder.scala 391:59 Decoder.scala 609:15]
-  wire [12:0] _GEN_214 = _flags_WIRE_1 == 4'h2 ? 13'h0 : _GEN_172; // @[Decoder.scala 391:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_214 = _flags_WIRE_1 == 4'h2 ? 6'h0 : _GEN_172; // @[Decoder.scala 391:59 Decoder.scala 609:15]
   wire  _GEN_215 = _flags_WIRE_1 == 4'h2 ? 1'h0 : _GEN_173; // @[Decoder.scala 391:59 Decoder.scala 609:15]
   wire  _GEN_216 = _flags_WIRE_1 == 4'h2 ? 1'h0 : _GEN_174; // @[Decoder.scala 391:59 Decoder.scala 610:16]
   wire [2:0] _GEN_218 = _flags_WIRE_1 == 4'h2 ? 3'h0 : _GEN_176; // @[Decoder.scala 391:59 Decoder.scala 609:15]
-  wire [10:0] _GEN_219 = _flags_WIRE_1 == 4'h2 ? 11'h0 : _GEN_177; // @[Decoder.scala 391:59 Decoder.scala 609:15]
   wire  _GEN_220 = _flags_WIRE_1 == 4'h2 ? 1'h0 : _GEN_178; // @[Decoder.scala 391:59 Decoder.scala 609:15]
   wire  _GEN_221 = _flags_WIRE_1 == 4'h2 ? 1'h0 : _GEN_179; // @[Decoder.scala 391:59 Decoder.scala 609:15]
-  wire [10:0] _GEN_224 = _flags_WIRE_1 == 4'h2 ? 11'h0 : _GEN_182; // @[Decoder.scala 391:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_224 = _flags_WIRE_1 == 4'h2 ? 6'h0 : _GEN_182; // @[Decoder.scala 391:59 Decoder.scala 609:15]
   wire  _GEN_229 = _flags_WIRE_1 == 4'h2 ? 1'h0 : _GEN_187; // @[Decoder.scala 391:59 Decoder.scala 610:16]
   wire  _GEN_230 = _flags_WIRE_1 == 4'h1 ? instruction_io_deq_valid : _GEN_188; // @[Decoder.scala 365:59 MultiEnqueue.scala 114:17]
   wire  _GEN_231 = _flags_WIRE_1 == 4'h1 ? instruction_io_deq_ready_hostDataflowHandler_io_in_w_3_ready : _GEN_189; // @[Decoder.scala 365:59 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_232 = _flags_WIRE_1 == 4'h1 ? instruction_io_deq_ready_w_size : _GEN_190; // @[Decoder.scala 365:59 MultiEnqueue.scala 115:10]
+  wire [5:0] _GEN_232 = _flags_WIRE_1 == 4'h1 ? instruction_io_deq_ready_w_size : _GEN_190; // @[Decoder.scala 365:59 MultiEnqueue.scala 115:10]
   wire [1:0] _GEN_233 = _flags_WIRE_1 == 4'h1 ? 2'h1 : _GEN_191; // @[Decoder.scala 365:59 MultiEnqueue.scala 115:10]
   wire  _GEN_234 = _flags_WIRE_1 == 4'h1 ? instruction_io_deq_ready_io_dataflow_w_valid : _GEN_192; // @[Decoder.scala 365:59 MultiEnqueue.scala 115:10]
   wire  _GEN_235 = _flags_WIRE_1 == 4'h1 ? instruction_io_deq_ready_memPortB_io_enq_w_3_ready : _GEN_193; // @[Decoder.scala 365:59 ReadyValid.scala 19:11]
   wire [2:0] _GEN_237 = _flags_WIRE_1 == 4'h1 ? args_memStride : _GEN_195; // @[Decoder.scala 365:59 MultiEnqueue.scala 116:10]
-  wire [12:0] _GEN_239 = _flags_WIRE_1 == 4'h1 ? args_memAddress : _GEN_197; // @[Decoder.scala 365:59 MultiEnqueue.scala 116:10]
+  wire [5:0] _GEN_239 = _flags_WIRE_1 == 4'h1 ? args_memAddress : _GEN_197; // @[Decoder.scala 365:59 MultiEnqueue.scala 116:10]
   wire  _GEN_240 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _T_7; // @[Decoder.scala 365:59 MultiEnqueue.scala 116:10]
   wire  _GEN_241 = _flags_WIRE_1 == 4'h1 ? instruction_io_deq_ready_arrayHandler_io_in_w_valid : _GEN_199; // @[Decoder.scala 365:59 MultiEnqueue.scala 116:10]
   wire  instruction_io_deq_ready_dram0Handler_io_in_w_1_ready = dram0Handler_io_in_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 117:10]
@@ -2255,27 +2098,26 @@ module Decoder(
   wire [19:0] _GEN_253 = _flags_WIRE_1 == 4'h1 ? 20'h0 : _GEN_204; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_254 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_205; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_255 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_206; // @[Decoder.scala 365:59 Decoder.scala 610:16]
-  wire [12:0] _GEN_256 = _flags_WIRE_1 == 4'h1 ? 13'h0 : _GEN_208; // @[Decoder.scala 365:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_256 = _flags_WIRE_1 == 4'h1 ? 6'h0 : _GEN_208; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire [3:0] _GEN_257 = _flags_WIRE_1 == 4'h1 ? 4'h0 : _GEN_209; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_258 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_210; // @[Decoder.scala 365:59 Decoder.scala 610:16]
   wire [2:0] _GEN_260 = _flags_WIRE_1 == 4'h1 ? 3'h0 : _GEN_212; // @[Decoder.scala 365:59 Decoder.scala 609:15]
-  wire [12:0] _GEN_262 = _flags_WIRE_1 == 4'h1 ? 13'h0 : _GEN_214; // @[Decoder.scala 365:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_262 = _flags_WIRE_1 == 4'h1 ? 6'h0 : _GEN_214; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_263 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_215; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_264 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_216; // @[Decoder.scala 365:59 Decoder.scala 610:16]
   wire [2:0] _GEN_266 = _flags_WIRE_1 == 4'h1 ? 3'h0 : _GEN_218; // @[Decoder.scala 365:59 Decoder.scala 609:15]
-  wire [10:0] _GEN_267 = _flags_WIRE_1 == 4'h1 ? 11'h0 : _GEN_219; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_268 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_220; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_269 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_221; // @[Decoder.scala 365:59 Decoder.scala 609:15]
-  wire [10:0] _GEN_272 = _flags_WIRE_1 == 4'h1 ? 11'h0 : _GEN_224; // @[Decoder.scala 365:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_272 = _flags_WIRE_1 == 4'h1 ? 6'h0 : _GEN_224; // @[Decoder.scala 365:59 Decoder.scala 609:15]
   wire  _GEN_277 = _flags_WIRE_1 == 4'h1 ? 1'h0 : _GEN_229; // @[Decoder.scala 365:59 Decoder.scala 610:16]
   wire  _GEN_278 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_valid : _GEN_230; // @[Decoder.scala 339:53 MultiEnqueue.scala 114:17]
   wire  _GEN_279 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_ready_hostDataflowHandler_io_in_w_3_ready : _GEN_231; // @[Decoder.scala 339:53 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_280 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_ready_w_size : _GEN_232; // @[Decoder.scala 339:53 MultiEnqueue.scala 115:10]
+  wire [5:0] _GEN_280 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_ready_w_size : _GEN_232; // @[Decoder.scala 339:53 MultiEnqueue.scala 115:10]
   wire [1:0] _GEN_281 = _flags_WIRE_1 == 4'h0 ? 2'h0 : _GEN_233; // @[Decoder.scala 339:53 MultiEnqueue.scala 115:10]
   wire  _GEN_282 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_ready_io_dataflow_w_valid : _GEN_234; // @[Decoder.scala 339:53 MultiEnqueue.scala 115:10]
   wire  _GEN_283 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_ready_memPortB_io_enq_w_3_ready : _GEN_235; // @[Decoder.scala 339:53 ReadyValid.scala 19:11]
   wire [2:0] _GEN_285 = _flags_WIRE_1 == 4'h0 ? args_memStride : _GEN_237; // @[Decoder.scala 339:53 MultiEnqueue.scala 116:10]
-  wire [12:0] _GEN_287 = _flags_WIRE_1 == 4'h0 ? args_memAddress : _GEN_239; // @[Decoder.scala 339:53 MultiEnqueue.scala 116:10]
+  wire [5:0] _GEN_287 = _flags_WIRE_1 == 4'h0 ? args_memAddress : _GEN_239; // @[Decoder.scala 339:53 MultiEnqueue.scala 116:10]
   wire  _GEN_288 = _flags_WIRE_1 == 4'h0 | _GEN_240; // @[Decoder.scala 339:53 MultiEnqueue.scala 116:10]
   wire  _GEN_289 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_ready_arrayHandler_io_in_w_valid : _GEN_241; // @[Decoder.scala 339:53 MultiEnqueue.scala 116:10]
   wire  _GEN_290 = _flags_WIRE_1 == 4'h0 ? instruction_io_deq_ready_dram0Handler_io_in_w_1_ready : _GEN_242; // @[Decoder.scala 339:53 ReadyValid.scala 19:11]
@@ -2290,18 +2132,17 @@ module Decoder(
   wire [19:0] _GEN_301 = _flags_WIRE_1 == 4'h0 ? 20'h0 : _GEN_253; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_302 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_254; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_303 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_255; // @[Decoder.scala 339:53 Decoder.scala 610:16]
-  wire [12:0] _GEN_304 = _flags_WIRE_1 == 4'h0 ? 13'h0 : _GEN_256; // @[Decoder.scala 339:53 Decoder.scala 609:15]
+  wire [5:0] _GEN_304 = _flags_WIRE_1 == 4'h0 ? 6'h0 : _GEN_256; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire [3:0] _GEN_305 = _flags_WIRE_1 == 4'h0 ? 4'h0 : _GEN_257; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_306 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_258; // @[Decoder.scala 339:53 Decoder.scala 610:16]
   wire [2:0] _GEN_308 = _flags_WIRE_1 == 4'h0 ? 3'h0 : _GEN_260; // @[Decoder.scala 339:53 Decoder.scala 609:15]
-  wire [12:0] _GEN_310 = _flags_WIRE_1 == 4'h0 ? 13'h0 : _GEN_262; // @[Decoder.scala 339:53 Decoder.scala 609:15]
+  wire [5:0] _GEN_310 = _flags_WIRE_1 == 4'h0 ? 6'h0 : _GEN_262; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_311 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_263; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_312 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_264; // @[Decoder.scala 339:53 Decoder.scala 610:16]
   wire [2:0] _GEN_314 = _flags_WIRE_1 == 4'h0 ? 3'h0 : _GEN_266; // @[Decoder.scala 339:53 Decoder.scala 609:15]
-  wire [10:0] _GEN_315 = _flags_WIRE_1 == 4'h0 ? 11'h0 : _GEN_267; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_316 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_268; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_317 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_269; // @[Decoder.scala 339:53 Decoder.scala 609:15]
-  wire [10:0] _GEN_320 = _flags_WIRE_1 == 4'h0 ? 11'h0 : _GEN_272; // @[Decoder.scala 339:53 Decoder.scala 609:15]
+  wire [5:0] _GEN_320 = _flags_WIRE_1 == 4'h0 ? 6'h0 : _GEN_272; // @[Decoder.scala 339:53 Decoder.scala 609:15]
   wire  _GEN_325 = _flags_WIRE_1 == 4'h0 ? 1'h0 : _GEN_277; // @[Decoder.scala 339:53 Decoder.scala 610:16]
   wire  flags_3_accumulate = _flags_WIRE_1[2]; // @[Decoder.scala 518:45]
   wire [15:0] args_3_accWriteAddress = _args_WIRE_1[15:0]; // @[Decoder.scala 519:48]
@@ -2360,10 +2201,10 @@ module Decoder(
   wire  _GEN_389 = instruction_io_deq_bits_opcode == 4'h4 & flags_3_accumulate; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
   wire  _GEN_390 = instruction_io_deq_bits_opcode == 4'h4 & flags_zeroes; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
   wire  _GEN_391 = instruction_io_deq_bits_opcode == 4'h4 & flags_accumulate; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
-  wire [10:0] instruction_io_deq_ready_w_32_altAddress = args_3_accWriteAddress[10:0]; // @[Decoder.scala 656:17 Decoder.scala 659:18]
-  wire [10:0] _GEN_392 = instruction_io_deq_bits_opcode == 4'h4 ? instruction_io_deq_ready_w_32_altAddress : 11'h0; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
-  wire [10:0] instruction_io_deq_ready_w_32_address = args_3_accReadAddress[10:0]; // @[Decoder.scala 656:17 Decoder.scala 658:15]
-  wire [10:0] _GEN_393 = instruction_io_deq_bits_opcode == 4'h4 ? instruction_io_deq_ready_w_32_address : 11'h0; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
+  wire [5:0] instruction_io_deq_ready_w_32_altAddress = args_3_accWriteAddress[5:0]; // @[Decoder.scala 656:17 Decoder.scala 659:18]
+  wire [5:0] _GEN_392 = instruction_io_deq_bits_opcode == 4'h4 ? instruction_io_deq_ready_w_32_altAddress : 6'h0; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
+  wire [5:0] instruction_io_deq_ready_w_32_address = args_3_accReadAddress[5:0]; // @[Decoder.scala 656:17 Decoder.scala 658:15]
+  wire [5:0] _GEN_393 = instruction_io_deq_bits_opcode == 4'h4 ? instruction_io_deq_ready_w_32_address : 6'h0; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
   wire  _GEN_394 = instruction_io_deq_bits_opcode == 4'h4 & args_3_instruction_dest; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
   wire  _GEN_395 = instruction_io_deq_bits_opcode == 4'h4 & args_3_instruction_sourceRight; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
   wire  _GEN_396 = instruction_io_deq_bits_opcode == 4'h4 & args_3_instruction_sourceLeft; // @[Decoder.scala 512:55 MultiEnqueue.scala 61:10 Decoder.scala 609:15]
@@ -2379,12 +2220,12 @@ module Decoder(
   wire [31:0] _GEN_406 = instruction_io_deq_bits_opcode == 4'h4 ? _GEN_2 : _GEN_379; // @[Decoder.scala 512:55]
   wire  _GEN_410 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_278; // @[Decoder.scala 329:59 MultiEnqueue.scala 40:17]
   wire  _GEN_411 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_279; // @[Decoder.scala 329:59 MultiEnqueue.scala 42:18]
-  wire [12:0] _GEN_412 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_280 : 13'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_412 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_280 : 6'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire [1:0] _GEN_413 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_281 : 2'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_414 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_282; // @[Decoder.scala 329:59 Decoder.scala 610:16]
   wire  _GEN_415 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_283; // @[Decoder.scala 329:59 MultiEnqueue.scala 42:18]
   wire [2:0] _GEN_417 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_285 : 3'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
-  wire [12:0] _GEN_419 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_287 : 13'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_419 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_287 : 6'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_420 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_288; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_421 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_289; // @[Decoder.scala 329:59 Decoder.scala 610:16]
   wire  _GEN_422 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_290; // @[Decoder.scala 329:59 MultiEnqueue.scala 42:18]
@@ -2399,20 +2240,19 @@ module Decoder(
   wire [19:0] _GEN_433 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_301 : 20'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_434 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_302; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_435 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_303; // @[Decoder.scala 329:59 Decoder.scala 610:16]
-  wire [12:0] _GEN_436 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_304 : 13'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_436 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_304 : 6'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire [3:0] _GEN_437 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_305 : 4'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_438 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_306; // @[Decoder.scala 329:59 Decoder.scala 610:16]
   wire [2:0] _GEN_440 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_308 : 3'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
-  wire [12:0] _GEN_442 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_310 : 13'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
+  wire [5:0] _GEN_442 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_310 : 6'h0; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_443 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_311; // @[Decoder.scala 329:59 Decoder.scala 609:15]
   wire  _GEN_444 = instruction_io_deq_bits_opcode == 4'h2 & _GEN_312; // @[Decoder.scala 329:59 Decoder.scala 610:16]
   wire [2:0] _GEN_446 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_314 : 3'h0; // @[Decoder.scala 329:59]
-  wire [10:0] _GEN_447 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_315 : 11'h0; // @[Decoder.scala 329:59]
   wire  _GEN_448 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_316 : _GEN_389; // @[Decoder.scala 329:59]
   wire  _GEN_449 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_317 : _GEN_390; // @[Decoder.scala 329:59]
   wire  _GEN_450 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_311 : _GEN_391; // @[Decoder.scala 329:59]
-  wire [10:0] _GEN_451 = instruction_io_deq_bits_opcode == 4'h2 ? 11'h0 : _GEN_392; // @[Decoder.scala 329:59]
-  wire [10:0] _GEN_452 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_320 : _GEN_393; // @[Decoder.scala 329:59]
+  wire [5:0] _GEN_451 = instruction_io_deq_bits_opcode == 4'h2 ? 6'h0 : _GEN_392; // @[Decoder.scala 329:59]
+  wire [5:0] _GEN_452 = instruction_io_deq_bits_opcode == 4'h2 ? _GEN_320 : _GEN_393; // @[Decoder.scala 329:59]
   wire  _GEN_453 = instruction_io_deq_bits_opcode == 4'h2 ? 1'h0 : _GEN_394; // @[Decoder.scala 329:59]
   wire  _GEN_454 = instruction_io_deq_bits_opcode == 4'h2 ? 1'h0 : _GEN_395; // @[Decoder.scala 329:59]
   wire  _GEN_455 = instruction_io_deq_bits_opcode == 4'h2 ? 1'h0 : _GEN_396; // @[Decoder.scala 329:59]
@@ -2427,27 +2267,27 @@ module Decoder(
   wire [27:0] _GEN_464 = instruction_io_deq_bits_opcode == 4'h2 ? {{12'd0}, timeout} : _GEN_404; // @[Decoder.scala 329:59 Decoder.scala 91:24]
   wire  _GEN_470 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_45 : _GEN_458; // @[Decoder.scala 292:62]
   wire  _GEN_471 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_46 : _GEN_459; // @[Decoder.scala 292:62]
-  wire [12:0] _GEN_472 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_47 : 13'h0; // @[Decoder.scala 292:62 Decoder.scala 609:15]
+  wire [5:0] _GEN_472 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_47 : 6'h0; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_473 = instruction_io_deq_bits_opcode == 4'h3 & flags_accumulate; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_475 = instruction_io_deq_bits_opcode == 4'h3 & _GEN_50; // @[Decoder.scala 292:62 Decoder.scala 610:16]
   wire  _GEN_476 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_51 : _GEN_429; // @[Decoder.scala 292:62]
   wire  _GEN_477 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_52 : _GEN_410; // @[Decoder.scala 292:62]
   wire  _GEN_478 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_53 : _GEN_411; // @[Decoder.scala 292:62]
-  wire [12:0] _GEN_479 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_54 : _GEN_436; // @[Decoder.scala 292:62]
+  wire [5:0] _GEN_479 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_54 : _GEN_436; // @[Decoder.scala 292:62]
   wire [3:0] _GEN_480 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_55 : _GEN_437; // @[Decoder.scala 292:62]
   wire  _GEN_481 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_56 : _GEN_438; // @[Decoder.scala 292:62]
   wire  _GEN_482 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_57 : _GEN_415; // @[Decoder.scala 292:62]
   wire  _GEN_483 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_58 : _GEN_422; // @[Decoder.scala 292:62]
   wire  _GEN_484 = instruction_io_deq_bits_opcode == 4'h3 & _GEN_59; // @[Decoder.scala 292:62]
   wire [2:0] _GEN_485 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_60 : _GEN_440; // @[Decoder.scala 292:62]
-  wire [12:0] _GEN_487 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_62 : _GEN_442; // @[Decoder.scala 292:62]
+  wire [5:0] _GEN_487 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_62 : _GEN_442; // @[Decoder.scala 292:62]
   wire  _GEN_488 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_443; // @[Decoder.scala 292:62]
   wire  _GEN_489 = instruction_io_deq_bits_opcode == 4'h3 ? _GEN_64 : _GEN_444; // @[Decoder.scala 292:62]
-  wire [12:0] _GEN_490 = instruction_io_deq_bits_opcode == 4'h3 ? 13'h0 : _GEN_412; // @[Decoder.scala 292:62 Decoder.scala 609:15]
+  wire [5:0] _GEN_490 = instruction_io_deq_bits_opcode == 4'h3 ? 6'h0 : _GEN_412; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire [1:0] _GEN_491 = instruction_io_deq_bits_opcode == 4'h3 ? 2'h0 : _GEN_413; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_492 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_414; // @[Decoder.scala 292:62 Decoder.scala 610:16]
   wire [2:0] _GEN_494 = instruction_io_deq_bits_opcode == 4'h3 ? 3'h0 : _GEN_417; // @[Decoder.scala 292:62 Decoder.scala 609:15]
-  wire [12:0] _GEN_496 = instruction_io_deq_bits_opcode == 4'h3 ? 13'h0 : _GEN_419; // @[Decoder.scala 292:62 Decoder.scala 609:15]
+  wire [5:0] _GEN_496 = instruction_io_deq_bits_opcode == 4'h3 ? 6'h0 : _GEN_419; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_497 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_420; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_498 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_421; // @[Decoder.scala 292:62 Decoder.scala 610:16]
   wire [2:0] _GEN_500 = instruction_io_deq_bits_opcode == 4'h3 ? 3'h0 : _GEN_424; // @[Decoder.scala 292:62 Decoder.scala 609:15]
@@ -2461,12 +2301,12 @@ module Decoder(
   wire  _GEN_509 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_434; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_510 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_435; // @[Decoder.scala 292:62 Decoder.scala 610:16]
   wire [2:0] _GEN_512 = instruction_io_deq_bits_opcode == 4'h3 ? 3'h0 : _GEN_446; // @[Decoder.scala 292:62 Decoder.scala 609:15]
-  wire [10:0] _GEN_513 = instruction_io_deq_bits_opcode == 4'h3 ? 11'h0 : _GEN_447; // @[Decoder.scala 292:62 Decoder.scala 609:15]
+  wire [5:0] _GEN_513 = instruction_io_deq_bits_opcode == 4'h3 ? 6'h0 : _GEN_436; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_514 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_448; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_515 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_449; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_516 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_450; // @[Decoder.scala 292:62 Decoder.scala 609:15]
-  wire [10:0] _GEN_517 = instruction_io_deq_bits_opcode == 4'h3 ? 11'h0 : _GEN_451; // @[Decoder.scala 292:62 Decoder.scala 609:15]
-  wire [10:0] _GEN_518 = instruction_io_deq_bits_opcode == 4'h3 ? 11'h0 : _GEN_452; // @[Decoder.scala 292:62 Decoder.scala 609:15]
+  wire [5:0] _GEN_517 = instruction_io_deq_bits_opcode == 4'h3 ? 6'h0 : _GEN_451; // @[Decoder.scala 292:62 Decoder.scala 609:15]
+  wire [5:0] _GEN_518 = instruction_io_deq_bits_opcode == 4'h3 ? 6'h0 : _GEN_452; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_519 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_453; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_520 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_454; // @[Decoder.scala 292:62 Decoder.scala 609:15]
   wire  _GEN_521 = instruction_io_deq_bits_opcode == 4'h3 ? 1'h0 : _GEN_455; // @[Decoder.scala 292:62 Decoder.scala 609:15]
@@ -2817,8 +2657,8 @@ module Decoder(
   assign memPortB_reset = reset;
   assign memPortB_io_enq_valid = instruction_io_deq_bits_opcode == 4'h1 ? 1'h0 : _GEN_498; // @[Decoder.scala 244:51 Decoder.scala 610:16]
   assign memPortB_io_enq_bits_write = instruction_io_deq_bits_opcode == 4'h1 ? 1'h0 : _GEN_497; // @[Decoder.scala 244:51 Decoder.scala 609:15]
-  assign memPortB_io_enq_bits_address = instruction_io_deq_bits_opcode == 4'h1 ? 13'h0 : _GEN_496; // @[Decoder.scala 244:51 Decoder.scala 609:15]
-  assign memPortB_io_enq_bits_size = instruction_io_deq_bits_opcode == 4'h1 ? 13'h0 : _GEN_490; // @[Decoder.scala 244:51 Decoder.scala 609:15]
+  assign memPortB_io_enq_bits_address = instruction_io_deq_bits_opcode == 4'h1 ? 6'h0 : _GEN_496; // @[Decoder.scala 244:51 Decoder.scala 609:15]
+  assign memPortB_io_enq_bits_size = instruction_io_deq_bits_opcode == 4'h1 ? 6'h0 : _GEN_490; // @[Decoder.scala 244:51 Decoder.scala 609:15]
   assign memPortB_io_enq_bits_stride = instruction_io_deq_bits_opcode == 4'h1 ? 3'h0 : _GEN_494; // @[Decoder.scala 244:51 Decoder.scala 609:15]
   assign memPortB_io_enq_bits_reverse = 1'h0; // @[Decoder.scala 244:51 Decoder.scala 609:15]
   assign memPortB_io_deq_ready = memPortBHandler_io_in_ready; // @[Mem.scala 24:7]
@@ -2830,11 +2670,11 @@ module Decoder(
   assign accHandler_io_in_bits_instruction_sourceRight = instruction_io_deq_bits_opcode == 4'h1 ? 1'h0 : _GEN_520; // @[Decoder.scala 244:51]
   assign accHandler_io_in_bits_instruction_dest = instruction_io_deq_bits_opcode == 4'h1 ? 1'h0 : _GEN_519; // @[Decoder.scala 244:51]
   assign accHandler_io_in_bits_address = instruction_io_deq_bits_opcode == 4'h1 ? _GEN_27 : _GEN_518; // @[Decoder.scala 244:51]
-  assign accHandler_io_in_bits_altAddress = instruction_io_deq_bits_opcode == 4'h1 ? 11'h0 : _GEN_517; // @[Decoder.scala 244:51]
+  assign accHandler_io_in_bits_altAddress = instruction_io_deq_bits_opcode == 4'h1 ? 6'h0 : _GEN_517; // @[Decoder.scala 244:51]
   assign accHandler_io_in_bits_read = instruction_io_deq_bits_opcode == 4'h1 ? 1'h0 : _GEN_516; // @[Decoder.scala 244:51]
   assign accHandler_io_in_bits_write = instruction_io_deq_bits_opcode == 4'h1 | _GEN_515; // @[Decoder.scala 244:51]
   assign accHandler_io_in_bits_accumulate = instruction_io_deq_bits_opcode == 4'h1 ? flags_accumulate : _GEN_514; // @[Decoder.scala 244:51]
-  assign accHandler_io_in_bits_size = instruction_io_deq_bits_opcode == 4'h1 ? _GEN_22 : _GEN_513; // @[Decoder.scala 244:51]
+  assign accHandler_io_in_bits_size = instruction_io_deq_bits_opcode == 4'h1 ? _GEN_11 : _GEN_513; // @[Decoder.scala 244:51]
   assign accHandler_io_in_bits_stride = instruction_io_deq_bits_opcode == 4'h1 ? args_accStride : _GEN_512; // @[Decoder.scala 244:51]
   assign accHandler_io_out_ready = io_acc_ready; // @[Decoder.scala 197:27]
   assign arrayHandler_clock = clock;
@@ -2848,7 +2688,7 @@ module Decoder(
   assign hostDataflowHandler_reset = reset;
   assign hostDataflowHandler_io_in_valid = instruction_io_deq_bits_opcode == 4'h1 ? 1'h0 : _GEN_492; // @[Decoder.scala 244:51 Decoder.scala 610:16]
   assign hostDataflowHandler_io_in_bits_kind = instruction_io_deq_bits_opcode == 4'h1 ? 2'h0 : _GEN_491; // @[Decoder.scala 244:51 Decoder.scala 609:15]
-  assign hostDataflowHandler_io_in_bits_size = instruction_io_deq_bits_opcode == 4'h1 ? 13'h0 : _GEN_490; // @[Decoder.scala 244:51 Decoder.scala 609:15]
+  assign hostDataflowHandler_io_in_bits_size = instruction_io_deq_bits_opcode == 4'h1 ? 6'h0 : _GEN_490; // @[Decoder.scala 244:51 Decoder.scala 609:15]
   assign hostDataflowHandler_io_out_ready = io_hostDataflow_ready; // @[Decoder.scala 223:19]
   assign enqueuer1_clock = clock;
   assign enqueuer1_reset = reset;
@@ -6194,7 +6034,7 @@ endmodule
 module InnerDualPortMem(
   input         clock,
   input         reset,
-  input  [10:0] io_portA_address,
+  input  [5:0]  io_portA_address,
   input         io_portA_read_enable,
   output [15:0] io_portA_read_data_0,
   output [15:0] io_portA_read_data_1,
@@ -6213,7 +6053,7 @@ module InnerDualPortMem(
   input  [15:0] io_portA_write_data_5,
   input  [15:0] io_portA_write_data_6,
   input  [15:0] io_portA_write_data_7,
-  input  [10:0] io_portB_address,
+  input  [5:0]  io_portB_address,
   input         io_portB_read_enable,
   output [15:0] io_portB_read_data_0,
   output [15:0] io_portB_read_data_1,
@@ -6236,13 +6076,13 @@ module InnerDualPortMem(
   wire  mem_clka; // @[DualPortMem.scala 164:25]
   wire  mem_wea; // @[DualPortMem.scala 164:25]
   wire  mem_ena; // @[DualPortMem.scala 164:25]
-  wire [10:0] mem_addra; // @[DualPortMem.scala 164:25]
+  wire [5:0] mem_addra; // @[DualPortMem.scala 164:25]
   wire [127:0] mem_dia; // @[DualPortMem.scala 164:25]
   wire [127:0] mem_doa; // @[DualPortMem.scala 164:25]
   wire  mem_clkb; // @[DualPortMem.scala 164:25]
   wire  mem_web; // @[DualPortMem.scala 164:25]
   wire  mem_enb; // @[DualPortMem.scala 164:25]
-  wire [10:0] mem_addrb; // @[DualPortMem.scala 164:25]
+  wire [5:0] mem_addrb; // @[DualPortMem.scala 164:25]
   wire [127:0] mem_dib; // @[DualPortMem.scala 164:25]
   wire [127:0] mem_dob; // @[DualPortMem.scala 164:25]
   wire [127:0] _io_portA_read_data_WIRE_1 = mem_doa;
@@ -6251,7 +6091,7 @@ module InnerDualPortMem(
   wire [127:0] _io_portB_read_data_WIRE_1 = mem_dob;
   wire [63:0] mem_io_dib_lo = {io_portB_write_data_3,io_portB_write_data_2,io_portB_write_data_1,io_portB_write_data_0}; // @[DualPortMem.scala 178:51]
   wire [63:0] mem_io_dib_hi = {io_portB_write_data_7,io_portB_write_data_6,io_portB_write_data_5,io_portB_write_data_4}; // @[DualPortMem.scala 178:51]
-  bram_dp_128x2048 mem ( // @[DualPortMem.scala 164:25]
+  bram_dp_128x64 mem ( // @[DualPortMem.scala 164:25]
     .clka(mem_clka),
     .wea(mem_wea),
     .ena(mem_ena),
@@ -6665,7 +6505,7 @@ module DualPortMem(
   output        io_portA_control_ready,
   input         io_portA_control_valid,
   input         io_portA_control_bits_write,
-  input  [10:0] io_portA_control_bits_address,
+  input  [5:0]  io_portA_control_bits_address,
   output        io_portA_input_ready,
   input         io_portA_input_valid,
   input  [15:0] io_portA_input_bits_0,
@@ -6689,7 +6529,7 @@ module DualPortMem(
   output        io_portB_control_ready,
   input         io_portB_control_valid,
   input         io_portB_control_bits_write,
-  input  [10:0] io_portB_control_bits_address,
+  input  [5:0]  io_portB_control_bits_address,
   output        io_portB_input_ready,
   input         io_portB_input_valid,
   input  [15:0] io_portB_input_bits_0,
@@ -6700,6 +6540,16 @@ module DualPortMem(
   input  [15:0] io_portB_input_bits_5,
   input  [15:0] io_portB_input_bits_6,
   input  [15:0] io_portB_input_bits_7,
+  input         io_portB_output_ready,
+  output        io_portB_output_valid,
+  output [15:0] io_portB_output_bits_0,
+  output [15:0] io_portB_output_bits_1,
+  output [15:0] io_portB_output_bits_2,
+  output [15:0] io_portB_output_bits_3,
+  output [15:0] io_portB_output_bits_4,
+  output [15:0] io_portB_output_bits_5,
+  output [15:0] io_portB_output_bits_6,
+  output [15:0] io_portB_output_bits_7,
   input         io_tracepoint,
   input  [31:0] io_programCounter
 );
@@ -6709,7 +6559,7 @@ module DualPortMem(
 `endif // RANDOMIZE_REG_INIT
   wire  mem_clock; // @[DualPortMem.scala 34:19]
   wire  mem_reset; // @[DualPortMem.scala 34:19]
-  wire [10:0] mem_io_portA_address; // @[DualPortMem.scala 34:19]
+  wire [5:0] mem_io_portA_address; // @[DualPortMem.scala 34:19]
   wire  mem_io_portA_read_enable; // @[DualPortMem.scala 34:19]
   wire [15:0] mem_io_portA_read_data_0; // @[DualPortMem.scala 34:19]
   wire [15:0] mem_io_portA_read_data_1; // @[DualPortMem.scala 34:19]
@@ -6728,7 +6578,7 @@ module DualPortMem(
   wire [15:0] mem_io_portA_write_data_5; // @[DualPortMem.scala 34:19]
   wire [15:0] mem_io_portA_write_data_6; // @[DualPortMem.scala 34:19]
   wire [15:0] mem_io_portA_write_data_7; // @[DualPortMem.scala 34:19]
-  wire [10:0] mem_io_portB_address; // @[DualPortMem.scala 34:19]
+  wire [5:0] mem_io_portB_address; // @[DualPortMem.scala 34:19]
   wire  mem_io_portB_read_enable; // @[DualPortMem.scala 34:19]
   wire [15:0] mem_io_portB_read_data_0; // @[DualPortMem.scala 34:19]
   wire [15:0] mem_io_portB_read_data_1; // @[DualPortMem.scala 34:19]
@@ -6902,6 +6752,15 @@ module DualPortMem(
   assign io_portA_output_bits_7 = output__io_deq_bits_7; // @[DualPortMem.scala 73:17]
   assign io_portB_control_ready = io_portB_control_bits_write ? io_portB_input_valid : outputReady_1; // @[DualPortMem.scala 60:30 DualPortMem.scala 61:21 DualPortMem.scala 65:21]
   assign io_portB_input_ready = io_portB_control_valid & io_portB_control_bits_write; // @[DualPortMem.scala 76:34]
+  assign io_portB_output_valid = output_1_io_deq_valid; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_0 = output_1_io_deq_bits_0; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_1 = output_1_io_deq_bits_1; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_2 = output_1_io_deq_bits_2; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_3 = output_1_io_deq_bits_3; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_4 = output_1_io_deq_bits_4; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_5 = output_1_io_deq_bits_5; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_6 = output_1_io_deq_bits_6; // @[DualPortMem.scala 73:17]
+  assign io_portB_output_bits_7 = output_1_io_deq_bits_7; // @[DualPortMem.scala 73:17]
   assign mem_clock = clock;
   assign mem_reset = reset;
   assign mem_io_portA_address = io_portA_control_bits_address; // @[DualPortMem.scala 58:19]
@@ -6949,7 +6808,7 @@ module DualPortMem(
   assign output_1_io_enq_bits_5 = mem_io_portB_read_data_5; // @[DualPortMem.scala 70:24]
   assign output_1_io_enq_bits_6 = mem_io_portB_read_data_6; // @[DualPortMem.scala 70:24]
   assign output_1_io_enq_bits_7 = mem_io_portB_read_data_7; // @[DualPortMem.scala 70:24]
-  assign output_1_io_deq_ready = 1'h0; // @[DualPortMem.scala 73:17]
+  assign output_1_io_deq_ready = io_portB_output_ready; // @[DualPortMem.scala 73:17]
   always @(posedge clock) begin
     if (reset) begin // @[ShiftRegister.scala 10:22]
       output_io_enq_valid_sr_0 <= 1'h0; // @[ShiftRegister.scala 10:22]
@@ -7442,18 +7301,18 @@ module VecAdder(
   assign right_io_deq_ready = io_output_ready & left_io_deq_valid; // @[VecAdder.scala 25:34]
 endmodule
 module Queue_13(
-  input         clock,
-  input         reset,
-  output        io_enq_ready,
-  input         io_enq_valid,
-  input  [10:0] io_enq_bits_address,
-  input         io_enq_bits_accumulate,
-  input         io_enq_bits_write,
-  input         io_deq_ready,
-  output        io_deq_valid,
-  output [10:0] io_deq_bits_address,
-  output        io_deq_bits_accumulate,
-  output        io_deq_bits_write
+  input        clock,
+  input        reset,
+  output       io_enq_ready,
+  input        io_enq_valid,
+  input  [5:0] io_enq_bits_address,
+  input        io_enq_bits_accumulate,
+  input        io_enq_bits_write,
+  input        io_deq_ready,
+  output       io_deq_valid,
+  output [5:0] io_deq_bits_address,
+  output       io_deq_bits_accumulate,
+  output       io_deq_bits_write
 );
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_0;
@@ -7463,10 +7322,10 @@ module Queue_13(
 `ifdef RANDOMIZE_REG_INIT
   reg [31:0] _RAND_3;
 `endif // RANDOMIZE_REG_INIT
-  reg [10:0] ram_address [0:0]; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_address_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [5:0] ram_address [0:0]; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_address_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_address_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_address_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_address_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_en; // @[Decoupled.scala 218:16]
@@ -7576,7 +7435,7 @@ initial begin
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {1{`RANDOM}};
   for (initvar = 0; initvar < 1; initvar = initvar+1)
-    ram_address[initvar] = _RAND_0[10:0];
+    ram_address[initvar] = _RAND_0[5:0];
   _RAND_1 = {1{`RANDOM}};
   for (initvar = 0; initvar < 1; initvar = initvar+1)
     ram_accumulate[initvar] = _RAND_1[0:0];
@@ -7596,16 +7455,16 @@ end // initial
 `endif // SYNTHESIS
 endmodule
 module Queue_15(
-  input         clock,
-  input         reset,
-  output        io_enq_ready,
-  input         io_enq_valid,
-  input         io_enq_bits_write,
-  input  [10:0] io_enq_bits_address,
-  input         io_deq_ready,
-  output        io_deq_valid,
-  output        io_deq_bits_write,
-  output [10:0] io_deq_bits_address
+  input        clock,
+  input        reset,
+  output       io_enq_ready,
+  input        io_enq_valid,
+  input        io_enq_bits_write,
+  input  [5:0] io_enq_bits_address,
+  input        io_deq_ready,
+  output       io_deq_valid,
+  output       io_deq_bits_write,
+  output [5:0] io_deq_bits_address
 );
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_0;
@@ -7621,10 +7480,10 @@ module Queue_15(
   wire  ram_write_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_write_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_write_MPORT_en; // @[Decoupled.scala 218:16]
-  reg [10:0] ram_address [0:0]; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_address_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [5:0] ram_address [0:0]; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_address_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_address_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_address_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_address_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_address_MPORT_en; // @[Decoupled.scala 218:16]
@@ -7713,7 +7572,7 @@ initial begin
     ram_write[initvar] = _RAND_0[0:0];
   _RAND_1 = {1{`RANDOM}};
   for (initvar = 0; initvar < 1; initvar = initvar+1)
-    ram_address[initvar] = _RAND_1[10:0];
+    ram_address[initvar] = _RAND_1[5:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_2 = {1{`RANDOM}};
@@ -7916,7 +7775,7 @@ module Accumulator(
   output [15:0] io_output_bits_7,
   output        io_control_ready,
   input         io_control_valid,
-  input  [10:0] io_control_bits_address,
+  input  [5:0]  io_control_bits_address,
   input         io_control_bits_accumulate,
   input         io_control_bits_write,
   input         io_tracepoint,
@@ -7930,7 +7789,7 @@ module Accumulator(
   wire  mem_io_portA_control_ready; // @[Accumulator.scala 38:19]
   wire  mem_io_portA_control_valid; // @[Accumulator.scala 38:19]
   wire  mem_io_portA_control_bits_write; // @[Accumulator.scala 38:19]
-  wire [10:0] mem_io_portA_control_bits_address; // @[Accumulator.scala 38:19]
+  wire [5:0] mem_io_portA_control_bits_address; // @[Accumulator.scala 38:19]
   wire  mem_io_portA_input_ready; // @[Accumulator.scala 38:19]
   wire  mem_io_portA_input_valid; // @[Accumulator.scala 38:19]
   wire [15:0] mem_io_portA_input_bits_0; // @[Accumulator.scala 38:19]
@@ -7954,7 +7813,7 @@ module Accumulator(
   wire  mem_io_portB_control_ready; // @[Accumulator.scala 38:19]
   wire  mem_io_portB_control_valid; // @[Accumulator.scala 38:19]
   wire  mem_io_portB_control_bits_write; // @[Accumulator.scala 38:19]
-  wire [10:0] mem_io_portB_control_bits_address; // @[Accumulator.scala 38:19]
+  wire [5:0] mem_io_portB_control_bits_address; // @[Accumulator.scala 38:19]
   wire  mem_io_portB_input_ready; // @[Accumulator.scala 38:19]
   wire  mem_io_portB_input_valid; // @[Accumulator.scala 38:19]
   wire [15:0] mem_io_portB_input_bits_0; // @[Accumulator.scala 38:19]
@@ -7965,6 +7824,16 @@ module Accumulator(
   wire [15:0] mem_io_portB_input_bits_5; // @[Accumulator.scala 38:19]
   wire [15:0] mem_io_portB_input_bits_6; // @[Accumulator.scala 38:19]
   wire [15:0] mem_io_portB_input_bits_7; // @[Accumulator.scala 38:19]
+  wire  mem_io_portB_output_ready; // @[Accumulator.scala 38:19]
+  wire  mem_io_portB_output_valid; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_0; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_1; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_2; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_3; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_4; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_5; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_6; // @[Accumulator.scala 38:19]
+  wire [15:0] mem_io_portB_output_bits_7; // @[Accumulator.scala 38:19]
   wire  mem_io_tracepoint; // @[Accumulator.scala 38:19]
   wire [31:0] mem_io_programCounter; // @[Accumulator.scala 38:19]
   wire  adder_clock; // @[Accumulator.scala 46:23]
@@ -8003,12 +7872,12 @@ module Accumulator(
   wire  control_reset; // @[Decoupled.scala 296:21]
   wire  control_io_enq_ready; // @[Decoupled.scala 296:21]
   wire  control_io_enq_valid; // @[Decoupled.scala 296:21]
-  wire [10:0] control_io_enq_bits_address; // @[Decoupled.scala 296:21]
+  wire [5:0] control_io_enq_bits_address; // @[Decoupled.scala 296:21]
   wire  control_io_enq_bits_accumulate; // @[Decoupled.scala 296:21]
   wire  control_io_enq_bits_write; // @[Decoupled.scala 296:21]
   wire  control_io_deq_ready; // @[Decoupled.scala 296:21]
   wire  control_io_deq_valid; // @[Decoupled.scala 296:21]
-  wire [10:0] control_io_deq_bits_address; // @[Decoupled.scala 296:21]
+  wire [5:0] control_io_deq_bits_address; // @[Decoupled.scala 296:21]
   wire  control_io_deq_bits_accumulate; // @[Decoupled.scala 296:21]
   wire  control_io_deq_bits_write; // @[Decoupled.scala 296:21]
   wire  input__clock; // @[Decoupled.scala 296:21]
@@ -8038,11 +7907,11 @@ module Accumulator(
   wire  portBControl_io_enq_ready; // @[Mem.scala 23:19]
   wire  portBControl_io_enq_valid; // @[Mem.scala 23:19]
   wire  portBControl_io_enq_bits_write; // @[Mem.scala 23:19]
-  wire [10:0] portBControl_io_enq_bits_address; // @[Mem.scala 23:19]
+  wire [5:0] portBControl_io_enq_bits_address; // @[Mem.scala 23:19]
   wire  portBControl_io_deq_ready; // @[Mem.scala 23:19]
   wire  portBControl_io_deq_valid; // @[Mem.scala 23:19]
   wire  portBControl_io_deq_bits_write; // @[Mem.scala 23:19]
-  wire [10:0] portBControl_io_deq_bits_address; // @[Mem.scala 23:19]
+  wire [5:0] portBControl_io_deq_bits_address; // @[Mem.scala 23:19]
   wire  inputDemux_x14_demux_io_in_ready; // @[Demux.scala 46:23]
   wire  inputDemux_x14_demux_io_in_valid; // @[Demux.scala 46:23]
   wire [15:0] inputDemux_x14_demux_io_in_bits_0; // @[Demux.scala 46:23]
@@ -8158,8 +8027,8 @@ module Accumulator(
   wire  _GEN_1 = control_io_deq_bits_accumulate & control_io_deq_valid; // @[Accumulator.scala 109:35 MultiEnqueue.scala 150:17 MultiEnqueue.scala 40:17]
   wire  control_io_deq_ready_mem_io_portA_control_w_ready = mem_io_portA_control_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 151:10]
   wire  _GEN_2 = control_io_deq_bits_accumulate & control_io_deq_ready_mem_io_portA_control_w_ready; // @[Accumulator.scala 109:35 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [10:0] control_io_deq_ready_w_address = control_io_deq_bits_address; // @[MemControl.scala 76:19 MemControl.scala 77:17]
-  wire [10:0] _GEN_4 = control_io_deq_bits_accumulate ? control_io_deq_ready_w_address : control_io_deq_ready_w_address; // @[Accumulator.scala 109:35 MultiEnqueue.scala 151:10 MultiEnqueue.scala 85:10]
+  wire [5:0] control_io_deq_ready_w_address = control_io_deq_bits_address; // @[MemControl.scala 76:19 MemControl.scala 77:17]
+  wire [5:0] _GEN_4 = control_io_deq_bits_accumulate ? control_io_deq_ready_w_address : control_io_deq_ready_w_address; // @[Accumulator.scala 109:35 MultiEnqueue.scala 151:10 MultiEnqueue.scala 85:10]
   wire  _GEN_5 = control_io_deq_bits_accumulate ? 1'h0 : 1'h1; // @[Accumulator.scala 109:35 MultiEnqueue.scala 151:10 MultiEnqueue.scala 85:10]
   wire  control_io_deq_ready_mem_io_portA_control_w_valid = accEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  control_io_deq_ready_mem_io_portA_control_w_1_valid = writeEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
@@ -8171,7 +8040,7 @@ module Accumulator(
   wire  _GEN_9 = control_io_deq_bits_accumulate & control_io_deq_ready_memOutputDemux_io_enq_w_valid; // @[Accumulator.scala 109:35 MultiEnqueue.scala 152:10 package.scala 410:15]
   wire  control_io_deq_ready_portBControl_io_enq_w_ready = portBControl_io_enq_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 153:10]
   wire  _GEN_10 = control_io_deq_bits_accumulate & control_io_deq_ready_portBControl_io_enq_w_ready; // @[Accumulator.scala 109:35 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [10:0] _GEN_12 = control_io_deq_bits_accumulate ? control_io_deq_ready_w_address : 11'h0; // @[Accumulator.scala 109:35 MultiEnqueue.scala 153:10 package.scala 409:14]
+  wire [5:0] _GEN_12 = control_io_deq_bits_accumulate ? control_io_deq_ready_w_address : 6'h0; // @[Accumulator.scala 109:35 MultiEnqueue.scala 153:10 package.scala 409:14]
   wire  control_io_deq_ready_portBControl_io_enq_w_valid = accEnqueuer_io_out_2_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_14 = control_io_deq_bits_accumulate & control_io_deq_ready_portBControl_io_enq_w_valid; // @[Accumulator.scala 109:35 MultiEnqueue.scala 153:10 package.scala 410:15]
   wire  control_io_deq_ready_inputDemux_io_enq_w_ready = inputDemux_io_enq_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 154:10]
@@ -8186,7 +8055,7 @@ module Accumulator(
   wire  _GEN_21 = control_io_deq_bits_accumulate ? 1'h0 : control_io_deq_ready_inputDemux_io_enq_w_ready; // @[Accumulator.scala 109:35 MultiEnqueue.scala 42:18 ReadyValid.scala 19:11]
   wire  _GEN_22 = ~writeAccumulating & control_io_deq_valid; // @[Accumulator.scala 136:30 MultiEnqueue.scala 84:17 MultiEnqueue.scala 40:17]
   wire  _GEN_23 = ~writeAccumulating & control_io_deq_ready_mem_io_portA_control_w_ready; // @[Accumulator.scala 136:30 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [10:0] _GEN_25 = ~writeAccumulating ? control_io_deq_ready_w_address : 11'h0; // @[Accumulator.scala 136:30 MultiEnqueue.scala 85:10 package.scala 409:14]
+  wire [5:0] _GEN_25 = ~writeAccumulating ? control_io_deq_ready_w_address : 6'h0; // @[Accumulator.scala 136:30 MultiEnqueue.scala 85:10 package.scala 409:14]
   wire  control_io_deq_ready_mem_io_portA_control_w_2_valid = readEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_27 = ~writeAccumulating & control_io_deq_ready_mem_io_portA_control_w_2_valid; // @[Accumulator.scala 136:30 MultiEnqueue.scala 85:10 package.scala 410:15]
   wire  _GEN_28 = ~writeAccumulating & control_io_deq_ready_memOutputDemux_io_enq_w_ready; // @[Accumulator.scala 136:30 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
@@ -8235,6 +8104,16 @@ module Accumulator(
     .io_portB_input_bits_5(mem_io_portB_input_bits_5),
     .io_portB_input_bits_6(mem_io_portB_input_bits_6),
     .io_portB_input_bits_7(mem_io_portB_input_bits_7),
+    .io_portB_output_ready(mem_io_portB_output_ready),
+    .io_portB_output_valid(mem_io_portB_output_valid),
+    .io_portB_output_bits_0(mem_io_portB_output_bits_0),
+    .io_portB_output_bits_1(mem_io_portB_output_bits_1),
+    .io_portB_output_bits_2(mem_io_portB_output_bits_2),
+    .io_portB_output_bits_3(mem_io_portB_output_bits_3),
+    .io_portB_output_bits_4(mem_io_portB_output_bits_4),
+    .io_portB_output_bits_5(mem_io_portB_output_bits_5),
+    .io_portB_output_bits_6(mem_io_portB_output_bits_6),
+    .io_portB_output_bits_7(mem_io_portB_output_bits_7),
     .io_tracepoint(mem_io_tracepoint),
     .io_programCounter(mem_io_programCounter)
   );
@@ -8484,6 +8363,7 @@ module Accumulator(
   assign mem_io_portB_input_bits_5 = adder_io_output_bits_5; // @[Accumulator.scala 66:15]
   assign mem_io_portB_input_bits_6 = adder_io_output_bits_6; // @[Accumulator.scala 66:15]
   assign mem_io_portB_input_bits_7 = adder_io_output_bits_7; // @[Accumulator.scala 66:15]
+  assign mem_io_portB_output_ready = 1'h0; // @[Accumulator.scala 67:22]
   assign mem_io_tracepoint = io_tracepoint; // @[Accumulator.scala 56:21]
   assign mem_io_programCounter = io_programCounter; // @[Accumulator.scala 55:25]
   assign adder_clock = clock;
@@ -8530,7 +8410,7 @@ module Accumulator(
   assign portBControl_reset = reset;
   assign portBControl_io_enq_valid = control_io_deq_bits_write & _GEN_14; // @[Accumulator.scala 108:28 package.scala 410:15]
   assign portBControl_io_enq_bits_write = control_io_deq_bits_write & _GEN_0; // @[Accumulator.scala 108:28 package.scala 409:14]
-  assign portBControl_io_enq_bits_address = control_io_deq_bits_write ? _GEN_12 : 11'h0; // @[Accumulator.scala 108:28 package.scala 409:14]
+  assign portBControl_io_enq_bits_address = control_io_deq_bits_write ? _GEN_12 : 6'h0; // @[Accumulator.scala 108:28 package.scala 409:14]
   assign portBControl_io_deq_ready = mem_io_portB_control_ready; // @[Mem.scala 24:7]
   assign inputDemux_x14_demux_io_in_valid = input__io_deq_valid; // @[Demux.scala 54:17]
   assign inputDemux_x14_demux_io_in_bits_0 = input__io_deq_bits_0; // @[Demux.scala 54:17]
@@ -9594,8 +9474,8 @@ module AccumulatorWithALUArray(
   input         io_control_bits_instruction_sourceLeft,
   input         io_control_bits_instruction_sourceRight,
   input         io_control_bits_instruction_dest,
-  input  [10:0] io_control_bits_readAddress,
-  input  [10:0] io_control_bits_writeAddress,
+  input  [5:0]  io_control_bits_readAddress,
+  input  [5:0]  io_control_bits_writeAddress,
   input         io_control_bits_accumulate,
   input         io_control_bits_write,
   input         io_control_bits_read,
@@ -9629,7 +9509,7 @@ module AccumulatorWithALUArray(
   wire [15:0] acc_io_output_bits_7; // @[AccumulatorWithALUArray.scala 44:19]
   wire  acc_io_control_ready; // @[AccumulatorWithALUArray.scala 44:19]
   wire  acc_io_control_valid; // @[AccumulatorWithALUArray.scala 44:19]
-  wire [10:0] acc_io_control_bits_address; // @[AccumulatorWithALUArray.scala 44:19]
+  wire [5:0] acc_io_control_bits_address; // @[AccumulatorWithALUArray.scala 44:19]
   wire  acc_io_control_bits_accumulate; // @[AccumulatorWithALUArray.scala 44:19]
   wire  acc_io_control_bits_write; // @[AccumulatorWithALUArray.scala 44:19]
   wire  acc_io_tracepoint; // @[AccumulatorWithALUArray.scala 44:19]
@@ -9864,7 +9744,7 @@ module AccumulatorWithALUArray(
   wire  dataPathReady_acc_io_control_w_ready = acc_io_control_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 85:10]
   wire  _GEN_2 = readEnqueued & dataPathReady_acc_io_control_w_ready; // @[AccumulatorWithALUArray.scala 137:28 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
   wire  _GEN_4 = readEnqueued & io_control_bits_accumulate; // @[AccumulatorWithALUArray.scala 137:28 MultiEnqueue.scala 85:10 MultiEnqueue.scala 85:10]
-  wire [10:0] _GEN_5 = readEnqueued ? io_control_bits_writeAddress : io_control_bits_readAddress; // @[AccumulatorWithALUArray.scala 137:28 MultiEnqueue.scala 85:10 MultiEnqueue.scala 85:10]
+  wire [5:0] _GEN_5 = readEnqueued ? io_control_bits_writeAddress : io_control_bits_readAddress; // @[AccumulatorWithALUArray.scala 137:28 MultiEnqueue.scala 85:10 MultiEnqueue.scala 85:10]
   wire  dataPathReady_acc_io_control_w_valid = accWriteEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  readEnqueued_acc_io_control_w_valid = accReadEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_6 = readEnqueued ? dataPathReady_acc_io_control_w_valid : readEnqueued_acc_io_control_w_valid; // @[AccumulatorWithALUArray.scala 137:28 MultiEnqueue.scala 85:10 MultiEnqueue.scala 85:10]
@@ -9883,7 +9763,7 @@ module AccumulatorWithALUArray(
   wire  _GEN_18 = io_control_bits_write & _GEN_2; // @[AccumulatorWithALUArray.scala 136:32 MultiEnqueue.scala 42:18]
   wire  _GEN_19 = io_control_bits_write & readEnqueued; // @[AccumulatorWithALUArray.scala 136:32 MultiEnqueue.scala 85:10]
   wire  _GEN_20 = io_control_bits_write & _GEN_4; // @[AccumulatorWithALUArray.scala 136:32 MultiEnqueue.scala 85:10]
-  wire [10:0] _GEN_21 = io_control_bits_write ? _GEN_5 : io_control_bits_readAddress; // @[AccumulatorWithALUArray.scala 136:32 MultiEnqueue.scala 85:10]
+  wire [5:0] _GEN_21 = io_control_bits_write ? _GEN_5 : io_control_bits_readAddress; // @[AccumulatorWithALUArray.scala 136:32 MultiEnqueue.scala 85:10]
   wire  _GEN_22 = io_control_bits_write ? _GEN_6 : readEnqueued_acc_io_control_w_valid; // @[AccumulatorWithALUArray.scala 136:32 MultiEnqueue.scala 85:10]
   wire  _GEN_23 = io_control_bits_write & _GEN_7; // @[AccumulatorWithALUArray.scala 136:32 MultiEnqueue.scala 42:18]
   wire  _GEN_25 = io_control_bits_write & _GEN_9; // @[AccumulatorWithALUArray.scala 136:32 package.scala 410:15]
@@ -9895,7 +9775,7 @@ module AccumulatorWithALUArray(
   wire  _GEN_33 = io_control_bits_write & io_control_valid; // @[AccumulatorWithALUArray.scala 170:32 MultiEnqueue.scala 84:17 MultiEnqueue.scala 40:17]
   wire  _GEN_34 = io_control_bits_write & dataPathReady_acc_io_control_w_ready; // @[AccumulatorWithALUArray.scala 170:32 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
   wire  _GEN_36 = io_control_bits_write & io_control_bits_accumulate; // @[AccumulatorWithALUArray.scala 170:32 MultiEnqueue.scala 85:10 package.scala 409:14]
-  wire [10:0] _GEN_37 = io_control_bits_write ? io_control_bits_writeAddress : 11'h0; // @[AccumulatorWithALUArray.scala 170:32 MultiEnqueue.scala 85:10 package.scala 409:14]
+  wire [5:0] _GEN_37 = io_control_bits_write ? io_control_bits_writeAddress : 6'h0; // @[AccumulatorWithALUArray.scala 170:32 MultiEnqueue.scala 85:10 package.scala 409:14]
   wire  _GEN_38 = io_control_bits_write & dataPathReady_acc_io_control_w_valid; // @[AccumulatorWithALUArray.scala 170:32 MultiEnqueue.scala 85:10 package.scala 410:15]
   wire  _GEN_39 = io_control_bits_write & dataPathReady_accInputMux_io_enq_w_ready; // @[AccumulatorWithALUArray.scala 170:32 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
   wire  _GEN_41 = io_control_bits_write & dataPathReady_accInputMux_io_enq_w_valid; // @[AccumulatorWithALUArray.scala 170:32 MultiEnqueue.scala 86:10 package.scala 410:15]
@@ -9903,7 +9783,7 @@ module AccumulatorWithALUArray(
   wire  _GEN_44 = io_control_bits_read ? _GEN_18 : _GEN_34; // @[AccumulatorWithALUArray.scala 135:29]
   wire  _GEN_45 = io_control_bits_read ? _GEN_19 : io_control_bits_write; // @[AccumulatorWithALUArray.scala 135:29]
   wire  _GEN_46 = io_control_bits_read ? _GEN_20 : _GEN_36; // @[AccumulatorWithALUArray.scala 135:29]
-  wire [10:0] _GEN_47 = io_control_bits_read ? _GEN_21 : _GEN_37; // @[AccumulatorWithALUArray.scala 135:29]
+  wire [5:0] _GEN_47 = io_control_bits_read ? _GEN_21 : _GEN_37; // @[AccumulatorWithALUArray.scala 135:29]
   wire  _GEN_48 = io_control_bits_read ? _GEN_22 : _GEN_38; // @[AccumulatorWithALUArray.scala 135:29]
   wire  _GEN_49 = io_control_bits_read ? _GEN_23 : _GEN_39; // @[AccumulatorWithALUArray.scala 135:29]
   wire  _GEN_51 = io_control_bits_read ? _GEN_25 : _GEN_41; // @[AccumulatorWithALUArray.scala 135:29]
@@ -9920,7 +9800,7 @@ module AccumulatorWithALUArray(
   wire  _T_2 = ~io_control_bits_instruction_sourceLeft | ~io_control_bits_instruction_sourceRight; // @[AccumulatorWithALUArray.scala 206:57]
   wire  _GEN_60 = _T_2 & io_control_valid; // @[AccumulatorWithALUArray.scala 207:13 MultiEnqueue.scala 114:17 MultiEnqueue.scala 40:17]
   wire  _GEN_61 = _T_2 & dataPathReady_acc_io_control_w_ready; // @[AccumulatorWithALUArray.scala 207:13 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [10:0] _GEN_64 = _T_2 ? io_control_bits_readAddress : 11'h0; // @[AccumulatorWithALUArray.scala 207:13 MultiEnqueue.scala 115:10 package.scala 409:14]
+  wire [5:0] _GEN_64 = _T_2 ? io_control_bits_readAddress : 6'h0; // @[AccumulatorWithALUArray.scala 207:13 MultiEnqueue.scala 115:10 package.scala 409:14]
   wire  readEnqueued_acc_io_control_w_1_valid = simdRWReadEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_65 = _T_2 & readEnqueued_acc_io_control_w_1_valid; // @[AccumulatorWithALUArray.scala 207:13 MultiEnqueue.scala 115:10 package.scala 410:15]
   wire  _GEN_66 = _T_2 & readEnqueued_accOutputDemux_io_enq_w_ready; // @[AccumulatorWithALUArray.scala 207:13 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
@@ -9935,7 +9815,7 @@ module AccumulatorWithALUArray(
   wire  readEnqueued_alu_io_instruction_w_valid = simdRWReadEnqueuer_io_out_2_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_74 = _T_2 & readEnqueued_alu_io_instruction_w_valid; // @[AccumulatorWithALUArray.scala 207:13 MultiEnqueue.scala 117:10 package.scala 410:15]
   wire  _GEN_75 = _T_2 ? simdRWReadEnqueuer_io_in_ready : 1'h1; // @[AccumulatorWithALUArray.scala 207:13 AccumulatorWithALUArray.scala 208:26 AccumulatorWithALUArray.scala 218:26]
-  wire [10:0] _GEN_79 = readEnqueued ? io_control_bits_writeAddress : _GEN_64; // @[AccumulatorWithALUArray.scala 188:28 MultiEnqueue.scala 115:10]
+  wire [5:0] _GEN_79 = readEnqueued ? io_control_bits_writeAddress : _GEN_64; // @[AccumulatorWithALUArray.scala 188:28 MultiEnqueue.scala 115:10]
   wire  dataPathReady_acc_io_control_w_3_valid = simdRWWriteEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_80 = readEnqueued ? dataPathReady_acc_io_control_w_3_valid : _GEN_65; // @[AccumulatorWithALUArray.scala 188:28 MultiEnqueue.scala 115:10]
   wire  dataPathReady_aluOutputDemux_io_enq_w_ready = aluOutputDemux_io_enq_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 116:10]
@@ -9956,7 +9836,7 @@ module AccumulatorWithALUArray(
   wire  _GEN_97 = readEnqueued ? 1'h0 : _GEN_72; // @[AccumulatorWithALUArray.scala 188:28 package.scala 409:14]
   wire [3:0] _GEN_98 = readEnqueued ? 4'h0 : _GEN_73; // @[AccumulatorWithALUArray.scala 188:28 package.scala 409:14]
   wire  _GEN_99 = readEnqueued ? 1'h0 : _GEN_74; // @[AccumulatorWithALUArray.scala 188:28 package.scala 410:15]
-  wire [10:0] _GEN_103 = io_control_bits_write ? _GEN_79 : io_control_bits_readAddress; // @[AccumulatorWithALUArray.scala 186:32 MultiEnqueue.scala 151:10]
+  wire [5:0] _GEN_103 = io_control_bits_write ? _GEN_79 : io_control_bits_readAddress; // @[AccumulatorWithALUArray.scala 186:32 MultiEnqueue.scala 151:10]
   wire  dataPathReady_acc_io_control_w_4_valid = simdReadEnqueuer_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_104 = io_control_bits_write ? _GEN_80 : dataPathReady_acc_io_control_w_4_valid; // @[AccumulatorWithALUArray.scala 186:32 MultiEnqueue.scala 151:10]
   wire  _GEN_105 = io_control_bits_write & _GEN_81; // @[AccumulatorWithALUArray.scala 186:32 MultiEnqueue.scala 42:18]
@@ -9998,7 +9878,7 @@ module AccumulatorWithALUArray(
     dataPathReady_alu_io_instruction_w_2_valid; // @[AccumulatorWithALUArray.scala 235:32 MultiEnqueue.scala 154:10 MultiEnqueue.scala 86:10]
   wire  _GEN_149 = io_control_bits_read & _GEN_17; // @[AccumulatorWithALUArray.scala 185:29 MultiEnqueue.scala 40:17]
   wire  _GEN_150 = io_control_bits_read & _GEN_18; // @[AccumulatorWithALUArray.scala 185:29 MultiEnqueue.scala 42:18]
-  wire [10:0] _GEN_153 = io_control_bits_read ? _GEN_103 : _GEN_37; // @[AccumulatorWithALUArray.scala 185:29]
+  wire [5:0] _GEN_153 = io_control_bits_read ? _GEN_103 : _GEN_37; // @[AccumulatorWithALUArray.scala 185:29]
   wire  _GEN_154 = io_control_bits_read ? _GEN_104 : _GEN_133; // @[AccumulatorWithALUArray.scala 185:29]
   wire  _GEN_155 = io_control_bits_read & _GEN_105; // @[AccumulatorWithALUArray.scala 185:29 MultiEnqueue.scala 42:18]
   wire  _GEN_157 = io_control_bits_read ? _GEN_107 : _GEN_136; // @[AccumulatorWithALUArray.scala 185:29]
@@ -10511,477 +10391,6 @@ end // initial
 `endif
 `endif // SYNTHESIS
 endmodule
-module InnerDualPortMem_1(
-  input         clock,
-  input         reset,
-  input  [12:0] io_portA_address,
-  input         io_portA_read_enable,
-  output [15:0] io_portA_read_data_0,
-  output [15:0] io_portA_read_data_1,
-  output [15:0] io_portA_read_data_2,
-  output [15:0] io_portA_read_data_3,
-  output [15:0] io_portA_read_data_4,
-  output [15:0] io_portA_read_data_5,
-  output [15:0] io_portA_read_data_6,
-  output [15:0] io_portA_read_data_7,
-  input         io_portA_write_enable,
-  input  [15:0] io_portA_write_data_0,
-  input  [15:0] io_portA_write_data_1,
-  input  [15:0] io_portA_write_data_2,
-  input  [15:0] io_portA_write_data_3,
-  input  [15:0] io_portA_write_data_4,
-  input  [15:0] io_portA_write_data_5,
-  input  [15:0] io_portA_write_data_6,
-  input  [15:0] io_portA_write_data_7,
-  input  [12:0] io_portB_address,
-  input         io_portB_read_enable,
-  output [15:0] io_portB_read_data_0,
-  output [15:0] io_portB_read_data_1,
-  output [15:0] io_portB_read_data_2,
-  output [15:0] io_portB_read_data_3,
-  output [15:0] io_portB_read_data_4,
-  output [15:0] io_portB_read_data_5,
-  output [15:0] io_portB_read_data_6,
-  output [15:0] io_portB_read_data_7,
-  input         io_portB_write_enable,
-  input  [15:0] io_portB_write_data_0,
-  input  [15:0] io_portB_write_data_1,
-  input  [15:0] io_portB_write_data_2,
-  input  [15:0] io_portB_write_data_3,
-  input  [15:0] io_portB_write_data_4,
-  input  [15:0] io_portB_write_data_5,
-  input  [15:0] io_portB_write_data_6,
-  input  [15:0] io_portB_write_data_7
-);
-  wire  mem_clka; // @[DualPortMem.scala 164:25]
-  wire  mem_wea; // @[DualPortMem.scala 164:25]
-  wire  mem_ena; // @[DualPortMem.scala 164:25]
-  wire [12:0] mem_addra; // @[DualPortMem.scala 164:25]
-  wire [127:0] mem_dia; // @[DualPortMem.scala 164:25]
-  wire [127:0] mem_doa; // @[DualPortMem.scala 164:25]
-  wire  mem_clkb; // @[DualPortMem.scala 164:25]
-  wire  mem_web; // @[DualPortMem.scala 164:25]
-  wire  mem_enb; // @[DualPortMem.scala 164:25]
-  wire [12:0] mem_addrb; // @[DualPortMem.scala 164:25]
-  wire [127:0] mem_dib; // @[DualPortMem.scala 164:25]
-  wire [127:0] mem_dob; // @[DualPortMem.scala 164:25]
-  wire [127:0] _io_portA_read_data_WIRE_1 = mem_doa;
-  wire [63:0] mem_io_dia_lo = {io_portA_write_data_3,io_portA_write_data_2,io_portA_write_data_1,io_portA_write_data_0}; // @[DualPortMem.scala 171:51]
-  wire [63:0] mem_io_dia_hi = {io_portA_write_data_7,io_portA_write_data_6,io_portA_write_data_5,io_portA_write_data_4}; // @[DualPortMem.scala 171:51]
-  wire [127:0] _io_portB_read_data_WIRE_1 = mem_dob;
-  wire [63:0] mem_io_dib_lo = {io_portB_write_data_3,io_portB_write_data_2,io_portB_write_data_1,io_portB_write_data_0}; // @[DualPortMem.scala 178:51]
-  wire [63:0] mem_io_dib_hi = {io_portB_write_data_7,io_portB_write_data_6,io_portB_write_data_5,io_portB_write_data_4}; // @[DualPortMem.scala 178:51]
-  bram_dp_128x8192 mem ( // @[DualPortMem.scala 164:25]
-    .clka(mem_clka),
-    .wea(mem_wea),
-    .ena(mem_ena),
-    .addra(mem_addra),
-    .dia(mem_dia),
-    .doa(mem_doa),
-    .clkb(mem_clkb),
-    .web(mem_web),
-    .enb(mem_enb),
-    .addrb(mem_addrb),
-    .dib(mem_dib),
-    .dob(mem_dob)
-  );
-  assign io_portA_read_data_0 = _io_portA_read_data_WIRE_1[15:0]; // @[DualPortMem.scala 169:50]
-  assign io_portA_read_data_1 = _io_portA_read_data_WIRE_1[31:16]; // @[DualPortMem.scala 169:50]
-  assign io_portA_read_data_2 = _io_portA_read_data_WIRE_1[47:32]; // @[DualPortMem.scala 169:50]
-  assign io_portA_read_data_3 = _io_portA_read_data_WIRE_1[63:48]; // @[DualPortMem.scala 169:50]
-  assign io_portA_read_data_4 = _io_portA_read_data_WIRE_1[79:64]; // @[DualPortMem.scala 169:50]
-  assign io_portA_read_data_5 = _io_portA_read_data_WIRE_1[95:80]; // @[DualPortMem.scala 169:50]
-  assign io_portA_read_data_6 = _io_portA_read_data_WIRE_1[111:96]; // @[DualPortMem.scala 169:50]
-  assign io_portA_read_data_7 = _io_portA_read_data_WIRE_1[127:112]; // @[DualPortMem.scala 169:50]
-  assign io_portB_read_data_0 = _io_portB_read_data_WIRE_1[15:0]; // @[DualPortMem.scala 176:50]
-  assign io_portB_read_data_1 = _io_portB_read_data_WIRE_1[31:16]; // @[DualPortMem.scala 176:50]
-  assign io_portB_read_data_2 = _io_portB_read_data_WIRE_1[47:32]; // @[DualPortMem.scala 176:50]
-  assign io_portB_read_data_3 = _io_portB_read_data_WIRE_1[63:48]; // @[DualPortMem.scala 176:50]
-  assign io_portB_read_data_4 = _io_portB_read_data_WIRE_1[79:64]; // @[DualPortMem.scala 176:50]
-  assign io_portB_read_data_5 = _io_portB_read_data_WIRE_1[95:80]; // @[DualPortMem.scala 176:50]
-  assign io_portB_read_data_6 = _io_portB_read_data_WIRE_1[111:96]; // @[DualPortMem.scala 176:50]
-  assign io_portB_read_data_7 = _io_portB_read_data_WIRE_1[127:112]; // @[DualPortMem.scala 176:50]
-  assign mem_clka = clock; // @[DualPortMem.scala 166:30]
-  assign mem_wea = io_portA_write_enable; // @[DualPortMem.scala 170:20]
-  assign mem_ena = ~reset; // @[DualPortMem.scala 167:23]
-  assign mem_addra = io_portA_address; // @[DualPortMem.scala 168:22]
-  assign mem_dia = {mem_io_dia_hi,mem_io_dia_lo}; // @[DualPortMem.scala 171:51]
-  assign mem_clkb = clock; // @[DualPortMem.scala 173:30]
-  assign mem_web = io_portB_write_enable; // @[DualPortMem.scala 177:20]
-  assign mem_enb = ~reset; // @[DualPortMem.scala 174:23]
-  assign mem_addrb = io_portB_address; // @[DualPortMem.scala 175:22]
-  assign mem_dib = {mem_io_dib_hi,mem_io_dib_lo}; // @[DualPortMem.scala 178:51]
-endmodule
-module DualPortMem_1(
-  input         clock,
-  input         reset,
-  output        io_portA_control_ready,
-  input         io_portA_control_valid,
-  input         io_portA_control_bits_write,
-  input  [12:0] io_portA_control_bits_address,
-  output        io_portA_input_ready,
-  input         io_portA_input_valid,
-  input  [15:0] io_portA_input_bits_0,
-  input  [15:0] io_portA_input_bits_1,
-  input  [15:0] io_portA_input_bits_2,
-  input  [15:0] io_portA_input_bits_3,
-  input  [15:0] io_portA_input_bits_4,
-  input  [15:0] io_portA_input_bits_5,
-  input  [15:0] io_portA_input_bits_6,
-  input  [15:0] io_portA_input_bits_7,
-  input         io_portA_output_ready,
-  output        io_portA_output_valid,
-  output [15:0] io_portA_output_bits_0,
-  output [15:0] io_portA_output_bits_1,
-  output [15:0] io_portA_output_bits_2,
-  output [15:0] io_portA_output_bits_3,
-  output [15:0] io_portA_output_bits_4,
-  output [15:0] io_portA_output_bits_5,
-  output [15:0] io_portA_output_bits_6,
-  output [15:0] io_portA_output_bits_7,
-  output        io_portB_control_ready,
-  input         io_portB_control_valid,
-  input         io_portB_control_bits_write,
-  input  [12:0] io_portB_control_bits_address,
-  output        io_portB_input_ready,
-  input         io_portB_input_valid,
-  input  [15:0] io_portB_input_bits_0,
-  input  [15:0] io_portB_input_bits_1,
-  input  [15:0] io_portB_input_bits_2,
-  input  [15:0] io_portB_input_bits_3,
-  input  [15:0] io_portB_input_bits_4,
-  input  [15:0] io_portB_input_bits_5,
-  input  [15:0] io_portB_input_bits_6,
-  input  [15:0] io_portB_input_bits_7,
-  input         io_portB_output_ready,
-  output        io_portB_output_valid,
-  output [15:0] io_portB_output_bits_0,
-  output [15:0] io_portB_output_bits_1,
-  output [15:0] io_portB_output_bits_2,
-  output [15:0] io_portB_output_bits_3,
-  output [15:0] io_portB_output_bits_4,
-  output [15:0] io_portB_output_bits_5,
-  output [15:0] io_portB_output_bits_6,
-  output [15:0] io_portB_output_bits_7,
-  input         io_tracepoint,
-  input  [31:0] io_programCounter
-);
-`ifdef RANDOMIZE_REG_INIT
-  reg [31:0] _RAND_0;
-  reg [31:0] _RAND_1;
-`endif // RANDOMIZE_REG_INIT
-  wire  mem_clock; // @[DualPortMem.scala 34:19]
-  wire  mem_reset; // @[DualPortMem.scala 34:19]
-  wire [12:0] mem_io_portA_address; // @[DualPortMem.scala 34:19]
-  wire  mem_io_portA_read_enable; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_0; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_1; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_2; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_3; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_4; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_5; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_6; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_read_data_7; // @[DualPortMem.scala 34:19]
-  wire  mem_io_portA_write_enable; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_0; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_1; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_2; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_3; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_4; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_5; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_6; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portA_write_data_7; // @[DualPortMem.scala 34:19]
-  wire [12:0] mem_io_portB_address; // @[DualPortMem.scala 34:19]
-  wire  mem_io_portB_read_enable; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_0; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_1; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_2; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_3; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_4; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_5; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_6; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_read_data_7; // @[DualPortMem.scala 34:19]
-  wire  mem_io_portB_write_enable; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_0; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_1; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_2; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_3; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_4; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_5; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_6; // @[DualPortMem.scala 34:19]
-  wire [15:0] mem_io_portB_write_data_7; // @[DualPortMem.scala 34:19]
-  wire  output__clock; // @[DualPortMem.scala 49:24]
-  wire  output__reset; // @[DualPortMem.scala 49:24]
-  wire  output__io_enq_ready; // @[DualPortMem.scala 49:24]
-  wire  output__io_enq_valid; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_0; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_1; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_2; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_3; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_4; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_5; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_6; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_enq_bits_7; // @[DualPortMem.scala 49:24]
-  wire  output__io_deq_ready; // @[DualPortMem.scala 49:24]
-  wire  output__io_deq_valid; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_0; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_1; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_2; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_3; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_4; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_5; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_6; // @[DualPortMem.scala 49:24]
-  wire [15:0] output__io_deq_bits_7; // @[DualPortMem.scala 49:24]
-  wire [1:0] output__io_count; // @[DualPortMem.scala 49:24]
-  wire  output_1_clock; // @[DualPortMem.scala 49:24]
-  wire  output_1_reset; // @[DualPortMem.scala 49:24]
-  wire  output_1_io_enq_ready; // @[DualPortMem.scala 49:24]
-  wire  output_1_io_enq_valid; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_0; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_1; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_2; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_3; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_4; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_5; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_6; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_enq_bits_7; // @[DualPortMem.scala 49:24]
-  wire  output_1_io_deq_ready; // @[DualPortMem.scala 49:24]
-  wire  output_1_io_deq_valid; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_0; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_1; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_2; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_3; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_4; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_5; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_6; // @[DualPortMem.scala 49:24]
-  wire [15:0] output_1_io_deq_bits_7; // @[DualPortMem.scala 49:24]
-  wire [1:0] output_1_io_count; // @[DualPortMem.scala 49:24]
-  wire  outputReady = output__io_count < 2'h2; // @[DualPortMem.scala 56:39]
-  reg  output_io_enq_valid_sr_0; // @[ShiftRegister.scala 10:22]
-  wire  outputReady_1 = output_1_io_count < 2'h2; // @[DualPortMem.scala 56:39]
-  reg  output_io_enq_valid_sr_1_0; // @[ShiftRegister.scala 10:22]
-  InnerDualPortMem_1 mem ( // @[DualPortMem.scala 34:19]
-    .clock(mem_clock),
-    .reset(mem_reset),
-    .io_portA_address(mem_io_portA_address),
-    .io_portA_read_enable(mem_io_portA_read_enable),
-    .io_portA_read_data_0(mem_io_portA_read_data_0),
-    .io_portA_read_data_1(mem_io_portA_read_data_1),
-    .io_portA_read_data_2(mem_io_portA_read_data_2),
-    .io_portA_read_data_3(mem_io_portA_read_data_3),
-    .io_portA_read_data_4(mem_io_portA_read_data_4),
-    .io_portA_read_data_5(mem_io_portA_read_data_5),
-    .io_portA_read_data_6(mem_io_portA_read_data_6),
-    .io_portA_read_data_7(mem_io_portA_read_data_7),
-    .io_portA_write_enable(mem_io_portA_write_enable),
-    .io_portA_write_data_0(mem_io_portA_write_data_0),
-    .io_portA_write_data_1(mem_io_portA_write_data_1),
-    .io_portA_write_data_2(mem_io_portA_write_data_2),
-    .io_portA_write_data_3(mem_io_portA_write_data_3),
-    .io_portA_write_data_4(mem_io_portA_write_data_4),
-    .io_portA_write_data_5(mem_io_portA_write_data_5),
-    .io_portA_write_data_6(mem_io_portA_write_data_6),
-    .io_portA_write_data_7(mem_io_portA_write_data_7),
-    .io_portB_address(mem_io_portB_address),
-    .io_portB_read_enable(mem_io_portB_read_enable),
-    .io_portB_read_data_0(mem_io_portB_read_data_0),
-    .io_portB_read_data_1(mem_io_portB_read_data_1),
-    .io_portB_read_data_2(mem_io_portB_read_data_2),
-    .io_portB_read_data_3(mem_io_portB_read_data_3),
-    .io_portB_read_data_4(mem_io_portB_read_data_4),
-    .io_portB_read_data_5(mem_io_portB_read_data_5),
-    .io_portB_read_data_6(mem_io_portB_read_data_6),
-    .io_portB_read_data_7(mem_io_portB_read_data_7),
-    .io_portB_write_enable(mem_io_portB_write_enable),
-    .io_portB_write_data_0(mem_io_portB_write_data_0),
-    .io_portB_write_data_1(mem_io_portB_write_data_1),
-    .io_portB_write_data_2(mem_io_portB_write_data_2),
-    .io_portB_write_data_3(mem_io_portB_write_data_3),
-    .io_portB_write_data_4(mem_io_portB_write_data_4),
-    .io_portB_write_data_5(mem_io_portB_write_data_5),
-    .io_portB_write_data_6(mem_io_portB_write_data_6),
-    .io_portB_write_data_7(mem_io_portB_write_data_7)
-  );
-  Queue_7 output_ ( // @[DualPortMem.scala 49:24]
-    .clock(output__clock),
-    .reset(output__reset),
-    .io_enq_ready(output__io_enq_ready),
-    .io_enq_valid(output__io_enq_valid),
-    .io_enq_bits_0(output__io_enq_bits_0),
-    .io_enq_bits_1(output__io_enq_bits_1),
-    .io_enq_bits_2(output__io_enq_bits_2),
-    .io_enq_bits_3(output__io_enq_bits_3),
-    .io_enq_bits_4(output__io_enq_bits_4),
-    .io_enq_bits_5(output__io_enq_bits_5),
-    .io_enq_bits_6(output__io_enq_bits_6),
-    .io_enq_bits_7(output__io_enq_bits_7),
-    .io_deq_ready(output__io_deq_ready),
-    .io_deq_valid(output__io_deq_valid),
-    .io_deq_bits_0(output__io_deq_bits_0),
-    .io_deq_bits_1(output__io_deq_bits_1),
-    .io_deq_bits_2(output__io_deq_bits_2),
-    .io_deq_bits_3(output__io_deq_bits_3),
-    .io_deq_bits_4(output__io_deq_bits_4),
-    .io_deq_bits_5(output__io_deq_bits_5),
-    .io_deq_bits_6(output__io_deq_bits_6),
-    .io_deq_bits_7(output__io_deq_bits_7),
-    .io_count(output__io_count)
-  );
-  Queue_7 output_1 ( // @[DualPortMem.scala 49:24]
-    .clock(output_1_clock),
-    .reset(output_1_reset),
-    .io_enq_ready(output_1_io_enq_ready),
-    .io_enq_valid(output_1_io_enq_valid),
-    .io_enq_bits_0(output_1_io_enq_bits_0),
-    .io_enq_bits_1(output_1_io_enq_bits_1),
-    .io_enq_bits_2(output_1_io_enq_bits_2),
-    .io_enq_bits_3(output_1_io_enq_bits_3),
-    .io_enq_bits_4(output_1_io_enq_bits_4),
-    .io_enq_bits_5(output_1_io_enq_bits_5),
-    .io_enq_bits_6(output_1_io_enq_bits_6),
-    .io_enq_bits_7(output_1_io_enq_bits_7),
-    .io_deq_ready(output_1_io_deq_ready),
-    .io_deq_valid(output_1_io_deq_valid),
-    .io_deq_bits_0(output_1_io_deq_bits_0),
-    .io_deq_bits_1(output_1_io_deq_bits_1),
-    .io_deq_bits_2(output_1_io_deq_bits_2),
-    .io_deq_bits_3(output_1_io_deq_bits_3),
-    .io_deq_bits_4(output_1_io_deq_bits_4),
-    .io_deq_bits_5(output_1_io_deq_bits_5),
-    .io_deq_bits_6(output_1_io_deq_bits_6),
-    .io_deq_bits_7(output_1_io_deq_bits_7),
-    .io_count(output_1_io_count)
-  );
-  assign io_portA_control_ready = io_portA_control_bits_write ? io_portA_input_valid : outputReady; // @[DualPortMem.scala 60:30 DualPortMem.scala 61:21 DualPortMem.scala 65:21]
-  assign io_portA_input_ready = io_portA_control_valid & io_portA_control_bits_write; // @[DualPortMem.scala 76:34]
-  assign io_portA_output_valid = output__io_deq_valid; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_0 = output__io_deq_bits_0; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_1 = output__io_deq_bits_1; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_2 = output__io_deq_bits_2; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_3 = output__io_deq_bits_3; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_4 = output__io_deq_bits_4; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_5 = output__io_deq_bits_5; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_6 = output__io_deq_bits_6; // @[DualPortMem.scala 73:17]
-  assign io_portA_output_bits_7 = output__io_deq_bits_7; // @[DualPortMem.scala 73:17]
-  assign io_portB_control_ready = io_portB_control_bits_write ? io_portB_input_valid : outputReady_1; // @[DualPortMem.scala 60:30 DualPortMem.scala 61:21 DualPortMem.scala 65:21]
-  assign io_portB_input_ready = io_portB_control_valid & io_portB_control_bits_write; // @[DualPortMem.scala 76:34]
-  assign io_portB_output_valid = output_1_io_deq_valid; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_0 = output_1_io_deq_bits_0; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_1 = output_1_io_deq_bits_1; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_2 = output_1_io_deq_bits_2; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_3 = output_1_io_deq_bits_3; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_4 = output_1_io_deq_bits_4; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_5 = output_1_io_deq_bits_5; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_6 = output_1_io_deq_bits_6; // @[DualPortMem.scala 73:17]
-  assign io_portB_output_bits_7 = output_1_io_deq_bits_7; // @[DualPortMem.scala 73:17]
-  assign mem_clock = clock;
-  assign mem_reset = reset;
-  assign mem_io_portA_address = io_portA_control_bits_address; // @[DualPortMem.scala 58:19]
-  assign mem_io_portA_read_enable = io_portA_control_bits_write ? 1'h0 : io_portA_control_valid & outputReady; // @[DualPortMem.scala 60:30 DualPortMem.scala 63:25 DualPortMem.scala 67:25]
-  assign mem_io_portA_write_enable = io_portA_control_bits_write & (io_portA_control_valid & io_portA_input_valid); // @[DualPortMem.scala 60:30 DualPortMem.scala 62:26 DualPortMem.scala 66:26]
-  assign mem_io_portA_write_data_0 = io_portA_input_bits_0; // @[DualPortMem.scala 75:22]
-  assign mem_io_portA_write_data_1 = io_portA_input_bits_1; // @[DualPortMem.scala 75:22]
-  assign mem_io_portA_write_data_2 = io_portA_input_bits_2; // @[DualPortMem.scala 75:22]
-  assign mem_io_portA_write_data_3 = io_portA_input_bits_3; // @[DualPortMem.scala 75:22]
-  assign mem_io_portA_write_data_4 = io_portA_input_bits_4; // @[DualPortMem.scala 75:22]
-  assign mem_io_portA_write_data_5 = io_portA_input_bits_5; // @[DualPortMem.scala 75:22]
-  assign mem_io_portA_write_data_6 = io_portA_input_bits_6; // @[DualPortMem.scala 75:22]
-  assign mem_io_portA_write_data_7 = io_portA_input_bits_7; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_address = io_portB_control_bits_address; // @[DualPortMem.scala 58:19]
-  assign mem_io_portB_read_enable = io_portB_control_bits_write ? 1'h0 : io_portB_control_valid & outputReady_1; // @[DualPortMem.scala 60:30 DualPortMem.scala 63:25 DualPortMem.scala 67:25]
-  assign mem_io_portB_write_enable = io_portB_control_bits_write & (io_portB_control_valid & io_portB_input_valid); // @[DualPortMem.scala 60:30 DualPortMem.scala 62:26 DualPortMem.scala 66:26]
-  assign mem_io_portB_write_data_0 = io_portB_input_bits_0; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_write_data_1 = io_portB_input_bits_1; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_write_data_2 = io_portB_input_bits_2; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_write_data_3 = io_portB_input_bits_3; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_write_data_4 = io_portB_input_bits_4; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_write_data_5 = io_portB_input_bits_5; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_write_data_6 = io_portB_input_bits_6; // @[DualPortMem.scala 75:22]
-  assign mem_io_portB_write_data_7 = io_portB_input_bits_7; // @[DualPortMem.scala 75:22]
-  assign output__clock = clock;
-  assign output__reset = reset;
-  assign output__io_enq_valid = output_io_enq_valid_sr_0; // @[DualPortMem.scala 71:25]
-  assign output__io_enq_bits_0 = mem_io_portA_read_data_0; // @[DualPortMem.scala 70:24]
-  assign output__io_enq_bits_1 = mem_io_portA_read_data_1; // @[DualPortMem.scala 70:24]
-  assign output__io_enq_bits_2 = mem_io_portA_read_data_2; // @[DualPortMem.scala 70:24]
-  assign output__io_enq_bits_3 = mem_io_portA_read_data_3; // @[DualPortMem.scala 70:24]
-  assign output__io_enq_bits_4 = mem_io_portA_read_data_4; // @[DualPortMem.scala 70:24]
-  assign output__io_enq_bits_5 = mem_io_portA_read_data_5; // @[DualPortMem.scala 70:24]
-  assign output__io_enq_bits_6 = mem_io_portA_read_data_6; // @[DualPortMem.scala 70:24]
-  assign output__io_enq_bits_7 = mem_io_portA_read_data_7; // @[DualPortMem.scala 70:24]
-  assign output__io_deq_ready = io_portA_output_ready; // @[DualPortMem.scala 73:17]
-  assign output_1_clock = clock;
-  assign output_1_reset = reset;
-  assign output_1_io_enq_valid = output_io_enq_valid_sr_1_0; // @[DualPortMem.scala 71:25]
-  assign output_1_io_enq_bits_0 = mem_io_portB_read_data_0; // @[DualPortMem.scala 70:24]
-  assign output_1_io_enq_bits_1 = mem_io_portB_read_data_1; // @[DualPortMem.scala 70:24]
-  assign output_1_io_enq_bits_2 = mem_io_portB_read_data_2; // @[DualPortMem.scala 70:24]
-  assign output_1_io_enq_bits_3 = mem_io_portB_read_data_3; // @[DualPortMem.scala 70:24]
-  assign output_1_io_enq_bits_4 = mem_io_portB_read_data_4; // @[DualPortMem.scala 70:24]
-  assign output_1_io_enq_bits_5 = mem_io_portB_read_data_5; // @[DualPortMem.scala 70:24]
-  assign output_1_io_enq_bits_6 = mem_io_portB_read_data_6; // @[DualPortMem.scala 70:24]
-  assign output_1_io_enq_bits_7 = mem_io_portB_read_data_7; // @[DualPortMem.scala 70:24]
-  assign output_1_io_deq_ready = io_portB_output_ready; // @[DualPortMem.scala 73:17]
-  always @(posedge clock) begin
-    if (reset) begin // @[ShiftRegister.scala 10:22]
-      output_io_enq_valid_sr_0 <= 1'h0; // @[ShiftRegister.scala 10:22]
-    end else begin
-      output_io_enq_valid_sr_0 <= mem_io_portA_read_enable; // @[ShiftRegister.scala 25:12]
-    end
-    if (reset) begin // @[ShiftRegister.scala 10:22]
-      output_io_enq_valid_sr_1_0 <= 1'h0; // @[ShiftRegister.scala 10:22]
-    end else begin
-      output_io_enq_valid_sr_1_0 <= mem_io_portB_read_enable; // @[ShiftRegister.scala 25:12]
-    end
-  end
-// Register and memory initialization
-`ifdef RANDOMIZE_GARBAGE_ASSIGN
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_INVALID_ASSIGN
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_REG_INIT
-`define RANDOMIZE
-`endif
-`ifdef RANDOMIZE_MEM_INIT
-`define RANDOMIZE
-`endif
-`ifndef RANDOM
-`define RANDOM $random
-`endif
-`ifdef RANDOMIZE_MEM_INIT
-  integer initvar;
-`endif
-`ifndef SYNTHESIS
-`ifdef FIRRTL_BEFORE_INITIAL
-`FIRRTL_BEFORE_INITIAL
-`endif
-initial begin
-  `ifdef RANDOMIZE
-    `ifdef INIT_RANDOM
-      `INIT_RANDOM
-    `endif
-    `ifndef VERILATOR
-      `ifdef RANDOMIZE_DELAY
-        #`RANDOMIZE_DELAY begin end
-      `else
-        #0.002 begin end
-      `endif
-    `endif
-`ifdef RANDOMIZE_REG_INIT
-  _RAND_0 = {1{`RANDOM}};
-  output_io_enq_valid_sr_0 = _RAND_0[0:0];
-  _RAND_1 = {1{`RANDOM}};
-  output_io_enq_valid_sr_1_0 = _RAND_1[0:0];
-`endif // RANDOMIZE_REG_INIT
-  `endif // RANDOMIZE
-end // initial
-`ifdef FIRRTL_AFTER_INITIAL
-`FIRRTL_AFTER_INITIAL
-`endif
-`endif // SYNTHESIS
-endmodule
 module Demux_4(
   output        io_in_ready,
   input         io_in_valid,
@@ -11060,20 +10469,20 @@ module Demux_4(
   assign io_out_2_bits_7 = 2'h2 == io_sel_bits ? $signed(io_in_bits_7) : $signed(16'sh0); // @[Demux.scala 32:12 Demux.scala 32:12 Demux.scala 27:14]
 endmodule
 module SizeHandler_3(
-  input         clock,
-  input         reset,
-  output        io_in_ready,
-  input         io_in_valid,
-  input         io_in_bits_sel,
-  input  [12:0] io_in_bits_size,
-  input         io_out_ready,
-  output        io_out_valid,
-  output        io_out_bits_sel
+  input        clock,
+  input        reset,
+  output       io_in_ready,
+  input        io_in_valid,
+  input        io_in_bits_sel,
+  input  [5:0] io_in_bits_size,
+  input        io_out_ready,
+  output       io_out_valid,
+  output       io_out_bits_sel
 );
   wire  sizeCounter_clock; // @[Counter.scala 34:19]
   wire  sizeCounter_reset; // @[Counter.scala 34:19]
   wire  sizeCounter_io_value_ready; // @[Counter.scala 34:19]
-  wire [12:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
+  wire [5:0] sizeCounter_io_value_bits; // @[Counter.scala 34:19]
   wire  sizeCounter_io_resetValue; // @[Counter.scala 34:19]
   wire  fire = io_in_valid & io_out_ready; // @[SizeHandler.scala 32:23]
   Counter_2 sizeCounter ( // @[Counter.scala 34:19]
@@ -11097,7 +10506,7 @@ module LocalRouter(
   output        io_control_ready,
   input         io_control_valid,
   input  [3:0]  io_control_bits_kind,
-  input  [12:0] io_control_bits_size,
+  input  [5:0]  io_control_bits_size,
   output        io_mem_output_ready,
   input         io_mem_output_valid,
   input  [15:0] io_mem_output_bits_0,
@@ -11286,7 +10695,7 @@ module LocalRouter(
   wire  sizeHandler_io_in_ready; // @[package.scala 31:29]
   wire  sizeHandler_io_in_valid; // @[package.scala 31:29]
   wire [1:0] sizeHandler_io_in_bits_kind; // @[package.scala 31:29]
-  wire [12:0] sizeHandler_io_in_bits_size; // @[package.scala 31:29]
+  wire [5:0] sizeHandler_io_in_bits_size; // @[package.scala 31:29]
   wire  sizeHandler_io_out_ready; // @[package.scala 31:29]
   wire  sizeHandler_io_out_valid; // @[package.scala 31:29]
   wire [1:0] sizeHandler_io_out_bits_kind; // @[package.scala 31:29]
@@ -11295,7 +10704,7 @@ module LocalRouter(
   wire  sizeHandler_1_io_in_ready; // @[package.scala 31:29]
   wire  sizeHandler_1_io_in_valid; // @[package.scala 31:29]
   wire  sizeHandler_1_io_in_bits_sel; // @[package.scala 31:29]
-  wire [12:0] sizeHandler_1_io_in_bits_size; // @[package.scala 31:29]
+  wire [5:0] sizeHandler_1_io_in_bits_size; // @[package.scala 31:29]
   wire  sizeHandler_1_io_out_ready; // @[package.scala 31:29]
   wire  sizeHandler_1_io_out_valid; // @[package.scala 31:29]
   wire  sizeHandler_1_io_out_bits_sel; // @[package.scala 31:29]
@@ -11304,7 +10713,7 @@ module LocalRouter(
   wire  sizeHandler_2_io_in_ready; // @[package.scala 31:29]
   wire  sizeHandler_2_io_in_valid; // @[package.scala 31:29]
   wire  sizeHandler_2_io_in_bits_sel; // @[package.scala 31:29]
-  wire [12:0] sizeHandler_2_io_in_bits_size; // @[package.scala 31:29]
+  wire [5:0] sizeHandler_2_io_in_bits_size; // @[package.scala 31:29]
   wire  sizeHandler_2_io_out_ready; // @[package.scala 31:29]
   wire  sizeHandler_2_io_out_valid; // @[package.scala 31:29]
   wire  sizeHandler_2_io_out_bits_sel; // @[package.scala 31:29]
@@ -11327,7 +10736,7 @@ module LocalRouter(
   wire  _GEN_0 = _T_4 & io_control_valid; // @[LocalRouter.scala 150:5 MultiEnqueue.scala 84:17 MultiEnqueue.scala 40:17]
   wire  io_control_ready_sizeHandler_io_in_w_5_ready = sizeHandler_io_in_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 85:10]
   wire  _GEN_1 = _T_4 & io_control_ready_sizeHandler_io_in_w_5_ready; // @[LocalRouter.scala 150:5 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [12:0] _GEN_2 = _T_4 ? io_control_bits_size : 13'h0; // @[LocalRouter.scala 150:5 MultiEnqueue.scala 85:10 package.scala 409:14]
+  wire [5:0] _GEN_2 = _T_4 ? io_control_bits_size : 6'h0; // @[LocalRouter.scala 150:5 MultiEnqueue.scala 85:10 package.scala 409:14]
   wire [1:0] _GEN_3 = _T_4 ? 2'h2 : 2'h0; // @[LocalRouter.scala 150:5 MultiEnqueue.scala 85:10 package.scala 409:14]
   wire  io_control_ready_sizeHandler_io_in_w_5_valid = enqueuer2_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_4 = _T_4 & io_control_ready_sizeHandler_io_in_w_5_valid; // @[LocalRouter.scala 150:5 MultiEnqueue.scala 85:10 package.scala 410:15]
@@ -11339,13 +10748,13 @@ module LocalRouter(
   wire  _GEN_10 = io_control_bits_kind == 4'h4 & io_control_valid; // @[LocalRouter.scala 142:78 MultiEnqueue.scala 60:17 MultiEnqueue.scala 40:17]
   wire  io_control_ready_sizeHandler_io_in_w_4_ready = sizeHandler_1_io_in_ready; // @[ReadyValid.scala 16:17 MultiEnqueue.scala 61:10]
   wire  _GEN_11 = io_control_bits_kind == 4'h4 & io_control_ready_sizeHandler_io_in_w_4_ready; // @[LocalRouter.scala 142:78 ReadyValid.scala 19:11 MultiEnqueue.scala 42:18]
-  wire [12:0] _GEN_12 = io_control_bits_kind == 4'h4 ? io_control_bits_size : 13'h0; // @[LocalRouter.scala 142:78 MultiEnqueue.scala 61:10 package.scala 409:14]
+  wire [5:0] _GEN_12 = io_control_bits_kind == 4'h4 ? io_control_bits_size : 6'h0; // @[LocalRouter.scala 142:78 MultiEnqueue.scala 61:10 package.scala 409:14]
   wire  io_control_ready_sizeHandler_io_in_w_4_valid = enqueuer1_io_out_0_valid; // @[ReadyValid.scala 16:17 ReadyValid.scala 18:13]
   wire  _GEN_14 = io_control_bits_kind == 4'h4 & io_control_ready_sizeHandler_io_in_w_4_valid; // @[LocalRouter.scala 142:78 MultiEnqueue.scala 61:10 package.scala 410:15]
   wire  _GEN_15 = io_control_bits_kind == 4'h4 ? enqueuer1_io_in_ready : _GEN_9; // @[LocalRouter.scala 142:78 LocalRouter.scala 143:19]
   wire  _GEN_16 = io_control_bits_kind == 4'h4 ? 1'h0 : _GEN_0; // @[LocalRouter.scala 142:78 MultiEnqueue.scala 40:17]
   wire  _GEN_17 = io_control_bits_kind == 4'h4 ? 1'h0 : _GEN_1; // @[LocalRouter.scala 142:78 MultiEnqueue.scala 42:18]
-  wire [12:0] _GEN_18 = io_control_bits_kind == 4'h4 ? 13'h0 : _GEN_2; // @[LocalRouter.scala 142:78 package.scala 409:14]
+  wire [5:0] _GEN_18 = io_control_bits_kind == 4'h4 ? 6'h0 : _GEN_2; // @[LocalRouter.scala 142:78 package.scala 409:14]
   wire [1:0] _GEN_19 = io_control_bits_kind == 4'h4 ? 2'h0 : _GEN_3; // @[LocalRouter.scala 142:78 package.scala 409:14]
   wire  _GEN_20 = io_control_bits_kind == 4'h4 ? 1'h0 : _GEN_4; // @[LocalRouter.scala 142:78 package.scala 410:15]
   wire  _GEN_21 = io_control_bits_kind == 4'h4 ? 1'h0 : _GEN_5; // @[LocalRouter.scala 142:78 MultiEnqueue.scala 42:18]
@@ -11353,32 +10762,32 @@ module LocalRouter(
   wire  _GEN_24 = io_control_bits_kind == 4'h4 ? 1'h0 : _GEN_8; // @[LocalRouter.scala 142:78 package.scala 410:15]
   wire  _GEN_25 = io_control_bits_kind == 4'h3 ? io_control_valid : _GEN_10; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 60:17]
   wire  _GEN_26 = io_control_bits_kind == 4'h3 ? io_control_ready_sizeHandler_io_in_w_6_ready : _GEN_11; // @[LocalRouter.scala 136:70 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_27 = io_control_bits_kind == 4'h3 ? io_control_bits_size : _GEN_18; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 61:10]
+  wire [5:0] _GEN_27 = io_control_bits_kind == 4'h3 ? io_control_bits_size : _GEN_18; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 61:10]
   wire  _GEN_28 = io_control_bits_kind == 4'h3 ? 1'h0 : _GEN_23; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 61:10]
   wire  _GEN_29 = io_control_bits_kind == 4'h3 ? io_control_ready_sizeHandler_io_in_w_4_valid : _GEN_24; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 61:10]
   wire  _GEN_30 = io_control_bits_kind == 4'h3 ? enqueuer1_io_in_ready : _GEN_15; // @[LocalRouter.scala 136:70 LocalRouter.scala 137:19]
-  wire [12:0] _GEN_31 = io_control_bits_kind == 4'h3 ? 13'h0 : _GEN_12; // @[LocalRouter.scala 136:70 package.scala 409:14]
+  wire [5:0] _GEN_31 = io_control_bits_kind == 4'h3 ? 6'h0 : _GEN_12; // @[LocalRouter.scala 136:70 package.scala 409:14]
   wire  _GEN_32 = io_control_bits_kind == 4'h3 ? 1'h0 : _T_3; // @[LocalRouter.scala 136:70 package.scala 409:14]
   wire  _GEN_33 = io_control_bits_kind == 4'h3 ? 1'h0 : _GEN_14; // @[LocalRouter.scala 136:70 package.scala 410:15]
   wire  _GEN_34 = io_control_bits_kind == 4'h3 ? 1'h0 : _GEN_16; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 40:17]
   wire  _GEN_35 = io_control_bits_kind == 4'h3 ? 1'h0 : _GEN_17; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 42:18]
-  wire [12:0] _GEN_36 = io_control_bits_kind == 4'h3 ? 13'h0 : _GEN_18; // @[LocalRouter.scala 136:70 package.scala 409:14]
+  wire [5:0] _GEN_36 = io_control_bits_kind == 4'h3 ? 6'h0 : _GEN_18; // @[LocalRouter.scala 136:70 package.scala 409:14]
   wire [1:0] _GEN_37 = io_control_bits_kind == 4'h3 ? 2'h0 : _GEN_19; // @[LocalRouter.scala 136:70 package.scala 409:14]
   wire  _GEN_38 = io_control_bits_kind == 4'h3 ? 1'h0 : _GEN_20; // @[LocalRouter.scala 136:70 package.scala 410:15]
   wire  _GEN_39 = io_control_bits_kind == 4'h3 ? 1'h0 : _GEN_21; // @[LocalRouter.scala 136:70 MultiEnqueue.scala 42:18]
   wire  _GEN_40 = io_control_bits_kind == 4'h2 ? io_control_valid : _GEN_34; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 84:17]
   wire  _GEN_41 = io_control_bits_kind == 4'h2 ? io_control_ready_sizeHandler_io_in_w_5_ready : _GEN_35; // @[LocalRouter.scala 128:78 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_42 = io_control_bits_kind == 4'h2 ? io_control_bits_size : _GEN_36; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 85:10]
+  wire [5:0] _GEN_42 = io_control_bits_kind == 4'h2 ? io_control_bits_size : _GEN_36; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 85:10]
   wire [1:0] _GEN_43 = io_control_bits_kind == 4'h2 ? 2'h1 : _GEN_37; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 85:10]
   wire  _GEN_44 = io_control_bits_kind == 4'h2 ? io_control_ready_sizeHandler_io_in_w_5_valid : _GEN_38; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 85:10]
   wire  _GEN_45 = io_control_bits_kind == 4'h2 ? io_control_ready_sizeHandler_io_in_w_6_ready : _GEN_39; // @[LocalRouter.scala 128:78 ReadyValid.scala 19:11]
-  wire [12:0] _GEN_46 = io_control_bits_kind == 4'h2 ? io_control_bits_size : _GEN_27; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 86:10]
+  wire [5:0] _GEN_46 = io_control_bits_kind == 4'h2 ? io_control_bits_size : _GEN_27; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 86:10]
   wire  _GEN_47 = io_control_bits_kind == 4'h2 ? 1'h0 : _GEN_28; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 86:10]
   wire  _GEN_48 = io_control_bits_kind == 4'h2 ? io_control_ready_sizeHandler_io_in_w_6_valid : _GEN_29; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 86:10]
   wire  _GEN_49 = io_control_bits_kind == 4'h2 ? enqueuer2_io_in_ready : _GEN_30; // @[LocalRouter.scala 128:78 LocalRouter.scala 129:19]
   wire  _GEN_50 = io_control_bits_kind == 4'h2 ? 1'h0 : _GEN_25; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 40:17]
   wire  _GEN_51 = io_control_bits_kind == 4'h2 ? 1'h0 : _GEN_26; // @[LocalRouter.scala 128:78 MultiEnqueue.scala 42:18]
-  wire [12:0] _GEN_52 = io_control_bits_kind == 4'h2 ? 13'h0 : _GEN_31; // @[LocalRouter.scala 128:78 package.scala 409:14]
+  wire [5:0] _GEN_52 = io_control_bits_kind == 4'h2 ? 6'h0 : _GEN_31; // @[LocalRouter.scala 128:78 package.scala 409:14]
   wire  _GEN_53 = io_control_bits_kind == 4'h2 ? 1'h0 : _GEN_32; // @[LocalRouter.scala 128:78 package.scala 409:14]
   wire  _GEN_54 = io_control_bits_kind == 4'h2 ? 1'h0 : _GEN_33; // @[LocalRouter.scala 128:78 package.scala 410:15]
   Demux_4 memReadDataDemuxModule ( // @[LocalRouter.scala 55:38]
@@ -11654,13 +11063,13 @@ module LocalRouter(
   assign sizeHandler_1_reset = reset;
   assign sizeHandler_1_io_in_valid = io_control_bits_kind == 4'h1 ? 1'h0 : _GEN_54; // @[LocalRouter.scala 122:72 package.scala 410:15]
   assign sizeHandler_1_io_in_bits_sel = io_control_bits_kind == 4'h1 ? 1'h0 : _GEN_53; // @[LocalRouter.scala 122:72 package.scala 409:14]
-  assign sizeHandler_1_io_in_bits_size = io_control_bits_kind == 4'h1 ? 13'h0 : _GEN_52; // @[LocalRouter.scala 122:72 package.scala 409:14]
+  assign sizeHandler_1_io_in_bits_size = io_control_bits_kind == 4'h1 ? 6'h0 : _GEN_52; // @[LocalRouter.scala 122:72 package.scala 409:14]
   assign sizeHandler_1_io_out_ready = memWriteDataMuxModule_io_sel_ready; // @[package.scala 37:30]
   assign sizeHandler_2_clock = clock;
   assign sizeHandler_2_reset = reset;
   assign sizeHandler_2_io_in_valid = io_control_bits_kind == 4'h1 ? 1'h0 : _GEN_48; // @[LocalRouter.scala 122:72 package.scala 410:15]
   assign sizeHandler_2_io_in_bits_sel = io_control_bits_kind == 4'h1 ? 1'h0 : _GEN_47; // @[LocalRouter.scala 122:72 package.scala 409:14]
-  assign sizeHandler_2_io_in_bits_size = io_control_bits_kind == 4'h1 ? 13'h0 : _GEN_46; // @[LocalRouter.scala 122:72 package.scala 409:14]
+  assign sizeHandler_2_io_in_bits_size = io_control_bits_kind == 4'h1 ? 6'h0 : _GEN_46; // @[LocalRouter.scala 122:72 package.scala 409:14]
   assign sizeHandler_2_io_out_ready = accWriteDataMuxModule_io_sel_ready; // @[package.scala 37:30]
   assign enqueuer1_clock = clock;
   assign enqueuer1_reset = reset;
@@ -11943,30 +11352,30 @@ module HostRouter(
   assign dataOut_demux_io_out_1_ready = io_dram1_dataOut_ready; // @[Demux.scala 56:10]
 endmodule
 module Queue_26(
-  input         clock,
-  input         reset,
-  output        io_enq_ready,
-  input         io_enq_valid,
-  input  [3:0]  io_enq_bits_instruction_op,
-  input         io_enq_bits_instruction_sourceLeft,
-  input         io_enq_bits_instruction_sourceRight,
-  input         io_enq_bits_instruction_dest,
-  input  [10:0] io_enq_bits_readAddress,
-  input  [10:0] io_enq_bits_writeAddress,
-  input         io_enq_bits_accumulate,
-  input         io_enq_bits_write,
-  input         io_enq_bits_read,
-  input         io_deq_ready,
-  output        io_deq_valid,
-  output [3:0]  io_deq_bits_instruction_op,
-  output        io_deq_bits_instruction_sourceLeft,
-  output        io_deq_bits_instruction_sourceRight,
-  output        io_deq_bits_instruction_dest,
-  output [10:0] io_deq_bits_readAddress,
-  output [10:0] io_deq_bits_writeAddress,
-  output        io_deq_bits_accumulate,
-  output        io_deq_bits_write,
-  output        io_deq_bits_read
+  input        clock,
+  input        reset,
+  output       io_enq_ready,
+  input        io_enq_valid,
+  input  [3:0] io_enq_bits_instruction_op,
+  input        io_enq_bits_instruction_sourceLeft,
+  input        io_enq_bits_instruction_sourceRight,
+  input        io_enq_bits_instruction_dest,
+  input  [5:0] io_enq_bits_readAddress,
+  input  [5:0] io_enq_bits_writeAddress,
+  input        io_enq_bits_accumulate,
+  input        io_enq_bits_write,
+  input        io_enq_bits_read,
+  input        io_deq_ready,
+  output       io_deq_valid,
+  output [3:0] io_deq_bits_instruction_op,
+  output       io_deq_bits_instruction_sourceLeft,
+  output       io_deq_bits_instruction_sourceRight,
+  output       io_deq_bits_instruction_dest,
+  output [5:0] io_deq_bits_readAddress,
+  output [5:0] io_deq_bits_writeAddress,
+  output       io_deq_bits_accumulate,
+  output       io_deq_bits_write,
+  output       io_deq_bits_read
 );
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_0;
@@ -12012,17 +11421,17 @@ module Queue_26(
   wire  ram_instruction_dest_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_instruction_dest_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_instruction_dest_MPORT_en; // @[Decoupled.scala 218:16]
-  reg [10:0] ram_readAddress [0:1]; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_readAddress_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [5:0] ram_readAddress [0:1]; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_readAddress_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_readAddress_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_readAddress_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_readAddress_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_readAddress_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_readAddress_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_readAddress_MPORT_en; // @[Decoupled.scala 218:16]
-  reg [10:0] ram_writeAddress [0:1]; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_writeAddress_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
+  reg [5:0] ram_writeAddress [0:1]; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_writeAddress_io_deq_bits_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_writeAddress_io_deq_bits_MPORT_addr; // @[Decoupled.scala 218:16]
-  wire [10:0] ram_writeAddress_MPORT_data; // @[Decoupled.scala 218:16]
+  wire [5:0] ram_writeAddress_MPORT_data; // @[Decoupled.scala 218:16]
   wire  ram_writeAddress_MPORT_addr; // @[Decoupled.scala 218:16]
   wire  ram_writeAddress_MPORT_mask; // @[Decoupled.scala 218:16]
   wire  ram_writeAddress_MPORT_en; // @[Decoupled.scala 218:16]
@@ -12217,10 +11626,10 @@ initial begin
     ram_instruction_dest[initvar] = _RAND_3[0:0];
   _RAND_4 = {1{`RANDOM}};
   for (initvar = 0; initvar < 2; initvar = initvar+1)
-    ram_readAddress[initvar] = _RAND_4[10:0];
+    ram_readAddress[initvar] = _RAND_4[5:0];
   _RAND_5 = {1{`RANDOM}};
   for (initvar = 0; initvar < 2; initvar = initvar+1)
-    ram_writeAddress[initvar] = _RAND_5[10:0];
+    ram_writeAddress[initvar] = _RAND_5[5:0];
   _RAND_6 = {1{`RANDOM}};
   for (initvar = 0; initvar < 2; initvar = initvar+1)
     ram_accumulate[initvar] = _RAND_6[0:0];
@@ -12393,13 +11802,13 @@ module TCU(
   input         io_instruction_valid,
   input  [3:0]  io_instruction_bits_opcode,
   input  [3:0]  io_instruction_bits_flags,
-  input  [55:0] io_instruction_bits_arguments,
+  input  [47:0] io_instruction_bits_arguments,
   input         io_status_ready,
   output        io_status_valid,
   output        io_status_bits_last,
   output [3:0]  io_status_bits_bits_opcode,
   output [3:0]  io_status_bits_bits_flags,
-  output [55:0] io_status_bits_bits_arguments,
+  output [47:0] io_status_bits_bits_arguments,
   input         io_dram0_control_ready,
   output        io_dram0_control_valid,
   output        io_dram0_control_bits_write,
@@ -12465,15 +11874,15 @@ module TCU(
   wire  decoder_io_instruction_valid; // @[TCU.scala 62:23]
   wire [3:0] decoder_io_instruction_bits_opcode; // @[TCU.scala 62:23]
   wire [3:0] decoder_io_instruction_bits_flags; // @[TCU.scala 62:23]
-  wire [55:0] decoder_io_instruction_bits_arguments; // @[TCU.scala 62:23]
+  wire [47:0] decoder_io_instruction_bits_arguments; // @[TCU.scala 62:23]
   wire  decoder_io_memPortA_ready; // @[TCU.scala 62:23]
   wire  decoder_io_memPortA_valid; // @[TCU.scala 62:23]
   wire  decoder_io_memPortA_bits_write; // @[TCU.scala 62:23]
-  wire [12:0] decoder_io_memPortA_bits_address; // @[TCU.scala 62:23]
+  wire [5:0] decoder_io_memPortA_bits_address; // @[TCU.scala 62:23]
   wire  decoder_io_memPortB_ready; // @[TCU.scala 62:23]
   wire  decoder_io_memPortB_valid; // @[TCU.scala 62:23]
   wire  decoder_io_memPortB_bits_write; // @[TCU.scala 62:23]
-  wire [12:0] decoder_io_memPortB_bits_address; // @[TCU.scala 62:23]
+  wire [5:0] decoder_io_memPortB_bits_address; // @[TCU.scala 62:23]
   wire  decoder_io_dram0_ready; // @[TCU.scala 62:23]
   wire  decoder_io_dram0_valid; // @[TCU.scala 62:23]
   wire  decoder_io_dram0_bits_write; // @[TCU.scala 62:23]
@@ -12487,7 +11896,7 @@ module TCU(
   wire  decoder_io_dataflow_ready; // @[TCU.scala 62:23]
   wire  decoder_io_dataflow_valid; // @[TCU.scala 62:23]
   wire [3:0] decoder_io_dataflow_bits_kind; // @[TCU.scala 62:23]
-  wire [12:0] decoder_io_dataflow_bits_size; // @[TCU.scala 62:23]
+  wire [5:0] decoder_io_dataflow_bits_size; // @[TCU.scala 62:23]
   wire  decoder_io_hostDataflow_ready; // @[TCU.scala 62:23]
   wire  decoder_io_hostDataflow_valid; // @[TCU.scala 62:23]
   wire [1:0] decoder_io_hostDataflow_bits_kind; // @[TCU.scala 62:23]
@@ -12497,8 +11906,8 @@ module TCU(
   wire  decoder_io_acc_bits_instruction_sourceLeft; // @[TCU.scala 62:23]
   wire  decoder_io_acc_bits_instruction_sourceRight; // @[TCU.scala 62:23]
   wire  decoder_io_acc_bits_instruction_dest; // @[TCU.scala 62:23]
-  wire [10:0] decoder_io_acc_bits_readAddress; // @[TCU.scala 62:23]
-  wire [10:0] decoder_io_acc_bits_writeAddress; // @[TCU.scala 62:23]
+  wire [5:0] decoder_io_acc_bits_readAddress; // @[TCU.scala 62:23]
+  wire [5:0] decoder_io_acc_bits_writeAddress; // @[TCU.scala 62:23]
   wire  decoder_io_acc_bits_accumulate; // @[TCU.scala 62:23]
   wire  decoder_io_acc_bits_write; // @[TCU.scala 62:23]
   wire  decoder_io_acc_bits_read; // @[TCU.scala 62:23]
@@ -12515,7 +11924,7 @@ module TCU(
   wire  decoder_io_status_bits_last; // @[TCU.scala 62:23]
   wire [3:0] decoder_io_status_bits_bits_opcode; // @[TCU.scala 62:23]
   wire [3:0] decoder_io_status_bits_bits_flags; // @[TCU.scala 62:23]
-  wire [55:0] decoder_io_status_bits_bits_arguments; // @[TCU.scala 62:23]
+  wire [47:0] decoder_io_status_bits_bits_arguments; // @[TCU.scala 62:23]
   wire  decoder_io_timeout; // @[TCU.scala 62:23]
   wire  decoder_io_error; // @[TCU.scala 62:23]
   wire  decoder_io_tracepoint; // @[TCU.scala 62:23]
@@ -12584,8 +11993,8 @@ module TCU(
   wire  acc_io_control_bits_instruction_sourceLeft; // @[TCU.scala 66:19]
   wire  acc_io_control_bits_instruction_sourceRight; // @[TCU.scala 66:19]
   wire  acc_io_control_bits_instruction_dest; // @[TCU.scala 66:19]
-  wire [10:0] acc_io_control_bits_readAddress; // @[TCU.scala 66:19]
-  wire [10:0] acc_io_control_bits_writeAddress; // @[TCU.scala 66:19]
+  wire [5:0] acc_io_control_bits_readAddress; // @[TCU.scala 66:19]
+  wire [5:0] acc_io_control_bits_writeAddress; // @[TCU.scala 66:19]
   wire  acc_io_control_bits_accumulate; // @[TCU.scala 66:19]
   wire  acc_io_control_bits_write; // @[TCU.scala 66:19]
   wire  acc_io_control_bits_read; // @[TCU.scala 66:19]
@@ -12596,7 +12005,7 @@ module TCU(
   wire  mem_io_portA_control_ready; // @[TCU.scala 69:19]
   wire  mem_io_portA_control_valid; // @[TCU.scala 69:19]
   wire  mem_io_portA_control_bits_write; // @[TCU.scala 69:19]
-  wire [12:0] mem_io_portA_control_bits_address; // @[TCU.scala 69:19]
+  wire [5:0] mem_io_portA_control_bits_address; // @[TCU.scala 69:19]
   wire  mem_io_portA_input_ready; // @[TCU.scala 69:19]
   wire  mem_io_portA_input_valid; // @[TCU.scala 69:19]
   wire [15:0] mem_io_portA_input_bits_0; // @[TCU.scala 69:19]
@@ -12620,7 +12029,7 @@ module TCU(
   wire  mem_io_portB_control_ready; // @[TCU.scala 69:19]
   wire  mem_io_portB_control_valid; // @[TCU.scala 69:19]
   wire  mem_io_portB_control_bits_write; // @[TCU.scala 69:19]
-  wire [12:0] mem_io_portB_control_bits_address; // @[TCU.scala 69:19]
+  wire [5:0] mem_io_portB_control_bits_address; // @[TCU.scala 69:19]
   wire  mem_io_portB_input_ready; // @[TCU.scala 69:19]
   wire  mem_io_portB_input_valid; // @[TCU.scala 69:19]
   wire [15:0] mem_io_portB_input_bits_0; // @[TCU.scala 69:19]
@@ -12648,7 +12057,7 @@ module TCU(
   wire  router_io_control_ready; // @[TCU.scala 77:22]
   wire  router_io_control_valid; // @[TCU.scala 77:22]
   wire [3:0] router_io_control_bits_kind; // @[TCU.scala 77:22]
-  wire [12:0] router_io_control_bits_size; // @[TCU.scala 77:22]
+  wire [5:0] router_io_control_bits_size; // @[TCU.scala 77:22]
   wire  router_io_mem_output_ready; // @[TCU.scala 77:22]
   wire  router_io_mem_output_valid; // @[TCU.scala 77:22]
   wire [15:0] router_io_mem_output_bits_0; // @[TCU.scala 77:22]
@@ -12793,8 +12202,8 @@ module TCU(
   wire  acc_io_control_q_io_enq_bits_instruction_sourceLeft; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_enq_bits_instruction_sourceRight; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_enq_bits_instruction_dest; // @[TCU.scala 107:39]
-  wire [10:0] acc_io_control_q_io_enq_bits_readAddress; // @[TCU.scala 107:39]
-  wire [10:0] acc_io_control_q_io_enq_bits_writeAddress; // @[TCU.scala 107:39]
+  wire [5:0] acc_io_control_q_io_enq_bits_readAddress; // @[TCU.scala 107:39]
+  wire [5:0] acc_io_control_q_io_enq_bits_writeAddress; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_enq_bits_accumulate; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_enq_bits_write; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_enq_bits_read; // @[TCU.scala 107:39]
@@ -12804,8 +12213,8 @@ module TCU(
   wire  acc_io_control_q_io_deq_bits_instruction_sourceLeft; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_deq_bits_instruction_sourceRight; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_deq_bits_instruction_dest; // @[TCU.scala 107:39]
-  wire [10:0] acc_io_control_q_io_deq_bits_readAddress; // @[TCU.scala 107:39]
-  wire [10:0] acc_io_control_q_io_deq_bits_writeAddress; // @[TCU.scala 107:39]
+  wire [5:0] acc_io_control_q_io_deq_bits_readAddress; // @[TCU.scala 107:39]
+  wire [5:0] acc_io_control_q_io_deq_bits_writeAddress; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_deq_bits_accumulate; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_deq_bits_write; // @[TCU.scala 107:39]
   wire  acc_io_control_q_io_deq_bits_read; // @[TCU.scala 107:39]
@@ -12957,7 +12366,7 @@ module TCU(
     .io_tracepoint(acc_io_tracepoint),
     .io_programCounter(acc_io_programCounter)
   );
-  DualPortMem_1 mem ( // @[TCU.scala 69:19]
+  DualPortMem mem ( // @[TCU.scala 69:19]
     .clock(mem_clock),
     .reset(mem_reset),
     .io_portA_control_ready(mem_io_portA_control_ready),
@@ -16563,13 +15972,13 @@ module AXIWrapperTCU(
   input         instruction_valid,
   input  [3:0]  instruction_bits_opcode,
   input  [3:0]  instruction_bits_flags,
-  input  [55:0] instruction_bits_arguments,
+  input  [47:0] instruction_bits_arguments,
   input         status_ready,
   output        status_valid,
   output        status_bits_last,
   output [3:0]  status_bits_bits_opcode,
   output [3:0]  status_bits_bits_flags,
-  output [55:0] status_bits_bits_arguments,
+  output [47:0] status_bits_bits_arguments,
   input         dram0_writeAddress_ready,
   output        dram0_writeAddress_valid,
   output [5:0]  dram0_writeAddress_bits_id,
@@ -16674,13 +16083,13 @@ module AXIWrapperTCU(
   wire  tcu_io_instruction_valid; // @[AXIWrapperTCU.scala 32:19]
   wire [3:0] tcu_io_instruction_bits_opcode; // @[AXIWrapperTCU.scala 32:19]
   wire [3:0] tcu_io_instruction_bits_flags; // @[AXIWrapperTCU.scala 32:19]
-  wire [55:0] tcu_io_instruction_bits_arguments; // @[AXIWrapperTCU.scala 32:19]
+  wire [47:0] tcu_io_instruction_bits_arguments; // @[AXIWrapperTCU.scala 32:19]
   wire  tcu_io_status_ready; // @[AXIWrapperTCU.scala 32:19]
   wire  tcu_io_status_valid; // @[AXIWrapperTCU.scala 32:19]
   wire  tcu_io_status_bits_last; // @[AXIWrapperTCU.scala 32:19]
   wire [3:0] tcu_io_status_bits_bits_opcode; // @[AXIWrapperTCU.scala 32:19]
   wire [3:0] tcu_io_status_bits_bits_flags; // @[AXIWrapperTCU.scala 32:19]
-  wire [55:0] tcu_io_status_bits_bits_arguments; // @[AXIWrapperTCU.scala 32:19]
+  wire [47:0] tcu_io_status_bits_bits_arguments; // @[AXIWrapperTCU.scala 32:19]
   wire  tcu_io_dram0_control_ready; // @[AXIWrapperTCU.scala 32:19]
   wire  tcu_io_dram0_control_valid; // @[AXIWrapperTCU.scala 32:19]
   wire  tcu_io_dram0_control_bits_write; // @[AXIWrapperTCU.scala 32:19]

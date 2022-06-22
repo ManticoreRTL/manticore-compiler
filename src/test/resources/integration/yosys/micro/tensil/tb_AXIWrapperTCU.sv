@@ -8,24 +8,80 @@ module Main(input wire clk);
   localparam MEM_INIT_FILE_0 = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/integration/yosys/micro/tensil/dram0.hex";
   localparam MEM_INIT_FILE_1 = "/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/integration/yosys/micro/tensil/dram1.hex";
 
-  // Number of iterations to perform in the test. One iteration is sending some NOPS, followed by reading
-  // from DRAM1, followed by an invalid instruction. We reset the circuit after each iteration.
-  localparam C_NUM_ITERATIONS = 1;
-  localparam C_NUM_INSTRS = 2894;
+  // Number of iterations to perform in the test.
+  localparam C_NUM_ITERATIONS = 10;
 
-  localparam C_INSTR_WIDTH = 64;
+  localparam [3 : 0] TCU_OPCODE_NOOP        = 4'h0;
+  localparam [3 : 0] TCU_OPCODE_MATMUL      = 4'h1;
+  localparam [3 : 0] TCU_OPCODE_DATAMOVE    = 4'h2;
+  localparam [3 : 0] TCU_OPCODE_LOADWEIGHTS = 4'h3;
+  localparam [3 : 0] TCU_OPCODE_SIMD        = 4'h4;
+  localparam [3 : 0] TCU_OPCODE_CONFIGURE   = 4'hf;
+
+  localparam [3 : 0] TCU_FLAGS_DATAMOVE_DRAM0TOMEMORY                 = 4'h0;
+  localparam [3 : 0] TCU_FLAGS_DATAMOVE_MEMORYTODRAM0                 = 4'h1;
+  localparam [3 : 0] TCU_FLAGS_DATAMOVE_DRAM1TOMEMORY                 = 4'h2;
+  localparam [3 : 0] TCU_FLAGS_DATAMOVE_MEMORYTODRAM1                 = 4'h3;
+  localparam [3 : 0] TCU_FLAGS_DATAMOVE_ACCUMULATORTOMEMORY           = 4'hc;
+  localparam [3 : 0] TCU_FLAGS_DATAMOVE_MEMORYTOACCUMULATOR           = 4'hd;
+  localparam [3 : 0] TCU_FLAGS_DATAMOVE_MEMORYTOACCUMULATORACCUMULATE = 4'hf;
+
+  // InstructionLayout (7 bytes):
+  // 0:4   = opcode
+  // 4:8   = flags
+  // 8:16  = operand2 [1, 7] (operand 2 padding, operand 2 address size bits)
+  // 16:40 = operand1 [1, 3, 20] (operand 1 padding, stride 1 size bits, operand 1 address size bits)
+  // 40:56 = operand0 [7, 3, 6] (operand 0 padding, stride 0 size bits, operand 0 address size bits)
+  localparam C_INSTR_WIDTH = 56;
+
+  //      /--> opcode
+  //      | /--> flags
+  //      | | /--> operand 2 (1 bit padding, 7 bits address)
+  //      | | |  /--> operand 1 (1 bit padding, 3 bits stride, 20 bits address)
+  //      | | |  |      /--> operand 0 (7 bits padding, 3 bits stride, 6 bits address)
+  // 64'h 2_2_00_011000_9200
+  // 64'h 1_1_df_000000_0000
+
+  localparam C_NUM_INSTRS = 28;
   logic [C_INSTR_WIDTH - 1 : 0] INSTRS [0 : C_NUM_INSTRS - 1];
   initial begin
     $readmemh("/scratch/skashani/runtime_reconfigurable_hardware_project/code/manticore-compiler/src/test/resources/integration/yosys/micro/tensil/instrs.hex", INSTRS);
   end
 
+  localparam C_NUM_EXPECTED_DRAM0_READ_ADDRS = 2;
+  localparam C_NUM_EXPTECTED_DRAM0_WRITE_ADDRS = 3;
+  localparam C_NUM_EXPECTED_DRAM1_READ_ADDRS = 2;
+  localparam C_NUM_EXPTECTED_DRAM1_WRITE_ADDRS = 3;
+  logic [31 : 0] C_EXPECTED_DRAM0_READ_ADDRS [0 : C_NUM_EXPECTED_DRAM0_READ_ADDRS - 1];
+  logic [31 : 0] C_EXPECTED_DRAM0_WRITE_ADDRS [0 : C_NUM_EXPTECTED_DRAM0_WRITE_ADDRS - 1];
+  logic [31 : 0] C_EXPECTED_DRAM1_READ_ADDRS [0 : C_NUM_EXPECTED_DRAM1_READ_ADDRS - 1];
+  logic [31 : 0] C_EXPECTED_DRAM1_WRITE_ADDRS [0 : C_NUM_EXPTECTED_DRAM1_WRITE_ADDRS - 1];
+  initial begin
+    // Single burst read of length 1.
+    C_EXPECTED_DRAM0_READ_ADDRS[0] = 32'h00110000;
+    // Single burst read of length 1.
+    C_EXPECTED_DRAM0_READ_ADDRS[1] = 32'h00111000;
+    // Single burst write that is split into multiple smaller writes.
+    C_EXPECTED_DRAM0_WRITE_ADDRS[0] = 32'h00910040;
+    C_EXPECTED_DRAM0_WRITE_ADDRS[1] = 32'h00910080;
+    C_EXPECTED_DRAM0_WRITE_ADDRS[2] = 32'h009100C0;
+
+    // Single burst read of length 1.
+    C_EXPECTED_DRAM1_READ_ADDRS[0] = 32'h00120000;
+    // Single burst read of length 1.
+    C_EXPECTED_DRAM1_READ_ADDRS[1] = 32'h00121000;
+    // Single burst write that is split into multiple smaller writes.
+    C_EXPECTED_DRAM1_WRITE_ADDRS[0] = 32'h00920040;
+    C_EXPECTED_DRAM1_WRITE_ADDRS[1] = 32'h00920080;
+    C_EXPECTED_DRAM1_WRITE_ADDRS[2] = 32'h009200C0;
+  end
+
   logic reset = 0;
 
-  // AXI stream master (that will send instructions to DUT).
-  logic [G_DATA_WIDTH - 1 : 0] tdata;
-  logic                        tvalid;
-  wire                         tready;
-  logic                        tlast;
+  // Streaming instructions to the DUT.
+  logic [C_INSTR_WIDTH - 1 : 0] instr_data;
+  logic                         instr_valid;
+  wire                          instr_ready;
 
   // Testbench signals to interact with DUT.
   logic status_ready;
@@ -38,13 +94,13 @@ module Main(input wire clk);
   logic         dut_instruction_valid;
   logic  [3:0]  dut_instruction_bits_opcode;
   logic  [3:0]  dut_instruction_bits_flags;
-  logic  [55:0] dut_instruction_bits_arguments;
+  logic  [47:0] dut_instruction_bits_arguments;
   logic         dut_status_ready;
   wire          dut_status_valid;
   wire          dut_status_bits_last;
   wire [3:0]    dut_status_bits_bits_opcode;
   wire [3:0]    dut_status_bits_bits_flags;
-  wire [55:0]   dut_status_bits_bits_arguments;
+  wire [47:0]   dut_status_bits_bits_arguments;
   logic         dut_dram0_writeAddress_ready;
   wire          dut_dram0_writeAddress_valid;
   wire [5:0]    dut_dram0_writeAddress_bits_id;
@@ -342,10 +398,10 @@ module Main(input wire clk);
   // DUT inputs.
   assign dut_clock = clk;
   assign dut_reset = reset; // The reset is active-low for synthesis, even if the name conveys active-high! This verilog design was taken from a simulation though, so the reset is active-high.
-  assign dut_instruction_valid = tvalid;
-  assign dut_instruction_bits_opcode = tdata[63:60];
-  assign dut_instruction_bits_flags = tdata[59:56];
-  assign dut_instruction_bits_arguments = tdata[55:0];
+  assign dut_instruction_valid = instr_valid;
+  assign dut_instruction_bits_opcode = instr_data[55:52];
+  assign dut_instruction_bits_flags = instr_data[51:48];
+  assign dut_instruction_bits_arguments = instr_data[47:0];
   assign dut_status_ready = status_ready;
   assign dut_dram0_writeAddress_ready = dram0_s_awready;
   assign dut_dram0_writeData_ready = dram0_s_wready;
@@ -537,63 +593,45 @@ module Main(input wire clk);
     STATE_END = 5
   } state_t;
 
-  int reg_clk_cnt = 0, next_clk_cnt;
-
   state_t reg_state = STATE_IDLE, next_state;
   int reg_instr_cnt, next_instr_cnt;
   int reg_iteration_cnt, next_iteration_cnt;
   int reg_error_cnt, next_error_cnt;
 
-  assign tready = dut_instruction_ready;
+  assign instr_ready = dut_instruction_ready;
   assign status_ready = 1;
   assign sample_ready = 1;
 
+  // State registers.
   always_ff @(posedge clk) begin
-    reg_clk_cnt = next_clk_cnt;
-
     reg_state = next_state;
     reg_instr_cnt = next_instr_cnt;
     reg_iteration_cnt = next_iteration_cnt;
     reg_error_cnt = next_error_cnt;
 
-    if (dram0_s_awvalid && dram0_s_awready) $display("[%d] dram0 waddr 0x%x, wlen 0x%x", reg_clk_cnt, dram0_s_awaddr, dram0_s_awlen);
-    if (dram0_s_wvalid && dram0_s_wready) $display("[%d] dram0 wdata 0x%x", reg_clk_cnt, dram0_s_wdata);
-    if (dram0_s_bvalid && dram0_s_bready) $display("[%d] dram0 bresp 0x%x", reg_clk_cnt, dram0_s_bresp);
-    if (dram0_s_arvalid && dram0_s_arready) $display("[%d] dram0 raddr 0x%x, rlen 0x%x", reg_clk_cnt, dram0_s_araddr, dram0_s_arlen);
-    if (dram0_s_rvalid && dram0_s_rready) $display("[%d] dram0 rdata 0x%x, rresp 0x%x", reg_clk_cnt, dram0_s_rdata, dram0_s_rresp);
-    if (dram1_s_awvalid && dram0_s_awready) $display("[%d] dram1 waddr 0x%x, wlen 0x%x", reg_clk_cnt, dram0_s_awaddr, dram0_s_awlen);
-    if (dram0_s_wvalid && dram0_s_wready) $display("[%d] dram1 wdata 0x%x", reg_clk_cnt, dram0_s_wdata);
-    if (dram0_s_bvalid && dram0_s_bready) $display("[%d] dram1 bresp 0x%x", reg_clk_cnt, dram0_s_bresp);
-    if (dram0_s_arvalid && dram0_s_arready) $display("[%d] dram1 raddr 0x%x, rlen 0x%x", reg_clk_cnt, dram0_s_araddr, dram0_s_arlen);
-    if (dram0_s_rvalid && dram0_s_rready) $display("[%d] dram1 rdata 0x%x, rresp 0x%x", reg_clk_cnt, dram0_s_rdata, dram0_s_rresp);
-
+    // All instructions consumed by the DUT.
     if (reg_state == STATE_END) begin
-      if (reg_error_cnt == reg_iteration_cnt) begin
-        $display("pass");
-      end else begin
-        $display("fail");
-      end
+      $display("success");
       $finish;
     end
   end
 
+  // Next state logic.
   always_comb begin
     // Default values.
-    next_clk_cnt = reg_clk_cnt + 1;
     next_state = reg_state;
     next_instr_cnt = reg_instr_cnt;
     next_iteration_cnt = reg_iteration_cnt;
     next_error_cnt = reg_error_cnt;
 
     reset = 0;
-    tdata = 0;
-    tvalid = 0;
-    tlast = 0;
+
+    instr_data = 0;
+    instr_valid = 0;
 
     case (reg_state)
       STATE_IDLE:
       begin
-        next_instr_cnt = 0;
         next_iteration_cnt = 0;
         next_error_cnt = 0;
         next_state = STATE_RESET;
@@ -602,20 +640,20 @@ module Main(input wire clk);
       STATE_RESET:
       begin
         reset = 1;
-        // next_instr_cnt = 0;
+        next_instr_cnt = 0;
         next_state = STATE_SEND_INSTRS;
       end
 
       STATE_SEND_INSTRS:
       begin
-        tvalid = 1;
-        tdata = INSTRS[reg_instr_cnt];
+        instr_valid = 1;
+        instr_data = INSTRS[reg_instr_cnt];
         // We are expecting an error after a while as the instructions
         // are not all valid for the given accelerator's hardware configuration.
         if (dut_error == 1) begin
           next_state = STATE_ERROR;
         end else begin
-          if (tready == 1) begin
+          if (instr_ready == 1) begin
             next_instr_cnt = reg_instr_cnt + 1;
             if (reg_instr_cnt == C_NUM_INSTRS - 1) begin
               next_state = STATE_CHECK_END;
@@ -644,6 +682,88 @@ module Main(input wire clk);
       begin
       end
     endcase
+  end
+
+  logic [31 : 0] reg_clk_cnt = 0;
+  logic [31 : 0] reg_dram0_rd_cnt = 0;
+  logic [31 : 0] reg_dram0_wr_cnt = 0;
+  logic [31 : 0] reg_dram1_rd_cnt = 0;
+  logic [31 : 0] reg_dram1_wr_cnt = 0;
+
+  // Check expected values on AXI address interfaces.
+  always_ff @(posedge clk) begin
+    reg_clk_cnt <= reg_clk_cnt + 1;
+
+    if (reg_state == STATE_ERROR) begin
+      $display("[%d] DUT emitted an unexpected error.", reg_clk_cnt);
+      $stop;
+    end
+
+    if (reg_state == STATE_RESET) begin
+      reg_dram0_rd_cnt <= 0;
+      reg_dram0_wr_cnt <= 0;
+      reg_dram1_rd_cnt <= 0;
+      reg_dram1_wr_cnt <= 0;
+    end
+
+    // DRAM 0 expected values (WRITE)
+    if (dut_dram0_writeAddress_valid && dut_dram0_writeAddress_ready) begin
+      reg_dram0_wr_cnt <= reg_dram0_wr_cnt + 1;
+      $display("[%d] dram0 waddr 0x%h, wlen 0x%h", reg_clk_cnt, dut_dram0_writeAddress_bits_addr, dut_dram0_writeAddress_bits_len);
+      if (dut_dram0_writeAddress_bits_addr != C_EXPECTED_DRAM0_WRITE_ADDRS[reg_dram0_wr_cnt]) begin
+        $display("[%d] expected dram0 waddr 0x%h, received 0x%h", reg_clk_cnt, C_EXPECTED_DRAM0_WRITE_ADDRS[reg_dram0_wr_cnt], dut_dram0_writeAddress_bits_addr);
+        $stop;
+      end
+    end
+    if (dut_dram0_writeData_valid && dut_dram0_writeData_ready) begin
+      $display("[%d] dram0 wdata 0x%h", reg_clk_cnt, dut_dram0_writeData_bits_data);
+    end
+    if (dut_dram0_writeResponse_valid && dut_dram0_writeResponse_ready) begin
+      $display("[%d] dram0 bresp 0x%h", reg_clk_cnt, dut_dram0_writeResponse_bits_resp);
+    end
+
+    // DRAM 1 expected values (WRITE)
+    if (dut_dram1_writeAddress_valid && dut_dram1_writeAddress_ready) begin
+      reg_dram1_wr_cnt <= reg_dram1_wr_cnt + 1;
+      $display("[%d] dram1 waddr 0x%h, wlen 0x%h", reg_clk_cnt, dut_dram1_writeAddress_bits_addr, dut_dram1_writeAddress_bits_len);
+      if (dut_dram1_writeAddress_bits_addr != C_EXPECTED_DRAM1_WRITE_ADDRS[reg_dram1_wr_cnt]) begin
+        $display("[%d] expected dram1 waddr 0x%h, received 0x%h", reg_clk_cnt, C_EXPECTED_DRAM1_WRITE_ADDRS[reg_dram1_wr_cnt], dut_dram1_writeAddress_bits_addr);
+        $stop;
+      end
+    end
+    if (dut_dram1_writeData_valid && dut_dram1_writeData_ready) begin
+      $display("[%d] dram1 wdata 0x%h", reg_clk_cnt, dut_dram1_writeData_bits_data);
+    end
+    if (dut_dram1_writeResponse_valid && dut_dram1_writeResponse_ready) begin
+      $display("[%d] dram1 bresp 0x%h", reg_clk_cnt, dut_dram1_writeResponse_bits_resp);
+    end
+
+    // DRAM 0 expected values (READ)
+    if (dut_dram0_readAddress_valid && dut_dram0_readAddress_ready) begin
+      reg_dram0_rd_cnt <= reg_dram0_rd_cnt + 1;
+      $display("[%d] dram0 raddr 0x%h, rlen 0x%h", reg_clk_cnt, dut_dram0_readAddress_bits_addr, dut_dram0_readAddress_bits_len);
+      if (dut_dram0_readAddress_bits_addr != C_EXPECTED_DRAM0_READ_ADDRS[reg_dram0_rd_cnt]) begin
+        $display("[%d] expected dram0 rdaddr 0x%h, received 0x%h", reg_clk_cnt, C_EXPECTED_DRAM0_READ_ADDRS[reg_dram0_rd_cnt], dut_dram0_readAddress_bits_addr);
+        $stop;
+      end
+    end
+    if (dut_dram0_readData_valid && dut_dram0_readData_ready) begin
+      $display("[%d] dram0 rdata 0x%h, rresp 0x%h", reg_clk_cnt, dut_dram0_readData_bits_data, dut_dram0_readData_bits_resp);
+    end
+
+    // DRAM 1 expected values (READ)
+    if (dut_dram1_readAddress_valid && dut_dram1_readAddress_ready) begin
+      reg_dram1_rd_cnt <= reg_dram1_rd_cnt + 1;
+      $display("[%d] dram1 raddr 0x%h, rlen 0x%h", reg_clk_cnt, dut_dram1_readAddress_bits_addr, dut_dram1_readAddress_bits_len);
+      if (dut_dram1_readAddress_bits_addr != C_EXPECTED_DRAM1_READ_ADDRS[reg_dram1_rd_cnt]) begin
+        $display("[%d] expected dram1 rdaddr 0x%h, received 0x%h", reg_clk_cnt, C_EXPECTED_DRAM1_READ_ADDRS[reg_dram1_rd_cnt], dut_dram1_readAddress_bits_addr);
+        $stop;
+      end
+    end
+    if (dut_dram1_readData_valid && dut_dram1_readData_ready) begin
+      $display("[%d] dram1 rdata 0x%h, rresp 0x%h", reg_clk_cnt, dut_dram1_readData_bits_data, dut_dram1_readData_bits_resp);
+    end
+
   end
 
 endmodule

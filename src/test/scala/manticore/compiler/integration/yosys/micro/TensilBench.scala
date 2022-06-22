@@ -19,7 +19,6 @@ final class TensilBench extends MicroBench with CancelAfterFailure {
   override def verilogSources: Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/tensil/AXIWrapperTCU.v"),
     WithResource("integration/yosys/micro/tensil/bram_dp_128x64.v"),
-    WithResource("integration/yosys/micro/tensil/bram_dp_128x256.v"),
     WithResource("integration/yosys/micro/axi4_full_slave/axi4_full_slave.sv")
   )
 

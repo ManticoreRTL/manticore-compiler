@@ -216,7 +216,7 @@ module axi4_full_slave
         next_write_len_cnt = 0;
 
         // We can only start a write transaction if no read is ongoing (for simplicity).
-        if ((reg_read_state == STATE_READ_IDLE) && (s_awvalid == 1)) begin
+        if (s_awvalid == 1) begin
           next_write_state = STATE_WRITE_ACK_AWREADY;
         end
       end
@@ -288,7 +288,7 @@ module axi4_full_slave
         next_read_len_cnt = 0;
 
         // We can only start a read transaction if no write is ongoing (for simplicity).\
-        if ((reg_write_state == STATE_WRITE_IDLE) && (s_arvalid == 1)) begin
+        if (s_arvalid == 1) begin
           next_read_state = STATE_READ_ACK_ARREADY;
         end
       end
