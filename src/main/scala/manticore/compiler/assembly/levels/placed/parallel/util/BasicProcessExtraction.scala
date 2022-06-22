@@ -202,11 +202,7 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
             }
           }
       }
-      inBitSet --= outBitSet // if an input and its corresponding output
-      // are referenced in the same process, then remove it from the inBitSet
-      // because basically inBitSet should only contain InputType registers that
-      // are not owned by this process and outBitSet should contains all the
-      // OutputType registers that are owned by it.
+
       new ProcessorDescriptor(
         inSet = inBitSet,
         outSet = outBitSet,

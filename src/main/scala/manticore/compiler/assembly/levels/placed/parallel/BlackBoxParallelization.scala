@@ -84,7 +84,7 @@ object BlackBoxParallelization extends BasicProcessExtraction {
       var sol = VCycle(0, true)
       for (x <- 0 until dimX; y <- 0 until dimY) {
         val processor  = noc(x)(y)
-        val execTime   = processor.body.size + processor.inSet.size
+        val execTime   = processor.body.size + processor.inBound.size
         val memoryUsed = processor.memory.foldLeft(0) { case (acc, i) => acc + parContext.memorySize(i) }
         if (execTime >= sol.v && memoryUsed <= maxMemory) {
           sol = VCycle(execTime, sol.feasible)
@@ -151,7 +151,7 @@ object BlackBoxParallelization extends BasicProcessExtraction {
             val header = hmOut.readLine() // read the header, should be
             import Matchers._
             header match {
-              case Request(n)  =>
+              case Request(n) =>
                 ctx.logger.debug(s"HyperMapper requested ${n} points")
                 makeResponse(n.toInt)
               case FRequest(n) => throw new UnsupportedOperationException(s"FRequest '$header' not supported!")
@@ -191,7 +191,8 @@ object BlackBoxParallelization extends BasicProcessExtraction {
       numCores = dimX * dimY,
       numProcesses = costEval.movables.size,
       numWarmUpSamples = processes.size + 1,
-      optIterations = 5000)
+      optIterations = 200
+    )
 
     val hyperMapperServer           = HyperMapper(hmConfig)
     val (hmReader, hmWriter, hmErr) = hyperMapperServer.start()
@@ -212,7 +213,7 @@ object BlackBoxParallelization extends BasicProcessExtraction {
       for (x <- 0 until dimX; y <- 0 until dimY) {
         val processor = processors(x)(y)
         val coreIdx   = y + x * dimY
-        for (inpIdx <- processor.inSet) {
+        for (inpIdx <- processor.inBound) {
           stateUsers(inpIdx) = stateUsers(inpIdx) | BitSet(coreIdx)
         }
       }

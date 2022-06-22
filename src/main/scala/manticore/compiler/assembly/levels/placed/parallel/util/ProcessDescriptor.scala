@@ -54,15 +54,26 @@ sealed private[parallel] trait DisjointSets[T] {
 }
 
 private[parallel] case class ProcessorDescriptor(
-    inSet: BitSet,
-    outSet: BitSet,
+    inSet: BitSet, // the set of state elements read
+    outSet: BitSet, // the set of state elements owned which may overlap with inSet
     body: BitSet,
     memory: BitSet
 ) {
 
+  // Not sure if lazy val would help here. It probably trashes performance due
+  // the synchronization overhead it incurs.
+  // note that outBound is basically useless. Because we can not use it to determine
+  // the number of sends a processor should do, because a single variable maybe have
+  // to be multi-casted to multiple users. So if in your logic you are relying on
+  // getting the "Sends" using outSet diff inSet, you are probably doing something wrong
+  // val outBound = outSet diff inSet // avoid this because it only tells you the state elements
+  // you own but don't use, surely these values need to be sent out but to how many processors
+  // we can not know!
+  val inBound = inSet diff outSet // the set of state elements to receive, i.e., state elements
+  // owned by another processor
   def merged(other: ProcessorDescriptor): ProcessorDescriptor = {
     val newOutSet = other.outSet union outSet
-    val newInSet  = (inSet union other.inSet) diff newOutSet
+    val newInSet  = (inSet union other.inSet)
     val newBody   = body union other.body
     ProcessorDescriptor(newInSet, newOutSet, newBody, memory union other.memory)
   }

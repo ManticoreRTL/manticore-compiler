@@ -211,6 +211,7 @@ trait ManticoreAssemblyIR {
           printer.println(e.serialized)
         }
       }
+      printer.println(s"${serializedAnnons("\t")}\t.proc ${id}:")
       append(registers)
       append(functions)
       append(labels)
