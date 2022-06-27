@@ -43,6 +43,9 @@ import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
 import scala.collection.mutable.ArrayBuffer
+import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
+import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
+import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -77,13 +80,13 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val vFilePath = fixture.dump("benchmark.sv", finalVerilog)
 
       implicit val ctx = AssemblyContext(
-        dump_all = true,
+        dump_all = false,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
-        max_dimx = 5,
-        max_dimy = 5,
+        max_dimx = 10,
+        max_dimy = 10,
         debug_message = false,
         max_registers = 2048,
         max_carries = 64,
@@ -102,58 +105,59 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val dumper    = { (n: String, t: String) => fixture.dump(n, t); () }
       checkUnconstrained("yosys + ordering", program1, reference, dumper)
       val program2 = CompilationStage.unconstrainedOptimizations(program1)
-      checkUnconstrained("prelim opts", program2, reference, dumper)
-      ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+      // checkUnconstrained("prelim opts", program2, reference, dumper)
+      // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       val program3 = CompilationStage.controlLowering(program2)
-      checkUnconstrained("jump table", program3, reference, dumper)
+      // checkUnconstrained("jump table", program3, reference, dumper)
       val program4 = CompilationStage.widthLowering(program3)
-      checkUnconstrained("width conversion", program4, reference, dumper)
+      // checkUnconstrained("width conversion", program4, reference, dumper)
       val program5 = CompilationStage.translation(program4)
-      ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
-      checkPlaced("translation", program5, reference, dumper)
+      // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+      // checkPlaced("translation", program5, reference, dumper)
       val program6 = CompilationStage.placedOptimizations(program5)
-      checkPlaced("placed opts", program6, reference, dumper)
+      // checkPlaced("placed opts", program6, reference, dumper)
       val program7 = CompilationStage.parallelization(program6)
       checkPlaced("parallelization", program7, reference, dumper)
-      ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+      // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       val program8 = CompilationStage.customLuts(program7)
       checkPlaced("custom luts", program8, reference, dumper)
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
-    // temporary disabled until I fix the bugs with lowering passes :(
-    val program9 = CompilationStage.finalLowering(program8)
-    ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
+      // temporary disabled until I fix the bugs with lowering passes :(
+      val program9 = CompilationStage.finalLowering(program8)
+      fixture.dump("stats.yml", ctx.stats.asYaml)
 
-    // // do one final interpretation to make sure register allocation is correct
-    // // checking whether a schedule is correct (i.e., enough Nops, contention
-    // // free network) is done with a checker pass because atomic interpreter is
-    // // not sophisticated enough to do a full cycle-accurate simulation of a
-    // // manticore network.
 
-    // val serialOut = ArrayBuffer.empty[String]
-    // val interp = AtomicInterpreter.instance(
-    //   program = program9,
-    //   serial = Some(serialOut += _)
-    // )
-    // interp.interpretCompletion()
+    // do one final interpretation to make sure register allocation is correct
+    // checking whether a schedule is correct (i.e., enough Nops, contention
+    // free network) is done with a checker pass because atomic interpreter is
+    // not sophisticated enough to do a full cycle-accurate simulation of a
+    // manticore network.
 
-    // if (ctx.logger.countErrors() > 0) {
-    //   dumper("reference.txt", reference.mkString("\n"))
-    //   dumper("results.txt", serialOut.mkString("\n"))
-    //   fail(s"Complete schedule: failed due to earlier errors")
-    // }
-    // if (!YosysUnitTest.compare(reference, serialOut)) {
-    //   ctx.logger.flush()
-    //   dumper("reference.txt", reference.mkString("\n"))
-    //   dumper("results.txt", serialOut.mkString("\n"))
-    //   fail(s"Complete schedule: results did not match the reference")
-    // }
-    // if (ctx.logger.countErrors() > 0) {
-    //   ctx.logger.flush()
-    //   dumper("reference.txt", reference.mkString("\n"))
-    //   dumper("results.txt", serialOut.mkString("\n"))
-    //   fail(s"Complete schedule: Errors occurred")
-    // }
+    val serialOut = ArrayBuffer.empty[String]
+    val interp = AtomicInterpreter.instance(
+      program = program9,
+      serial = Some(serialOut += _)
+    )
+    interp.interpretCompletion()
+
+    if (ctx.logger.countErrors() > 0) {
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", serialOut.mkString("\n"))
+      fail(s"Complete schedule: failed due to earlier errors")
+    }
+    if (!YosysUnitTest.compare(reference, serialOut)) {
+      ctx.logger.flush()
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", serialOut.mkString("\n"))
+      fail(s"Complete schedule: results did not match the reference")
+    }
+    if (ctx.logger.countErrors() > 0) {
+      ctx.logger.flush()
+      dumper("reference.txt", reference.mkString("\n"))
+      dumper("results.txt", serialOut.mkString("\n"))
+      fail(s"Complete schedule: Errors occurred")
+    }
     }
   }
 
@@ -283,15 +287,16 @@ object CompilationStage {
       PlacedIRDeadCodeElimination
 
   val parallelization =
-    ProcessSplittingTransform andThen
-      PlacedNameChecker
+    BalancedSplitMergerTransform andThen
+    // ProcessSplittingTransform andThen
+      PlacedNameChecker andThen RoundRobinPlacerTransform
+
 
   val customLuts =
     CustomLutInsertion andThen
       PlacedIRDeadCodeElimination
 
-  val finalLowering =
-    RoundRobinPlacerTransform andThen Lowering.Transformation andThen
-      AbstractExecution
+  val finalLowering = Lowering.Transformation andThen
+    AbstractExecution andThen UtilizationChecker
 
 }
