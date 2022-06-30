@@ -39,167 +39,6 @@ import scala.collection.mutable.{HashMap => MHashMap}
 import scala.collection.mutable.{HashSet => MHashSet}
 import scala.jdk.CollectionConverters._
 
-object GraphDump {
-  // The jgrapht library does not support emitting graphviz `subgraph`s.
-  // The scala-graph library does support emitting graphviz `subgraphs`s, so we use it instead.
-  import scalax.collection.{Graph => SGraph}
-  import scalax.collection.mutable.{Graph => MSGraph}
-  import scalax.collection.GraphEdge.DiEdge
-  import scalax.collection.io.dot._
-  import scalax.collection.io.dot.implicits._
-
-  // Converts a jgrapht Graph to a scala-graph graph.
-  // Note that a mutable graph (MSGraph) is constructed, but we return a graph of the
-  // "interface" type (SGraph) as the DOT exporter only supports this parent interface.
-  private def jg2sc[V](
-      jg: Graph[V, DefaultEdge]
-  ): (
-      SGraph[Int, DiEdge],
-      Map[V, Int],
-      Map[Int, V]
-  ) = {
-    val sg    = MSGraph.empty[Int, DiEdge]
-    val vToId = MHashMap.empty[V, Int]
-    val idToV = MHashMap.empty[Int, V]
-
-    jg.vertexSet().asScala.zipWithIndex.foreach { case (v, idx) =>
-      vToId += v   -> idx
-      idToV += idx -> v
-      sg += idx
-    }
-
-    jg.edgeSet().asScala.foreach { e =>
-      val src   = jg.getEdgeSource(e)
-      val dst   = jg.getEdgeTarget(e)
-      val srcId = vToId(src)
-      val dstId = vToId(dst)
-      sg += DiEdge(srcId, dstId)
-    }
-
-    (sg, vToId.toMap, idToV.toMap)
-  }
-
-  private def escape(s: String): String = s.replaceAll("\"", "\\\\\"")
-  private def quote(s: String): String  = s"\"${s}\""
-
-  def apply[V](
-      g: Graph[V, DefaultEdge],
-      clusters: Map[
-        Int,   // Cluster ID
-        Set[V] // Vertices in cluster
-      ] = Map.empty[Int, Set[V]],
-      clusterColorMap: Map[
-        Int,   // Cluster ID
-        String // Color to be assigned to cluster
-      ] = Map.empty[Int, String],
-      vNameMap: Map[V, String] = Map.empty[V, String]
-  ): String = {
-    // Some vertices have quotes in them when represented as strings. These vertices
-    // cannot be used as graphviz identifiers, so we assign an index to all vertices
-    // instead.
-    val (sg, vToId, idToV) = jg2sc(g)
-
-    val dotRoot = DotRootGraph(
-      directed = true,
-      id = Some("program graph with custom functions")
-    )
-
-    val dotSubgraphs = clusters.map { case (clusterId, vertices) =>
-      val dotSub = DotSubGraph(
-        dotRoot,
-        Id(s"cluster_${clusterId}")
-      )
-      clusterId -> dotSub
-    }
-
-    def edgeTransform(
-        iedge: scalax.collection.Graph[Int, DiEdge]#EdgeT
-    ): Option[
-      (
-          DotGraph,   // The graph/subgraph to which this edge belongs.
-          DotEdgeStmt // Statements to modify the edge's representation.
-      )
-    ] = {
-      iedge.edge match {
-        case DiEdge(source, target) =>
-          Some(
-            (
-              dotRoot, // All edges are part of the root graph.
-              DotEdgeStmt(
-                NodeId(source.toOuter),
-                NodeId(target.toOuter)
-              )
-            )
-          )
-        case e @ _ =>
-          assert(
-            false,
-            s"Edge ${e} in the dependence graph could not be serialized!"
-          )
-          None
-      }
-    }
-
-    def nodeTransformer(
-        inode: scalax.collection.Graph[Int, DiEdge]#NodeT
-    ): Option[
-      (
-          DotGraph,   // The graph/subgraph to which this node belongs.
-          DotNodeStmt // Statements to modify the node's representation.
-      )
-    ] = {
-      val clusterId = clusters
-        .find { case (clusterId, vertices) =>
-          val vId = inode.toOuter
-          val v   = idToV(vId)
-          vertices.contains(v)
-        }
-        .map { case (clusterId, vertices) =>
-          clusterId
-        }
-
-      // If the vertex is part of a cluster, select the corresponding subgraph.
-      // Otherwise add the vertex to the root graph.
-      val dotGraph = clusterId
-        .map(id => dotSubgraphs(id))
-        .getOrElse(dotRoot)
-
-      val vId    = inode.toOuter
-      val v      = idToV(vId)
-      val vName  = vNameMap.getOrElse(v, v.toString())
-      val vLabel = escape(vName)
-
-      // If the vertex is part of a cluster, select its corresponding color.
-      // Otherwise use white as the default color.
-      val vColor = clusterId
-        .map(id => clusterColorMap(id))
-        .getOrElse("white")
-
-      Some(
-        (
-          dotGraph,
-          DotNodeStmt(
-            NodeId(vId),
-            Seq(
-              DotAttr("label", quote(vLabel)),
-              DotAttr("style", quote("filled")),
-              DotAttr("fillcolor", quote(vColor))
-            )
-          )
-        )
-      )
-    }
-
-    val dotExport: String = sg.toDot(
-      dotRoot = dotRoot,
-      edgeTransformer = edgeTransform,
-      cNodeTransformer = Some(nodeTransformer)
-    )
-
-    dotExport
-  }
-}
-
 object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
 
   val flavor = PlacedIR
@@ -518,7 +357,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
         }
         .toMap
 
-      GraphDump(
+      dumpGraph(
         gLswi,
         vNameMap = nameMap
       )
@@ -1202,7 +1041,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
         }
         .toMap
 
-      GraphDump(
+      dumpGraph(
         dependenceGraph,
         clusters = clusters,
         clusterColorMap = clusterColorMap,
@@ -1291,5 +1130,165 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     val newProgram   = program.copy(processes = newProcesses)
     ctx.stats.record(ProgramStatistics.mkProgramStats(newProgram))
     newProgram
+  }
+
+  // Helper method to dump a graph of clusters in DOT format.
+  def dumpGraph[V](
+      g: Graph[V, DefaultEdge],
+      clusters: Map[
+        Int,   // Cluster ID
+        Set[V] // Vertices in cluster
+      ] = Map.empty[Int, Set[V]],
+      clusterColorMap: Map[
+        Int,   // Cluster ID
+        String // Color to be assigned to cluster
+      ] = Map.empty[Int, String],
+      vNameMap: Map[V, String] = Map.empty[V, String]
+  ): String = {
+    // The jgrapht library does not support emitting graphviz `subgraph`s.
+    // The scala-graph library does support emitting graphviz `subgraphs`s, so we use it instead.
+    import scalax.collection.{Graph => SGraph}
+    import scalax.collection.mutable.{Graph => MSGraph}
+    import scalax.collection.GraphEdge.DiEdge
+    import scalax.collection.io.dot._
+    import scalax.collection.io.dot.implicits._
+
+    // Converts a jgrapht Graph to a scala-graph graph.
+    // Note that a mutable graph (MSGraph) is constructed, but we return a graph of the
+    // "interface" type (SGraph) as the DOT exporter only supports this parent interface.
+    def jg2sc[V](
+        jg: Graph[V, DefaultEdge]
+    ): (
+        SGraph[Int, DiEdge],
+        Map[V, Int],
+        Map[Int, V]
+    ) = {
+      val sg    = MSGraph.empty[Int, DiEdge]
+      val vToId = MHashMap.empty[V, Int]
+      val idToV = MHashMap.empty[Int, V]
+
+      jg.vertexSet().asScala.zipWithIndex.foreach { case (v, idx) =>
+        vToId += v   -> idx
+        idToV += idx -> v
+        sg += idx
+      }
+
+      jg.edgeSet().asScala.foreach { e =>
+        val src   = jg.getEdgeSource(e)
+        val dst   = jg.getEdgeTarget(e)
+        val srcId = vToId(src)
+        val dstId = vToId(dst)
+        sg += DiEdge(srcId, dstId)
+      }
+
+      (sg, vToId.toMap, idToV.toMap)
+    }
+
+    def escape(s: String): String = s.replaceAll("\"", "\\\\\"")
+    def quote(s: String): String  = s"\"${s}\""
+
+    // Some vertices have quotes in them when represented as strings. These vertices
+    // cannot be used as graphviz identifiers, so we assign an index to all vertices
+    // instead.
+    val (sg, vToId, idToV) = jg2sc(g)
+
+    val dotRoot = DotRootGraph(
+      directed = true,
+      id = Some("program graph with custom functions")
+    )
+
+    val dotSubgraphs = clusters.map { case (clusterId, vertices) =>
+      val dotSub = DotSubGraph(
+        dotRoot,
+        Id(s"cluster_${clusterId}")
+      )
+      clusterId -> dotSub
+    }
+
+    def edgeTransform(
+        iedge: scalax.collection.Graph[Int, DiEdge]#EdgeT
+    ): Option[
+      (
+          DotGraph,   // The graph/subgraph to which this edge belongs.
+          DotEdgeStmt // Statements to modify the edge's representation.
+      )
+    ] = {
+      iedge.edge match {
+        case DiEdge(source, target) =>
+          Some(
+            (
+              dotRoot, // All edges are part of the root graph.
+              DotEdgeStmt(
+                NodeId(source.toOuter),
+                NodeId(target.toOuter)
+              )
+            )
+          )
+        case e @ _ =>
+          assert(
+            false,
+            s"Edge ${e} in the dependence graph could not be serialized!"
+          )
+          None
+      }
+    }
+
+    def nodeTransformer(
+        inode: scalax.collection.Graph[Int, DiEdge]#NodeT
+    ): Option[
+      (
+          DotGraph,   // The graph/subgraph to which this node belongs.
+          DotNodeStmt // Statements to modify the node's representation.
+      )
+    ] = {
+      val clusterId = clusters
+        .find { case (clusterId, vertices) =>
+          val vId = inode.toOuter
+          val v   = idToV(vId)
+          vertices.contains(v)
+        }
+        .map { case (clusterId, vertices) =>
+          clusterId
+        }
+
+      // If the vertex is part of a cluster, select the corresponding subgraph.
+      // Otherwise add the vertex to the root graph.
+      val dotGraph = clusterId
+        .map(id => dotSubgraphs(id))
+        .getOrElse(dotRoot)
+
+      val vId    = inode.toOuter
+      val v      = idToV(vId)
+      val vName  = vNameMap.getOrElse(v, v.toString())
+      val vLabel = escape(vName)
+
+      // If the vertex is part of a cluster, select its corresponding color.
+      // Otherwise use white as the default color.
+      val vColor = clusterId
+        .map(id => clusterColorMap(id))
+        .getOrElse("white")
+
+      Some(
+        (
+          dotGraph,
+          DotNodeStmt(
+            NodeId(vId),
+            Seq(
+              DotAttr("label", quote(vLabel)),
+              DotAttr("style", quote("filled")),
+              DotAttr("fillcolor", quote(vColor))
+            )
+          )
+        )
+      )
+    }
+
+    val dotExport: String = sg.toDot(
+      dotRoot = dotRoot,
+      edgeTransformer = edgeTransform,
+      cNodeTransformer = Some(nodeTransformer)
+    )
+
+    dotExport
   }
 }
