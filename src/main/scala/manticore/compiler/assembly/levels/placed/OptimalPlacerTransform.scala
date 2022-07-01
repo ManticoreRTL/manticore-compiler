@@ -1,8 +1,18 @@
 package manticore.compiler.assembly.levels.placed
 
 import com.google.ortools.Loader
+import com.google.ortools.linearsolver.MPModelExportOptions
 import com.google.ortools.linearsolver.MPSolver
 import com.google.ortools.linearsolver.MPVariable
+import com.google.ortools.sat.BoolVar
+import com.google.ortools.sat.CpModel
+import com.google.ortools.sat.CpSolver
+import com.google.ortools.sat.CpSolverStatus
+import com.google.ortools.sat.IntVar
+import com.google.ortools.sat.LinearArgument
+import com.google.ortools.sat.LinearExpr
+import com.google.ortools.sat.LinearExprBuilder
+import com.google.ortools.sat.Literal
 import manticore.compiler.AssemblyContext
 import org.jgrapht.Graph
 import org.jgrapht.graph.DefaultEdge
@@ -11,6 +21,8 @@ import org.jgrapht.graph.SimpleDirectedGraph
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import org.jgrapht.graph.builder.GraphTypeBuilder
 
+import java.io.PrintWriter
+import java.nio.file.Files
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.{HashMap => MHashMap}
 import scala.jdk.CollectionConverters._
@@ -356,7 +368,7 @@ object OptimalPlacerTransform extends PlacedIRTransformer {
     paths.toMap
   }
 
-  def assignProcessesToCores(
+  def assignProcessesToCoresILP(
     processGraph: ProcessGraph,
     procEdgeWeights: Map[ProcEdge, Int],
     coreGraph: CoreGraph,
@@ -555,7 +567,7 @@ object OptimalPlacerTransform extends PlacedIRTransformer {
     }
 
     // Extract results
-    if (resultStatus == MPSolver.ResultStatus.OPTIMAL) {
+    if ((resultStatus == MPSolver.ResultStatus.OPTIMAL) || (resultStatus == MPSolver.ResultStatus.FEASIBLE)) {
       // process-to-core assignments.
       val assignments = vars_xPrC.filter { case ((procId, coreId), xPrC) =>
         xPrC.solutionValue() > 0
@@ -566,6 +578,171 @@ object OptimalPlacerTransform extends PlacedIRTransformer {
       ctx.logger.info {
         s"Solved process-to-core placement problem in ${solver.wallTime()}ms\n" +
           s"Optimal assignment has on-chip traffic of ${objective.value().toInt} is:\n${assignmentsStr}"
+      }
+
+      assignments
+
+    } else {
+      ctx.logger.fail(
+        s"Could not optimally solve process-to-core placement problem (resultStatus = ${resultStatus})."
+      )
+      Map.empty
+    }
+  }
+
+  def assignProcessesToCoresCpSat(
+    processGraph: ProcessGraph,
+    procEdgeWeights: Map[ProcEdge, Int],
+    coreGraph: CoreGraph,
+    pathIdToPath: Map[CorePathId, CorePath]
+  )(
+    implicit ctx: AssemblyContext
+  ): Map[
+    ProcId,
+    CoreId
+  ] = {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // ILP formulation for core process-to-core assignment.
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    Loader.loadNativeLibraries()
+
+    val model = new CpModel()
+
+    // (1) Create binary variable x_pr_c \in {0, 1} \forall (pr, c) \in PR x C.
+    //
+    //       x_pr_c = 1 if process pr is mapped to core c.
+    //
+    val vars_xPrC = MHashMap.empty[(ProcId, CoreId), Literal]
+    processGraph.vertexSet().asScala.foreach { procId =>
+      coreGraph.vertexSet().asScala.foreach { coreId =>
+        vars_xPrC += (procId, coreId) -> model.newBoolVar(s"x_${procId}_${coreId}")
+      }
+    }
+
+    // (2) A process is assigned to exactly 1 core.
+    //
+    //       \sum{c \in C} {x_pr_c} = 1   \forall pr \in PR
+    //
+    processGraph.vertexSet().asScala.foreach { targetProcId =>
+      val lits = vars_xPrC.collect {
+        case ((procId, _), lit) if procId == targetProcId => lit
+      }
+      model.addExactlyOne(lits.asJava)
+    }
+
+    // (3) A core can be assigned at most 1 process. We use "at most" instead of "exactly"
+    //     as the |C| >= |PR|.
+    //
+    //       \sum{pr \in PR} {x_pr_c} <= 1   \forall c \in C
+    //
+    coreGraph.vertexSet().asScala.foreach { targetCoreId =>
+      val lits = vars_xPrC.collect {
+        case ((_, coreId), lit) if coreId == targetCoreId => lit
+      }
+      model.addAtMostOne(lits.asJava)
+    }
+
+    // (4) Create auxiliary binary variable y_se_pa \in {0, 1} \forall (se, pa) \in SE x PA.
+    //
+    //       y_se_pa = 1 if send edge se is mapped to path pa.
+    //
+    //     Due to dimension-order-routing there is only 1 path between any 2 endpoints.
+    //     We can therefore compute y_se_pa as follows:
+    //
+    //       y_se_pa = x_(se.src)_(pa.src) ^ x_(se.dst)_(pa.dst)
+    //
+
+    // se \in SE is defined by the process graph edge.
+    val vars_ySePa = MHashMap.empty[(ProcEdge, CorePathId), Literal]
+    procEdgeWeights.foreach { case (procEdge, weight) =>
+      pathIdToPath.foreach { case (pathId, path) =>
+        val xSeSrcPaSrc = vars_xPrC((procEdge.src, path.src))
+        val xSeDstPaDst = vars_xPrC((procEdge.dst, path.dst))
+
+        // Define auxiliary binary variable y_se_pa.
+        val ySePa = model.newBoolVar(s"y_${procEdge}_${pathId}")
+        vars_ySePa += (procEdge, pathId) -> ySePa
+
+        // We create a channeling constraint by modeling the AND of the literals as their sum
+        // needing to be 2. Note that it is important to model the ->  and <- directions for the
+        // channeling constraints to represent <-> (if and only if).
+        val linExpr = LinearExpr.sum(Array(xSeSrcPaSrc, xSeDstPaDst))
+        model.addEquality(linExpr, 2).onlyEnforceIf(ySePa)
+        model.addLessThan(linExpr, 2).onlyEnforceIf(ySePa.not())
+      }
+    }
+
+    // (5) Create auxiliary variables w_ce \in {0, infinity} which count the total number of
+    //     messages going over edge ce. The weight of an edge in the core graph is the sum of
+    //     the weights of all paths that go through it multiplied by whether the path is assigned
+    //     to an edge se.
+    //
+    //        w_ce = \sum{se \in SE} {
+    //                 \sum{pa \in PA : ce \in pa} {
+    //                   w(se) * y_se_pa
+    //                 }
+    //               }
+    //
+    //        \forall ce \in CE.
+
+    val vars_wCe = MHashMap.empty[CorePath.PathEdge, IntVar]
+    val maxWeight = procEdgeWeights.values.sum
+    coreGraph.edgeSet().asScala.foreach { e =>
+      val src = coreGraph.getEdgeSource(e)
+      val dst = coreGraph.getEdgeTarget(e)
+      val coreEdge = CorePath.PathEdge(src, dst)
+
+      // Define auxiliary binary variable w_ce. The upper limit is set to +infinity as
+      // as arbitrary number of messages can transit over the edge.
+      val wCe = model.newIntVar(0, maxWeight, s"w_${coreEdge}")
+      vars_wCe += coreEdge -> wCe
+
+      // Linear expression for the RHS nested sum.
+      val exprs = ArrayBuffer.empty[LinearArgument]
+      val coeffs = ArrayBuffer.empty[Long]
+      procEdgeWeights.foreach { case (procEdge, weight) =>
+        pathIdToPath.foreach { case (pathId, path) =>
+          val ySePa = vars_ySePa((procEdge, pathId))
+          if (path.contains(coreEdge)) {
+            exprs += ySePa
+            coeffs += weight
+          }
+        }
+      }
+      val linExpr = LinearExpr.weightedSum(exprs.toArray, coeffs.toArray)
+      model.addEquality(wCe, linExpr)
+    }
+
+    // objective function
+    // ------------------
+    //
+    // Minimizes the total on-chip NoC message traffic.
+    //
+    //     minimize \sum{ce in CE} {w_ce}
+    //
+    model.minimize(LinearExpr.sum(vars_wCe.values.toArray))
+
+    // solve optimization problem
+    val solver = new CpSolver()
+    solver.getParameters().setMaxTimeInSeconds(10.0);
+    val resultStatus = ctx.stats.recordRunTime("solver.solve") {
+      solver.solve(model)
+    }
+
+    // Extract results
+    if ((resultStatus == CpSolverStatus.OPTIMAL) || (resultStatus == CpSolverStatus.FEASIBLE)) {
+      // process-to-core assignments.
+      val assignments = vars_xPrC.filter { case ((procId, coreId), xPrC) =>
+        solver.value(xPrC) > 0
+      }.keySet.toMap
+
+      val assignmentsStr = assignments.mkString("\n")
+
+      val solveCategoryStr = if (resultStatus == CpSolverStatus.OPTIMAL) "optimal" else "feasible"
+      ctx.logger.info {
+        s"Solved process-to-core placement problem in ${solver.wallTime()}ms (${solveCategoryStr})\n" +
+          s"Assignment has on-chip traffic of ${solver.objectiveValue.toInt} is:\n${assignmentsStr}"
       }
 
       assignments
@@ -597,7 +774,8 @@ object OptimalPlacerTransform extends PlacedIRTransformer {
       dumpGraph(coreGraph)
     }
 
-    val procIdToCoreId = assignProcessesToCores(processGraph, procEdgeWeights, coreGraph, pathIdToPath)
+    // val procIdToCoreId = assignProcessesToCoresILP(processGraph, procEdgeWeights, coreGraph, pathIdToPath)
+    val procIdToCoreId = assignProcessesToCoresCpSat(processGraph, procEdgeWeights, coreGraph, pathIdToPath)
 
     program
   }
