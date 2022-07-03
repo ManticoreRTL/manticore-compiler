@@ -14,6 +14,7 @@ import com.google.ortools.sat.LinearExpr
 import com.google.ortools.sat.LinearExprBuilder
 import com.google.ortools.sat.Literal
 import manticore.compiler.AssemblyContext
+import manticore.compiler.HeatmapColor
 import org.jgrapht.Graph
 import org.jgrapht.graph.DefaultEdge
 import org.jgrapht.graph.DefaultWeightedEdge
@@ -931,6 +932,13 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       }
     }.zipWithIndex.toMap
 
+    val maxWeight = coreEdgeWeights.values.max
+    val weightHeatMap = coreEdgeWeights.values.map { weight =>
+      val weightNormalized = weight / maxWeight.toDouble
+      val color = HeatmapColor(weightNormalized)
+      weight -> color
+    }.toMap
+
     def isInvisible(coreId: CoreId): Boolean = (coreId.x == -1) || (coreId.x == maxDimX) || (coreId.y == -1) || (coreId.y == maxDimY)
 
     val coreIdToProcId = procIdToCoreId.map(x => x.swap)
@@ -979,7 +987,9 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     (xForwardEdges ++ yForwardEdges).foreach { case (coreEdge, weight) =>
       val (src, dst) = (coreEdge.src, coreEdge.dst)
       val (srcVId, dstVId) = (coreIdToVId(src), coreIdToVId(dst))
-      dotLines.append(s"\t${srcVId} -> ${dstVId} [label=\"${weight}\"]")
+      val color = weightHeatMap(weight).toCssHexString()
+      val style = if (weight == 0) "style=invis" else ""
+      dotLines.append(s"\t${srcVId} -> ${dstVId} [label=\"${weight}\" color=\"${color}\" ${style}]")
     }
 
     // Drawing the x-axis backward edges will result in the grid layout being unreadable.
@@ -996,8 +1006,10 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       val invisLastSrc = coreIdToVId(CoreId(maxDimX - 1, y))
       val invisLastDst = coreIdToVId(CoreId(maxDimX, y))
 
-      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} style=dashed]")
-      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} style=dashed]")
+      val color = weightHeatMap(weight).toCssHexString()
+      val style = if (weight == 0) "style=invis" else "style=dashed"
+      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} color=\"${color}\" ${style}]")
+      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} color=\"${color}\" ${style}]")
     }
 
     // Drawing the y-axis backward edges will result in the grid layout being unreadable.
@@ -1014,8 +1026,10 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       val invisLastSrc = coreIdToVId(CoreId(x, maxDimY - 1))
       val invisLastDst = coreIdToVId(CoreId(x, maxDimY))
 
-      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} style=dashed]")
-      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} style=dashed]")
+      val color = weightHeatMap(weight).toCssHexString()
+      val style = if (weight == 0) "style=invis" else "style=dashed"
+      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} color=\"${color}\" ${style}]")
+      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} color=\"${color}\" ${style}]")
     }
 
     dotLines.append("}") // digraph

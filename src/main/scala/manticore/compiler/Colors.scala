@@ -8,9 +8,9 @@ package manticore.compiler
 // would be private and we wouldn't be able to return an object of this type
 // even from the companion object.
 class Color private (
-  val r: Int,
-  val g: Int,
-  val b: Int
+    val r: Int,
+    val g: Int,
+    val b: Int
 ) {
   def toHexString(): String = {
     val rHexGHexBHex = List(r, g, b).map(value => "%02x".format(value))
@@ -71,5 +71,68 @@ object CyclicColorGenerator {
 
   def apply(numColors: Int): IterableOnce[Color] = {
     Seq.tabulate(numColors) { idx => colors(idx % colors.size) }
+  }
+}
+
+object HeatmapColor {
+  // https://stackoverflow.com/questions/12875486/what-is-the-algorithm-to-create-colors-for-a-heatmap
+  def getHeatmapColorHSL(value: Double): (Double, Double, Double) = {
+    assert(
+      (0 <= value) && (value <= 1),
+      s"Error: input value (${value}) must be normalized to [0, 1] for heatmap color generation."
+    )
+    // Hue is a "circle" such that 0° and 360° have the same color (red).
+    // Instead I want cold colors to be mapped to dark blue, and warm colors to red.
+    //
+    //   Hue(dark blue) ~ 255
+    //   Hue(red) = 0
+    //
+    val h = (1 - value) * 255 // [0, 360], but I restrict it to avoid the wrap-around behavior.
+    val s = 1 // [0, 1]
+    val l = 0.5 // [0, 1]
+    // println(s"h = ${h}")
+    // println(s"s = ${s}")
+    // println(s"l = ${l}")
+    (h, s, l)
+  }
+
+  // Adapted from Wikipedia article:
+  // https://en.wikipedia.org/wiki/HSL_and_HSV#HSL_to_RGB
+  def hslToRgb(h: Double, s: Double, l: Double): (Int, Int, Int) = {
+    val c = (1 - Math.abs(2 * l - 1)) * s
+    val hPrime = h / 60
+    val x = c * (1 - Math.abs((hPrime % 2) - 1))
+    val (rPrime, gPrime, bPrime) = if ((0 <= hPrime) && (hPrime < 1)) {
+      (c, x, 0.0)
+    } else if ((1 <= hPrime) && (hPrime < 2)) {
+      (x, c, 0.0)
+    } else if ((2 <= hPrime) && (hPrime < 3)) {
+      (0.0, c, x)
+    } else if ((3 <= hPrime) && (hPrime < 4)) {
+      (0.0, x, c)
+    } else if ((4 <= hPrime) && (hPrime < 5)) {
+      (x, 0.0, c)
+    } else if ((5 <= hPrime) && (hPrime < 6)) {
+      (c, 0.0, x)
+    } else {
+      assert(false, s"hPrime (${hPrime}) did not fall in any valid range.")
+      (0.0, 0.0, 0.0)
+    }
+    val m = l - c/2
+    // println(s"c = ${c}")
+    // println(s"hPrime = ${hPrime}")
+    // println(s"x = ${x}")
+    // println(s"rPrime = ${rPrime}")
+    // println(s"gPrime = ${gPrime}")
+    // println(s"bPrime = ${bPrime}")
+    val Seq(r, g, b) = Seq(rPrime, gPrime, bPrime).map(v => ((v + m) * 255).toInt)
+    (r, g, b)
+  }
+
+  def apply(value: Double): Color = {
+    // Color is RGB, but heatmaps are generated in HSL. We must therefore convert the HSL value back to RGB.
+    val (h, s, l) = getHeatmapColorHSL(value)
+    val (r, g, b) = hslToRgb(h, s, l)
+    Color(r, g, b)
   }
 }

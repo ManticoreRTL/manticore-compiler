@@ -46,6 +46,7 @@ import scala.collection.mutable.ArrayBuffer
 import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
 import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
 import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
+import manticore.compiler.assembly.levels.placed.AnalyticalPlacerTransform
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -90,7 +91,8 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         debug_message = false,
         max_registers = 2048,
         max_carries = 64,
-        optimize_common_custom_functions = true
+        optimize_common_custom_functions = true,
+        placement_timeout_s = 10,
         // log_file = None,
       )
 
@@ -289,7 +291,9 @@ object CompilationStage {
   val parallelization =
     BalancedSplitMergerTransform andThen
     // ProcessSplittingTransform andThen
-      PlacedNameChecker andThen RoundRobinPlacerTransform
+      PlacedNameChecker andThen
+      AnalyticalPlacerTransform
+      // RoundRobinPlacerTransform
 
 
   val customLuts =
