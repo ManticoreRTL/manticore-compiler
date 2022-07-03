@@ -917,35 +917,23 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     maxDimX: Int,
     maxDimY: Int,
   ): String = {
-    val s = new StringBuilder()
+    val dotLines = ArrayBuffer.empty[String]
 
     // Vertices in a graph may not be legal graphviz identifiers, so we give
-    // them all an Int id.
-    val coreIdToVId = Range(0, maxDimX).flatMap { x =>
-      Range(0, maxDimY).map { y =>
+    // them all an Int id. Note that we create two additional rows and columns
+    // of cores. These cores will be made invisible and are used to draw the
+    // "backwards" edges in the grid that exist due to the torus structure.
+    // We use these invisible cores as otherwise the rendered graph will be
+    // illegible with the backwards edges.
+    val coreIdToVId = Range(-1, maxDimX+1).flatMap { x =>
+      Range(-1, maxDimY+1).map { y =>
         CoreId(x, y)
       }
     }.zipWithIndex.toMap
 
+    def isInvisible(coreId: CoreId): Boolean = (coreId.x == -1) || (coreId.x == maxDimX) || (coreId.y == -1) || (coreId.y == maxDimY)
+
     val coreIdToProcId = procIdToCoreId.map(x => x.swap)
-
-    s ++= "digraph {\n"
-
-    // Graphviz does not support a notion of a "grid". You can force this grid layout by creating edges with a heavy
-    // weight (that we could make invisible).
-    // Note that the torus edge can *not* be emitted as it completely screws up the layout. We will emit the torus edges
-    // "twice". the output of the last vertex goes to an invisible node with the weight, and the input side comes from
-    // an invisible vertex. We create these edges and make them invisible.
-
-    // Dump core vertices.
-    coreIdToVId.foreach { case (coreId, vId) =>
-      // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
-      val procName = coreIdToProcId.get(coreId) match {
-        case Some(procId) => procIdToProcName(procId)
-        case None => "N/A" // This core was not assigned a process.
-      }
-      s ++= s"\t${vId} [label = \"${coreId}\n${procName}\"]\n"
-    }
 
     val (xEdges, yEdges) = coreEdgeWeights.partition { case (coreEdge, weight) =>
       val (src, dst) = (coreEdge.src, coreEdge.dst)
@@ -962,32 +950,76 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       (src.y < dst.y)
     }
 
-    // Dump edges.
-    // I explicitly omit the backward edges (torus) as they destroy the grid layout.
-    (xForwardEdges ++ yForwardEdges).foreach { case (coreEdge, weight) =>
-      val (src, dst) = (coreEdge.src, coreEdge.dst)
-      val (srcVId, dstVId) = (coreIdToVId(src), coreIdToVId(dst))
-      s ++= s"\t${srcVId} -> ${dstVId} [label = \"${weight}\"]\n"
+    dotLines.append("digraph {")
+
+    // Dump core vertices.
+    coreIdToVId.foreach { case (coreId, vId) =>
+      // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
+      val procName = coreIdToProcId.get(coreId) match {
+        case Some(procId) => procIdToProcName(procId)
+        case None => "N/A" // This core was not assigned a process.
+      }
+      if (isInvisible(coreId)) {
+        dotLines.append(s"\t${vId} [style=invis]")
+      } else {
+        dotLines.append(s"\t${vId} [label=\"${coreId}\n${procName}\"]")
+      }
     }
 
     // Place all vertices at the same y-coordinate in the same rank so the grid is enforced.
-    xForwardEdges.groupBy { case (coreEdge, weight) =>
-      coreEdge.src.y
-    }.foreach { case (y, edges) =>
-      val sameRankCoreIds = edges.keySet.flatMap(e => Set(e.src, e.dst))
-      val sameRankVIds = sameRankCoreIds.map(coreId => coreIdToVId(coreId))
-      s ++= s"\trank = \"same\" {${sameRankVIds.mkString(", ")}}\n"
+    coreIdToVId.keys.groupBy { coreId =>
+      coreId.y
+    }.foreach { case (y, coreIds) =>
+      val sameRankVIds = coreIds.map(coreId => coreIdToVId(coreId))
+      dotLines.append(s"\trank=\"same\" {${sameRankVIds.mkString(", ")}}")
     }
 
-    // Drawing the backward edges will result in the grid layout breaking.
-    // Instead I create an invisible src/dst vertex before/after the first/last
-    // vertex in each row and column. The edge will go from/to the invisible
-    // src/dst vertex to the visible vertex.
-    // These vertices will be dashed and colored so they are easy to match.
+    // Dump edges.
+    // I explicitly omit the backward edges (torus) as they make the grid layout unreadable.
+    (xForwardEdges ++ yForwardEdges).foreach { case (coreEdge, weight) =>
+      val (src, dst) = (coreEdge.src, coreEdge.dst)
+      val (srcVId, dstVId) = (coreIdToVId(src), coreIdToVId(dst))
+      dotLines.append(s"\t${srcVId} -> ${dstVId} [label=\"${weight}\"]")
+    }
 
-    s ++= "}\n" // digraph
+    // Drawing the x-axis backward edges will result in the grid layout being unreadable.
+    // We instead use the invisible vertex before/after the first/last vertex in a row
+    // to model these backward edges.
+    xBackwardEdges.foreach { case (coreEdge, weight) =>
+      val y = coreEdge.src.y
 
-    s.toString()
+      // We create 2 edges for this backward edge.
+      // 1. Edge from invisible vertex X<-1>_Y<y> to X<0>_Y<y>
+      // 2. Edge from X<maxDimX-1>_Y<y> to invisible vertex X<maxDimX>_Y<y>
+      val invisHeadSrc = coreIdToVId(CoreId(-1, y))
+      val invisHeadDst = coreIdToVId(CoreId(0, y))
+      val invisLastSrc = coreIdToVId(CoreId(maxDimX - 1, y))
+      val invisLastDst = coreIdToVId(CoreId(maxDimX, y))
+
+      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} style=dashed]")
+      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} style=dashed]")
+    }
+
+    // Drawing the y-axis backward edges will result in the grid layout being unreadable.
+    // We instead use the invisible vertex before/after the first/last vertex in a column
+    // to model these backward edges.
+    yBackwardEdges.foreach { case (coreEdge, weight) =>
+      val x = coreEdge.src.x
+
+      // We create 2 edges for this backward edge.
+      // 1. Edge from invisible vertex X<x>_Y<-1> to X<x>_Y<0>
+      // 2. Edge from X<x>_Y<maxDimY-1> to invisible vertex X<x>_Y<maxDimY>
+      val invisHeadSrc = coreIdToVId(CoreId(x, -1))
+      val invisHeadDst = coreIdToVId(CoreId(x, 0))
+      val invisLastSrc = coreIdToVId(CoreId(x, maxDimY - 1))
+      val invisLastDst = coreIdToVId(CoreId(x, maxDimY))
+
+      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} style=dashed]")
+      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} style=dashed]")
+    }
+
+    dotLines.append("}") // digraph
+    dotLines.mkString("\n")
   }
 }
 
