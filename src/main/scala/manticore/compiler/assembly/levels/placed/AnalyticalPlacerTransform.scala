@@ -260,7 +260,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
   ): (
       ProcessGraph,
       Map[ProcId, String], // ProcId -> process name
-      Map[ProcEdge, Int] // Edge weight = number of SENDs between 2 processes.
+      Map[ProcEdge, Int]   // Edge weight = number of SENDs between 2 processes.
   ) = {
     val processGraph: ProcessGraph = new SimpleDirectedGraph(classOf[DefaultEdge])
 
@@ -282,13 +282,13 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // Add edges to process graph.
     program.processes.foreach { proc =>
       val srcProcName = proc.id.id
-      val srcGprId  = procNameToGprId(srcProcName)
+      val srcGprId    = procNameToGprId(srcProcName)
 
       proc.body.foreach { instr =>
         instr match {
           case Send(_, _, dstProcId, _) =>
             val dstProcName = dstProcId.id
-            val dstGprId = procNameToGprId(dstProcName)
+            val dstGprId    = procNameToGprId(dstProcName)
             processGraph.addEdge(srcGprId, dstGprId)
 
             val edge = ProcEdge(srcGprId, dstGprId)
@@ -382,17 +382,17 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
   }
 
   def assignProcessesToCoresILP(
-    privilegedProcId: ProcId,
-    privilegedCoreId: CoreId,
-    processGraph: ProcessGraph,
-    procEdgeWeights: Map[ProcEdge, Int],
-    coreGraph: CoreGraph,
-    pathIdToPath: Map[CorePathId, CorePath]
-  )(
-    implicit ctx: AssemblyContext
+      privilegedProcId: ProcId,
+      privilegedCoreId: CoreId,
+      processGraph: ProcessGraph,
+      procEdgeWeights: Map[ProcEdge, Int],
+      coreGraph: CoreGraph,
+      pathIdToPath: Map[CorePathId, CorePath]
+  )(implicit
+      ctx: AssemblyContext
   ): (
-    Map[ProcId, CoreId],
-    Map[CorePath.PathEdge, Int]
+      Map[ProcId, CoreId],
+      Map[CorePath.PathEdge, Int]
   ) = {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ILP formulation for core process-to-core assignment.
@@ -480,7 +480,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       pathIdToPath.foreach { case (pathId, path) =>
         // Define auxiliary binary variable y_se_pa.
         val ySePaVarName = s"y_${procEdge}_${pathId}"
-        val ySePa = solver.makeIntVar(0, 1, ySePaVarName)
+        val ySePa        = solver.makeIntVar(0, 1, ySePaVarName)
         vars_ySePa += (procEdge, pathId) -> ySePa
 
         val xSeSrcPaSrc = vars_xPrC((procEdge.src, path.src))
@@ -499,7 +499,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
         ySePa_lessEqualDst_constraint.setCoefficient(xSeDstPaDst, -1)
 
         // (c) -1 <= x_(se.src)_(pa.src) + x_(se.dst)_(pa.dst) - y_se_pa <= 1
-        val ySePa_greaterEqualSrcDst_constraint = solver.makeConstraint(-1, 1, s"${ySePaVarName}_greaterEqualSrcDst_constraint")
+        val ySePa_greaterEqualSrcDst_constraint =
+          solver.makeConstraint(-1, 1, s"${ySePaVarName}_greaterEqualSrcDst_constraint")
         ySePa_greaterEqualSrcDst_constraint.setCoefficient(xSeSrcPaSrc, 1)
         ySePa_greaterEqualSrcDst_constraint.setCoefficient(xSeDstPaDst, 1)
         ySePa_greaterEqualSrcDst_constraint.setCoefficient(ySePa, -1)
@@ -542,23 +543,25 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // The maximum admissible weight of a core edge is the sum of all edge weights.
     val maxWeight = procEdgeWeights.values.sum
     coreGraph.edgeSet().asScala.foreach { e =>
-      val src = coreGraph.getEdgeSource(e)
-      val dst = coreGraph.getEdgeTarget(e)
+      val src      = coreGraph.getEdgeSource(e)
+      val dst      = coreGraph.getEdgeTarget(e)
       val coreEdge = CorePath.PathEdge(src, dst)
 
       // Define auxiliary binary variable w_ce. The upper limit is set to +infinity as
       // as arbitrary number of messages can transit over the edge.
       val wCeVarName = s"w_${coreEdge}"
-      val wCe = solver.makeIntVar(0, maxWeight, wCeVarName)
+      val wCe        = solver.makeIntVar(0, maxWeight, wCeVarName)
       vars_wCe += coreEdge -> wCe
 
       // Define constraints.
       // The equality constraint is modeled with a >= and <= constraint.
 
       // (a) 0 <= w_ce - \sum{...} <= +infinity
-      val wCe_greaterEqual_constraint = solver.makeConstraint(0, MPSolver.infinity(), s"${wCeVarName}_greaterEqual_constraint")
+      val wCe_greaterEqual_constraint =
+        solver.makeConstraint(0, MPSolver.infinity(), s"${wCeVarName}_greaterEqual_constraint")
       // (b) -infinity <= w_ce - \sum{...} <= 0
-      val wCe_lessEqual_constraint = solver.makeConstraint(-MPSolver.infinity(), 0, s"${wCeVarName}_lessEqual_constraint")
+      val wCe_lessEqual_constraint =
+        solver.makeConstraint(-MPSolver.infinity(), 0, s"${wCeVarName}_lessEqual_constraint")
 
       wCe_greaterEqual_constraint.setCoefficient(wCe, 1)
       wCe_lessEqual_constraint.setCoefficient(wCe, 1)
@@ -587,10 +590,10 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //
     val maxW = solver.makeIntVar(0, MPSolver.infinity(), s"max_w")
     coreGraph.edgeSet().asScala.foreach { e =>
-      val src = coreGraph.getEdgeSource(e)
-      val dst = coreGraph.getEdgeTarget(e)
+      val src      = coreGraph.getEdgeSource(e)
+      val dst      = coreGraph.getEdgeTarget(e)
       val coreEdge = CorePath.PathEdge(src, dst)
-      val wCe = vars_wCe(coreEdge)
+      val wCe      = vars_wCe(coreEdge)
 
       val constraint = solver.makeConstraint(0, MPSolver.infinity(), s"max_w_greaterThan_w_${coreEdge}")
       constraint.setCoefficient(maxW, 1)
@@ -616,9 +619,12 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // Extract results
     if ((resultStatus == MPSolver.ResultStatus.OPTIMAL) || (resultStatus == MPSolver.ResultStatus.FEASIBLE)) {
       // process-to-core assignments.
-      val assignments = vars_xPrC.filter { case ((procId, coreId), xPrC) =>
-        xPrC.solutionValue() > 0
-      }.keySet.toMap
+      val assignments = vars_xPrC
+        .filter { case ((procId, coreId), xPrC) =>
+          xPrC.solutionValue() > 0
+        }
+        .keySet
+        .toMap
 
       val coreEdgeWeights = vars_wCe.map { case (coreEdge, wCe) =>
         coreEdge -> wCe.solutionValue.toInt
@@ -643,17 +649,17 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
   }
 
   def assignProcessesToCoresCpSat(
-    privilegedProcId: ProcId,
-    privilegedCoreId: CoreId,
-    processGraph: ProcessGraph,
-    procEdgeWeights: Map[ProcEdge, Int],
-    coreGraph: CoreGraph,
-    pathIdToPath: Map[CorePathId, CorePath]
-  )(
-    implicit ctx: AssemblyContext
+      privilegedProcId: ProcId,
+      privilegedCoreId: CoreId,
+      processGraph: ProcessGraph,
+      procEdgeWeights: Map[ProcEdge, Int],
+      coreGraph: CoreGraph,
+      pathIdToPath: Map[CorePathId, CorePath]
+  )(implicit
+      ctx: AssemblyContext
   ): (
-    Map[ProcId, CoreId],
-    Map[CorePath.PathEdge, Int]
+      Map[ProcId, CoreId],
+      Map[CorePath.PathEdge, Int]
   ) = {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ILP formulation for core process-to-core assignment.
@@ -750,8 +756,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // The maximum admissible weight of a core edge is the sum of all edge weights.
     val maxWeight = procEdgeWeights.values.sum
     coreGraph.edgeSet().asScala.foreach { e =>
-      val src = coreGraph.getEdgeSource(e)
-      val dst = coreGraph.getEdgeTarget(e)
+      val src      = coreGraph.getEdgeSource(e)
+      val dst      = coreGraph.getEdgeTarget(e)
       val coreEdge = CorePath.PathEdge(src, dst)
 
       // Define auxiliary binary variable w_ce. The upper limit is set to +infinity as
@@ -760,7 +766,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       vars_wCe += coreEdge -> wCe
 
       // Linear expression for the RHS nested sum.
-      val exprs = ArrayBuffer.empty[LinearArgument]
+      val exprs  = ArrayBuffer.empty[LinearArgument]
       val coeffs = ArrayBuffer.empty[Long]
       procEdgeWeights.foreach { case (procEdge, weight) =>
         pathIdToPath.foreach { case (pathId, path) =>
@@ -802,9 +808,12 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // Extract results
     if ((resultStatus == CpSolverStatus.OPTIMAL) || (resultStatus == CpSolverStatus.FEASIBLE)) {
       // process-to-core assignments.
-      val assignments = vars_xPrC.filter { case ((procId, coreId), xPrC) =>
-        solver.value(xPrC) > 0
-      }.keySet.toMap
+      val assignments = vars_xPrC
+        .filter { case ((procId, coreId), xPrC) =>
+          solver.value(xPrC) > 0
+        }
+        .keySet
+        .toMap
 
       val coreEdgeWeights = vars_wCe.map { case (coreEdge, wCe) =>
         coreEdge -> solver.value(wCe).toInt
@@ -832,7 +841,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
   override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
 
     val (processGraph, procIdToProcName, procEdgeWeights) = getProcessGraph(program)
-    val procNameToProcId = procIdToProcName.map(x => x.swap)
+    val procNameToProcId                                  = procIdToProcName.map(x => x.swap)
 
     val coreGraph = getCoreGraph(ctx.max_dimx, ctx.max_dimy)
 
@@ -842,81 +851,104 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       val weights = procEdgeWeights.map { case (procEdge, weight) =>
         (procEdge.src, procEdge.dst) -> weight
       }
-      dumpGraph(processGraph, weights)
+      dumpGraph(processGraph, weights, procIdToProcName)
     }
 
     val privilegedProcs = program.processes.filter { proc =>
       proc.body.exists {
         case (_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
-        case _ => false
+        case _                                                                          => false
       }
     }
-    assert(privilegedProcs.size == 1, s"Error: Found ${privilegedProcs.size} privileged processes, but expected to only find 1.")
+    assert(
+      privilegedProcs.size == 1,
+      s"Error: Found ${privilegedProcs.size} privileged processes, but expected to only find 1."
+    )
     val privilegedProcId = procNameToProcId(privilegedProcs.head.id.id)
     val privilegedCoreId = CoreId(0, 0)
     ctx.logger.info(s"Privileged process has process id ${privilegedProcId}")
 
     // val (procIdToCoreId, coreEdgeWeights) = assignProcessesToCoresILP(privilegedProcId, privilegedCoreId, processGraph, procEdgeWeights, coreGraph, pathIdToPath)
-    val (procIdToCoreId, coreEdgeWeights) = assignProcessesToCoresCpSat(privilegedProcId, privilegedCoreId, processGraph, procEdgeWeights, coreGraph, pathIdToPath)
+    val (procIdToCoreId, coreEdgeWeights) = assignProcessesToCoresCpSat(
+      privilegedProcId,
+      privilegedCoreId,
+      processGraph,
+      procEdgeWeights,
+      coreGraph,
+      pathIdToPath
+    )
 
     ctx.logger.dumpArtifact("core_graph.dot") {
       dumpCoreGraph(procIdToProcName, procIdToCoreId, coreEdgeWeights, ctx.max_dimx, ctx.max_dimy)
     }
 
-    program
+    val oldProcNameToNewProcId = procIdToCoreId.map { case (procId, CoreId(x, y)) =>
+      val procName = procIdToProcName(procId)
+      procName -> ProcessIdImpl(s"placed_X${x}_Y${y}", x, y)
+    }.toMap
+
+    val placedProcs = program.processes.map { proc =>
+      val renamed = proc.body.map {
+        case send: Send => send.copy(dest_id = oldProcNameToNewProcId(send.dest_id.id)).setPos(send.pos)
+        case other      => other
+      }
+      proc.copy(id = oldProcNameToNewProcId(proc.id.id), body = renamed).setPos(proc.pos)
+    }
+
+    program.copy(processes = placedProcs).setPos(program.pos)
   }
 
   // This dumps an arbitrary graph. No layout modifications are performed.
-  def dumpGraph[V, E](
-      g: Graph[V, E],
-      weights: Map[(V, V), Int] = Map.empty[(V, V), Int]
+  def dumpGraph[E](
+      g: Graph[ProcId, E],
+      weights: Map[(ProcId, ProcId), Int] = Map.empty[(ProcId, ProcId), Int],
+      procIdToProcName: Map[ProcId, String] = Map.empty[ProcId, String]
   ): String = {
-    def escape(s: String): String = s.replaceAll("\"", "\\\\\"")
-    def quote(s: String): String  = s"\"${s}\""
-    def getLabel(v: V): String = quote(escape(v.toString()))
+    def escape(s: String): String   = s.replaceAll("\"", "\\\\\"")
+    def quote(s: String): String    = s"\"${s}\""
+    def getLabel(v: ProcId): String = quote(escape(procIdToProcName.getOrElse(v, v.toString())))
 
-    val s = new StringBuilder()
+    val dotLines = ArrayBuffer.empty[String]
 
     // Vertices in a graph may not be legal graphviz identifiers, so we give
     // them all an Int id.
     val vToVid = g.vertexSet().asScala.zipWithIndex.toMap
 
-    s ++= "digraph {\n"
+    dotLines.append("digraph {")
 
     // Dump vertices.
     g.vertexSet().asScala.foreach { v =>
       val vId    = vToVid(v)
       val vLabel = getLabel(v)
-      s ++= s"\t${vId} [label=${vLabel}]\n"
+      dotLines.append(s"\t${vId} [label=${vLabel}]")
     }
 
     // Dump edges.
     g.edgeSet().asScala.foreach { e =>
-      val src    = g.getEdgeSource(e)
-      val dst    = g.getEdgeTarget(e)
+      val src = g.getEdgeSource(e)
+      val dst = g.getEdgeTarget(e)
       val weight = weights.get((src, dst)) match {
         case Some(w) => w.toString()
-        case None => ""
+        case None    => ""
       }
 
-      val srcId  = vToVid(src)
-      val dstId  = vToVid(dst)
+      val srcId = vToVid(src)
+      val dstId = vToVid(dst)
 
-      s ++= s"\t${srcId} -> ${dstId} [label=${weight}]\n"
+      dotLines.append(s"\t${srcId} -> ${dstId} [label=${weight}]")
     }
 
-    s ++= "}\n" // digraph
-
-    s.toString()
+    dotLines.append("}") // digraph
+    dotLines.mkString("\n")
   }
 
   // This dumps the core graph. It is specifically formatted to be a grid (using various graphviz tricks).
   def dumpCoreGraph[V, E](
-    procIdToProcName: Map[ProcId, String],
-    procIdToCoreId: Map[ProcId, CoreId],
-    coreEdgeWeights: Map[CorePath.PathEdge, Int],
-    maxDimX: Int,
-    maxDimY: Int,
+      procIdToProcName: Map[ProcId, String],
+      procIdToCoreId: Map[ProcId, CoreId],
+      coreEdgeWeights: Map[CorePath.PathEdge, Int],
+      maxDimX: Int,
+      maxDimY: Int
   ): String = {
     val dotLines = ArrayBuffer.empty[String]
 
@@ -926,20 +958,24 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // "backwards" edges in the grid that exist due to the torus structure.
     // We use these invisible cores as otherwise the rendered graph will be
     // illegible with the backwards edges.
-    val coreIdToVId = Range(-1, maxDimX+1).flatMap { x =>
-      Range(-1, maxDimY+1).map { y =>
-        CoreId(x, y)
+    val coreIdToVId = Range(-1, maxDimX + 1)
+      .flatMap { x =>
+        Range(-1, maxDimY + 1).map { y =>
+          CoreId(x, y)
+        }
       }
-    }.zipWithIndex.toMap
+      .zipWithIndex
+      .toMap
 
     val maxWeight = coreEdgeWeights.values.max
     val weightHeatMap = coreEdgeWeights.values.map { weight =>
       val weightNormalized = weight / maxWeight.toDouble
-      val color = HeatmapColor(weightNormalized)
+      val color            = HeatmapColor(weightNormalized)
       weight -> color
     }.toMap
 
-    def isInvisible(coreId: CoreId): Boolean = (coreId.x == -1) || (coreId.x == maxDimX) || (coreId.y == -1) || (coreId.y == maxDimY)
+    def isInvisible(coreId: CoreId): Boolean =
+      (coreId.x == -1) || (coreId.x == maxDimX) || (coreId.y == -1) || (coreId.y == maxDimY)
 
     val coreIdToProcId = procIdToCoreId.map(x => x.swap)
 
@@ -965,7 +1001,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
       val procName = coreIdToProcId.get(coreId) match {
         case Some(procId) => procIdToProcName(procId)
-        case None => "N/A" // This core was not assigned a process.
+        case None         => "N/A" // This core was not assigned a process.
       }
       if (isInvisible(coreId)) {
         dotLines.append(s"\t${vId} [style=invis]")
@@ -975,20 +1011,22 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     }
 
     // Place all vertices at the same y-coordinate in the same rank so the grid is enforced.
-    coreIdToVId.keys.groupBy { coreId =>
-      coreId.y
-    }.foreach { case (y, coreIds) =>
-      val sameRankVIds = coreIds.map(coreId => coreIdToVId(coreId))
-      dotLines.append(s"\trank=\"same\" {${sameRankVIds.mkString(", ")}}")
-    }
+    coreIdToVId.keys
+      .groupBy { coreId =>
+        coreId.y
+      }
+      .foreach { case (y, coreIds) =>
+        val sameRankVIds = coreIds.map(coreId => coreIdToVId(coreId))
+        dotLines.append(s"\trank=\"same\" {${sameRankVIds.mkString(", ")}}")
+      }
 
     // Dump edges.
     // I explicitly omit the backward edges (torus) as they make the grid layout unreadable.
     (xForwardEdges ++ yForwardEdges).foreach { case (coreEdge, weight) =>
-      val (src, dst) = (coreEdge.src, coreEdge.dst)
+      val (src, dst)       = (coreEdge.src, coreEdge.dst)
       val (srcVId, dstVId) = (coreIdToVId(src), coreIdToVId(dst))
-      val color = weightHeatMap(weight).toCssHexString()
-      val style = if (weight == 0) "style=invis" else ""
+      val color            = weightHeatMap(weight).toCssHexString()
+      val style            = if (weight == 0) "style=invis" else ""
       dotLines.append(s"\t${srcVId} -> ${dstVId} [label=\"${weight}\" color=\"${color}\" ${style}]")
     }
 

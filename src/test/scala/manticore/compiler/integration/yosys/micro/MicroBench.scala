@@ -86,13 +86,13 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
-        max_dimx = 10,
-        max_dimy = 10,
+        max_dimx = 3,
+        max_dimy = 3,
         debug_message = false,
         max_registers = 2048,
         max_carries = 64,
         optimize_common_custom_functions = true,
-        placement_timeout_s = 10,
+        placement_timeout_s = 10
         // log_file = None,
       )
 
@@ -129,37 +129,36 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program9 = CompilationStage.finalLowering(program8)
       fixture.dump("stats.yml", ctx.stats.asYaml)
 
+      // do one final interpretation to make sure register allocation is correct
+      // checking whether a schedule is correct (i.e., enough Nops, contention
+      // free network) is done with a checker pass because atomic interpreter is
+      // not sophisticated enough to do a full cycle-accurate simulation of a
+      // manticore network.
 
-    // do one final interpretation to make sure register allocation is correct
-    // checking whether a schedule is correct (i.e., enough Nops, contention
-    // free network) is done with a checker pass because atomic interpreter is
-    // not sophisticated enough to do a full cycle-accurate simulation of a
-    // manticore network.
+      val serialOut = ArrayBuffer.empty[String]
+      val interp = AtomicInterpreter.instance(
+        program = program9,
+        serial = Some(serialOut += _)
+      )
+      interp.interpretCompletion()
 
-    val serialOut = ArrayBuffer.empty[String]
-    val interp = AtomicInterpreter.instance(
-      program = program9,
-      serial = Some(serialOut += _)
-    )
-    interp.interpretCompletion()
-
-    if (ctx.logger.countErrors() > 0) {
-      dumper("reference.txt", reference.mkString("\n"))
-      dumper("results.txt", serialOut.mkString("\n"))
-      fail(s"Complete schedule: failed due to earlier errors")
-    }
-    if (!YosysUnitTest.compare(reference, serialOut)) {
-      ctx.logger.flush()
-      dumper("reference.txt", reference.mkString("\n"))
-      dumper("results.txt", serialOut.mkString("\n"))
-      fail(s"Complete schedule: results did not match the reference")
-    }
-    if (ctx.logger.countErrors() > 0) {
-      ctx.logger.flush()
-      dumper("reference.txt", reference.mkString("\n"))
-      dumper("results.txt", serialOut.mkString("\n"))
-      fail(s"Complete schedule: Errors occurred")
-    }
+      if (ctx.logger.countErrors() > 0) {
+        dumper("reference.txt", reference.mkString("\n"))
+        dumper("results.txt", serialOut.mkString("\n"))
+        fail(s"Complete schedule: failed due to earlier errors")
+      }
+      if (!YosysUnitTest.compare(reference, serialOut)) {
+        ctx.logger.flush()
+        dumper("reference.txt", reference.mkString("\n"))
+        dumper("results.txt", serialOut.mkString("\n"))
+        fail(s"Complete schedule: results did not match the reference")
+      }
+      if (ctx.logger.countErrors() > 0) {
+        ctx.logger.flush()
+        dumper("reference.txt", reference.mkString("\n"))
+        dumper("results.txt", serialOut.mkString("\n"))
+        fail(s"Complete schedule: Errors occurred")
+      }
     }
   }
 
@@ -290,11 +289,10 @@ object CompilationStage {
 
   val parallelization =
     BalancedSplitMergerTransform andThen
-    // ProcessSplittingTransform andThen
+      // ProcessSplittingTransform andThen
       PlacedNameChecker andThen
       AnalyticalPlacerTransform
-      // RoundRobinPlacerTransform
-
+  // RoundRobinPlacerTransform
 
   val customLuts =
     CustomLutInsertion andThen
