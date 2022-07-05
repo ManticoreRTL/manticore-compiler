@@ -18,11 +18,14 @@ import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
 import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 import manticore.compiler.assembly.levels.placed.PlacedNameChecker
 import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
-import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.lowering.AbstractExecution
 import manticore.compiler.assembly.levels.placed.lowering.Lowering
+import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
+import manticore.compiler.assembly.levels.placed.parallel.AnalyticalPlacerTransform
+import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
+import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedCloseSequentialCycles
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
@@ -43,10 +46,6 @@ import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
 import scala.collection.mutable.ArrayBuffer
-import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
-import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
-import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
-import manticore.compiler.assembly.levels.placed.AnalyticalPlacerTransform
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -292,7 +291,6 @@ object CompilationStage {
       // ProcessSplittingTransform andThen
       PlacedNameChecker andThen
       AnalyticalPlacerTransform
-  // RoundRobinPlacerTransform
 
   val customLuts =
     CustomLutInsertion andThen

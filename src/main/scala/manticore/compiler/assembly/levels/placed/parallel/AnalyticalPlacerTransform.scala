@@ -1,4 +1,4 @@
-package manticore.compiler.assembly.levels.placed
+package manticore.compiler.assembly.levels.placed.parallel
 
 import com.google.ortools.Loader
 import com.google.ortools.linearsolver.MPModelExportOptions
@@ -15,6 +15,7 @@ import com.google.ortools.sat.LinearExprBuilder
 import com.google.ortools.sat.Literal
 import manticore.compiler.AssemblyContext
 import manticore.compiler.HeatmapColor
+import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 import org.jgrapht.Graph
 import org.jgrapht.graph.DefaultEdge
 import org.jgrapht.graph.DefaultWeightedEdge

@@ -15,13 +15,13 @@ import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
 import manticore.compiler.assembly.levels.placed.PlacedIROrderInstructions
 import manticore.compiler.assembly.levels.placed.PlacedNameChecker
 import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
-import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.lowering.AbstractExecution
 import manticore.compiler.assembly.levels.placed.lowering.Lowering
 import manticore.compiler.assembly.levels.unconstrained._
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
+import manticore.compiler.assembly.levels.placed.parallel.AnalyticalPlacerTransform
 
 object ManticorePasses {
 
@@ -56,7 +56,7 @@ object ManticorePasses {
   val ExtractParallelism =
     ProcessSplittingTransform andThen
       PlacedNameChecker andThen
-      RoundRobinPlacerTransform
+      AnalyticalPlacerTransform
 
   val BackendLowerEnd = Lowering.Transformation andThen AbstractExecution
 
