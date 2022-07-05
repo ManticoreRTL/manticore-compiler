@@ -255,6 +255,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
   type ProcessGraph = Graph[ProcId, DefaultEdge]
   type CoreGraph    = Graph[CoreId, DefaultEdge]
 
+  def boolToInt(b: Boolean) = if (b) 1 else 0
+
   def getProcessGraph(
       program: DefProgram
   ): (
@@ -654,7 +656,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       processGraph: ProcessGraph,
       procEdgeWeights: Map[ProcEdge, Int],
       coreGraph: CoreGraph,
-      pathIdToPath: Map[CorePathId, CorePath]
+      pathIdToPath: Map[CorePathId, CorePath],
+      // initialSolutionHint: Map[ProcId, CoreId]
   )(implicit
       ctx: AssemblyContext
   ): (
@@ -673,16 +676,24 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //
     //       x_pr_c = 1 if process pr is mapped to core c.
     //
-    val vars_xPrC = MHashMap.empty[(ProcId, CoreId), Literal]
+    val vars_xPrC  = MHashMap.empty[(ProcId, CoreId), BoolVar]
+    // val hints_xPrC = MHashMap.empty[(ProcId, CoreId), Boolean]
     processGraph.vertexSet().asScala.foreach { procId =>
       coreGraph.vertexSet().asScala.foreach { coreId =>
-        vars_xPrC += (procId, coreId) -> model.newBoolVar(s"x_${procId}_${coreId}")
+        val xPrC = model.newBoolVar(s"x_${procId}_${coreId}")
+        vars_xPrC += (procId, coreId) -> xPrC
+
+        // // Giving a hint to the solver is necessary as otherwise it fails to find a solution
+        // // even before the timeout threshold is set.
+        // val hint = initialSolutionHint(procId) == coreId
+        // hints_xPrC += (procId, coreId) -> hint
       }
     }
 
     // (7) The privileged process must be mapped to the privileged core.
     //
     //        x_privilegedProcess_privilegedCore = 1
+    //
     val xPrivilegedProcPrivilegedCore = vars_xPrC((privilegedProcId, privilegedCoreId))
     model.addEquality(xPrivilegedProcPrivilegedCore, 1)
 
@@ -691,10 +702,16 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //       \sum{c \in C} {x_pr_c} = 1   \forall pr \in PR
     //
     processGraph.vertexSet().asScala.foreach { targetProcId =>
-      val lits = vars_xPrC.collect {
-        case ((procId, _), lit) if procId == targetProcId => lit
-      }
-      model.addExactlyOne(lits.asJava)
+      // model.addExactlyOne expects a Literal, not a BoolVar. In scala
+      // you can pass a Array[BoolVar] to a method that expects a Array[Literal],
+      // but not in java as java's collections are not co-variant.
+      // Therefore I enfore the conversion type to Array[Literal].
+      val lits = vars_xPrC
+        .collect {
+          case ((procId, _), lit) if procId == targetProcId => lit
+        }
+        .toArray[Literal]
+      model.addExactlyOne(lits)
     }
 
     // (3) A core can be assigned at most 1 process. We use "at most" instead of "exactly"
@@ -703,10 +720,16 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //       \sum{pr \in PR} {x_pr_c} <= 1   \forall c \in C
     //
     coreGraph.vertexSet().asScala.foreach { targetCoreId =>
-      val lits = vars_xPrC.collect {
-        case ((_, coreId), lit) if coreId == targetCoreId => lit
-      }
-      model.addAtMostOne(lits.asJava)
+      // model.addAtMostOne expects a Literal, not a BoolVar. In scala
+      // you can pass a Array[BoolVar] to a method that expects a Array[Literal],
+      // but not in java as java's collections are not co-variant.
+      // Therefore I enfore the conversion type to Array[Literal].
+      val lits = vars_xPrC
+        .collect {
+          case ((_, coreId), lit) if coreId == targetCoreId => lit
+        }
+        .toArray[Literal]
+      model.addAtMostOne(lits)
     }
 
     // (4) Create auxiliary binary variable y_se_pa \in {0, 1} \forall (se, pa) \in SE x PA.
@@ -720,7 +743,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //
 
     // se \in SE is defined by the process graph edge.
-    val vars_ySePa = MHashMap.empty[(ProcEdge, CorePathId), Literal]
+    val vars_ySePa  = MHashMap.empty[(ProcEdge, CorePathId), BoolVar]
+    // val hints_ySePa = MHashMap.empty[(ProcEdge, CorePathId), Boolean]
     procEdgeWeights.foreach { case (procEdge, weight) =>
       pathIdToPath.foreach { case (pathId, path) =>
         val xSeSrcPaSrc = vars_xPrC((procEdge.src, path.src))
@@ -730,12 +754,36 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
         val ySePa = model.newBoolVar(s"y_${procEdge}_${pathId}")
         vars_ySePa += (procEdge, pathId) -> ySePa
 
+        // // Giving a hint to the solver is necessary as otherwise it fails to find a solution
+        // // even before the timeout threshold is set.
+        // val hint = hints_xPrC((procEdge.src, path.src)) && hints_xPrC((procEdge.dst, path.dst))
+        // hints_ySePa += (procEdge, pathId) -> hint
+
+        // Option 1:
         // We create a channeling constraint by modeling the AND of the literals as their sum
         // needing to be 2. Note that it is important to model the ->  and <- directions for the
         // channeling constraints to represent <-> (if and only if).
-        val linExpr = LinearExpr.sum(Array(xSeSrcPaSrc, xSeDstPaDst))
-        model.addEquality(linExpr, 2).onlyEnforceIf(ySePa)
-        model.addLessThan(linExpr, 2).onlyEnforceIf(ySePa.not())
+        //
+        // val linExpr = LinearExpr.sum(Array(xSeSrcPaSrc, xSeDstPaDst))
+        // model.addEquality(linExpr, 2).onlyEnforceIf(ySePa)
+        // model.addLessThan(linExpr, 2).onlyEnforceIf(ySePa.not())
+
+        // Option 2:
+        // We create a channeling constraint using boolean logic.
+        //
+        // x_(se.src)_(pa.src) ^ x_(se.dst)_(pa.dst) => y_se_pa
+        // <==>
+        // NOT { x_(se.src)_(pa.src) AND x_(se.dst)_(pa.dst) } OR y_se_pa
+        // <==>
+        // NOT { x_(se.src)_(pa.src) } or NOT { x_(se.dst)_(pa.dst) } or y_se_pa
+        model.addBoolOr(Array(xSeSrcPaSrc.not(), xSeDstPaDst.not(), ySePa))
+        //
+        // y_se_pa => x_(se.src)_(pa.src) ^ x_(se.dst)_(pa.dst)
+        // <==>
+        // y_se_pa => x_(se.src)_(pa.src)
+        // y_se_pa => x_(se.dst)_(pa.dst)
+        model.addImplication(ySePa, xSeSrcPaSrc)
+        model.addImplication(ySePa, xSeDstPaDst)
       }
     }
 
@@ -752,7 +800,10 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //
     //        \forall ce \in CE.
 
-    val vars_wCe = MHashMap.empty[CorePath.PathEdge, LinearArgument]
+    val vars_wCe = MHashMap.empty[CorePath.PathEdge, IntVar]
+    // // Giving a hint to the solver is necessary as otherwise it fails to find a solution
+    // // even before the timeout threshold is set.
+    // val hints_wCe = MHashMap.empty[CorePath.PathEdge, Int]
     // The maximum admissible weight of a core edge is the sum of all edge weights.
     val maxWeight = procEdgeWeights.values.sum
     coreGraph.edgeSet().asScala.foreach { e =>
@@ -766,19 +817,25 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       vars_wCe += coreEdge -> wCe
 
       // Linear expression for the RHS nested sum.
-      val exprs  = ArrayBuffer.empty[LinearArgument]
-      val coeffs = ArrayBuffer.empty[Long]
+      val exprs      = ArrayBuffer.empty[BoolVar]
+      val coeffs     = ArrayBuffer.empty[Long]
+      // val hintExprs  = ArrayBuffer.empty[Int]
+      // val hintCoeffs = ArrayBuffer.empty[Int]
       procEdgeWeights.foreach { case (procEdge, weight) =>
         pathIdToPath.foreach { case (pathId, path) =>
           val ySePa = vars_ySePa((procEdge, pathId))
           if (path.contains(coreEdge)) {
             exprs += ySePa
             coeffs += weight
+            // hintExprs += boolToInt(hints_ySePa((procEdge, pathId)))
+            // hintCoeffs += weight
           }
         }
       }
       val linExpr = LinearExpr.weightedSum(exprs.toArray, coeffs.toArray)
       model.addEquality(wCe, linExpr)
+      // val hint = hintCoeffs.zip(hintExprs).map { case (coeff, expr) => coeff * expr }.sum
+      // hints_wCe += coreEdge -> hint
     }
 
     // (6) Create auxiliary variable max_w \in {0, infinity} which keeps track of the maximum
@@ -787,7 +844,26 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //        max_w >= max{ce \in CE} {w_ce}
     //
     val maxW = model.newIntVar(0, maxWeight, s"max_w")
-    model.addMaxEquality(maxW, vars_wCe.values.toArray)
+    // Note that using toArray does not work here for some reason, but toSeq does.
+    model.addMaxEquality(maxW, vars_wCe.values.toSeq.asJava)
+    // // Giving a hint to the solver is necessary as otherwise it fails to find a solution
+    // // even before the timeout threshold is set.
+    // val hint_maxW = hints_wCe.maxBy { case (coreEdge, weight) => weight }._2
+
+    // // Apply all hints to the solver.
+    // hints_xPrC.foreach { case ((procId, coreId), hint) =>
+    //   val xPrC = vars_xPrC((procId, coreId))
+    //   model.addHint(xPrC, boolToInt(hint))
+    // }
+    // hints_ySePa.foreach { case ((procEdge, pathId), hint) =>
+    //   val ySePa = vars_ySePa((procEdge, pathId))
+    //   model.addHint(ySePa, boolToInt(hint))
+    // }
+    // hints_wCe.foreach { case (coreEdge, weight) =>
+    //   val wCe = vars_wCe(coreEdge)
+    //   model.addHint(wCe, weight)
+    // }
+    // model.addHint(maxW, hint_maxW)
 
     // objective function
     // ------------------
@@ -838,6 +914,114 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     }
   }
 
+  def assignProcessesToCoresRoundRobin(
+      program: DefProgram,
+      processGraph: ProcessGraph,
+      procNameToProcId: Map[String, ProcId],
+      coreGraph: CoreGraph,
+      procEdgeWeights: Map[ProcEdge, Int],
+      pathIdToPath: Map[CorePathId, CorePath]
+  )(implicit
+      ctx: AssemblyContext
+  ): (
+      Map[ProcId, CoreId],
+      Map[CorePath.PathEdge, Int]
+  ) = {
+
+    // The initial solution is used to warm-up CP-SAT as otherwise it often does not even find
+    // a feasible solution before the timeout is received.
+    val procIdToCoreId = program.processes
+      .sortBy { proc =>
+        proc.body.count {
+          case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
+          case _                                                                             => false
+        }
+      } {
+        Ordering[Int].reverse
+      }
+      .zip {
+        Range(0, ctx.max_dimx).flatMap { x =>
+          Range(0, ctx.max_dimy).map { y =>
+            CoreId(x, y)
+          }
+        }
+      }
+      .map { case (proc, coreId) =>
+        val procName = proc.id.id
+        val procId   = procNameToProcId(procName)
+        procId -> coreId
+      }
+      .toMap
+
+    // (1) Create binary variable x_pr_c \in {0, 1} \forall (pr, c) \in PR x C.
+    //
+    //       x_pr_c = 1 if process pr is mapped to core c.
+    //
+
+    val vars_xPrC = MHashMap.empty[(ProcId, CoreId), Boolean]
+    processGraph.vertexSet().asScala.foreach { procId =>
+      coreGraph.vertexSet().asScala.foreach { coreId =>
+        val xPrC = procIdToCoreId(procId) == coreId
+        vars_xPrC += (procId, coreId) -> xPrC
+      }
+    }
+
+    // (4) Create auxiliary binary variable y_se_pa \in {0, 1} \forall (se, pa) \in SE x PA.
+    //
+    //       y_se_pa = 1 if send edge se is mapped to path pa.
+    //
+    //     Due to dimension-order-routing there is only 1 path between any 2 endpoints.
+    //     We can therefore compute y_se_pa as follows:
+    //
+    //       y_se_pa = x_(se.src)_(pa.src) ^ x_(se.dst)_(pa.dst)
+    //
+
+    val vars_ySePa = MHashMap.empty[(ProcEdge, CorePathId), Boolean]
+    procEdgeWeights.foreach { case (procEdge, weight) =>
+      pathIdToPath.foreach { case (pathId, path) =>
+        val ySePa = vars_xPrC((procEdge.src, path.src)) && vars_xPrC((procEdge.dst, path.dst))
+        vars_ySePa += (procEdge, pathId) -> ySePa
+      }
+    }
+
+    // (5) Create auxiliary variables w_ce \in {0, infinity} which count the total number of
+    //     messages going over edge ce. The weight of an edge in the core graph is the sum of
+    //     the weights of all paths that go through it multiplied by whether the path is assigned
+    //     to an edge se.
+    //
+    //        w_ce = \sum{se \in SE} {
+    //                 \sum{pa \in PA : ce \in pa} {
+    //                   w(se) * y_se_pa
+    //                 }
+    //               }
+    //
+    //        \forall ce \in CE.
+    //
+
+    val vars_wCe = MHashMap.empty[CorePath.PathEdge, Int]
+    coreGraph.edgeSet().asScala.foreach { e =>
+      val src      = coreGraph.getEdgeSource(e)
+      val dst      = coreGraph.getEdgeTarget(e)
+      val coreEdge = CorePath.PathEdge(src, dst)
+
+      val exprs  = ArrayBuffer.empty[Int]
+      val coeffs = ArrayBuffer.empty[Int]
+      procEdgeWeights.foreach { case (procEdge, weight) =>
+        pathIdToPath.foreach { case (pathId, path) =>
+          if (path.contains(coreEdge)) {
+            val ySePa = vars_ySePa((procEdge, pathId))
+            exprs += boolToInt(ySePa)
+            coeffs += weight
+          }
+        }
+      }
+      val wCe = coeffs.zip(exprs).map { case (coeff, expr) => coeff * expr }.sum
+      vars_wCe += coreEdge -> wCe
+    }
+
+    (procIdToCoreId, vars_wCe.toMap)
+  }
+
   override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
 
     val (processGraph, procIdToProcName, procEdgeWeights) = getProcessGraph(program)
@@ -868,15 +1052,32 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     val privilegedCoreId = CoreId(0, 0)
     ctx.logger.info(s"Privileged process has process id ${privilegedProcId}")
 
-    // val (procIdToCoreId, coreEdgeWeights) = assignProcessesToCoresILP(privilegedProcId, privilegedCoreId, processGraph, procEdgeWeights, coreGraph, pathIdToPath)
-    val (procIdToCoreId, coreEdgeWeights) = assignProcessesToCoresCpSat(
-      privilegedProcId,
-      privilegedCoreId,
+    // Round-robin assignemnt solution.
+    val (roundRobinAssignmentHint, coreEdgeWeights) = assignProcessesToCoresRoundRobin(
+      program,
       processGraph,
-      procEdgeWeights,
+      procNameToProcId,
       coreGraph,
+      procEdgeWeights,
       pathIdToPath
     )
+    val procIdToCoreId = roundRobinAssignmentHint
+
+    // // ILP-based solution.
+    // val (procIdToCoreId, coreEdgeWeights) = assignProcessesToCoresILP(
+    //   privilegedProcId, privilegedCoreId, processGraph, procEdgeWeights, coreGraph, pathIdToPath
+    // )
+
+    // // CP-SAT-based solution.
+    // val (procIdToCoreId, coreEdgeWeights) = assignProcessesToCoresCpSat(
+    //   privilegedProcId,
+    //   privilegedCoreId,
+    //   processGraph,
+    //   procEdgeWeights,
+    //   coreGraph,
+    //   pathIdToPath,
+    //   // roundRobinAssignmentHint
+    // )
 
     ctx.logger.dumpArtifact("core_graph.dot") {
       dumpCoreGraph(procIdToProcName, procIdToCoreId, coreEdgeWeights, ctx.max_dimx, ctx.max_dimy)
