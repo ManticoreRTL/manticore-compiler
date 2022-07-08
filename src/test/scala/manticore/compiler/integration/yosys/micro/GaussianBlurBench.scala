@@ -21,6 +21,8 @@ final class GaussianBlurBench extends MicroBench with CancelAfterFailure {
     WithResource("integration/yosys/micro/stencil/TestBench.sv")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
     WithInlineVerilog(
@@ -55,8 +57,8 @@ final class GaussianBlurBench extends MicroBench with CancelAfterFailure {
   }
 
   override def outputReference(config: TestConfig): ArrayBuffer[String] = {
-    val tempDir = Files.createTempDirectory("stencil_ref")
-    val vfile   = tempDir.resolve("stencil_tb.sv")
+    val tempDir = Files.createTempDirectory("vref")
+    val vfile   = tempDir.resolve("tb.sv")
 
     val writer = new PrintWriter(vfile.toFile())
 

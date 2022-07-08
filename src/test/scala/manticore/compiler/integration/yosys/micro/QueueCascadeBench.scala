@@ -21,6 +21,8 @@ final class QueueCascadeBench extends MicroBench {
     WithResource("integration/yosys/micro/QueueCascade.v")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
     WithInlineVerilog(
@@ -64,9 +66,8 @@ final class QueueCascadeBench extends MicroBench {
   }
 
   override def outputReference(config: TestConfig): ArrayBuffer[String] = {
-
-    val tempDir = Files.createTempDirectory("queue_ref")
-    val vfile   = tempDir.resolve("queue_ref.sv")
+    val tempDir = Files.createTempDirectory("vref")
+    val vfile   = tempDir.resolve("tb.sv")
 
     val writer = new PrintWriter(vfile.toFile())
 

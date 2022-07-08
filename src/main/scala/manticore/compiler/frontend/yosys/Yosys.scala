@@ -30,7 +30,8 @@ object Yosys {
   ) runsAfter (Flatten, ManticoreDff, MemoryUnpack)
 
   val PreparationPasses =
-    (Hierarchy << "-auto-top" << "-check") andThen
+    (Hierarchy << "-check") andThen
+      (Hierarchy << "-auto-top") andThen
       Proc andThen
       Opt andThen
       (WReduce << "-memx")  andThen

@@ -15,6 +15,8 @@ final class SwizzleBench extends MicroBench {
     WithResource("integration/yosys/micro/swizzle.sv")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
     val inputs = Seq(

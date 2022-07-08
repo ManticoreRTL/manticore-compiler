@@ -16,6 +16,8 @@ final class SimpleArrayMultiplierBench extends MicroBench {
     WithResource("integration/yosys/micro/array_mult.sv")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(config: TestConfig): FileDescriptor = {
 
     assert(config.width <= 64)

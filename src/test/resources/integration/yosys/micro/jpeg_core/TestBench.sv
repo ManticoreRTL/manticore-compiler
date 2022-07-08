@@ -7,16 +7,16 @@ module Main(input wire clock);
   localparam C_IMAGE_HEIGHT = 75;
 
   localparam C_RED_NUM_WORDS = 215;
-  localparam C_RED_DATA_HEX_FILE = "hex/red-100x75_data.hex";
-  localparam C_RED_STRB_HEX_FILE = "hex/red-100x75_strb.hex";
+  localparam C_RED_DATA_HEX_FILE = "red-100x75_data.hex";
+  localparam C_RED_STRB_HEX_FILE = "red-100x75_strb.hex";
 
   localparam C_GREEN_NUM_WORDS = 220;
-  localparam C_GREEN_DATA_HEX_FILE = "hex/green-100x75_data.hex";
-  localparam C_GREEN_STRB_HEX_FILE = "hex/green-100x75_strb.hex";
+  localparam C_GREEN_DATA_HEX_FILE = "green-100x75_data.hex";
+  localparam C_GREEN_STRB_HEX_FILE = "green-100x75_strb.hex";
 
   localparam C_BLUE_NUM_WORDS = 220;
-  localparam C_BLUE_DATA_HEX_FILE = "hex/blue-100x75_data.hex";
-  localparam C_BLUE_STRB_HEX_FILE = "hex/blue-100x75_strb.hex";
+  localparam C_BLUE_DATA_HEX_FILE = "blue-100x75_data.hex";
+  localparam C_BLUE_STRB_HEX_FILE = "blue-100x75_strb.hex";
 
   logic [C_NUM_DUTS - 1 : 0] start;
   logic [C_NUM_DUTS - 1 : 0] done_ack;

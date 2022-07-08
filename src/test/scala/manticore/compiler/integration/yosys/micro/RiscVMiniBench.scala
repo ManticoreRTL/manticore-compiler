@@ -17,6 +17,8 @@ final class RiscVMiniBench extends MicroBench {
     WithResource("integration/yosys/micro/riscv-mini.v")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
     WithInlineVerilog(

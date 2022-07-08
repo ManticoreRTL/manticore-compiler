@@ -21,6 +21,8 @@ final class PicoRv32ArrayBench extends MicroBench {
     WithResource("integration/yosys/micro/picorv32.v")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
     WithInlineVerilog(
@@ -138,9 +140,8 @@ final class PicoRv32ArrayBench extends MicroBench {
   override def timeOut: Int = 10000
 
   override def outputReference(testSize: TestConfig): ArrayBuffer[String] = {
-
-    val tempDir = Files.createTempDirectory("picorv32_ref")
-    val vfile = tempDir.resolve("picorv32_tb.sv")
+    val tempDir = Files.createTempDirectory("vref")
+    val vfile   = tempDir.resolve("tb.sv")
 
     val writer = new PrintWriter(vfile.toFile())
 

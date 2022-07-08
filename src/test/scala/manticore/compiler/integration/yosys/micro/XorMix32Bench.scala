@@ -15,6 +15,8 @@ final class XorMix32Bench extends MicroBench {
     WithResource("integration/yosys/micro/xormix32.sv")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
     val reference = scala.io.Source.fromResource("integration/yosys/micro/xormix32_ref.hex").getLines().zipWithIndex.map {

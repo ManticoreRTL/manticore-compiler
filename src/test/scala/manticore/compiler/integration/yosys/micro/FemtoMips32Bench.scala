@@ -19,6 +19,8 @@ final class FemtoMips32Bench extends MicroBench {
     WithResource("integration/yosys/micro/femto/single/ring.sv")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = WithResource("integration/yosys/micro/femto/tb.sv")
 
   override def outputReference(config: TestConfig): ArrayBuffer[String] = {

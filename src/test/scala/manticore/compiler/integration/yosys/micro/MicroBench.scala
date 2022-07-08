@@ -60,27 +60,34 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
   def verilogSources: Seq[FileDescriptor]
 
+  def hexSources: Seq[FileDescriptor]
+
   def testBench(cfg: TestConfig): FileDescriptor
 
   def outputReference(testSize: TestConfig): ArrayBuffer[String]
 
   def testCase(label: String, cfg: TestConfig): Unit = {
 
+    def readResource(res: FileDescriptor): String = {
+      scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
+    }
+
     s"$label" should "match expected results" in { fixture =>
+      // Read each verilog source and concatenate them together.
       val tbCode     = testBench(cfg)
-      val allSources = verilogSources :+ tbCode
-
-      // Read each source and concatenate them together.
-      val finalVerilog = allSources
-        .map { res =>
-          scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
-        }
-        .mkString("\n")
-
+      val allVerilog = verilogSources :+ tbCode
+      val finalVerilog = allVerilog.map(res => readResource(res)).mkString("\n")
       val vFilePath = fixture.dump("benchmark.sv", finalVerilog)
 
+      // The hex files must be copied to the same directory as the single concatenated verilog file.
+      hexSources.foreach { res =>
+        val name = res.p.toString().split("/").last
+        val content = readResource(res)
+        fixture.dump(name, content)
+      }
+
       implicit val ctx = AssemblyContext(
-        dump_all = false,
+        dump_all = true,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),

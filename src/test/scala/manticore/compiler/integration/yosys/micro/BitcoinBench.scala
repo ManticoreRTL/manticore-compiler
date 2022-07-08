@@ -24,6 +24,8 @@ final class BitcoinBench extends MicroBench with CancelAfterFailure {
     WithResource("integration/yosys/micro/bitcoin.v")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
     WithInlineVerilog(
@@ -58,8 +60,8 @@ final class BitcoinBench extends MicroBench with CancelAfterFailure {
   }
 
   override def outputReference(config: TestConfig): ArrayBuffer[String] = {
-    val tempDir = Files.createTempDirectory("bitcoin_ref")
-    val vfile   = tempDir.resolve("bitcoin_tb.sv")
+    val tempDir = Files.createTempDirectory("vref")
+    val vfile   = tempDir.resolve("tb.sv")
 
     val writer = new PrintWriter(vfile.toFile())
 

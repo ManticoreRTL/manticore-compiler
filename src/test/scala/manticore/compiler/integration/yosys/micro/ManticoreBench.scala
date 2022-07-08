@@ -14,6 +14,8 @@ final class ManticoreBench extends MicroBench {
     WithResource("integration/yosys/micro/Manticore.v")
   )
 
+  override def hexSources: Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor =
     WithResource("integration/yosys/micro/Manticore_tb.sv")
 
