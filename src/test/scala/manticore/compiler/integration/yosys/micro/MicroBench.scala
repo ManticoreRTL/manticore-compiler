@@ -18,11 +18,14 @@ import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
 import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 import manticore.compiler.assembly.levels.placed.PlacedNameChecker
 import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
-import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.lowering.AbstractExecution
 import manticore.compiler.assembly.levels.placed.lowering.Lowering
+import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
+import manticore.compiler.assembly.levels.placed.parallel.AnalyticalPlacerTransform
+import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
+import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedCloseSequentialCycles
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
@@ -43,9 +46,6 @@ import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
 import scala.collection.mutable.ArrayBuffer
-import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
-import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
-import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -85,12 +85,13 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
-        max_dimx = 10,
-        max_dimy = 10,
+        max_dimx = 3,
+        max_dimy = 3,
         debug_message = false,
         max_registers = 2048,
         max_carries = 64,
-        optimize_common_custom_functions = true
+        optimize_common_custom_functions = true,
+        placement_timeout_s = 10
         // log_file = None,
       )
 
@@ -127,37 +128,36 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program9 = CompilationStage.finalLowering(program8)
       fixture.dump("stats.yml", ctx.stats.asYaml)
 
+      // do one final interpretation to make sure register allocation is correct
+      // checking whether a schedule is correct (i.e., enough Nops, contention
+      // free network) is done with a checker pass because atomic interpreter is
+      // not sophisticated enough to do a full cycle-accurate simulation of a
+      // manticore network.
 
-    // do one final interpretation to make sure register allocation is correct
-    // checking whether a schedule is correct (i.e., enough Nops, contention
-    // free network) is done with a checker pass because atomic interpreter is
-    // not sophisticated enough to do a full cycle-accurate simulation of a
-    // manticore network.
+      val serialOut = ArrayBuffer.empty[String]
+      val interp = AtomicInterpreter.instance(
+        program = program9,
+        serial = Some(serialOut += _)
+      )
+      interp.interpretCompletion()
 
-    val serialOut = ArrayBuffer.empty[String]
-    val interp = AtomicInterpreter.instance(
-      program = program9,
-      serial = Some(serialOut += _)
-    )
-    interp.interpretCompletion()
-
-    if (ctx.logger.countErrors() > 0) {
-      dumper("reference.txt", reference.mkString("\n"))
-      dumper("results.txt", serialOut.mkString("\n"))
-      fail(s"Complete schedule: failed due to earlier errors")
-    }
-    if (!YosysUnitTest.compare(reference, serialOut)) {
-      ctx.logger.flush()
-      dumper("reference.txt", reference.mkString("\n"))
-      dumper("results.txt", serialOut.mkString("\n"))
-      fail(s"Complete schedule: results did not match the reference")
-    }
-    if (ctx.logger.countErrors() > 0) {
-      ctx.logger.flush()
-      dumper("reference.txt", reference.mkString("\n"))
-      dumper("results.txt", serialOut.mkString("\n"))
-      fail(s"Complete schedule: Errors occurred")
-    }
+      if (ctx.logger.countErrors() > 0) {
+        dumper("reference.txt", reference.mkString("\n"))
+        dumper("results.txt", serialOut.mkString("\n"))
+        fail(s"Complete schedule: failed due to earlier errors")
+      }
+      if (!YosysUnitTest.compare(reference, serialOut)) {
+        ctx.logger.flush()
+        dumper("reference.txt", reference.mkString("\n"))
+        dumper("results.txt", serialOut.mkString("\n"))
+        fail(s"Complete schedule: results did not match the reference")
+      }
+      if (ctx.logger.countErrors() > 0) {
+        ctx.logger.flush()
+        dumper("reference.txt", reference.mkString("\n"))
+        dumper("results.txt", serialOut.mkString("\n"))
+        fail(s"Complete schedule: Errors occurred")
+      }
     }
   }
 
@@ -288,9 +288,9 @@ object CompilationStage {
 
   val parallelization =
     BalancedSplitMergerTransform andThen
-    // ProcessSplittingTransform andThen
-      PlacedNameChecker andThen RoundRobinPlacerTransform
-
+      // ProcessSplittingTransform andThen
+      PlacedNameChecker andThen
+      AnalyticalPlacerTransform
 
   val customLuts =
     CustomLutInsertion andThen

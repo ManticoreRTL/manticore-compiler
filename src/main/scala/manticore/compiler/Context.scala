@@ -36,6 +36,7 @@ trait AssemblyContext {
   val quiet: Boolean // do not print info messages
   val max_dimx: Int // maximum dimension in X
   val max_dimy: Int // maximum dimension in Y
+  val placement_timeout_s: Int // timeout for analytic placement
   val expected_cycles: Option[
     Int
   ] // number of expected cycles before STOP is reached (used internally for tests)
@@ -72,6 +73,7 @@ object AssemblyContext {
       val quiet: Boolean,
       val max_dimx: Int,
       val max_dimy: Int,
+      val placement_timeout_s: Int,
       val use_loc: Boolean,
       val dump_rf: Boolean,
       val dump_ra: Boolean,
@@ -109,6 +111,7 @@ object AssemblyContext {
       quiet: Boolean = false,
       max_dimx: Int = 2,
       max_dimy: Int = 2,
+      placement_timeout_s: Int = 10,
       use_loc: Boolean = false,
       dump_ra: Boolean = true,
       dump_rf: Boolean = true,
@@ -136,6 +139,7 @@ object AssemblyContext {
       quiet = quiet,
       max_dimx = max_dimx,
       max_dimy = max_dimy,
+      placement_timeout_s = placement_timeout_s,
       use_loc = use_loc,
       dump_ra = dump_ra,
       dump_rf = dump_rf,

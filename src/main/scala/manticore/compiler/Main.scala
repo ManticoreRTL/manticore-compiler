@@ -19,7 +19,6 @@ import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
 import manticore.compiler.assembly.levels.placed.PlacedIROrderInstructions
 import manticore.compiler.assembly.levels.placed.PlacedNameChecker
 import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
-import manticore.compiler.assembly.levels.placed.RoundRobinPlacerTransform
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
