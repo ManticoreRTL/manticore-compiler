@@ -18,6 +18,12 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
   private type NodeT = Graph[ProcessorDescriptor, WDiEdge]#NodeT
 
+  def vcycle(node: NodeT) = {
+    val numSends = node.outgoing.foldLeft(0.0) { case (acc, e) => acc + e.weight }.toInt
+    val numRecvs = node.toOuter.inBound.size
+    val numInstr = node.toOuter.body.size
+    (numInstr + numSends + numRecvs)
+  }
   private def mergeConnectedGraphWithBudget(
       coreBudget: Int,
       graph: MutableGraph[ProcessorDescriptor, WDiEdge],
@@ -61,12 +67,6 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
       graph -= neighbor
     }
 
-    def vcycle(node: NodeT) = {
-      val numSends = node.outgoing.foldLeft(0.0) { case (acc, e) => acc + e.weight }.toInt
-      val numRecvs = node.toOuter.inBound.size
-      val numInstr = node.toOuter.body.size
-      (numInstr + numSends + numRecvs)
-    }
     def findShortestAndLongestProcessingTime(): (Option[NodeT], Int, Option[NodeT], Int) = {
 
       var shortestNode   = Option.empty[NodeT]
@@ -146,15 +146,24 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
               case Some(choice) =>
                 // There is a viable choice. Let's see if this choice increase the
                 // current estimated vcycle.
-                if (choice.score > longestVcycle) {
+                if (choice.score > (longestVcycle / 2)) {
+                  ctx.logger.info(
+                    s"Merge choice exceeds vcycle threshold ${choice.score} > ${longestVcycle / 2}, will try straggler as merge candidate"
+                  )
                   // this choice degrades vcycle, try merging the longest node instead
                   findChoice(longestNode, longestVcycle) match {
                     case Some(otherChoice) if (otherChoice.score < choice.score) =>
-                      ctx.logger.info("Merging straggler the current straggler with one of its neighbors")
+                      ctx.logger.info("Merging the current straggler with one of its neighbors")
+                      if (otherChoice.score > longestVcycle) {
+                        ctx.logger.info(s"increased vcycle from ${longestVcycle} to ${otherChoice.score}")
+                      } else {
+                        ctx.logger.info(s"decreased vcycle from ${longestVcycle} to ${otherChoice.score}")
+                      }
                       replace(otherChoice)
                       tryContraction(processCount - 1)
                     case _ =>
                       replace(choice)
+                      ctx.logger.info(s"Have to choose a merge that results in ${choice.score}")
                       tryContraction(processCount - 1)
                   }
                 } else {
@@ -251,12 +260,13 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
     assert(clusters.size == 1, "can not handle disconnected graphs yet") // handle core budget allocation later
 
+    ctx.logger.info(s"max split gives a vcycle estimate of ${vcycle(clusters.head.nodes.maxBy(vcycle))}")
     // mutates clusters.head
     ctx.stats.recordRunTime("merging") {
       mergeConnectedGraphWithBudget(numCores, clusters.head, parContext)
     }
 
-    val cores = clusters.head.nodes.toSeq.map { x => x.toOuter }
+    val cores          = clusters.head.nodes.toSeq.map { x => x.toOuter }
     val finalProcesses = createProcesses(program.processes.head, cores, parContext)
     val result = program.copy(
       processes = finalProcesses
@@ -296,7 +306,6 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
           Nil
         }
       assert(originalProcess.functions == Nil, "can not handle custom functions yet")
-
 
       val p = DefProcess(
         id = processId(coreIndex),
