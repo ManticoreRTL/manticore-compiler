@@ -46,12 +46,12 @@ int main(int argc, char **argv, char **env) {
   unsigned int time_out = std::stoi(argv[1]) << 1;
   // printf("Timeout cycles = %u\n", time_out >> 1);
   int time = 0;
-  top->clk = 0;
+  top->clock = 0;
 
   // Simulate until $finish
   while (!Verilated::gotFinish() && time < time_out) {
     time++;
-    top->clk = !top->clk;
+    top->clock = !top->clock;
     top->eval();
     // tfp->dump(time);
   }

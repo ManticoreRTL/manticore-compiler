@@ -46,6 +46,8 @@ import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
 import scala.collection.mutable.ArrayBuffer
+import java.nio.file.Path
+import java.io.PrintWriter
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -87,13 +89,13 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       }
 
       implicit val ctx = AssemblyContext(
-        dump_all = true,
+        dump_all = false,
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
-        max_dimx = 3,
-        max_dimy = 3,
+        max_dimx = 16,
+        max_dimy = 16,
         debug_message = false,
         max_registers = 2048,
         max_carries = 64,
@@ -111,7 +113,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program1  = yosysCompiler(Seq(vFilePath))
       val reference = outputReference(cfg)
       val dumper    = { (n: String, t: String) => fixture.dump(n, t); () }
-      checkUnconstrained("yosys + ordering", program1, reference, dumper)
+      // checkUnconstrained("yosys + ordering", program1, reference, dumper)
       val program2 = CompilationStage.unconstrainedOptimizations(program1)
       // checkUnconstrained("prelim opts", program2, reference, dumper)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
@@ -125,10 +127,10 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program6 = CompilationStage.placedOptimizations(program5)
       // checkPlaced("placed opts", program6, reference, dumper)
       val program7 = CompilationStage.parallelization(program6)
-      checkPlaced("parallelization", program7, reference, dumper)
+      // checkPlaced("parallelization", program7, reference, dumper)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       val program8 = CompilationStage.customLuts(program7)
-      checkPlaced("custom luts", program8, reference, dumper)
+      // checkPlaced("custom luts", program8, reference, dumper)
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
       // temporary disabled until I fix the bugs with lowering passes :(
@@ -146,7 +148,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         program = program9,
         serial = Some(serialOut += _)
       )
-      interp.interpretCompletion()
+      // interp.interpretCompletion()
 
       if (ctx.logger.countErrors() > 0) {
         dumper("reference.txt", reference.mkString("\n"))
@@ -166,6 +168,17 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         fail(s"Complete schedule: Errors occurred")
       }
     }
+  }
+
+  def copyResource(res: FileDescriptor, cwd: Path): Path = {
+    val name = res.p.toString().split("/").last
+    val targetPath = cwd.resolve(name)
+    val content = scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
+    val writer = new PrintWriter(targetPath.toFile())
+    writer.write(content)
+    writer.flush()
+    writer.close()
+    targetPath
   }
 
   def interpretUnconstrained(
