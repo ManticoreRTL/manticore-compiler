@@ -1135,7 +1135,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       .zipWithIndex
       .toMap
 
-    val maxWeight = coreEdgeWeights.values.max
+    val maxWeight = if (coreEdgeWeights.isEmpty) 0 else coreEdgeWeights.values.max
     val weightHeatMap = coreEdgeWeights.values.map { weight =>
       val weightNormalized = weight / maxWeight.toDouble
       val color            = HeatmapColor(weightNormalized)
