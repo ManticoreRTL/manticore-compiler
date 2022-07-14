@@ -148,23 +148,24 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         program = program9,
         serial = Some(serialOut += _)
       )
-      // interp.interpretCompletion()
+      interp.interpretCompletion()
 
       if (ctx.logger.countErrors() > 0) {
         dumper("reference.txt", reference.mkString("\n"))
         dumper("results.txt", serialOut.mkString("\n"))
+        ctx.logger.flush()
         fail(s"Complete schedule: failed due to earlier errors")
       }
       if (!YosysUnitTest.compare(reference, serialOut)) {
-        ctx.logger.flush()
         dumper("reference.txt", reference.mkString("\n"))
         dumper("results.txt", serialOut.mkString("\n"))
+        ctx.logger.flush()
         fail(s"Complete schedule: results did not match the reference")
       }
       if (ctx.logger.countErrors() > 0) {
-        ctx.logger.flush()
         dumper("reference.txt", reference.mkString("\n"))
         dumper("results.txt", serialOut.mkString("\n"))
+        ctx.logger.flush()
         fail(s"Complete schedule: Errors occurred")
       }
     }
