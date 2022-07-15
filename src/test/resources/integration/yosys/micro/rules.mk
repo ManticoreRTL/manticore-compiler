@@ -7,9 +7,10 @@ THREADS = 0
 VERILATOR = verilator
 VERILATOR_FLAGS += -cc --exe --build -Os -x-assign 0
 VERILATOR_FLAGS += -Wno-WIDTH
+VERILATOR_FLAGS += -Wno-UNOPTFLAT
 VERILATOR_FLAGS += --assert
 
-VERILATOR_FLAGS += --top-module Main -Wno-UNOPTFLAT
+VERILATOR_FLAGS += --top-module Main
 VERILATOR_FLAGS += --threads $(THREADS)
 VERILATOR_FLAGS += $(ROOT_DIR)/../VHarness.cpp
 VERILATOR_TIMEOUT += 1000000

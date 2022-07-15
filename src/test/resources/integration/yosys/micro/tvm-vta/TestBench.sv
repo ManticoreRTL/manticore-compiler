@@ -448,6 +448,7 @@ module Main(input wire clock);
     reg_host_rdata_parity = next_host_rdata_parity;
 
     if (reg_state == STATE_END) begin
+      $display("Host RDATA parity = %h", reg_host_rdata_parity);
       $display("finished");
       $finish;
     end

@@ -19,6 +19,15 @@
 #endif
 #include <chrono>
 #include <stdio.h>
+
+#ifdef VL_USER_FINISH
+// #define VL_USER_FINISH ///< Define this to override the vl_finish function
+void vl_finish(const char *filename, int linenum,
+               const char *hier) VL_MT_UNSAFE {
+  Verilated::gotFinish(true);
+}
+#endif
+
 // Legacy function required only so linking works on Cygwin and MSVC++
 double sc_time_stamp() { return 0; }
 
