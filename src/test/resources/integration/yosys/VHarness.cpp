@@ -49,7 +49,7 @@ int main(int argc, char **argv, char **env) {
 #endif
 
   unsigned int time_out = std::stoi(argv[1]) << 1;
-  printf("Timeout cycles = %u\n", time_out >> 1);
+  // printf("Timeout cycles = %u\n", time_out >> 1);
   int time = 0;
   top->clock = 0;
 
@@ -66,8 +66,8 @@ int main(int argc, char **argv, char **env) {
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  printf("Finished after %d cycles in %.3f seconds\n", time >> 1,
-         static_cast<float>(duration.count()) / 1000.);
+  // printf("Finished after %d cycles in %.3f seconds\n", time >> 1,
+  //        static_cast<float>(duration.count()) / 1000.);
   // Final model cleanup
   top->final();
 #if VM_TRACE

@@ -2225,24 +2225,24 @@ module Queue_6(
   reg [31:0] _RAND_2;
   reg [31:0] _RAND_3;
 `endif // RANDOMIZE_REG_INIT
-  reg [127:0] ram [0:511]; // @[Decoupled.scala 259:95]
+  reg [127:0] ram [0:63]; // @[Decoupled.scala 259:95]
   wire  ram_io_deq_bits_MPORT_en; // @[Decoupled.scala 259:95]
-  wire [8:0] ram_io_deq_bits_MPORT_addr; // @[Decoupled.scala 259:95]
+  wire [5:0] ram_io_deq_bits_MPORT_addr; // @[Decoupled.scala 259:95]
   wire [127:0] ram_io_deq_bits_MPORT_data; // @[Decoupled.scala 259:95]
   wire [127:0] ram_MPORT_data; // @[Decoupled.scala 259:95]
-  wire [8:0] ram_MPORT_addr; // @[Decoupled.scala 259:95]
+  wire [5:0] ram_MPORT_addr; // @[Decoupled.scala 259:95]
   wire  ram_MPORT_mask; // @[Decoupled.scala 259:95]
   wire  ram_MPORT_en; // @[Decoupled.scala 259:95]
-  reg [8:0] enq_ptr_value; // @[Counter.scala 62:40]
-  reg [8:0] deq_ptr_value; // @[Counter.scala 62:40]
+  reg [5:0] enq_ptr_value; // @[Counter.scala 62:40]
+  reg [5:0] deq_ptr_value; // @[Counter.scala 62:40]
   reg  maybe_full; // @[Decoupled.scala 262:27]
   wire  ptr_match = enq_ptr_value == deq_ptr_value; // @[Decoupled.scala 263:33]
   wire  empty = ptr_match & ~maybe_full; // @[Decoupled.scala 264:25]
   wire  full = ptr_match & maybe_full; // @[Decoupled.scala 265:24]
   wire  do_enq = io_enq_ready & io_enq_valid; // @[Decoupled.scala 50:35]
   wire  do_deq = io_deq_ready & io_deq_valid; // @[Decoupled.scala 50:35]
-  wire [8:0] _value_T_1 = enq_ptr_value + 9'h1; // @[Counter.scala 78:24]
-  wire [8:0] _value_T_3 = deq_ptr_value + 9'h1; // @[Counter.scala 78:24]
+  wire [5:0] _value_T_1 = enq_ptr_value + 6'h1; // @[Counter.scala 78:24]
+  wire [5:0] _value_T_3 = deq_ptr_value + 6'h1; // @[Counter.scala 78:24]
   assign ram_io_deq_bits_MPORT_en = 1'h1;
   assign ram_io_deq_bits_MPORT_addr = deq_ptr_value;
   assign ram_io_deq_bits_MPORT_data = ram[ram_io_deq_bits_MPORT_addr]; // @[Decoupled.scala 259:95]
@@ -2258,12 +2258,12 @@ module Queue_6(
       ram[ram_MPORT_addr] <= ram_MPORT_data; // @[Decoupled.scala 259:95]
     end
     if (reset) begin // @[Counter.scala 62:40]
-      enq_ptr_value <= 9'h0; // @[Counter.scala 62:40]
+      enq_ptr_value <= 6'h0; // @[Counter.scala 62:40]
     end else if (do_enq) begin // @[Decoupled.scala 272:16]
       enq_ptr_value <= _value_T_1; // @[Counter.scala 78:15]
     end
     if (reset) begin // @[Counter.scala 62:40]
-      deq_ptr_value <= 9'h0; // @[Counter.scala 62:40]
+      deq_ptr_value <= 6'h0; // @[Counter.scala 62:40]
     end else if (do_deq) begin // @[Decoupled.scala 276:16]
       deq_ptr_value <= _value_T_3; // @[Counter.scala 78:15]
     end
@@ -2310,14 +2310,14 @@ initial begin
     `endif
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {4{`RANDOM}};
-  for (initvar = 0; initvar < 512; initvar = initvar+1)
+  for (initvar = 0; initvar < 64; initvar = initvar+1)
     ram[initvar] = _RAND_0[127:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_1 = {1{`RANDOM}};
-  enq_ptr_value = _RAND_1[8:0];
+  enq_ptr_value = _RAND_1[5:0];
   _RAND_2 = {1{`RANDOM}};
-  deq_ptr_value = _RAND_2[8:0];
+  deq_ptr_value = _RAND_2[5:0];
   _RAND_3 = {1{`RANDOM}};
   maybe_full = _RAND_3[0:0];
 `endif // RANDOMIZE_REG_INIT
@@ -2390,7 +2390,7 @@ module GenVMECmd(
   wire [7:0] _firstMaxTransfer_T = _GEN_0[7:0]; // @[TensorLoadNarrowVME.scala 577:53]
   wire [7:0] _firstMaxTransfer_T_2 = 8'h80 - _firstMaxTransfer_T; // @[TensorLoadNarrowVME.scala 577:38]
   wire [4:0] firstMaxTransfer = _firstMaxTransfer_T_2[7:3]; // @[TensorLoadNarrowVME.scala 577:67]
-  reg [10:0] rdCmdStartIdx; // @[TensorLoadNarrowVME.scala 586:26]
+  reg [7:0] rdCmdStartIdx; // @[TensorLoadNarrowVME.scala 586:26]
   reg  commandsDone; // @[TensorLoadNarrowVME.scala 588:29]
   wire [16:0] blocksReadSize = {dec_xsize, 1'h0}; // @[TensorLoadNarrowVME.scala 590:35]
   reg [16:0] blocksReadNb; // @[TensorLoadNarrowVME.scala 591:25]
@@ -2429,10 +2429,10 @@ module GenVMECmd(
   wire  _rdCmdStartIdxValid_T_6 = ~commandsDone; // @[TensorLoadNarrowVME.scala 652:5]
   wire  rdCmdStartIdxValid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadNarrowVME.scala 651:15]
   wire [15:0] _rdCmdStartIdx_T_1 = dec_sram_offset + _GEN_35; // @[TensorLoadNarrowVME.scala 655:38]
-  wire [15:0] _GEN_42 = {{5'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 657:36]
+  wire [15:0] _GEN_42 = {{8'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 657:36]
   wire [15:0] _rdCmdStartIdx_T_3 = _GEN_42 + totalWidth; // @[TensorLoadNarrowVME.scala 657:36]
   wire [19:0] _currentRowIdx_T_1 = currentRowIdx + 20'h1; // @[TensorLoadNarrowVME.scala 658:36]
-  wire [15:0] _GEN_11 = io_isBusy & (currentRowIdx < _GEN_37 | stride) ? _rdCmdStartIdx_T_3 : {{5'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 656:68 657:19 586:26]
+  wire [15:0] _GEN_11 = io_isBusy & (currentRowIdx < _GEN_37 | stride) ? _rdCmdStartIdx_T_3 : {{8'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 656:68 657:19 586:26]
   wire [15:0] _GEN_14 = io_start ? _rdCmdStartIdx_T_1 : _GEN_11; // @[TensorLoadNarrowVME.scala 653:19 655:19]
   wire  startIssueCmdRead = blocksReadNb == 17'h0 & rdCmdStartIdxValid; // @[TensorLoadNarrowVME.scala 661:29]
   wire [19:0] _memRow_T = {dec_xstride, 4'h0}; // @[TensorLoadNarrowVME.scala 672:56]
@@ -2448,23 +2448,23 @@ module GenVMECmd(
   wire  _GEN_21 = _T_14 ? stride : newReadRow; // @[TensorLoadNarrowVME.scala 670:31 683:16]
   wire [35:0] _GEN_22 = io_start ? xfer_init_addr : {{4'd0}, _GEN_19}; // @[TensorLoadNarrowVME.scala 666:19 667:18]
   wire [35:0] _GEN_23 = io_start ? xfer_init_addr : {{4'd0}, _GEN_20}; // @[TensorLoadNarrowVME.scala 666:19 668:26]
-  reg [11:0] rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 700:34]
-  wire [11:0] _rdCmdDestBlockIdx_T = {rdCmdStartIdx, 1'h0}; // @[TensorLoadNarrowVME.scala 710:42]
-  wire [11:0] _GEN_26 = startIssueCmdRead ? _rdCmdDestBlockIdx_T : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 709:29 710:25]
-  wire [11:0] rdCmdDestBlockIdx = rdCmdStartIdxValid ? _GEN_26 : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 707:28]
-  wire [11:0] _GEN_45 = {{7'd0}, readLen}; // @[TensorLoadNarrowVME.scala 711:49]
-  wire [11:0] _rdCmdDestBlockIdxNext_T_1 = rdCmdDestBlockIdx + _GEN_45; // @[TensorLoadNarrowVME.scala 711:49]
-  wire [11:0] _rdCmdDestBlockIdxNext_T_3 = rdCmdDestBlockIdxNext + _GEN_45; // @[TensorLoadNarrowVME.scala 714:53]
+  reg [8:0] rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 700:34]
+  wire [8:0] _rdCmdDestBlockIdx_T = {rdCmdStartIdx, 1'h0}; // @[TensorLoadNarrowVME.scala 710:42]
+  wire [8:0] _GEN_26 = startIssueCmdRead ? _rdCmdDestBlockIdx_T : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 709:29 710:25]
+  wire [8:0] rdCmdDestBlockIdx = rdCmdStartIdxValid ? _GEN_26 : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 707:28]
+  wire [8:0] _GEN_45 = {{4'd0}, readLen}; // @[TensorLoadNarrowVME.scala 711:49]
+  wire [8:0] _rdCmdDestBlockIdxNext_T_1 = rdCmdDestBlockIdx + _GEN_45; // @[TensorLoadNarrowVME.scala 711:49]
+  wire [8:0] _rdCmdDestBlockIdxNext_T_3 = rdCmdDestBlockIdxNext + _GEN_45; // @[TensorLoadNarrowVME.scala 714:53]
   wire [4:0] _io_vmeCmd_bits_len_T_1 = readLen - 5'h1; // @[TensorLoadNarrowVME.scala 732:33]
   assign io_vmeCmd_valid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadNarrowVME.scala 651:15]
   assign io_vmeCmd_bits_addr = rdCmdExtAddr; // @[TensorLoadNarrowVME.scala 731:23]
   assign io_vmeCmd_bits_len = _io_vmeCmd_bits_len_T_1[3:0]; // @[TensorLoadNarrowVME.scala 732:22]
-  assign io_vmeCmd_bits_tag = {{9'd0}, rdCmdDestBlockIdx}; // @[TensorLoadNarrowVME.scala 737:22]
+  assign io_vmeCmd_bits_tag = {{12'd0}, rdCmdDestBlockIdx}; // @[TensorLoadNarrowVME.scala 737:22]
   assign io_readLen = _GEN_10[4:0]; // @[TensorLoadNarrowVME.scala 587:21]
   assign io_done = commandsDone; // @[TensorLoadNarrowVME.scala 739:11]
   always @(posedge clock) begin
     rdCmdExtAddr <= _GEN_22[31:0];
-    rdCmdStartIdx <= _GEN_14[10:0];
+    rdCmdStartIdx <= _GEN_14[7:0];
     commandsDone <= reset | _GEN_6; // @[TensorLoadNarrowVME.scala 588:{29,29}]
     if (io_start | stride) begin // @[TensorLoadNarrowVME.scala 607:29]
       blocksReadNb <= 17'h0; // @[TensorLoadNarrowVME.scala 608:18]
@@ -2556,7 +2556,7 @@ initial begin
   _RAND_0 = {1{`RANDOM}};
   rdCmdExtAddr = _RAND_0[31:0];
   _RAND_1 = {1{`RANDOM}};
-  rdCmdStartIdx = _RAND_1[10:0];
+  rdCmdStartIdx = _RAND_1[7:0];
   _RAND_2 = {1{`RANDOM}};
   commandsDone = _RAND_2[0:0];
   _RAND_3 = {1{`RANDOM}};
@@ -2570,7 +2570,7 @@ initial begin
   _RAND_7 = {1{`RANDOM}};
   currentRowIdx = _RAND_7[19:0];
   _RAND_8 = {1{`RANDOM}};
-  rdCmdDestBlockIdxNext = _RAND_8[11:0];
+  rdCmdDestBlockIdxNext = _RAND_8[8:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -2596,7 +2596,7 @@ module ReadVMEData(
   output        io_vmeData_ready,
   input         io_vmeData_valid,
   input  [20:0] io_vmeData_bits_tag,
-  output [10:0] io_idx,
+  output [7:0]  io_idx,
   output        io_col
 );
 `ifdef RANDOMIZE_REG_INIT
@@ -2624,7 +2624,7 @@ module ReadVMEData(
   wire [19:0] _GEN_12 = _T ? _GEN_7 : {{4'd0}, rdDataDestIdxNext}; // @[TensorLoadNarrowVME.scala 521:25 506:30]
   wire [15:0] rdDataDestIdx = _GEN_5[15:0]; // @[TensorLoadNarrowVME.scala 497:27]
   assign io_vmeData_ready = 1'h1; // @[TensorLoadNarrowVME.scala 498:20]
-  assign io_idx = rdDataDestIdx[10:0]; // @[TensorLoadNarrowVME.scala 542:10]
+  assign io_idx = rdDataDestIdx[7:0]; // @[TensorLoadNarrowVME.scala 542:10]
   assign io_col = _T_5 ? rdDataCol : rdDataDestColNext; // @[TensorLoadNarrowVME.scala 525:59 528:21 533:21]
   always @(posedge clock) begin
     if (_T) begin // @[TensorLoadNarrowVME.scala 521:25]
@@ -2706,7 +2706,7 @@ module ZeroPadding(
   input          io_canWriteMem,
   input  [127:0] io_inst,
   output         io_tensorIdx_valid,
-  output [10:0]  io_tensorIdx_bits,
+  output [7:0]   io_tensorIdx_bits,
   input          io_start,
   output         io_done
 );
@@ -2803,7 +2803,7 @@ module ZeroPadding(
   wire [23:0] _zpColIdx_T_11 = zpColIdx + 24'h1; // @[TensorLoadNarrowVME.scala 455:28]
   wire [15:0] zpDestIdx = _zpDestIdx_T_1[15:0]; // @[TensorLoadNarrowVME.scala 332:23 425:13]
   assign io_tensorIdx_valid = zpState != 3'h0 & zpState != 3'h5 & io_canWriteMem; // @[TensorLoadNarrowVME.scala 424:68]
-  assign io_tensorIdx_bits = zpDestIdx[10:0]; // @[TensorLoadNarrowVME.scala 460:21]
+  assign io_tensorIdx_bits = zpDestIdx[7:0]; // @[TensorLoadNarrowVME.scala 460:21]
   assign io_done = zpState == 3'h0; // @[TensorLoadNarrowVME.scala 458:22]
   always @(posedge clock) begin
     if (reset) begin // @[TensorLoadNarrowVME.scala 335:24]
@@ -2916,7 +2916,7 @@ module TensorLoadNarrowVME(
   input  [63:0]  io_vme_rd_data_bits_data,
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_tensor_rd_0_idx_valid,
-  input  [10:0]  io_tensor_rd_0_idx_bits,
+  input  [7:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [7:0]   io_tensor_rd_0_data_bits_0_0,
   output [7:0]   io_tensor_rd_0_data_bits_0_1,
@@ -2973,39 +2973,39 @@ module TensorLoadNarrowVME(
   wire  readData_io_vmeData_ready; // @[TensorLoadNarrowVME.scala 105:24]
   wire  readData_io_vmeData_valid; // @[TensorLoadNarrowVME.scala 105:24]
   wire [20:0] readData_io_vmeData_bits_tag; // @[TensorLoadNarrowVME.scala 105:24]
-  wire [10:0] readData_io_idx; // @[TensorLoadNarrowVME.scala 105:24]
+  wire [7:0] readData_io_idx; // @[TensorLoadNarrowVME.scala 105:24]
   wire  readData_io_col; // @[TensorLoadNarrowVME.scala 105:24]
   wire  fillPadding_clock; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_reset; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_canWriteMem; // @[TensorLoadNarrowVME.scala 119:27]
   wire [127:0] fillPadding_io_inst; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_tensorIdx_valid; // @[TensorLoadNarrowVME.scala 119:27]
-  wire [10:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadNarrowVME.scala 119:27]
+  wire [7:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_start; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_done; // @[TensorLoadNarrowVME.scala 119:27]
-  reg [63:0] tensorFile_0 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [63:0] tensorFile_0 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_2_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_0_MPORT_2_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_0_MPORT_2_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_0_MPORT_2_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_0_MPORT_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_0_MPORT_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_0_MPORT_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_0_MPORT_2_en_pipe_0;
-  reg [10:0] tensorFile_0_MPORT_2_addr_pipe_0;
-  reg [63:0] tensorFile_1 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_0_MPORT_2_addr_pipe_0;
+  reg [63:0] tensorFile_1 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_3_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_1_MPORT_3_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_1_MPORT_3_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_1_MPORT_3_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_1_MPORT_1_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_1_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_1_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_1_MPORT_3_en_pipe_0;
-  reg [10:0] tensorFile_1_MPORT_3_addr_pipe_0;
+  reg [7:0] tensorFile_1_MPORT_3_addr_pipe_0;
   reg  state; // @[TensorLoadNarrowVME.scala 54:22]
-  reg [11:0] blocksInFlight; // @[TensorLoadNarrowVME.scala 87:27]
-  wire  loadDone = blocksInFlight == 12'h0 & vmeCmd_io_done & state; // @[TensorLoadNarrowVME.scala 292:57]
+  reg [8:0] blocksInFlight; // @[TensorLoadNarrowVME.scala 87:27]
+  wire  loadDone = blocksInFlight == 9'h0 & vmeCmd_io_done & state; // @[TensorLoadNarrowVME.scala 292:57]
   wire  localDone = loadDone & fillPadding_io_done; // @[TensorLoadNarrowVME.scala 293:25]
   wire  _GEN_0 = localDone ? 1'h0 : state; // @[TensorLoadNarrowVME.scala 61:25 62:11 54:22]
   wire  _GEN_1 = io_start | _GEN_0; // @[TensorLoadNarrowVME.scala 59:18 60:11]
@@ -3017,16 +3017,16 @@ module TensorLoadNarrowVME(
   wire  _T = io_vme_rd_cmd_ready & io_vme_rd_cmd_valid; // @[Decoupled.scala 50:35]
   wire  _T_1 = state & _T; // @[TensorLoadNarrowVME.scala 90:21]
   wire  _T_3 = state & _T & ~vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 90:43]
-  wire [11:0] _GEN_22 = {{7'd0}, vmeCmd_io_readLen}; // @[TensorLoadNarrowVME.scala 91:38]
-  wire [11:0] _blocksInFlight_T_1 = blocksInFlight + _GEN_22; // @[TensorLoadNarrowVME.scala 91:38]
+  wire [8:0] _GEN_22 = {{4'd0}, vmeCmd_io_readLen}; // @[TensorLoadNarrowVME.scala 91:38]
+  wire [8:0] _blocksInFlight_T_1 = blocksInFlight + _GEN_22; // @[TensorLoadNarrowVME.scala 91:38]
   wire  _T_6 = _T_1 & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 92:43]
-  wire [11:0] _blocksInFlight_T_5 = _blocksInFlight_T_1 - 12'h1; // @[TensorLoadNarrowVME.scala 93:48]
+  wire [8:0] _blocksInFlight_T_5 = _blocksInFlight_T_1 - 9'h1; // @[TensorLoadNarrowVME.scala 93:48]
   wire  _T_10 = state & ~_T & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 94:44]
   wire  _T_13 = ~reset; // @[TensorLoadNarrowVME.scala 95:11]
-  wire [11:0] _blocksInFlight_T_7 = blocksInFlight - 12'h1; // @[TensorLoadNarrowVME.scala 96:38]
+  wire [8:0] _blocksInFlight_T_7 = blocksInFlight - 9'h1; // @[TensorLoadNarrowVME.scala 96:38]
   reg [127:0] fillPadding_io_inst_REG; // @[TensorLoadNarrowVME.scala 121:33]
   reg  fillPadding_io_start_REG; // @[TensorLoadNarrowVME.scala 122:34]
-  wire [10:0] waddrTensInstrTmp = fillPadding_io_tensorIdx_valid ? fillPadding_io_tensorIdx_bits : readData_io_idx; // @[TensorLoadNarrowVME.scala 166:30]
+  wire [7:0] waddrTensInstrTmp = fillPadding_io_tensorIdx_valid ? fillPadding_io_tensorIdx_bits : readData_io_idx; // @[TensorLoadNarrowVME.scala 166:30]
   wire  _waddr_0_T = ~state; // @[TensorLoadNarrowVME.scala 186:27]
   wire  wenTensInstr_0 = fillPadding_io_tensorIdx_valid | ~readData_io_col & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 197:8]
   wire  wenTensInstr_1 = fillPadding_io_tensorIdx_valid | readData_io_col & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 197:8]
@@ -3074,14 +3074,14 @@ module TensorLoadNarrowVME(
   assign tensorFile_0_MPORT_2_addr = tensorFile_0_MPORT_2_addr_pipe_0;
   assign tensorFile_0_MPORT_2_data = tensorFile_0[tensorFile_0_MPORT_2_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_0_MPORT_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_0_MPORT_addr = _waddr_0_T ? 11'h0 : waddrTensInstrTmp;
+  assign tensorFile_0_MPORT_addr = _waddr_0_T ? 8'h0 : waddrTensInstrTmp;
   assign tensorFile_0_MPORT_mask = 1'h1;
   assign tensorFile_0_MPORT_en = _waddr_0_T ? 1'h0 : wenTensInstr_0;
   assign tensorFile_1_MPORT_3_en = tensorFile_1_MPORT_3_en_pipe_0;
   assign tensorFile_1_MPORT_3_addr = tensorFile_1_MPORT_3_addr_pipe_0;
   assign tensorFile_1_MPORT_3_data = tensorFile_1[tensorFile_1_MPORT_3_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_1_MPORT_1_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_1_MPORT_1_addr = _waddr_0_T ? 11'h0 : waddrTensInstrTmp;
+  assign tensorFile_1_MPORT_1_addr = _waddr_0_T ? 8'h0 : waddrTensInstrTmp;
   assign tensorFile_1_MPORT_1_mask = 1'h1;
   assign tensorFile_1_MPORT_1_en = _waddr_0_T ? 1'h0 : wenTensInstr_1;
   assign io_done = loadDone & fillPadding_io_done; // @[TensorLoadNarrowVME.scala 293:25]
@@ -3145,7 +3145,7 @@ module TensorLoadNarrowVME(
       state <= _GEN_1;
     end
     if (io_start) begin // @[TensorLoadNarrowVME.scala 88:18]
-      blocksInFlight <= 12'h0; // @[TensorLoadNarrowVME.scala 89:20]
+      blocksInFlight <= 9'h0; // @[TensorLoadNarrowVME.scala 89:20]
     end else if (state & _T & ~vmeDataFirePipe) begin // @[TensorLoadNarrowVME.scala 90:64]
       blocksInFlight <= _blocksInFlight_T_1; // @[TensorLoadNarrowVME.scala 91:20]
     end else if (_T_1 & vmeDataFirePipe) begin // @[TensorLoadNarrowVME.scala 92:63]
@@ -3180,7 +3180,7 @@ module TensorLoadNarrowVME(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(blocksInFlight > 12'h0)) begin
+        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(blocksInFlight > 9'h0)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at TensorLoadNarrowVME.scala:95 assert(blocksInFlight > 0.U)\n"); // @[TensorLoadNarrowVME.scala 95:11]
         end
     `ifdef PRINTF_COND
@@ -3225,25 +3225,25 @@ initial begin
     `endif
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_0[initvar] = _RAND_0[63:0];
   _RAND_3 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_1[initvar] = _RAND_3[63:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_1 = {1{`RANDOM}};
   tensorFile_0_MPORT_2_en_pipe_0 = _RAND_1[0:0];
   _RAND_2 = {1{`RANDOM}};
-  tensorFile_0_MPORT_2_addr_pipe_0 = _RAND_2[10:0];
+  tensorFile_0_MPORT_2_addr_pipe_0 = _RAND_2[7:0];
   _RAND_4 = {1{`RANDOM}};
   tensorFile_1_MPORT_3_en_pipe_0 = _RAND_4[0:0];
   _RAND_5 = {1{`RANDOM}};
-  tensorFile_1_MPORT_3_addr_pipe_0 = _RAND_5[10:0];
+  tensorFile_1_MPORT_3_addr_pipe_0 = _RAND_5[7:0];
   _RAND_6 = {1{`RANDOM}};
   state = _RAND_6[0:0];
   _RAND_7 = {1{`RANDOM}};
-  blocksInFlight = _RAND_7[11:0];
+  blocksInFlight = _RAND_7[8:0];
   _RAND_8 = {2{`RANDOM}};
   vmeDataBitsPipe_data = _RAND_8[63:0];
   _RAND_9 = {1{`RANDOM}};
@@ -3268,7 +3268,7 @@ end // initial
   always @(posedge clock) begin
     //
     if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset) begin
-      assert(blocksInFlight > 12'h0); // @[TensorLoadNarrowVME.scala 95:11]
+      assert(blocksInFlight > 9'h0); // @[TensorLoadNarrowVME.scala 95:11]
     end
     //
     if (_T_13) begin
@@ -3292,7 +3292,7 @@ module TensorLoadInp(
   input  [63:0]  io_vme_rd_data_bits_data,
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_tensor_rd_0_idx_valid,
-  input  [10:0]  io_tensor_rd_0_idx_bits,
+  input  [7:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [7:0]   io_tensor_rd_0_data_bits_0_0,
   output [7:0]   io_tensor_rd_0_data_bits_0_1,
@@ -3327,7 +3327,7 @@ module TensorLoadInp(
   wire [63:0] tensorLoad_io_vme_rd_data_bits_data; // @[TensorLoad.scala 71:28]
   wire [20:0] tensorLoad_io_vme_rd_data_bits_tag; // @[TensorLoad.scala 71:28]
   wire  tensorLoad_io_tensor_rd_0_idx_valid; // @[TensorLoad.scala 71:28]
-  wire [10:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 71:28]
+  wire [7:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 71:28]
   wire  tensorLoad_io_tensor_rd_0_data_valid; // @[TensorLoad.scala 71:28]
   wire [7:0] tensorLoad_io_tensor_rd_0_data_bits_0_0; // @[TensorLoad.scala 71:28]
   wire [7:0] tensorLoad_io_tensor_rd_0_data_bits_0_1; // @[TensorLoad.scala 71:28]
@@ -3458,7 +3458,7 @@ module GenVMECmd_1(
   wire [7:0] _firstMaxTransfer_T = _GEN_0[7:0]; // @[TensorLoadNarrowVME.scala 577:53]
   wire [7:0] _firstMaxTransfer_T_2 = 8'h80 - _firstMaxTransfer_T; // @[TensorLoadNarrowVME.scala 577:38]
   wire [4:0] firstMaxTransfer = _firstMaxTransfer_T_2[7:3]; // @[TensorLoadNarrowVME.scala 577:67]
-  reg [9:0] rdCmdStartIdx; // @[TensorLoadNarrowVME.scala 586:26]
+  reg [6:0] rdCmdStartIdx; // @[TensorLoadNarrowVME.scala 586:26]
   reg  commandsDone; // @[TensorLoadNarrowVME.scala 588:29]
   wire [20:0] blocksReadSize = {dec_xsize, 5'h0}; // @[TensorLoadNarrowVME.scala 590:35]
   reg [20:0] blocksReadNb; // @[TensorLoadNarrowVME.scala 591:25]
@@ -3497,10 +3497,10 @@ module GenVMECmd_1(
   wire  _rdCmdStartIdxValid_T_6 = ~commandsDone; // @[TensorLoadNarrowVME.scala 652:5]
   wire  rdCmdStartIdxValid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadNarrowVME.scala 651:15]
   wire [15:0] _rdCmdStartIdx_T_1 = dec_sram_offset + _GEN_35; // @[TensorLoadNarrowVME.scala 655:38]
-  wire [15:0] _GEN_42 = {{6'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 657:36]
+  wire [15:0] _GEN_42 = {{9'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 657:36]
   wire [15:0] _rdCmdStartIdx_T_3 = _GEN_42 + totalWidth; // @[TensorLoadNarrowVME.scala 657:36]
   wire [19:0] _currentRowIdx_T_1 = currentRowIdx + 20'h1; // @[TensorLoadNarrowVME.scala 658:36]
-  wire [15:0] _GEN_11 = io_isBusy & (currentRowIdx < _GEN_37 | stride) ? _rdCmdStartIdx_T_3 : {{6'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 656:68 657:19 586:26]
+  wire [15:0] _GEN_11 = io_isBusy & (currentRowIdx < _GEN_37 | stride) ? _rdCmdStartIdx_T_3 : {{9'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 656:68 657:19 586:26]
   wire [15:0] _GEN_14 = io_start ? _rdCmdStartIdx_T_1 : _GEN_11; // @[TensorLoadNarrowVME.scala 653:19 655:19]
   wire  startIssueCmdRead = blocksReadNb == 21'h0 & rdCmdStartIdxValid; // @[TensorLoadNarrowVME.scala 661:29]
   wire [23:0] _memRow_T = {dec_xstride, 8'h0}; // @[TensorLoadNarrowVME.scala 672:56]
@@ -3516,23 +3516,23 @@ module GenVMECmd_1(
   wire  _GEN_21 = _T_14 ? stride : newReadRow; // @[TensorLoadNarrowVME.scala 670:31 683:16]
   wire [39:0] _GEN_22 = io_start ? xfer_init_addr : {{8'd0}, _GEN_19}; // @[TensorLoadNarrowVME.scala 666:19 667:18]
   wire [39:0] _GEN_23 = io_start ? xfer_init_addr : {{8'd0}, _GEN_20}; // @[TensorLoadNarrowVME.scala 666:19 668:26]
-  reg [14:0] rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 700:34]
-  wire [14:0] _rdCmdDestBlockIdx_T = {rdCmdStartIdx, 5'h0}; // @[TensorLoadNarrowVME.scala 710:42]
-  wire [14:0] _GEN_26 = startIssueCmdRead ? _rdCmdDestBlockIdx_T : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 709:29 710:25]
-  wire [14:0] rdCmdDestBlockIdx = rdCmdStartIdxValid ? _GEN_26 : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 707:28]
-  wire [14:0] _GEN_45 = {{10'd0}, readLen}; // @[TensorLoadNarrowVME.scala 711:49]
-  wire [14:0] _rdCmdDestBlockIdxNext_T_1 = rdCmdDestBlockIdx + _GEN_45; // @[TensorLoadNarrowVME.scala 711:49]
-  wire [14:0] _rdCmdDestBlockIdxNext_T_3 = rdCmdDestBlockIdxNext + _GEN_45; // @[TensorLoadNarrowVME.scala 714:53]
+  reg [11:0] rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 700:34]
+  wire [11:0] _rdCmdDestBlockIdx_T = {rdCmdStartIdx, 5'h0}; // @[TensorLoadNarrowVME.scala 710:42]
+  wire [11:0] _GEN_26 = startIssueCmdRead ? _rdCmdDestBlockIdx_T : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 709:29 710:25]
+  wire [11:0] rdCmdDestBlockIdx = rdCmdStartIdxValid ? _GEN_26 : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 707:28]
+  wire [11:0] _GEN_45 = {{7'd0}, readLen}; // @[TensorLoadNarrowVME.scala 711:49]
+  wire [11:0] _rdCmdDestBlockIdxNext_T_1 = rdCmdDestBlockIdx + _GEN_45; // @[TensorLoadNarrowVME.scala 711:49]
+  wire [11:0] _rdCmdDestBlockIdxNext_T_3 = rdCmdDestBlockIdxNext + _GEN_45; // @[TensorLoadNarrowVME.scala 714:53]
   wire [4:0] _io_vmeCmd_bits_len_T_1 = readLen - 5'h1; // @[TensorLoadNarrowVME.scala 732:33]
   assign io_vmeCmd_valid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadNarrowVME.scala 651:15]
   assign io_vmeCmd_bits_addr = rdCmdExtAddr; // @[TensorLoadNarrowVME.scala 731:23]
   assign io_vmeCmd_bits_len = _io_vmeCmd_bits_len_T_1[3:0]; // @[TensorLoadNarrowVME.scala 732:22]
-  assign io_vmeCmd_bits_tag = {{6'd0}, rdCmdDestBlockIdx}; // @[TensorLoadNarrowVME.scala 737:22]
+  assign io_vmeCmd_bits_tag = {{9'd0}, rdCmdDestBlockIdx}; // @[TensorLoadNarrowVME.scala 737:22]
   assign io_readLen = _GEN_10[4:0]; // @[TensorLoadNarrowVME.scala 587:21]
   assign io_done = commandsDone; // @[TensorLoadNarrowVME.scala 739:11]
   always @(posedge clock) begin
     rdCmdExtAddr <= _GEN_22[31:0];
-    rdCmdStartIdx <= _GEN_14[9:0];
+    rdCmdStartIdx <= _GEN_14[6:0];
     commandsDone <= reset | _GEN_6; // @[TensorLoadNarrowVME.scala 588:{29,29}]
     if (io_start | stride) begin // @[TensorLoadNarrowVME.scala 607:29]
       blocksReadNb <= 21'h0; // @[TensorLoadNarrowVME.scala 608:18]
@@ -3624,7 +3624,7 @@ initial begin
   _RAND_0 = {1{`RANDOM}};
   rdCmdExtAddr = _RAND_0[31:0];
   _RAND_1 = {1{`RANDOM}};
-  rdCmdStartIdx = _RAND_1[9:0];
+  rdCmdStartIdx = _RAND_1[6:0];
   _RAND_2 = {1{`RANDOM}};
   commandsDone = _RAND_2[0:0];
   _RAND_3 = {1{`RANDOM}};
@@ -3638,7 +3638,7 @@ initial begin
   _RAND_7 = {1{`RANDOM}};
   currentRowIdx = _RAND_7[19:0];
   _RAND_8 = {1{`RANDOM}};
-  rdCmdDestBlockIdxNext = _RAND_8[14:0];
+  rdCmdDestBlockIdxNext = _RAND_8[11:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -3664,7 +3664,7 @@ module ReadVMEData_1(
   output        io_vmeData_ready,
   input         io_vmeData_valid,
   input  [20:0] io_vmeData_bits_tag,
-  output [9:0]  io_idx,
+  output [6:0]  io_idx,
   output [4:0]  io_col
 );
 `ifdef RANDOMIZE_REG_INIT
@@ -3690,7 +3690,7 @@ module ReadVMEData_1(
   wire [15:0] _rdDataDestIdxNext_T_1 = rdDataDestIdxNext + 16'h1; // @[TensorLoadNarrowVME.scala 537:48]
   wire [15:0] rdDataDestIdx = _T_5 ? rdDataIdx : rdDataDestIdxNext; // @[TensorLoadNarrowVME.scala 525:59 529:21 535:21]
   assign io_vmeData_ready = 1'h1; // @[TensorLoadNarrowVME.scala 498:20]
-  assign io_idx = rdDataDestIdx[9:0]; // @[TensorLoadNarrowVME.scala 542:10]
+  assign io_idx = rdDataDestIdx[6:0]; // @[TensorLoadNarrowVME.scala 542:10]
   assign io_col = _T_5 ? rdDataCol : rdDataDestColNext; // @[TensorLoadNarrowVME.scala 525:59 528:21 533:21]
   always @(posedge clock) begin
     if (_T) begin // @[TensorLoadNarrowVME.scala 521:25]
@@ -3778,7 +3778,7 @@ module ZeroPadding_1(
   input          io_canWriteMem,
   input  [127:0] io_inst,
   output         io_tensorIdx_valid,
-  output [9:0]   io_tensorIdx_bits,
+  output [6:0]   io_tensorIdx_bits,
   input          io_start,
   output         io_done
 );
@@ -3875,7 +3875,7 @@ module ZeroPadding_1(
   wire [23:0] _zpColIdx_T_11 = zpColIdx + 24'h1; // @[TensorLoadNarrowVME.scala 455:28]
   wire [15:0] zpDestIdx = _zpDestIdx_T_1[15:0]; // @[TensorLoadNarrowVME.scala 332:23 425:13]
   assign io_tensorIdx_valid = zpState != 3'h0 & zpState != 3'h5 & io_canWriteMem; // @[TensorLoadNarrowVME.scala 424:68]
-  assign io_tensorIdx_bits = zpDestIdx[9:0]; // @[TensorLoadNarrowVME.scala 460:21]
+  assign io_tensorIdx_bits = zpDestIdx[6:0]; // @[TensorLoadNarrowVME.scala 460:21]
   assign io_done = zpState == 3'h0; // @[TensorLoadNarrowVME.scala 458:22]
   always @(posedge clock) begin
     if (reset) begin // @[TensorLoadNarrowVME.scala 335:24]
@@ -3988,7 +3988,7 @@ module TensorLoadNarrowVME_1(
   input  [63:0]  io_vme_rd_data_bits_data,
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_tensor_rd_0_idx_valid,
-  input  [9:0]   io_tensor_rd_0_idx_bits,
+  input  [6:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [7:0]   io_tensor_rd_0_data_bits_0_0,
   output [7:0]   io_tensor_rd_0_data_bits_0_1,
@@ -4375,339 +4375,339 @@ module TensorLoadNarrowVME_1(
   wire  readData_io_vmeData_ready; // @[TensorLoadNarrowVME.scala 105:24]
   wire  readData_io_vmeData_valid; // @[TensorLoadNarrowVME.scala 105:24]
   wire [20:0] readData_io_vmeData_bits_tag; // @[TensorLoadNarrowVME.scala 105:24]
-  wire [9:0] readData_io_idx; // @[TensorLoadNarrowVME.scala 105:24]
+  wire [6:0] readData_io_idx; // @[TensorLoadNarrowVME.scala 105:24]
   wire [4:0] readData_io_col; // @[TensorLoadNarrowVME.scala 105:24]
   wire  fillPadding_clock; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_reset; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_canWriteMem; // @[TensorLoadNarrowVME.scala 119:27]
   wire [127:0] fillPadding_io_inst; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_tensorIdx_valid; // @[TensorLoadNarrowVME.scala 119:27]
-  wire [9:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadNarrowVME.scala 119:27]
+  wire [6:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_start; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_done; // @[TensorLoadNarrowVME.scala 119:27]
-  reg [63:0] tensorFile_0 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [63:0] tensorFile_0 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_32_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_0_MPORT_32_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_0_MPORT_32_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_0_MPORT_32_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_0_MPORT_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_0_MPORT_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_0_MPORT_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_0_MPORT_32_en_pipe_0;
-  reg [9:0] tensorFile_0_MPORT_32_addr_pipe_0;
-  reg [63:0] tensorFile_1 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_0_MPORT_32_addr_pipe_0;
+  reg [63:0] tensorFile_1 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_33_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_1_MPORT_33_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_1_MPORT_33_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_1_MPORT_33_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_1_MPORT_1_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_1_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_1_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_1_MPORT_33_en_pipe_0;
-  reg [9:0] tensorFile_1_MPORT_33_addr_pipe_0;
-  reg [63:0] tensorFile_2 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_1_MPORT_33_addr_pipe_0;
+  reg [63:0] tensorFile_2 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_2_MPORT_34_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_2_MPORT_34_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_2_MPORT_34_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_2_MPORT_34_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_2_MPORT_2_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_2_MPORT_2_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_2_MPORT_2_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_2_MPORT_2_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_2_MPORT_2_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_2_MPORT_34_en_pipe_0;
-  reg [9:0] tensorFile_2_MPORT_34_addr_pipe_0;
-  reg [63:0] tensorFile_3 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_2_MPORT_34_addr_pipe_0;
+  reg [63:0] tensorFile_3 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_3_MPORT_35_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_3_MPORT_35_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_3_MPORT_35_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_3_MPORT_35_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_3_MPORT_3_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_3_MPORT_3_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_3_MPORT_3_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_3_MPORT_3_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_3_MPORT_3_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_3_MPORT_35_en_pipe_0;
-  reg [9:0] tensorFile_3_MPORT_35_addr_pipe_0;
-  reg [63:0] tensorFile_4 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_3_MPORT_35_addr_pipe_0;
+  reg [63:0] tensorFile_4 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_4_MPORT_36_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_4_MPORT_36_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_4_MPORT_36_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_4_MPORT_36_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_4_MPORT_4_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_4_MPORT_4_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_4_MPORT_4_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_4_MPORT_4_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_4_MPORT_4_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_4_MPORT_36_en_pipe_0;
-  reg [9:0] tensorFile_4_MPORT_36_addr_pipe_0;
-  reg [63:0] tensorFile_5 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_4_MPORT_36_addr_pipe_0;
+  reg [63:0] tensorFile_5 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_5_MPORT_37_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_5_MPORT_37_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_5_MPORT_37_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_5_MPORT_37_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_5_MPORT_5_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_5_MPORT_5_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_5_MPORT_5_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_5_MPORT_5_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_5_MPORT_5_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_5_MPORT_37_en_pipe_0;
-  reg [9:0] tensorFile_5_MPORT_37_addr_pipe_0;
-  reg [63:0] tensorFile_6 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_5_MPORT_37_addr_pipe_0;
+  reg [63:0] tensorFile_6 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_6_MPORT_38_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_6_MPORT_38_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_6_MPORT_38_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_6_MPORT_38_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_6_MPORT_6_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_6_MPORT_6_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_6_MPORT_6_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_6_MPORT_6_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_6_MPORT_6_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_6_MPORT_38_en_pipe_0;
-  reg [9:0] tensorFile_6_MPORT_38_addr_pipe_0;
-  reg [63:0] tensorFile_7 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_6_MPORT_38_addr_pipe_0;
+  reg [63:0] tensorFile_7 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_7_MPORT_39_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_7_MPORT_39_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_7_MPORT_39_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_7_MPORT_39_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_7_MPORT_7_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_7_MPORT_7_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_7_MPORT_7_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_7_MPORT_7_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_7_MPORT_7_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_7_MPORT_39_en_pipe_0;
-  reg [9:0] tensorFile_7_MPORT_39_addr_pipe_0;
-  reg [63:0] tensorFile_8 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_7_MPORT_39_addr_pipe_0;
+  reg [63:0] tensorFile_8 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_8_MPORT_40_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_8_MPORT_40_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_8_MPORT_40_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_8_MPORT_40_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_8_MPORT_8_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_8_MPORT_8_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_8_MPORT_8_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_8_MPORT_8_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_8_MPORT_8_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_8_MPORT_40_en_pipe_0;
-  reg [9:0] tensorFile_8_MPORT_40_addr_pipe_0;
-  reg [63:0] tensorFile_9 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_8_MPORT_40_addr_pipe_0;
+  reg [63:0] tensorFile_9 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_9_MPORT_41_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_9_MPORT_41_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_9_MPORT_41_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_9_MPORT_41_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_9_MPORT_9_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_9_MPORT_9_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_9_MPORT_9_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_9_MPORT_9_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_9_MPORT_9_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_9_MPORT_41_en_pipe_0;
-  reg [9:0] tensorFile_9_MPORT_41_addr_pipe_0;
-  reg [63:0] tensorFile_10 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_9_MPORT_41_addr_pipe_0;
+  reg [63:0] tensorFile_10 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_10_MPORT_42_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_10_MPORT_42_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_10_MPORT_42_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_10_MPORT_42_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_10_MPORT_10_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_10_MPORT_10_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_10_MPORT_10_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_10_MPORT_10_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_10_MPORT_10_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_10_MPORT_42_en_pipe_0;
-  reg [9:0] tensorFile_10_MPORT_42_addr_pipe_0;
-  reg [63:0] tensorFile_11 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_10_MPORT_42_addr_pipe_0;
+  reg [63:0] tensorFile_11 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_11_MPORT_43_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_11_MPORT_43_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_11_MPORT_43_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_11_MPORT_43_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_11_MPORT_11_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_11_MPORT_11_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_11_MPORT_11_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_11_MPORT_11_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_11_MPORT_11_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_11_MPORT_43_en_pipe_0;
-  reg [9:0] tensorFile_11_MPORT_43_addr_pipe_0;
-  reg [63:0] tensorFile_12 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_11_MPORT_43_addr_pipe_0;
+  reg [63:0] tensorFile_12 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_12_MPORT_44_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_12_MPORT_44_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_12_MPORT_44_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_12_MPORT_44_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_12_MPORT_12_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_12_MPORT_12_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_12_MPORT_12_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_12_MPORT_12_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_12_MPORT_12_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_12_MPORT_44_en_pipe_0;
-  reg [9:0] tensorFile_12_MPORT_44_addr_pipe_0;
-  reg [63:0] tensorFile_13 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_12_MPORT_44_addr_pipe_0;
+  reg [63:0] tensorFile_13 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_13_MPORT_45_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_13_MPORT_45_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_13_MPORT_45_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_13_MPORT_45_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_13_MPORT_13_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_13_MPORT_13_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_13_MPORT_13_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_13_MPORT_13_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_13_MPORT_13_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_13_MPORT_45_en_pipe_0;
-  reg [9:0] tensorFile_13_MPORT_45_addr_pipe_0;
-  reg [63:0] tensorFile_14 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_13_MPORT_45_addr_pipe_0;
+  reg [63:0] tensorFile_14 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_14_MPORT_46_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_14_MPORT_46_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_14_MPORT_46_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_14_MPORT_46_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_14_MPORT_14_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_14_MPORT_14_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_14_MPORT_14_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_14_MPORT_14_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_14_MPORT_14_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_14_MPORT_46_en_pipe_0;
-  reg [9:0] tensorFile_14_MPORT_46_addr_pipe_0;
-  reg [63:0] tensorFile_15 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_14_MPORT_46_addr_pipe_0;
+  reg [63:0] tensorFile_15 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_15_MPORT_47_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_15_MPORT_47_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_15_MPORT_47_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_15_MPORT_47_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_15_MPORT_15_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_15_MPORT_15_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_15_MPORT_15_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_15_MPORT_15_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_15_MPORT_15_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_15_MPORT_47_en_pipe_0;
-  reg [9:0] tensorFile_15_MPORT_47_addr_pipe_0;
-  reg [63:0] tensorFile_16 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_15_MPORT_47_addr_pipe_0;
+  reg [63:0] tensorFile_16 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_16_MPORT_48_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_16_MPORT_48_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_16_MPORT_48_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_16_MPORT_48_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_16_MPORT_16_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_16_MPORT_16_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_16_MPORT_16_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_16_MPORT_16_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_16_MPORT_16_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_16_MPORT_48_en_pipe_0;
-  reg [9:0] tensorFile_16_MPORT_48_addr_pipe_0;
-  reg [63:0] tensorFile_17 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_16_MPORT_48_addr_pipe_0;
+  reg [63:0] tensorFile_17 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_17_MPORT_49_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_17_MPORT_49_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_17_MPORT_49_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_17_MPORT_49_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_17_MPORT_17_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_17_MPORT_17_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_17_MPORT_17_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_17_MPORT_17_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_17_MPORT_17_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_17_MPORT_49_en_pipe_0;
-  reg [9:0] tensorFile_17_MPORT_49_addr_pipe_0;
-  reg [63:0] tensorFile_18 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_17_MPORT_49_addr_pipe_0;
+  reg [63:0] tensorFile_18 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_18_MPORT_50_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_18_MPORT_50_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_18_MPORT_50_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_18_MPORT_50_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_18_MPORT_18_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_18_MPORT_18_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_18_MPORT_18_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_18_MPORT_18_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_18_MPORT_18_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_18_MPORT_50_en_pipe_0;
-  reg [9:0] tensorFile_18_MPORT_50_addr_pipe_0;
-  reg [63:0] tensorFile_19 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_18_MPORT_50_addr_pipe_0;
+  reg [63:0] tensorFile_19 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_19_MPORT_51_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_19_MPORT_51_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_19_MPORT_51_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_19_MPORT_51_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_19_MPORT_19_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_19_MPORT_19_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_19_MPORT_19_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_19_MPORT_19_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_19_MPORT_19_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_19_MPORT_51_en_pipe_0;
-  reg [9:0] tensorFile_19_MPORT_51_addr_pipe_0;
-  reg [63:0] tensorFile_20 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_19_MPORT_51_addr_pipe_0;
+  reg [63:0] tensorFile_20 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_20_MPORT_52_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_20_MPORT_52_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_20_MPORT_52_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_20_MPORT_52_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_20_MPORT_20_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_20_MPORT_20_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_20_MPORT_20_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_20_MPORT_20_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_20_MPORT_20_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_20_MPORT_52_en_pipe_0;
-  reg [9:0] tensorFile_20_MPORT_52_addr_pipe_0;
-  reg [63:0] tensorFile_21 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_20_MPORT_52_addr_pipe_0;
+  reg [63:0] tensorFile_21 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_21_MPORT_53_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_21_MPORT_53_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_21_MPORT_53_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_21_MPORT_53_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_21_MPORT_21_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_21_MPORT_21_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_21_MPORT_21_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_21_MPORT_21_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_21_MPORT_21_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_21_MPORT_53_en_pipe_0;
-  reg [9:0] tensorFile_21_MPORT_53_addr_pipe_0;
-  reg [63:0] tensorFile_22 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_21_MPORT_53_addr_pipe_0;
+  reg [63:0] tensorFile_22 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_22_MPORT_54_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_22_MPORT_54_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_22_MPORT_54_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_22_MPORT_54_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_22_MPORT_22_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_22_MPORT_22_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_22_MPORT_22_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_22_MPORT_22_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_22_MPORT_22_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_22_MPORT_54_en_pipe_0;
-  reg [9:0] tensorFile_22_MPORT_54_addr_pipe_0;
-  reg [63:0] tensorFile_23 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_22_MPORT_54_addr_pipe_0;
+  reg [63:0] tensorFile_23 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_23_MPORT_55_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_23_MPORT_55_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_23_MPORT_55_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_23_MPORT_55_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_23_MPORT_23_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_23_MPORT_23_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_23_MPORT_23_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_23_MPORT_23_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_23_MPORT_23_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_23_MPORT_55_en_pipe_0;
-  reg [9:0] tensorFile_23_MPORT_55_addr_pipe_0;
-  reg [63:0] tensorFile_24 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_23_MPORT_55_addr_pipe_0;
+  reg [63:0] tensorFile_24 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_24_MPORT_56_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_24_MPORT_56_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_24_MPORT_56_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_24_MPORT_56_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_24_MPORT_24_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_24_MPORT_24_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_24_MPORT_24_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_24_MPORT_24_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_24_MPORT_24_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_24_MPORT_56_en_pipe_0;
-  reg [9:0] tensorFile_24_MPORT_56_addr_pipe_0;
-  reg [63:0] tensorFile_25 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_24_MPORT_56_addr_pipe_0;
+  reg [63:0] tensorFile_25 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_25_MPORT_57_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_25_MPORT_57_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_25_MPORT_57_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_25_MPORT_57_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_25_MPORT_25_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_25_MPORT_25_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_25_MPORT_25_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_25_MPORT_25_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_25_MPORT_25_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_25_MPORT_57_en_pipe_0;
-  reg [9:0] tensorFile_25_MPORT_57_addr_pipe_0;
-  reg [63:0] tensorFile_26 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_25_MPORT_57_addr_pipe_0;
+  reg [63:0] tensorFile_26 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_26_MPORT_58_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_26_MPORT_58_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_26_MPORT_58_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_26_MPORT_58_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_26_MPORT_26_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_26_MPORT_26_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_26_MPORT_26_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_26_MPORT_26_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_26_MPORT_26_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_26_MPORT_58_en_pipe_0;
-  reg [9:0] tensorFile_26_MPORT_58_addr_pipe_0;
-  reg [63:0] tensorFile_27 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_26_MPORT_58_addr_pipe_0;
+  reg [63:0] tensorFile_27 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_27_MPORT_59_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_27_MPORT_59_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_27_MPORT_59_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_27_MPORT_59_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_27_MPORT_27_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_27_MPORT_27_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_27_MPORT_27_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_27_MPORT_27_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_27_MPORT_27_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_27_MPORT_59_en_pipe_0;
-  reg [9:0] tensorFile_27_MPORT_59_addr_pipe_0;
-  reg [63:0] tensorFile_28 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_27_MPORT_59_addr_pipe_0;
+  reg [63:0] tensorFile_28 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_28_MPORT_60_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_28_MPORT_60_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_28_MPORT_60_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_28_MPORT_60_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_28_MPORT_28_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_28_MPORT_28_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_28_MPORT_28_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_28_MPORT_28_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_28_MPORT_28_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_28_MPORT_60_en_pipe_0;
-  reg [9:0] tensorFile_28_MPORT_60_addr_pipe_0;
-  reg [63:0] tensorFile_29 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_28_MPORT_60_addr_pipe_0;
+  reg [63:0] tensorFile_29 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_29_MPORT_61_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_29_MPORT_61_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_29_MPORT_61_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_29_MPORT_61_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_29_MPORT_29_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_29_MPORT_29_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_29_MPORT_29_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_29_MPORT_29_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_29_MPORT_29_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_29_MPORT_61_en_pipe_0;
-  reg [9:0] tensorFile_29_MPORT_61_addr_pipe_0;
-  reg [63:0] tensorFile_30 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_29_MPORT_61_addr_pipe_0;
+  reg [63:0] tensorFile_30 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_30_MPORT_62_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_30_MPORT_62_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_30_MPORT_62_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_30_MPORT_62_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_30_MPORT_30_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_30_MPORT_30_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_30_MPORT_30_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_30_MPORT_30_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_30_MPORT_30_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_30_MPORT_62_en_pipe_0;
-  reg [9:0] tensorFile_30_MPORT_62_addr_pipe_0;
-  reg [63:0] tensorFile_31 [0:1023]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [6:0] tensorFile_30_MPORT_62_addr_pipe_0;
+  reg [63:0] tensorFile_31 [0:127]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_31_MPORT_63_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_31_MPORT_63_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_31_MPORT_63_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_31_MPORT_63_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_31_MPORT_31_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [9:0] tensorFile_31_MPORT_31_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [6:0] tensorFile_31_MPORT_31_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_31_MPORT_31_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_31_MPORT_31_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_31_MPORT_63_en_pipe_0;
-  reg [9:0] tensorFile_31_MPORT_63_addr_pipe_0;
+  reg [6:0] tensorFile_31_MPORT_63_addr_pipe_0;
   reg  state; // @[TensorLoadNarrowVME.scala 54:22]
-  reg [14:0] blocksInFlight; // @[TensorLoadNarrowVME.scala 87:27]
-  wire  loadDone = blocksInFlight == 15'h0 & vmeCmd_io_done & state; // @[TensorLoadNarrowVME.scala 292:57]
+  reg [11:0] blocksInFlight; // @[TensorLoadNarrowVME.scala 87:27]
+  wire  loadDone = blocksInFlight == 12'h0 & vmeCmd_io_done & state; // @[TensorLoadNarrowVME.scala 292:57]
   wire  localDone = loadDone & fillPadding_io_done; // @[TensorLoadNarrowVME.scala 293:25]
   wire  _GEN_0 = localDone ? 1'h0 : state; // @[TensorLoadNarrowVME.scala 61:25 62:11 54:22]
   wire  _GEN_1 = io_start | _GEN_0; // @[TensorLoadNarrowVME.scala 59:18 60:11]
@@ -4719,16 +4719,16 @@ module TensorLoadNarrowVME_1(
   wire  _T = io_vme_rd_cmd_ready & io_vme_rd_cmd_valid; // @[Decoupled.scala 50:35]
   wire  _T_1 = state & _T; // @[TensorLoadNarrowVME.scala 90:21]
   wire  _T_3 = state & _T & ~vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 90:43]
-  wire [14:0] _GEN_202 = {{10'd0}, vmeCmd_io_readLen}; // @[TensorLoadNarrowVME.scala 91:38]
-  wire [14:0] _blocksInFlight_T_1 = blocksInFlight + _GEN_202; // @[TensorLoadNarrowVME.scala 91:38]
+  wire [11:0] _GEN_202 = {{7'd0}, vmeCmd_io_readLen}; // @[TensorLoadNarrowVME.scala 91:38]
+  wire [11:0] _blocksInFlight_T_1 = blocksInFlight + _GEN_202; // @[TensorLoadNarrowVME.scala 91:38]
   wire  _T_6 = _T_1 & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 92:43]
-  wire [14:0] _blocksInFlight_T_5 = _blocksInFlight_T_1 - 15'h1; // @[TensorLoadNarrowVME.scala 93:48]
+  wire [11:0] _blocksInFlight_T_5 = _blocksInFlight_T_1 - 12'h1; // @[TensorLoadNarrowVME.scala 93:48]
   wire  _T_10 = state & ~_T & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 94:44]
   wire  _T_13 = ~reset; // @[TensorLoadNarrowVME.scala 95:11]
-  wire [14:0] _blocksInFlight_T_7 = blocksInFlight - 15'h1; // @[TensorLoadNarrowVME.scala 96:38]
+  wire [11:0] _blocksInFlight_T_7 = blocksInFlight - 12'h1; // @[TensorLoadNarrowVME.scala 96:38]
   reg [127:0] fillPadding_io_inst_REG; // @[TensorLoadNarrowVME.scala 121:33]
   reg  fillPadding_io_start_REG; // @[TensorLoadNarrowVME.scala 122:34]
-  wire [9:0] waddrTensInstrTmp = fillPadding_io_tensorIdx_valid ? fillPadding_io_tensorIdx_bits : readData_io_idx; // @[TensorLoadNarrowVME.scala 166:30]
+  wire [6:0] waddrTensInstrTmp = fillPadding_io_tensorIdx_valid ? fillPadding_io_tensorIdx_bits : readData_io_idx; // @[TensorLoadNarrowVME.scala 166:30]
   wire  _waddr_0_T = ~state; // @[TensorLoadNarrowVME.scala 186:27]
   wire  wenTensInstr_0 = fillPadding_io_tensorIdx_valid | readData_io_col == 5'h0 & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 197:8]
   wire  wenTensInstr_1 = fillPadding_io_tensorIdx_valid | readData_io_col == 5'h1 & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 197:8]
@@ -4842,224 +4842,224 @@ module TensorLoadNarrowVME_1(
   assign tensorFile_0_MPORT_32_addr = tensorFile_0_MPORT_32_addr_pipe_0;
   assign tensorFile_0_MPORT_32_data = tensorFile_0[tensorFile_0_MPORT_32_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_0_MPORT_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_0_MPORT_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_0_MPORT_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_0_MPORT_mask = 1'h1;
   assign tensorFile_0_MPORT_en = _waddr_0_T ? 1'h0 : wenTensInstr_0;
   assign tensorFile_1_MPORT_33_en = tensorFile_1_MPORT_33_en_pipe_0;
   assign tensorFile_1_MPORT_33_addr = tensorFile_1_MPORT_33_addr_pipe_0;
   assign tensorFile_1_MPORT_33_data = tensorFile_1[tensorFile_1_MPORT_33_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_1_MPORT_1_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_1_MPORT_1_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_1_MPORT_1_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_1_MPORT_1_mask = 1'h1;
   assign tensorFile_1_MPORT_1_en = _waddr_0_T ? 1'h0 : wenTensInstr_1;
   assign tensorFile_2_MPORT_34_en = tensorFile_2_MPORT_34_en_pipe_0;
   assign tensorFile_2_MPORT_34_addr = tensorFile_2_MPORT_34_addr_pipe_0;
   assign tensorFile_2_MPORT_34_data = tensorFile_2[tensorFile_2_MPORT_34_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_2_MPORT_2_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_2_MPORT_2_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_2_MPORT_2_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_2_MPORT_2_mask = 1'h1;
   assign tensorFile_2_MPORT_2_en = _waddr_0_T ? 1'h0 : wenTensInstr_2;
   assign tensorFile_3_MPORT_35_en = tensorFile_3_MPORT_35_en_pipe_0;
   assign tensorFile_3_MPORT_35_addr = tensorFile_3_MPORT_35_addr_pipe_0;
   assign tensorFile_3_MPORT_35_data = tensorFile_3[tensorFile_3_MPORT_35_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_3_MPORT_3_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_3_MPORT_3_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_3_MPORT_3_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_3_MPORT_3_mask = 1'h1;
   assign tensorFile_3_MPORT_3_en = _waddr_0_T ? 1'h0 : wenTensInstr_3;
   assign tensorFile_4_MPORT_36_en = tensorFile_4_MPORT_36_en_pipe_0;
   assign tensorFile_4_MPORT_36_addr = tensorFile_4_MPORT_36_addr_pipe_0;
   assign tensorFile_4_MPORT_36_data = tensorFile_4[tensorFile_4_MPORT_36_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_4_MPORT_4_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_4_MPORT_4_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_4_MPORT_4_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_4_MPORT_4_mask = 1'h1;
   assign tensorFile_4_MPORT_4_en = _waddr_0_T ? 1'h0 : wenTensInstr_4;
   assign tensorFile_5_MPORT_37_en = tensorFile_5_MPORT_37_en_pipe_0;
   assign tensorFile_5_MPORT_37_addr = tensorFile_5_MPORT_37_addr_pipe_0;
   assign tensorFile_5_MPORT_37_data = tensorFile_5[tensorFile_5_MPORT_37_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_5_MPORT_5_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_5_MPORT_5_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_5_MPORT_5_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_5_MPORT_5_mask = 1'h1;
   assign tensorFile_5_MPORT_5_en = _waddr_0_T ? 1'h0 : wenTensInstr_5;
   assign tensorFile_6_MPORT_38_en = tensorFile_6_MPORT_38_en_pipe_0;
   assign tensorFile_6_MPORT_38_addr = tensorFile_6_MPORT_38_addr_pipe_0;
   assign tensorFile_6_MPORT_38_data = tensorFile_6[tensorFile_6_MPORT_38_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_6_MPORT_6_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_6_MPORT_6_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_6_MPORT_6_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_6_MPORT_6_mask = 1'h1;
   assign tensorFile_6_MPORT_6_en = _waddr_0_T ? 1'h0 : wenTensInstr_6;
   assign tensorFile_7_MPORT_39_en = tensorFile_7_MPORT_39_en_pipe_0;
   assign tensorFile_7_MPORT_39_addr = tensorFile_7_MPORT_39_addr_pipe_0;
   assign tensorFile_7_MPORT_39_data = tensorFile_7[tensorFile_7_MPORT_39_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_7_MPORT_7_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_7_MPORT_7_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_7_MPORT_7_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_7_MPORT_7_mask = 1'h1;
   assign tensorFile_7_MPORT_7_en = _waddr_0_T ? 1'h0 : wenTensInstr_7;
   assign tensorFile_8_MPORT_40_en = tensorFile_8_MPORT_40_en_pipe_0;
   assign tensorFile_8_MPORT_40_addr = tensorFile_8_MPORT_40_addr_pipe_0;
   assign tensorFile_8_MPORT_40_data = tensorFile_8[tensorFile_8_MPORT_40_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_8_MPORT_8_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_8_MPORT_8_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_8_MPORT_8_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_8_MPORT_8_mask = 1'h1;
   assign tensorFile_8_MPORT_8_en = _waddr_0_T ? 1'h0 : wenTensInstr_8;
   assign tensorFile_9_MPORT_41_en = tensorFile_9_MPORT_41_en_pipe_0;
   assign tensorFile_9_MPORT_41_addr = tensorFile_9_MPORT_41_addr_pipe_0;
   assign tensorFile_9_MPORT_41_data = tensorFile_9[tensorFile_9_MPORT_41_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_9_MPORT_9_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_9_MPORT_9_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_9_MPORT_9_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_9_MPORT_9_mask = 1'h1;
   assign tensorFile_9_MPORT_9_en = _waddr_0_T ? 1'h0 : wenTensInstr_9;
   assign tensorFile_10_MPORT_42_en = tensorFile_10_MPORT_42_en_pipe_0;
   assign tensorFile_10_MPORT_42_addr = tensorFile_10_MPORT_42_addr_pipe_0;
   assign tensorFile_10_MPORT_42_data = tensorFile_10[tensorFile_10_MPORT_42_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_10_MPORT_10_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_10_MPORT_10_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_10_MPORT_10_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_10_MPORT_10_mask = 1'h1;
   assign tensorFile_10_MPORT_10_en = _waddr_0_T ? 1'h0 : wenTensInstr_10;
   assign tensorFile_11_MPORT_43_en = tensorFile_11_MPORT_43_en_pipe_0;
   assign tensorFile_11_MPORT_43_addr = tensorFile_11_MPORT_43_addr_pipe_0;
   assign tensorFile_11_MPORT_43_data = tensorFile_11[tensorFile_11_MPORT_43_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_11_MPORT_11_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_11_MPORT_11_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_11_MPORT_11_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_11_MPORT_11_mask = 1'h1;
   assign tensorFile_11_MPORT_11_en = _waddr_0_T ? 1'h0 : wenTensInstr_11;
   assign tensorFile_12_MPORT_44_en = tensorFile_12_MPORT_44_en_pipe_0;
   assign tensorFile_12_MPORT_44_addr = tensorFile_12_MPORT_44_addr_pipe_0;
   assign tensorFile_12_MPORT_44_data = tensorFile_12[tensorFile_12_MPORT_44_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_12_MPORT_12_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_12_MPORT_12_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_12_MPORT_12_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_12_MPORT_12_mask = 1'h1;
   assign tensorFile_12_MPORT_12_en = _waddr_0_T ? 1'h0 : wenTensInstr_12;
   assign tensorFile_13_MPORT_45_en = tensorFile_13_MPORT_45_en_pipe_0;
   assign tensorFile_13_MPORT_45_addr = tensorFile_13_MPORT_45_addr_pipe_0;
   assign tensorFile_13_MPORT_45_data = tensorFile_13[tensorFile_13_MPORT_45_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_13_MPORT_13_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_13_MPORT_13_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_13_MPORT_13_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_13_MPORT_13_mask = 1'h1;
   assign tensorFile_13_MPORT_13_en = _waddr_0_T ? 1'h0 : wenTensInstr_13;
   assign tensorFile_14_MPORT_46_en = tensorFile_14_MPORT_46_en_pipe_0;
   assign tensorFile_14_MPORT_46_addr = tensorFile_14_MPORT_46_addr_pipe_0;
   assign tensorFile_14_MPORT_46_data = tensorFile_14[tensorFile_14_MPORT_46_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_14_MPORT_14_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_14_MPORT_14_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_14_MPORT_14_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_14_MPORT_14_mask = 1'h1;
   assign tensorFile_14_MPORT_14_en = _waddr_0_T ? 1'h0 : wenTensInstr_14;
   assign tensorFile_15_MPORT_47_en = tensorFile_15_MPORT_47_en_pipe_0;
   assign tensorFile_15_MPORT_47_addr = tensorFile_15_MPORT_47_addr_pipe_0;
   assign tensorFile_15_MPORT_47_data = tensorFile_15[tensorFile_15_MPORT_47_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_15_MPORT_15_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_15_MPORT_15_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_15_MPORT_15_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_15_MPORT_15_mask = 1'h1;
   assign tensorFile_15_MPORT_15_en = _waddr_0_T ? 1'h0 : wenTensInstr_15;
   assign tensorFile_16_MPORT_48_en = tensorFile_16_MPORT_48_en_pipe_0;
   assign tensorFile_16_MPORT_48_addr = tensorFile_16_MPORT_48_addr_pipe_0;
   assign tensorFile_16_MPORT_48_data = tensorFile_16[tensorFile_16_MPORT_48_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_16_MPORT_16_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_16_MPORT_16_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_16_MPORT_16_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_16_MPORT_16_mask = 1'h1;
   assign tensorFile_16_MPORT_16_en = _waddr_0_T ? 1'h0 : wenTensInstr_16;
   assign tensorFile_17_MPORT_49_en = tensorFile_17_MPORT_49_en_pipe_0;
   assign tensorFile_17_MPORT_49_addr = tensorFile_17_MPORT_49_addr_pipe_0;
   assign tensorFile_17_MPORT_49_data = tensorFile_17[tensorFile_17_MPORT_49_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_17_MPORT_17_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_17_MPORT_17_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_17_MPORT_17_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_17_MPORT_17_mask = 1'h1;
   assign tensorFile_17_MPORT_17_en = _waddr_0_T ? 1'h0 : wenTensInstr_17;
   assign tensorFile_18_MPORT_50_en = tensorFile_18_MPORT_50_en_pipe_0;
   assign tensorFile_18_MPORT_50_addr = tensorFile_18_MPORT_50_addr_pipe_0;
   assign tensorFile_18_MPORT_50_data = tensorFile_18[tensorFile_18_MPORT_50_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_18_MPORT_18_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_18_MPORT_18_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_18_MPORT_18_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_18_MPORT_18_mask = 1'h1;
   assign tensorFile_18_MPORT_18_en = _waddr_0_T ? 1'h0 : wenTensInstr_18;
   assign tensorFile_19_MPORT_51_en = tensorFile_19_MPORT_51_en_pipe_0;
   assign tensorFile_19_MPORT_51_addr = tensorFile_19_MPORT_51_addr_pipe_0;
   assign tensorFile_19_MPORT_51_data = tensorFile_19[tensorFile_19_MPORT_51_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_19_MPORT_19_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_19_MPORT_19_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_19_MPORT_19_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_19_MPORT_19_mask = 1'h1;
   assign tensorFile_19_MPORT_19_en = _waddr_0_T ? 1'h0 : wenTensInstr_19;
   assign tensorFile_20_MPORT_52_en = tensorFile_20_MPORT_52_en_pipe_0;
   assign tensorFile_20_MPORT_52_addr = tensorFile_20_MPORT_52_addr_pipe_0;
   assign tensorFile_20_MPORT_52_data = tensorFile_20[tensorFile_20_MPORT_52_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_20_MPORT_20_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_20_MPORT_20_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_20_MPORT_20_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_20_MPORT_20_mask = 1'h1;
   assign tensorFile_20_MPORT_20_en = _waddr_0_T ? 1'h0 : wenTensInstr_20;
   assign tensorFile_21_MPORT_53_en = tensorFile_21_MPORT_53_en_pipe_0;
   assign tensorFile_21_MPORT_53_addr = tensorFile_21_MPORT_53_addr_pipe_0;
   assign tensorFile_21_MPORT_53_data = tensorFile_21[tensorFile_21_MPORT_53_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_21_MPORT_21_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_21_MPORT_21_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_21_MPORT_21_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_21_MPORT_21_mask = 1'h1;
   assign tensorFile_21_MPORT_21_en = _waddr_0_T ? 1'h0 : wenTensInstr_21;
   assign tensorFile_22_MPORT_54_en = tensorFile_22_MPORT_54_en_pipe_0;
   assign tensorFile_22_MPORT_54_addr = tensorFile_22_MPORT_54_addr_pipe_0;
   assign tensorFile_22_MPORT_54_data = tensorFile_22[tensorFile_22_MPORT_54_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_22_MPORT_22_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_22_MPORT_22_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_22_MPORT_22_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_22_MPORT_22_mask = 1'h1;
   assign tensorFile_22_MPORT_22_en = _waddr_0_T ? 1'h0 : wenTensInstr_22;
   assign tensorFile_23_MPORT_55_en = tensorFile_23_MPORT_55_en_pipe_0;
   assign tensorFile_23_MPORT_55_addr = tensorFile_23_MPORT_55_addr_pipe_0;
   assign tensorFile_23_MPORT_55_data = tensorFile_23[tensorFile_23_MPORT_55_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_23_MPORT_23_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_23_MPORT_23_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_23_MPORT_23_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_23_MPORT_23_mask = 1'h1;
   assign tensorFile_23_MPORT_23_en = _waddr_0_T ? 1'h0 : wenTensInstr_23;
   assign tensorFile_24_MPORT_56_en = tensorFile_24_MPORT_56_en_pipe_0;
   assign tensorFile_24_MPORT_56_addr = tensorFile_24_MPORT_56_addr_pipe_0;
   assign tensorFile_24_MPORT_56_data = tensorFile_24[tensorFile_24_MPORT_56_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_24_MPORT_24_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_24_MPORT_24_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_24_MPORT_24_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_24_MPORT_24_mask = 1'h1;
   assign tensorFile_24_MPORT_24_en = _waddr_0_T ? 1'h0 : wenTensInstr_24;
   assign tensorFile_25_MPORT_57_en = tensorFile_25_MPORT_57_en_pipe_0;
   assign tensorFile_25_MPORT_57_addr = tensorFile_25_MPORT_57_addr_pipe_0;
   assign tensorFile_25_MPORT_57_data = tensorFile_25[tensorFile_25_MPORT_57_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_25_MPORT_25_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_25_MPORT_25_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_25_MPORT_25_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_25_MPORT_25_mask = 1'h1;
   assign tensorFile_25_MPORT_25_en = _waddr_0_T ? 1'h0 : wenTensInstr_25;
   assign tensorFile_26_MPORT_58_en = tensorFile_26_MPORT_58_en_pipe_0;
   assign tensorFile_26_MPORT_58_addr = tensorFile_26_MPORT_58_addr_pipe_0;
   assign tensorFile_26_MPORT_58_data = tensorFile_26[tensorFile_26_MPORT_58_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_26_MPORT_26_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_26_MPORT_26_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_26_MPORT_26_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_26_MPORT_26_mask = 1'h1;
   assign tensorFile_26_MPORT_26_en = _waddr_0_T ? 1'h0 : wenTensInstr_26;
   assign tensorFile_27_MPORT_59_en = tensorFile_27_MPORT_59_en_pipe_0;
   assign tensorFile_27_MPORT_59_addr = tensorFile_27_MPORT_59_addr_pipe_0;
   assign tensorFile_27_MPORT_59_data = tensorFile_27[tensorFile_27_MPORT_59_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_27_MPORT_27_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_27_MPORT_27_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_27_MPORT_27_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_27_MPORT_27_mask = 1'h1;
   assign tensorFile_27_MPORT_27_en = _waddr_0_T ? 1'h0 : wenTensInstr_27;
   assign tensorFile_28_MPORT_60_en = tensorFile_28_MPORT_60_en_pipe_0;
   assign tensorFile_28_MPORT_60_addr = tensorFile_28_MPORT_60_addr_pipe_0;
   assign tensorFile_28_MPORT_60_data = tensorFile_28[tensorFile_28_MPORT_60_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_28_MPORT_28_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_28_MPORT_28_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_28_MPORT_28_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_28_MPORT_28_mask = 1'h1;
   assign tensorFile_28_MPORT_28_en = _waddr_0_T ? 1'h0 : wenTensInstr_28;
   assign tensorFile_29_MPORT_61_en = tensorFile_29_MPORT_61_en_pipe_0;
   assign tensorFile_29_MPORT_61_addr = tensorFile_29_MPORT_61_addr_pipe_0;
   assign tensorFile_29_MPORT_61_data = tensorFile_29[tensorFile_29_MPORT_61_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_29_MPORT_29_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_29_MPORT_29_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_29_MPORT_29_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_29_MPORT_29_mask = 1'h1;
   assign tensorFile_29_MPORT_29_en = _waddr_0_T ? 1'h0 : wenTensInstr_29;
   assign tensorFile_30_MPORT_62_en = tensorFile_30_MPORT_62_en_pipe_0;
   assign tensorFile_30_MPORT_62_addr = tensorFile_30_MPORT_62_addr_pipe_0;
   assign tensorFile_30_MPORT_62_data = tensorFile_30[tensorFile_30_MPORT_62_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_30_MPORT_30_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_30_MPORT_30_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_30_MPORT_30_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_30_MPORT_30_mask = 1'h1;
   assign tensorFile_30_MPORT_30_en = _waddr_0_T ? 1'h0 : wenTensInstr_30;
   assign tensorFile_31_MPORT_63_en = tensorFile_31_MPORT_63_en_pipe_0;
   assign tensorFile_31_MPORT_63_addr = tensorFile_31_MPORT_63_addr_pipe_0;
   assign tensorFile_31_MPORT_63_data = tensorFile_31[tensorFile_31_MPORT_63_addr]; // @[TensorLoadNarrowVME.scala 152:16]
   assign tensorFile_31_MPORT_31_data = _waddr_0_T ? 64'h0 : wdataTensInstr_0;
-  assign tensorFile_31_MPORT_31_addr = _waddr_0_T ? 10'h0 : waddrTensInstrTmp;
+  assign tensorFile_31_MPORT_31_addr = _waddr_0_T ? 7'h0 : waddrTensInstrTmp;
   assign tensorFile_31_MPORT_31_mask = 1'h1;
   assign tensorFile_31_MPORT_31_en = _waddr_0_T ? 1'h0 : wenTensInstr_31;
   assign io_done = loadDone & fillPadding_io_done; // @[TensorLoadNarrowVME.scala 293:25]
@@ -5573,7 +5573,7 @@ module TensorLoadNarrowVME_1(
       state <= _GEN_1;
     end
     if (io_start) begin // @[TensorLoadNarrowVME.scala 88:18]
-      blocksInFlight <= 15'h0; // @[TensorLoadNarrowVME.scala 89:20]
+      blocksInFlight <= 12'h0; // @[TensorLoadNarrowVME.scala 89:20]
     end else if (state & _T & ~vmeDataFirePipe) begin // @[TensorLoadNarrowVME.scala 90:64]
       blocksInFlight <= _blocksInFlight_T_1; // @[TensorLoadNarrowVME.scala 91:20]
     end else if (_T_1 & vmeDataFirePipe) begin // @[TensorLoadNarrowVME.scala 92:63]
@@ -5608,7 +5608,7 @@ module TensorLoadNarrowVME_1(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(blocksInFlight > 15'h0)) begin
+        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(blocksInFlight > 12'h0)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at TensorLoadNarrowVME.scala:95 assert(blocksInFlight > 0.U)\n"); // @[TensorLoadNarrowVME.scala 95:11]
         end
     `ifdef PRINTF_COND
@@ -5653,235 +5653,235 @@ initial begin
     `endif
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_0[initvar] = _RAND_0[63:0];
   _RAND_3 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_1[initvar] = _RAND_3[63:0];
   _RAND_6 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_2[initvar] = _RAND_6[63:0];
   _RAND_9 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_3[initvar] = _RAND_9[63:0];
   _RAND_12 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_4[initvar] = _RAND_12[63:0];
   _RAND_15 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_5[initvar] = _RAND_15[63:0];
   _RAND_18 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_6[initvar] = _RAND_18[63:0];
   _RAND_21 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_7[initvar] = _RAND_21[63:0];
   _RAND_24 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_8[initvar] = _RAND_24[63:0];
   _RAND_27 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_9[initvar] = _RAND_27[63:0];
   _RAND_30 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_10[initvar] = _RAND_30[63:0];
   _RAND_33 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_11[initvar] = _RAND_33[63:0];
   _RAND_36 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_12[initvar] = _RAND_36[63:0];
   _RAND_39 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_13[initvar] = _RAND_39[63:0];
   _RAND_42 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_14[initvar] = _RAND_42[63:0];
   _RAND_45 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_15[initvar] = _RAND_45[63:0];
   _RAND_48 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_16[initvar] = _RAND_48[63:0];
   _RAND_51 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_17[initvar] = _RAND_51[63:0];
   _RAND_54 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_18[initvar] = _RAND_54[63:0];
   _RAND_57 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_19[initvar] = _RAND_57[63:0];
   _RAND_60 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_20[initvar] = _RAND_60[63:0];
   _RAND_63 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_21[initvar] = _RAND_63[63:0];
   _RAND_66 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_22[initvar] = _RAND_66[63:0];
   _RAND_69 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_23[initvar] = _RAND_69[63:0];
   _RAND_72 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_24[initvar] = _RAND_72[63:0];
   _RAND_75 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_25[initvar] = _RAND_75[63:0];
   _RAND_78 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_26[initvar] = _RAND_78[63:0];
   _RAND_81 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_27[initvar] = _RAND_81[63:0];
   _RAND_84 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_28[initvar] = _RAND_84[63:0];
   _RAND_87 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_29[initvar] = _RAND_87[63:0];
   _RAND_90 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_30[initvar] = _RAND_90[63:0];
   _RAND_93 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_31[initvar] = _RAND_93[63:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_1 = {1{`RANDOM}};
   tensorFile_0_MPORT_32_en_pipe_0 = _RAND_1[0:0];
   _RAND_2 = {1{`RANDOM}};
-  tensorFile_0_MPORT_32_addr_pipe_0 = _RAND_2[9:0];
+  tensorFile_0_MPORT_32_addr_pipe_0 = _RAND_2[6:0];
   _RAND_4 = {1{`RANDOM}};
   tensorFile_1_MPORT_33_en_pipe_0 = _RAND_4[0:0];
   _RAND_5 = {1{`RANDOM}};
-  tensorFile_1_MPORT_33_addr_pipe_0 = _RAND_5[9:0];
+  tensorFile_1_MPORT_33_addr_pipe_0 = _RAND_5[6:0];
   _RAND_7 = {1{`RANDOM}};
   tensorFile_2_MPORT_34_en_pipe_0 = _RAND_7[0:0];
   _RAND_8 = {1{`RANDOM}};
-  tensorFile_2_MPORT_34_addr_pipe_0 = _RAND_8[9:0];
+  tensorFile_2_MPORT_34_addr_pipe_0 = _RAND_8[6:0];
   _RAND_10 = {1{`RANDOM}};
   tensorFile_3_MPORT_35_en_pipe_0 = _RAND_10[0:0];
   _RAND_11 = {1{`RANDOM}};
-  tensorFile_3_MPORT_35_addr_pipe_0 = _RAND_11[9:0];
+  tensorFile_3_MPORT_35_addr_pipe_0 = _RAND_11[6:0];
   _RAND_13 = {1{`RANDOM}};
   tensorFile_4_MPORT_36_en_pipe_0 = _RAND_13[0:0];
   _RAND_14 = {1{`RANDOM}};
-  tensorFile_4_MPORT_36_addr_pipe_0 = _RAND_14[9:0];
+  tensorFile_4_MPORT_36_addr_pipe_0 = _RAND_14[6:0];
   _RAND_16 = {1{`RANDOM}};
   tensorFile_5_MPORT_37_en_pipe_0 = _RAND_16[0:0];
   _RAND_17 = {1{`RANDOM}};
-  tensorFile_5_MPORT_37_addr_pipe_0 = _RAND_17[9:0];
+  tensorFile_5_MPORT_37_addr_pipe_0 = _RAND_17[6:0];
   _RAND_19 = {1{`RANDOM}};
   tensorFile_6_MPORT_38_en_pipe_0 = _RAND_19[0:0];
   _RAND_20 = {1{`RANDOM}};
-  tensorFile_6_MPORT_38_addr_pipe_0 = _RAND_20[9:0];
+  tensorFile_6_MPORT_38_addr_pipe_0 = _RAND_20[6:0];
   _RAND_22 = {1{`RANDOM}};
   tensorFile_7_MPORT_39_en_pipe_0 = _RAND_22[0:0];
   _RAND_23 = {1{`RANDOM}};
-  tensorFile_7_MPORT_39_addr_pipe_0 = _RAND_23[9:0];
+  tensorFile_7_MPORT_39_addr_pipe_0 = _RAND_23[6:0];
   _RAND_25 = {1{`RANDOM}};
   tensorFile_8_MPORT_40_en_pipe_0 = _RAND_25[0:0];
   _RAND_26 = {1{`RANDOM}};
-  tensorFile_8_MPORT_40_addr_pipe_0 = _RAND_26[9:0];
+  tensorFile_8_MPORT_40_addr_pipe_0 = _RAND_26[6:0];
   _RAND_28 = {1{`RANDOM}};
   tensorFile_9_MPORT_41_en_pipe_0 = _RAND_28[0:0];
   _RAND_29 = {1{`RANDOM}};
-  tensorFile_9_MPORT_41_addr_pipe_0 = _RAND_29[9:0];
+  tensorFile_9_MPORT_41_addr_pipe_0 = _RAND_29[6:0];
   _RAND_31 = {1{`RANDOM}};
   tensorFile_10_MPORT_42_en_pipe_0 = _RAND_31[0:0];
   _RAND_32 = {1{`RANDOM}};
-  tensorFile_10_MPORT_42_addr_pipe_0 = _RAND_32[9:0];
+  tensorFile_10_MPORT_42_addr_pipe_0 = _RAND_32[6:0];
   _RAND_34 = {1{`RANDOM}};
   tensorFile_11_MPORT_43_en_pipe_0 = _RAND_34[0:0];
   _RAND_35 = {1{`RANDOM}};
-  tensorFile_11_MPORT_43_addr_pipe_0 = _RAND_35[9:0];
+  tensorFile_11_MPORT_43_addr_pipe_0 = _RAND_35[6:0];
   _RAND_37 = {1{`RANDOM}};
   tensorFile_12_MPORT_44_en_pipe_0 = _RAND_37[0:0];
   _RAND_38 = {1{`RANDOM}};
-  tensorFile_12_MPORT_44_addr_pipe_0 = _RAND_38[9:0];
+  tensorFile_12_MPORT_44_addr_pipe_0 = _RAND_38[6:0];
   _RAND_40 = {1{`RANDOM}};
   tensorFile_13_MPORT_45_en_pipe_0 = _RAND_40[0:0];
   _RAND_41 = {1{`RANDOM}};
-  tensorFile_13_MPORT_45_addr_pipe_0 = _RAND_41[9:0];
+  tensorFile_13_MPORT_45_addr_pipe_0 = _RAND_41[6:0];
   _RAND_43 = {1{`RANDOM}};
   tensorFile_14_MPORT_46_en_pipe_0 = _RAND_43[0:0];
   _RAND_44 = {1{`RANDOM}};
-  tensorFile_14_MPORT_46_addr_pipe_0 = _RAND_44[9:0];
+  tensorFile_14_MPORT_46_addr_pipe_0 = _RAND_44[6:0];
   _RAND_46 = {1{`RANDOM}};
   tensorFile_15_MPORT_47_en_pipe_0 = _RAND_46[0:0];
   _RAND_47 = {1{`RANDOM}};
-  tensorFile_15_MPORT_47_addr_pipe_0 = _RAND_47[9:0];
+  tensorFile_15_MPORT_47_addr_pipe_0 = _RAND_47[6:0];
   _RAND_49 = {1{`RANDOM}};
   tensorFile_16_MPORT_48_en_pipe_0 = _RAND_49[0:0];
   _RAND_50 = {1{`RANDOM}};
-  tensorFile_16_MPORT_48_addr_pipe_0 = _RAND_50[9:0];
+  tensorFile_16_MPORT_48_addr_pipe_0 = _RAND_50[6:0];
   _RAND_52 = {1{`RANDOM}};
   tensorFile_17_MPORT_49_en_pipe_0 = _RAND_52[0:0];
   _RAND_53 = {1{`RANDOM}};
-  tensorFile_17_MPORT_49_addr_pipe_0 = _RAND_53[9:0];
+  tensorFile_17_MPORT_49_addr_pipe_0 = _RAND_53[6:0];
   _RAND_55 = {1{`RANDOM}};
   tensorFile_18_MPORT_50_en_pipe_0 = _RAND_55[0:0];
   _RAND_56 = {1{`RANDOM}};
-  tensorFile_18_MPORT_50_addr_pipe_0 = _RAND_56[9:0];
+  tensorFile_18_MPORT_50_addr_pipe_0 = _RAND_56[6:0];
   _RAND_58 = {1{`RANDOM}};
   tensorFile_19_MPORT_51_en_pipe_0 = _RAND_58[0:0];
   _RAND_59 = {1{`RANDOM}};
-  tensorFile_19_MPORT_51_addr_pipe_0 = _RAND_59[9:0];
+  tensorFile_19_MPORT_51_addr_pipe_0 = _RAND_59[6:0];
   _RAND_61 = {1{`RANDOM}};
   tensorFile_20_MPORT_52_en_pipe_0 = _RAND_61[0:0];
   _RAND_62 = {1{`RANDOM}};
-  tensorFile_20_MPORT_52_addr_pipe_0 = _RAND_62[9:0];
+  tensorFile_20_MPORT_52_addr_pipe_0 = _RAND_62[6:0];
   _RAND_64 = {1{`RANDOM}};
   tensorFile_21_MPORT_53_en_pipe_0 = _RAND_64[0:0];
   _RAND_65 = {1{`RANDOM}};
-  tensorFile_21_MPORT_53_addr_pipe_0 = _RAND_65[9:0];
+  tensorFile_21_MPORT_53_addr_pipe_0 = _RAND_65[6:0];
   _RAND_67 = {1{`RANDOM}};
   tensorFile_22_MPORT_54_en_pipe_0 = _RAND_67[0:0];
   _RAND_68 = {1{`RANDOM}};
-  tensorFile_22_MPORT_54_addr_pipe_0 = _RAND_68[9:0];
+  tensorFile_22_MPORT_54_addr_pipe_0 = _RAND_68[6:0];
   _RAND_70 = {1{`RANDOM}};
   tensorFile_23_MPORT_55_en_pipe_0 = _RAND_70[0:0];
   _RAND_71 = {1{`RANDOM}};
-  tensorFile_23_MPORT_55_addr_pipe_0 = _RAND_71[9:0];
+  tensorFile_23_MPORT_55_addr_pipe_0 = _RAND_71[6:0];
   _RAND_73 = {1{`RANDOM}};
   tensorFile_24_MPORT_56_en_pipe_0 = _RAND_73[0:0];
   _RAND_74 = {1{`RANDOM}};
-  tensorFile_24_MPORT_56_addr_pipe_0 = _RAND_74[9:0];
+  tensorFile_24_MPORT_56_addr_pipe_0 = _RAND_74[6:0];
   _RAND_76 = {1{`RANDOM}};
   tensorFile_25_MPORT_57_en_pipe_0 = _RAND_76[0:0];
   _RAND_77 = {1{`RANDOM}};
-  tensorFile_25_MPORT_57_addr_pipe_0 = _RAND_77[9:0];
+  tensorFile_25_MPORT_57_addr_pipe_0 = _RAND_77[6:0];
   _RAND_79 = {1{`RANDOM}};
   tensorFile_26_MPORT_58_en_pipe_0 = _RAND_79[0:0];
   _RAND_80 = {1{`RANDOM}};
-  tensorFile_26_MPORT_58_addr_pipe_0 = _RAND_80[9:0];
+  tensorFile_26_MPORT_58_addr_pipe_0 = _RAND_80[6:0];
   _RAND_82 = {1{`RANDOM}};
   tensorFile_27_MPORT_59_en_pipe_0 = _RAND_82[0:0];
   _RAND_83 = {1{`RANDOM}};
-  tensorFile_27_MPORT_59_addr_pipe_0 = _RAND_83[9:0];
+  tensorFile_27_MPORT_59_addr_pipe_0 = _RAND_83[6:0];
   _RAND_85 = {1{`RANDOM}};
   tensorFile_28_MPORT_60_en_pipe_0 = _RAND_85[0:0];
   _RAND_86 = {1{`RANDOM}};
-  tensorFile_28_MPORT_60_addr_pipe_0 = _RAND_86[9:0];
+  tensorFile_28_MPORT_60_addr_pipe_0 = _RAND_86[6:0];
   _RAND_88 = {1{`RANDOM}};
   tensorFile_29_MPORT_61_en_pipe_0 = _RAND_88[0:0];
   _RAND_89 = {1{`RANDOM}};
-  tensorFile_29_MPORT_61_addr_pipe_0 = _RAND_89[9:0];
+  tensorFile_29_MPORT_61_addr_pipe_0 = _RAND_89[6:0];
   _RAND_91 = {1{`RANDOM}};
   tensorFile_30_MPORT_62_en_pipe_0 = _RAND_91[0:0];
   _RAND_92 = {1{`RANDOM}};
-  tensorFile_30_MPORT_62_addr_pipe_0 = _RAND_92[9:0];
+  tensorFile_30_MPORT_62_addr_pipe_0 = _RAND_92[6:0];
   _RAND_94 = {1{`RANDOM}};
   tensorFile_31_MPORT_63_en_pipe_0 = _RAND_94[0:0];
   _RAND_95 = {1{`RANDOM}};
-  tensorFile_31_MPORT_63_addr_pipe_0 = _RAND_95[9:0];
+  tensorFile_31_MPORT_63_addr_pipe_0 = _RAND_95[6:0];
   _RAND_96 = {1{`RANDOM}};
   state = _RAND_96[0:0];
   _RAND_97 = {1{`RANDOM}};
-  blocksInFlight = _RAND_97[14:0];
+  blocksInFlight = _RAND_97[11:0];
   _RAND_98 = {2{`RANDOM}};
   vmeDataBitsPipe_data = _RAND_98[63:0];
   _RAND_99 = {1{`RANDOM}};
@@ -5906,7 +5906,7 @@ end // initial
   always @(posedge clock) begin
     //
     if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset) begin
-      assert(blocksInFlight > 15'h0); // @[TensorLoadNarrowVME.scala 95:11]
+      assert(blocksInFlight > 12'h0); // @[TensorLoadNarrowVME.scala 95:11]
     end
     //
     if (_T_13) begin
@@ -5930,7 +5930,7 @@ module TensorLoadWgt(
   input  [63:0]  io_vme_rd_data_bits_data,
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_tensor_rd_0_idx_valid,
-  input  [9:0]   io_tensor_rd_0_idx_bits,
+  input  [6:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [7:0]   io_tensor_rd_0_data_bits_0_0,
   output [7:0]   io_tensor_rd_0_data_bits_0_1,
@@ -6205,7 +6205,7 @@ module TensorLoadWgt(
   wire [63:0] tensorLoad_io_vme_rd_data_bits_data; // @[TensorLoad.scala 71:28]
   wire [20:0] tensorLoad_io_vme_rd_data_bits_tag; // @[TensorLoad.scala 71:28]
   wire  tensorLoad_io_tensor_rd_0_idx_valid; // @[TensorLoad.scala 71:28]
-  wire [9:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 71:28]
+  wire [6:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 71:28]
   wire  tensorLoad_io_tensor_rd_0_data_valid; // @[TensorLoad.scala 71:28]
   wire [7:0] tensorLoad_io_tensor_rd_0_data_bits_0_0; // @[TensorLoad.scala 71:28]
   wire [7:0] tensorLoad_io_tensor_rd_0_data_bits_0_1; // @[TensorLoad.scala 71:28]
@@ -7040,7 +7040,7 @@ module Load(
   input  [63:0]  io_vme_rd_1_data_bits_data,
   input  [20:0]  io_vme_rd_1_data_bits_tag,
   input          io_inp_rd_0_idx_valid,
-  input  [10:0]  io_inp_rd_0_idx_bits,
+  input  [7:0]   io_inp_rd_0_idx_bits,
   output         io_inp_rd_0_data_valid,
   output [7:0]   io_inp_rd_0_data_bits_0_0,
   output [7:0]   io_inp_rd_0_data_bits_0_1,
@@ -7059,7 +7059,7 @@ module Load(
   output [7:0]   io_inp_rd_0_data_bits_0_14,
   output [7:0]   io_inp_rd_0_data_bits_0_15,
   input          io_wgt_rd_0_idx_valid,
-  input  [9:0]   io_wgt_rd_0_idx_bits,
+  input  [6:0]   io_wgt_rd_0_idx_bits,
   output         io_wgt_rd_0_data_valid,
   output [7:0]   io_wgt_rd_0_data_bits_0_0,
   output [7:0]   io_wgt_rd_0_data_bits_0_1,
@@ -7355,7 +7355,7 @@ module Load(
   wire [63:0] tensorLoad_0_io_vme_rd_data_bits_data; // @[Load.scala 58:32]
   wire [20:0] tensorLoad_0_io_vme_rd_data_bits_tag; // @[Load.scala 58:32]
   wire  tensorLoad_0_io_tensor_rd_0_idx_valid; // @[Load.scala 58:32]
-  wire [10:0] tensorLoad_0_io_tensor_rd_0_idx_bits; // @[Load.scala 58:32]
+  wire [7:0] tensorLoad_0_io_tensor_rd_0_idx_bits; // @[Load.scala 58:32]
   wire  tensorLoad_0_io_tensor_rd_0_data_valid; // @[Load.scala 58:32]
   wire [7:0] tensorLoad_0_io_tensor_rd_0_data_bits_0_0; // @[Load.scala 58:32]
   wire [7:0] tensorLoad_0_io_tensor_rd_0_data_bits_0_1; // @[Load.scala 58:32]
@@ -7388,7 +7388,7 @@ module Load(
   wire [63:0] tensorLoad_1_io_vme_rd_data_bits_data; // @[Load.scala 58:32]
   wire [20:0] tensorLoad_1_io_vme_rd_data_bits_tag; // @[Load.scala 58:32]
   wire  tensorLoad_1_io_tensor_rd_0_idx_valid; // @[Load.scala 58:32]
-  wire [9:0] tensorLoad_1_io_tensor_rd_0_idx_bits; // @[Load.scala 58:32]
+  wire [6:0] tensorLoad_1_io_tensor_rd_0_idx_bits; // @[Load.scala 58:32]
   wire  tensorLoad_1_io_tensor_rd_0_data_valid; // @[Load.scala 58:32]
   wire [7:0] tensorLoad_1_io_tensor_rd_0_data_bits_0_0; // @[Load.scala 58:32]
   wire [7:0] tensorLoad_1_io_tensor_rd_0_data_bits_0_1; // @[Load.scala 58:32]
@@ -8449,7 +8449,7 @@ module GenVMECmdWide(
   wire [31:0] _GEN_3 = _rdLastPulseBytes_T_1 % 32'h8; // @[TensorLoadWideVME.scala 573:63]
   wire [3:0] rdLastPulseBytes = _GEN_3[3:0]; // @[TensorLoadWideVME.scala 573:63]
   wire [1:0] rdLastPulseTensNb = rdLastPulseBytes[3:2] == 2'h0 ? 2'h2 : rdLastPulseBytes[3:2]; // @[TensorLoadWideVME.scala 578:28]
-  reg [10:0] rdCmdStartIdx; // @[TensorLoadWideVME.scala 588:26]
+  reg [7:0] rdCmdStartIdx; // @[TensorLoadWideVME.scala 588:26]
   reg  commandsDone; // @[TensorLoadWideVME.scala 589:29]
   wire [14:0] nextClIdx = clReadIdx + _GEN_33; // @[TensorLoadWideVME.scala 600:31]
   wire  _GEN_7 = nextClIdx == rdLineClNb & dramLineIdx == _T_31 | commandsDone; // @[TensorLoadWideVME.scala 595:16 602:71 603:20]
@@ -8472,30 +8472,30 @@ module GenVMECmdWide(
   wire  _rdCmdStartIdxValid_T_6 = ~commandsDone; // @[TensorLoadWideVME.scala 666:5]
   wire  rdCmdStartIdxValid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadWideVME.scala 665:15]
   wire [15:0] _rdCmdStartIdx_T_1 = io_sram_offset + _GEN_40; // @[TensorLoadWideVME.scala 669:37]
-  wire [15:0] _GEN_47 = {{5'd0}, rdCmdStartIdx}; // @[TensorLoadWideVME.scala 671:36]
+  wire [15:0] _GEN_47 = {{8'd0}, rdCmdStartIdx}; // @[TensorLoadWideVME.scala 671:36]
   wire [15:0] _rdCmdStartIdx_T_3 = _GEN_47 + totalWidth; // @[TensorLoadWideVME.scala 671:36]
   wire [19:0] _currentRowIdx_T_1 = currentRowIdx + 20'h1; // @[TensorLoadWideVME.scala 672:36]
-  wire [15:0] _GEN_19 = io_isBusy & (currentRowIdx < _GEN_42 | stride) ? _rdCmdStartIdx_T_3 : {{5'd0}, rdCmdStartIdx}; // @[TensorLoadWideVME.scala 670:67 671:19 588:26]
+  wire [15:0] _GEN_19 = io_isBusy & (currentRowIdx < _GEN_42 | stride) ? _rdCmdStartIdx_T_3 : {{8'd0}, rdCmdStartIdx}; // @[TensorLoadWideVME.scala 670:67 671:19 588:26]
   wire [15:0] _GEN_22 = io_start ? _rdCmdStartIdx_T_1 : _GEN_19; // @[TensorLoadWideVME.scala 667:19 669:19]
   wire  startIssueCmdRead = newReadRow & rdCmdStartIdxValid; // @[TensorLoadWideVME.scala 675:19]
-  reg [10:0] rdCmdDestElemIdxNext; // @[TensorLoadWideVME.scala 688:33]
+  reg [7:0] rdCmdDestElemIdxNext; // @[TensorLoadWideVME.scala 688:33]
   wire [5:0] _rdCmdTransactionTensNb_T = {rdLen, 1'h0}; // @[TensorLoadWideVME.scala 694:39]
   wire [5:0] _GEN_48 = {{4'd0}, rdCmd1stPluseOffsetTensNb}; // @[TensorLoadWideVME.scala 694:71]
   wire [5:0] rdCmdTransactionTensNb = _rdCmdTransactionTensNb_T - _GEN_48; // @[TensorLoadWideVME.scala 694:71]
-  wire [10:0] _GEN_49 = {{5'd0}, rdCmdTransactionTensNb}; // @[TensorLoadWideVME.scala 700:44]
-  wire [10:0] _rdCmdDestElemIdxNext_T_1 = rdCmdStartIdx + _GEN_49; // @[TensorLoadWideVME.scala 700:44]
-  wire [10:0] _rdCmdDestElemIdxNext_T_3 = rdCmdDestElemIdxNext + _GEN_49; // @[TensorLoadWideVME.scala 703:51]
-  wire [10:0] _GEN_25 = startIssueCmdRead ? rdCmdStartIdx : rdCmdDestElemIdxNext; // @[TensorLoadWideVME.scala 690:20 698:29 699:24]
-  wire [10:0] rdCmdDestElemIdx = rdCmdStartIdxValid ? _GEN_25 : rdCmdDestElemIdxNext; // @[TensorLoadWideVME.scala 690:20 696:28]
+  wire [7:0] _GEN_49 = {{2'd0}, rdCmdTransactionTensNb}; // @[TensorLoadWideVME.scala 700:44]
+  wire [7:0] _rdCmdDestElemIdxNext_T_1 = rdCmdStartIdx + _GEN_49; // @[TensorLoadWideVME.scala 700:44]
+  wire [7:0] _rdCmdDestElemIdxNext_T_3 = rdCmdDestElemIdxNext + _GEN_49; // @[TensorLoadWideVME.scala 703:51]
+  wire [7:0] _GEN_25 = startIssueCmdRead ? rdCmdStartIdx : rdCmdDestElemIdxNext; // @[TensorLoadWideVME.scala 690:20 698:29 699:24]
+  wire [7:0] rdCmdDestElemIdx = rdCmdStartIdxValid ? _GEN_25 : rdCmdDestElemIdxNext; // @[TensorLoadWideVME.scala 690:20 696:28]
   wire [4:0] _io_vmeCmd_bits_len_T_1 = rdLen - 5'h1; // @[TensorLoadWideVME.scala 716:31]
   wire [31:0] _GEN_4 = rdLineAddr % 32'h80; // @[TensorLoadWideVME.scala 717:87]
   wire [7:0] _T_49 = _GEN_4[7:0]; // @[TensorLoadWideVME.scala 717:87]
   wire [7:0] _T_51 = 8'h80 - _T_49; // @[TensorLoadWideVME.scala 717:74]
-  wire [14:0] _io_vmeCmd_bits_tag_T_1 = {rdCmdDestElemIdx,rdCmd1stPluseOffsetTensNb,rdCmdLastPluseTensNb}; // @[Cat.scala 31:58]
+  wire [11:0] _io_vmeCmd_bits_tag_T_1 = {rdCmdDestElemIdx,rdCmd1stPluseOffsetTensNb,rdCmdLastPluseTensNb}; // @[Cat.scala 31:58]
   assign io_vmeCmd_valid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadWideVME.scala 665:15]
   assign io_vmeCmd_bits_addr = rdLineAddr; // @[TensorLoadWideVME.scala 715:23]
   assign io_vmeCmd_bits_len = _io_vmeCmd_bits_len_T_1[3:0]; // @[TensorLoadWideVME.scala 716:22]
-  assign io_vmeCmd_bits_tag = {{6'd0}, _io_vmeCmd_bits_tag_T_1}; // @[TensorLoadWideVME.scala 721:22]
+  assign io_vmeCmd_bits_tag = {{9'd0}, _io_vmeCmd_bits_tag_T_1}; // @[TensorLoadWideVME.scala 721:22]
   assign io_readLen = _GEN_18[4:0]; // @[TensorLoadWideVME.scala 537:19]
   assign io_done = commandsDone; // @[TensorLoadWideVME.scala 726:11]
   always @(posedge clock) begin
@@ -8523,7 +8523,7 @@ module GenVMECmdWide(
         rdLineAddr <= _rdLineAddr_T_2; // @[TensorLoadWideVME.scala 545:18]
       end
     end
-    rdCmdStartIdx <= _GEN_22[10:0];
+    rdCmdStartIdx <= _GEN_22[7:0];
     commandsDone <= reset | _GEN_11; // @[TensorLoadWideVME.scala 589:{29,29}]
     if (io_start) begin // @[TensorLoadWideVME.scala 667:19]
       currentRowIdx <= 20'h0; // @[TensorLoadWideVME.scala 668:19]
@@ -8635,13 +8635,13 @@ initial begin
   _RAND_3 = {1{`RANDOM}};
   rdLineAddr = _RAND_3[31:0];
   _RAND_4 = {1{`RANDOM}};
-  rdCmdStartIdx = _RAND_4[10:0];
+  rdCmdStartIdx = _RAND_4[7:0];
   _RAND_5 = {1{`RANDOM}};
   commandsDone = _RAND_5[0:0];
   _RAND_6 = {1{`RANDOM}};
   currentRowIdx = _RAND_6[19:0];
   _RAND_7 = {1{`RANDOM}};
-  rdCmdDestElemIdxNext = _RAND_7[10:0];
+  rdCmdDestElemIdxNext = _RAND_7[7:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -8755,8 +8755,8 @@ module ReadVMEDataWide(
   input  [63:0] io_vmeData_bits_data,
   input  [20:0] io_vmeData_bits_tag,
   input         io_vmeData_bits_last,
-  output [10:0] io_destIdx_0,
-  output [10:0] io_destIdx_1,
+  output [7:0]  io_destIdx_0,
+  output [7:0]  io_destIdx_1,
   output [31:0] io_destData_0,
   output [31:0] io_destData_1,
   output        io_destMask_0,
@@ -8779,16 +8779,16 @@ module ReadVMEDataWide(
   wire  _wrMaskLast_T = 2'h0 < rdLstNb; // @[TensorLoadWideVME.scala 381:13]
   wire  _wrMaskLast_T_1 = 2'h1 < rdLstNb; // @[TensorLoadWideVME.scala 381:13]
   wire [1:0] wrMaskLast = {_wrMaskLast_T_1,_wrMaskLast_T}; // @[TensorLoadWideVME.scala 382:8]
-  reg [10:0] rdDataElemDestIdxNext; // @[TensorLoadWideVME.scala 385:34]
+  reg [7:0] rdDataElemDestIdxNext; // @[TensorLoadWideVME.scala 385:34]
   wire  _T_1 = io_vmeData_ready & io_vmeData_valid; // @[Decoupled.scala 50:35]
   reg  vmeTagDecodeLastValidNext; // @[TensorLoadWideVME.scala 390:42]
   wire  _T_3 = io_vmeData_bits_tag != vmeTagDecodeLast; // @[TensorLoadWideVME.scala 421:29]
   wire  _T_4 = vmeTagDecodeLastValidNext & _T_3; // @[TensorLoadWideVME.scala 420:34]
   wire  _T_5 = ~vmeTagDecodeLastValidNext | _T_4; // @[TensorLoadWideVME.scala 419:34]
-  wire [16:0] _GEN_4 = _T_5 ? rdDataElemIdx : {{6'd0}, rdDataElemDestIdxNext}; // @[TensorLoadWideVME.scala 421:59 425:25 430:25]
-  wire [10:0] rdDataElemDestIdx = _GEN_4[10:0]; // @[TensorLoadWideVME.scala 384:31]
-  wire [9:0] rdDataClDestIdx = rdDataElemDestIdx[10:1]; // @[TensorLoadWideVME.scala 386:43]
-  wire [10:0] _GEN_1 = rdDataElemDestIdx % 11'h2; // @[TensorLoadWideVME.scala 387:48]
+  wire [16:0] _GEN_4 = _T_5 ? rdDataElemIdx : {{9'd0}, rdDataElemDestIdxNext}; // @[TensorLoadWideVME.scala 421:59 425:25 430:25]
+  wire [7:0] rdDataElemDestIdx = _GEN_4[7:0]; // @[TensorLoadWideVME.scala 384:31]
+  wire [6:0] rdDataClDestIdx = rdDataElemDestIdx[7:1]; // @[TensorLoadWideVME.scala 386:43]
+  wire [7:0] _GEN_1 = rdDataElemDestIdx % 8'h2; // @[TensorLoadWideVME.scala 387:48]
   wire [1:0] rdDataDestElemOffset = _GEN_1[1:0]; // @[TensorLoadWideVME.scala 387:48]
   wire  _GEN_0 = _T_1 | vmeTagDecodeLastValidNext; // @[TensorLoadWideVME.scala 395:31 396:27 398:27]
   wire  isFirstPulse = _T_1 & _T_5; // @[TensorLoadWideVME.scala 416:16 417:25]
@@ -8801,10 +8801,10 @@ module ReadVMEDataWide(
   wire [1:0] _rdDataElemDestIdxNext_T_2 = wmask[0] + wmask[1]; // @[Bitwise.scala 48:55]
   wire [16:0] _GEN_10 = {{15'd0}, _rdDataElemDestIdxNext_T_2}; // @[TensorLoadWideVME.scala 427:46]
   wire [16:0] _rdDataElemDestIdxNext_T_5 = rdDataElemIdx + _GEN_10; // @[TensorLoadWideVME.scala 427:46]
-  wire [10:0] _GEN_11 = {{9'd0}, _rdDataElemDestIdxNext_T_2}; // @[TensorLoadWideVME.scala 429:54]
-  wire [10:0] _rdDataElemDestIdxNext_T_11 = rdDataElemDestIdxNext + _GEN_11; // @[TensorLoadWideVME.scala 429:54]
-  wire [16:0] _GEN_5 = _T_5 ? _rdDataElemDestIdxNext_T_5 : {{6'd0}, _rdDataElemDestIdxNext_T_11}; // @[TensorLoadWideVME.scala 421:59 427:29 429:29]
-  wire [16:0] _GEN_9 = _T_1 ? _GEN_5 : {{6'd0}, rdDataElemDestIdxNext}; // @[TensorLoadWideVME.scala 417:25 385:34]
+  wire [7:0] _GEN_11 = {{6'd0}, _rdDataElemDestIdxNext_T_2}; // @[TensorLoadWideVME.scala 429:54]
+  wire [7:0] _rdDataElemDestIdxNext_T_11 = rdDataElemDestIdxNext + _GEN_11; // @[TensorLoadWideVME.scala 429:54]
+  wire [16:0] _GEN_5 = _T_5 ? _rdDataElemDestIdxNext_T_5 : {{9'd0}, _rdDataElemDestIdxNext_T_11}; // @[TensorLoadWideVME.scala 421:59 427:29 429:29]
+  wire [16:0] _GEN_9 = _T_1 ? _GEN_5 : {{9'd0}, rdDataElemDestIdxNext}; // @[TensorLoadWideVME.scala 417:25 385:34]
   wire [31:0] srcData_0 = io_vmeData_bits_data[31:0]; // @[TensorLoadWideVME.scala 435:47]
   wire [31:0] srcData_1 = io_vmeData_bits_data[63:32]; // @[TensorLoadWideVME.scala 435:47]
   wire [1:0] _srcOffset_0_T = isFirstPulse ? rdFstOffsetNb : 2'h0; // @[TensorLoadWideVME.scala 441:30]
@@ -8817,8 +8817,8 @@ module ReadVMEDataWide(
   wire [31:0] _io_destData_0_T_3 = srcIdxOH[1] ? srcData_1 : 32'h0; // @[Mux.scala 27:73]
   wire [1:0] _io_destMask_0_T = srcIdxOH & wmask; // @[Mux.scala 30:47]
   wire  incrIdx = srcOffset_0 >= rdDataDestElemOffset ? 1'h0 : 1'h1; // @[TensorLoadWideVME.scala 451:10]
-  wire [9:0] _GEN_12 = {{9'd0}, incrIdx}; // @[TensorLoadWideVME.scala 453:38]
-  wire [9:0] _io_destIdx_0_T_1 = rdDataClDestIdx + _GEN_12; // @[TensorLoadWideVME.scala 453:38]
+  wire [6:0] _GEN_12 = {{6'd0}, incrIdx}; // @[TensorLoadWideVME.scala 453:38]
+  wire [6:0] _io_destIdx_0_T_1 = rdDataClDestIdx + _GEN_12; // @[TensorLoadWideVME.scala 453:38]
   wire [1:0] srcOffset_1 = 2'h1 + _srcOffset_0_T; // @[TensorLoadWideVME.scala 441:25]
   wire [1:0] _srcIdx_1_T_1 = srcOffset_1 - rdDataDestElemOffset; // @[TensorLoadWideVME.scala 442:31]
   wire  srcIdx_1 = _srcIdx_1_T_1[0]; // @[TensorLoadWideVME.scala 437:20 442:15]
@@ -8827,8 +8827,8 @@ module ReadVMEDataWide(
   wire [31:0] _io_destData_1_T_3 = srcIdxOH_1[1] ? srcData_1 : 32'h0; // @[Mux.scala 27:73]
   wire [1:0] _io_destMask_1_T = srcIdxOH_1 & wmask; // @[Mux.scala 30:47]
   wire  incrIdx_1 = srcOffset_1 >= rdDataDestElemOffset ? 1'h0 : 1'h1; // @[TensorLoadWideVME.scala 451:10]
-  wire [9:0] _GEN_13 = {{9'd0}, incrIdx_1}; // @[TensorLoadWideVME.scala 453:38]
-  wire [9:0] _io_destIdx_1_T_1 = rdDataClDestIdx + _GEN_13; // @[TensorLoadWideVME.scala 453:38]
+  wire [6:0] _GEN_13 = {{6'd0}, incrIdx_1}; // @[TensorLoadWideVME.scala 453:38]
+  wire [6:0] _io_destIdx_1_T_1 = rdDataClDestIdx + _GEN_13; // @[TensorLoadWideVME.scala 453:38]
   assign io_vmeData_ready = 1'h1; // @[TensorLoadWideVME.scala 344:20]
   assign io_destIdx_0 = {{1'd0}, _io_destIdx_0_T_1}; // @[TensorLoadWideVME.scala 453:19]
   assign io_destIdx_1 = {{1'd0}, _io_destIdx_1_T_1}; // @[TensorLoadWideVME.scala 453:19]
@@ -8842,7 +8842,7 @@ module ReadVMEDataWide(
         vmeTagDecodeLast <= io_vmeData_bits_tag; // @[TensorLoadWideVME.scala 423:24]
       end
     end
-    rdDataElemDestIdxNext <= _GEN_9[10:0];
+    rdDataElemDestIdxNext <= _GEN_9[7:0];
     if (reset) begin // @[TensorLoadWideVME.scala 390:42]
       vmeTagDecodeLastValidNext <= 1'h0; // @[TensorLoadWideVME.scala 390:42]
     end else if (io_start) begin // @[TensorLoadWideVME.scala 393:18]
@@ -8903,7 +8903,7 @@ initial begin
   _RAND_0 = {1{`RANDOM}};
   vmeTagDecodeLast = _RAND_0[20:0];
   _RAND_1 = {1{`RANDOM}};
-  rdDataElemDestIdxNext = _RAND_1[10:0];
+  rdDataElemDestIdxNext = _RAND_1[7:0];
   _RAND_2 = {1{`RANDOM}};
   vmeTagDecodeLastValidNext = _RAND_2[0:0];
 `endif // RANDOMIZE_REG_INIT
@@ -8938,7 +8938,7 @@ module TensorLoadWideVME(
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_vme_rd_data_bits_last,
   input          io_tensor_rd_0_idx_valid,
-  input  [10:0]  io_tensor_rd_0_idx_bits,
+  input  [7:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [31:0]  io_tensor_rd_0_data_bits_0_0
 );
@@ -8977,8 +8977,8 @@ module TensorLoadWideVME(
   wire [63:0] readData_io_vmeData_bits_data; // @[TensorLoadWideVME.scala 150:24]
   wire [20:0] readData_io_vmeData_bits_tag; // @[TensorLoadWideVME.scala 150:24]
   wire  readData_io_vmeData_bits_last; // @[TensorLoadWideVME.scala 150:24]
-  wire [10:0] readData_io_destIdx_0; // @[TensorLoadWideVME.scala 150:24]
-  wire [10:0] readData_io_destIdx_1; // @[TensorLoadWideVME.scala 150:24]
+  wire [7:0] readData_io_destIdx_0; // @[TensorLoadWideVME.scala 150:24]
+  wire [7:0] readData_io_destIdx_1; // @[TensorLoadWideVME.scala 150:24]
   wire [31:0] readData_io_destData_0; // @[TensorLoadWideVME.scala 150:24]
   wire [31:0] readData_io_destData_1; // @[TensorLoadWideVME.scala 150:24]
   wire  readData_io_destMask_0; // @[TensorLoadWideVME.scala 150:24]
@@ -8988,32 +8988,32 @@ module TensorLoadWideVME(
   wire  fillPadding_io_canWriteMem; // @[TensorLoadWideVME.scala 166:27]
   wire [127:0] fillPadding_io_inst; // @[TensorLoadWideVME.scala 166:27]
   wire  fillPadding_io_tensorIdx_valid; // @[TensorLoadWideVME.scala 166:27]
-  wire [10:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadWideVME.scala 166:27]
+  wire [7:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadWideVME.scala 166:27]
   wire  fillPadding_io_start; // @[TensorLoadWideVME.scala 166:27]
   wire  fillPadding_io_done; // @[TensorLoadWideVME.scala 166:27]
-  reg [31:0] tensorFile_0 [0:1023]; // @[TensorLoadWideVME.scala 193:16]
+  reg [31:0] tensorFile_0 [0:127]; // @[TensorLoadWideVME.scala 193:16]
   wire  tensorFile_0_rdataVec_MPORT_en; // @[TensorLoadWideVME.scala 193:16]
-  wire [9:0] tensorFile_0_rdataVec_MPORT_addr; // @[TensorLoadWideVME.scala 193:16]
+  wire [6:0] tensorFile_0_rdataVec_MPORT_addr; // @[TensorLoadWideVME.scala 193:16]
   wire [31:0] tensorFile_0_rdataVec_MPORT_data; // @[TensorLoadWideVME.scala 193:16]
   wire [31:0] tensorFile_0_MPORT_data; // @[TensorLoadWideVME.scala 193:16]
-  wire [9:0] tensorFile_0_MPORT_addr; // @[TensorLoadWideVME.scala 193:16]
+  wire [6:0] tensorFile_0_MPORT_addr; // @[TensorLoadWideVME.scala 193:16]
   wire  tensorFile_0_MPORT_mask; // @[TensorLoadWideVME.scala 193:16]
   wire  tensorFile_0_MPORT_en; // @[TensorLoadWideVME.scala 193:16]
   reg  tensorFile_0_rdataVec_MPORT_en_pipe_0;
-  reg [9:0] tensorFile_0_rdataVec_MPORT_addr_pipe_0;
-  reg [31:0] tensorFile_1 [0:1023]; // @[TensorLoadWideVME.scala 193:16]
+  reg [6:0] tensorFile_0_rdataVec_MPORT_addr_pipe_0;
+  reg [31:0] tensorFile_1 [0:127]; // @[TensorLoadWideVME.scala 193:16]
   wire  tensorFile_1_rdataVec_MPORT_1_en; // @[TensorLoadWideVME.scala 193:16]
-  wire [9:0] tensorFile_1_rdataVec_MPORT_1_addr; // @[TensorLoadWideVME.scala 193:16]
+  wire [6:0] tensorFile_1_rdataVec_MPORT_1_addr; // @[TensorLoadWideVME.scala 193:16]
   wire [31:0] tensorFile_1_rdataVec_MPORT_1_data; // @[TensorLoadWideVME.scala 193:16]
   wire [31:0] tensorFile_1_MPORT_1_data; // @[TensorLoadWideVME.scala 193:16]
-  wire [9:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadWideVME.scala 193:16]
+  wire [6:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadWideVME.scala 193:16]
   wire  tensorFile_1_MPORT_1_mask; // @[TensorLoadWideVME.scala 193:16]
   wire  tensorFile_1_MPORT_1_en; // @[TensorLoadWideVME.scala 193:16]
   reg  tensorFile_1_rdataVec_MPORT_1_en_pipe_0;
-  reg [9:0] tensorFile_1_rdataVec_MPORT_1_addr_pipe_0;
+  reg [6:0] tensorFile_1_rdataVec_MPORT_1_addr_pipe_0;
   reg  state; // @[TensorLoadWideVME.scala 84:22]
-  reg [10:0] clInFlight; // @[TensorLoadWideVME.scala 132:23]
-  wire  loadDone = clInFlight == 11'h0 & vmeCmd_io_done & state; // @[TensorLoadWideVME.scala 315:53]
+  reg [7:0] clInFlight; // @[TensorLoadWideVME.scala 132:23]
+  wire  loadDone = clInFlight == 8'h0 & vmeCmd_io_done & state; // @[TensorLoadWideVME.scala 315:53]
   wire  localDone = loadDone & fillPadding_io_done; // @[TensorLoadWideVME.scala 316:25]
   wire  _GEN_0 = localDone ? 1'h0 : state; // @[TensorLoadWideVME.scala 90:25 91:11 84:22]
   wire  _GEN_1 = io_start | _GEN_0; // @[TensorLoadWideVME.scala 88:18 89:11]
@@ -9021,14 +9021,14 @@ module TensorLoadWideVME(
   wire  _T = io_vme_rd_cmd_ready & io_vme_rd_cmd_valid; // @[Decoupled.scala 50:35]
   wire  _T_1 = state & _T; // @[TensorLoadWideVME.scala 135:21]
   wire  _T_3 = state & _T & ~vmeDataFirePipe; // @[TensorLoadWideVME.scala 135:43]
-  wire [10:0] _GEN_26 = {{6'd0}, vmeCmd_io_readLen}; // @[TensorLoadWideVME.scala 136:30]
-  wire [10:0] _clInFlight_T_1 = clInFlight + _GEN_26; // @[TensorLoadWideVME.scala 136:30]
+  wire [7:0] _GEN_26 = {{3'd0}, vmeCmd_io_readLen}; // @[TensorLoadWideVME.scala 136:30]
+  wire [7:0] _clInFlight_T_1 = clInFlight + _GEN_26; // @[TensorLoadWideVME.scala 136:30]
   wire  _T_6 = _T_1 & vmeDataFirePipe; // @[TensorLoadWideVME.scala 137:43]
-  wire [10:0] _clInFlight_T_5 = _clInFlight_T_1 - 11'h1; // @[TensorLoadWideVME.scala 138:40]
+  wire [7:0] _clInFlight_T_5 = _clInFlight_T_1 - 8'h1; // @[TensorLoadWideVME.scala 138:40]
   wire  _T_10 = state & ~_T & vmeDataFirePipe; // @[TensorLoadWideVME.scala 139:44]
   wire  _T_13 = ~reset; // @[TensorLoadWideVME.scala 140:11]
-  wire [10:0] _clInFlight_T_7 = clInFlight - 11'h1; // @[TensorLoadWideVME.scala 141:30]
-  wire [9:0] zpDestIdx = fillPadding_io_tensorIdx_bits[10:1]; // @[TensorLoadWideVME.scala 172:49]
+  wire [7:0] _clInFlight_T_7 = clInFlight - 8'h1; // @[TensorLoadWideVME.scala 141:30]
+  wire [6:0] zpDestIdx = fillPadding_io_tensorIdx_bits[7:1]; // @[TensorLoadWideVME.scala 172:49]
   wire [1:0] zpDestMask = 2'h1 << fillPadding_io_tensorIdx_bits[0]; // @[OneHot.scala 57:35]
   wire  _wmask_0_T = ~state; // @[TensorLoadWideVME.scala 223:33]
   wire  _wmask_0_T_3 = vmeDataFirePipe & readData_io_destMask_0; // @[TensorLoadWideVME.scala 228:18]
@@ -9039,10 +9039,10 @@ module TensorLoadWideVME(
   wire [31:0] _wdata_0_T_2 = fillPadding_io_tensorIdx_valid ? 32'h0 : _wdata_0_WIRE_2; // @[TensorLoadWideVME.scala 243:12]
   wire [31:0] _wdata_1_WIRE_2 = readData_io_destData_1;
   wire [31:0] _wdata_1_T_2 = fillPadding_io_tensorIdx_valid ? 32'h0 : _wdata_1_WIRE_2; // @[TensorLoadWideVME.scala 243:12]
-  wire [10:0] _widx_0_T_1 = fillPadding_io_tensorIdx_valid ? {{1'd0}, zpDestIdx} : readData_io_destIdx_0; // @[TensorLoadWideVME.scala 259:16]
-  wire [10:0] widx_0 = _wmask_0_T ? 11'h0 : _widx_0_T_1; // @[TensorLoadWideVME.scala 256:14]
-  wire [10:0] _widx_1_T_1 = fillPadding_io_tensorIdx_valid ? {{1'd0}, zpDestIdx} : readData_io_destIdx_1; // @[TensorLoadWideVME.scala 259:16]
-  wire [10:0] widx_1 = _wmask_0_T ? 11'h0 : _widx_1_T_1; // @[TensorLoadWideVME.scala 256:14]
+  wire [7:0] _widx_0_T_1 = fillPadding_io_tensorIdx_valid ? {{1'd0}, zpDestIdx} : readData_io_destIdx_0; // @[TensorLoadWideVME.scala 259:16]
+  wire [7:0] widx_0 = _wmask_0_T ? 8'h0 : _widx_0_T_1; // @[TensorLoadWideVME.scala 256:14]
+  wire [7:0] _widx_1_T_1 = fillPadding_io_tensorIdx_valid ? {{1'd0}, zpDestIdx} : readData_io_destIdx_1; // @[TensorLoadWideVME.scala 259:16]
+  wire [7:0] widx_1 = _wmask_0_T ? 8'h0 : _widx_1_T_1; // @[TensorLoadWideVME.scala 256:14]
   wire [1:0] _rMask_T_1 = 2'h1 << io_tensor_rd_0_idx_bits[0]; // @[OneHot.scala 57:35]
   wire [1:0] rMask = io_tensor_rd_0_idx_valid ? _rMask_T_1 : 2'h0; // @[TensorLoadWideVME.scala 290:10]
   reg [1:0] rdata_r; // @[Reg.scala 16:16]
@@ -9096,14 +9096,14 @@ module TensorLoadWideVME(
   assign tensorFile_0_rdataVec_MPORT_addr = tensorFile_0_rdataVec_MPORT_addr_pipe_0;
   assign tensorFile_0_rdataVec_MPORT_data = tensorFile_0[tensorFile_0_rdataVec_MPORT_addr]; // @[TensorLoadWideVME.scala 193:16]
   assign tensorFile_0_MPORT_data = _wmask_0_T ? 32'h0 : _wdata_0_T_2;
-  assign tensorFile_0_MPORT_addr = widx_0[9:0];
+  assign tensorFile_0_MPORT_addr = widx_0[6:0];
   assign tensorFile_0_MPORT_mask = 1'h1;
   assign tensorFile_0_MPORT_en = _wmask_0_T ? 1'h0 : _wmask_0_T_4;
   assign tensorFile_1_rdataVec_MPORT_1_en = tensorFile_1_rdataVec_MPORT_1_en_pipe_0;
   assign tensorFile_1_rdataVec_MPORT_1_addr = tensorFile_1_rdataVec_MPORT_1_addr_pipe_0;
   assign tensorFile_1_rdataVec_MPORT_1_data = tensorFile_1[tensorFile_1_rdataVec_MPORT_1_addr]; // @[TensorLoadWideVME.scala 193:16]
   assign tensorFile_1_MPORT_1_data = _wmask_0_T ? 32'h0 : _wdata_1_T_2;
-  assign tensorFile_1_MPORT_1_addr = widx_1[9:0];
+  assign tensorFile_1_MPORT_1_addr = widx_1[6:0];
   assign tensorFile_1_MPORT_1_mask = 1'h1;
   assign tensorFile_1_MPORT_1_en = _wmask_0_T ? 1'h0 : _wmask_1_T_4;
   assign io_done = loadDone & fillPadding_io_done; // @[TensorLoadWideVME.scala 316:25]
@@ -9139,14 +9139,14 @@ module TensorLoadWideVME(
     end
     tensorFile_0_rdataVec_MPORT_en_pipe_0 <= rMask[0];
     if (rMask[0]) begin
-      tensorFile_0_rdataVec_MPORT_addr_pipe_0 <= io_tensor_rd_0_idx_bits[10:1];
+      tensorFile_0_rdataVec_MPORT_addr_pipe_0 <= io_tensor_rd_0_idx_bits[7:1];
     end
     if (tensorFile_1_MPORT_1_en & tensorFile_1_MPORT_1_mask) begin
       tensorFile_1[tensorFile_1_MPORT_1_addr] <= tensorFile_1_MPORT_1_data; // @[TensorLoadWideVME.scala 193:16]
     end
     tensorFile_1_rdataVec_MPORT_1_en_pipe_0 <= rMask[1];
     if (rMask[1]) begin
-      tensorFile_1_rdataVec_MPORT_1_addr_pipe_0 <= io_tensor_rd_0_idx_bits[10:1];
+      tensorFile_1_rdataVec_MPORT_1_addr_pipe_0 <= io_tensor_rd_0_idx_bits[7:1];
     end
     if (reset) begin // @[TensorLoadWideVME.scala 84:22]
       state <= 1'h0; // @[TensorLoadWideVME.scala 84:22]
@@ -9154,7 +9154,7 @@ module TensorLoadWideVME(
       state <= _GEN_1;
     end
     if (io_start) begin // @[TensorLoadWideVME.scala 133:18]
-      clInFlight <= 11'h0; // @[TensorLoadWideVME.scala 134:16]
+      clInFlight <= 8'h0; // @[TensorLoadWideVME.scala 134:16]
     end else if (state & _T & ~vmeDataFirePipe) begin // @[TensorLoadWideVME.scala 135:64]
       clInFlight <= _clInFlight_T_1; // @[TensorLoadWideVME.scala 136:16]
     end else if (_T_1 & vmeDataFirePipe) begin // @[TensorLoadWideVME.scala 137:63]
@@ -9176,7 +9176,7 @@ module TensorLoadWideVME(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(clInFlight > 11'h0)) begin
+        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(clInFlight > 8'h0)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at TensorLoadWideVME.scala:140 assert(clInFlight > 0.U)\n"); // @[TensorLoadWideVME.scala 140:11]
         end
     `ifdef PRINTF_COND
@@ -9221,25 +9221,25 @@ initial begin
     `endif
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_0[initvar] = _RAND_0[31:0];
   _RAND_3 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 1024; initvar = initvar+1)
+  for (initvar = 0; initvar < 128; initvar = initvar+1)
     tensorFile_1[initvar] = _RAND_3[31:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_1 = {1{`RANDOM}};
   tensorFile_0_rdataVec_MPORT_en_pipe_0 = _RAND_1[0:0];
   _RAND_2 = {1{`RANDOM}};
-  tensorFile_0_rdataVec_MPORT_addr_pipe_0 = _RAND_2[9:0];
+  tensorFile_0_rdataVec_MPORT_addr_pipe_0 = _RAND_2[6:0];
   _RAND_4 = {1{`RANDOM}};
   tensorFile_1_rdataVec_MPORT_1_en_pipe_0 = _RAND_4[0:0];
   _RAND_5 = {1{`RANDOM}};
-  tensorFile_1_rdataVec_MPORT_1_addr_pipe_0 = _RAND_5[9:0];
+  tensorFile_1_rdataVec_MPORT_1_addr_pipe_0 = _RAND_5[6:0];
   _RAND_6 = {1{`RANDOM}};
   state = _RAND_6[0:0];
   _RAND_7 = {1{`RANDOM}};
-  clInFlight = _RAND_7[10:0];
+  clInFlight = _RAND_7[7:0];
   _RAND_8 = {1{`RANDOM}};
   rdata_r = _RAND_8[1:0];
   _RAND_9 = {1{`RANDOM}};
@@ -9254,7 +9254,7 @@ end // initial
   always @(posedge clock) begin
     //
     if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset) begin
-      assert(clInFlight > 11'h0); // @[TensorLoadWideVME.scala 140:11]
+      assert(clInFlight > 8'h0); // @[TensorLoadWideVME.scala 140:11]
     end
     //
     if (_T_13) begin
@@ -9279,7 +9279,7 @@ module TensorLoadUop(
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_vme_rd_data_bits_last,
   input          io_tensor_rd_0_idx_valid,
-  input  [10:0]  io_tensor_rd_0_idx_bits,
+  input  [7:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [31:0]  io_tensor_rd_0_data_bits_0_0
 );
@@ -9300,7 +9300,7 @@ module TensorLoadUop(
   wire [20:0] tensorLoad_io_vme_rd_data_bits_tag; // @[TensorLoad.scala 65:28]
   wire  tensorLoad_io_vme_rd_data_bits_last; // @[TensorLoad.scala 65:28]
   wire  tensorLoad_io_tensor_rd_0_idx_valid; // @[TensorLoad.scala 65:28]
-  wire [10:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 65:28]
+  wire [7:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 65:28]
   wire  tensorLoad_io_tensor_rd_0_data_valid; // @[TensorLoad.scala 65:28]
   wire [31:0] tensorLoad_io_tensor_rd_0_data_bits_0_0; // @[TensorLoad.scala 65:28]
   TensorLoadWideVME tensorLoad ( // @[TensorLoad.scala 65:28]
@@ -9362,7 +9362,7 @@ module LoadUopTop(
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_vme_rd_data_bits_last,
   input          io_uop_idx_valid,
-  input  [10:0]  io_uop_idx_bits,
+  input  [7:0]   io_uop_idx_bits,
   output         io_uop_data_valid,
   output [9:0]   io_uop_data_bits_u2,
   output [10:0]  io_uop_data_bits_u1,
@@ -9384,7 +9384,7 @@ module LoadUopTop(
   wire [20:0] loadUop_io_vme_rd_data_bits_tag; // @[LoadUop.scala 85:25]
   wire  loadUop_io_vme_rd_data_bits_last; // @[LoadUop.scala 85:25]
   wire  loadUop_io_tensor_rd_0_idx_valid; // @[LoadUop.scala 85:25]
-  wire [10:0] loadUop_io_tensor_rd_0_idx_bits; // @[LoadUop.scala 85:25]
+  wire [7:0] loadUop_io_tensor_rd_0_idx_bits; // @[LoadUop.scala 85:25]
   wire  loadUop_io_tensor_rd_0_data_valid; // @[LoadUop.scala 85:25]
   wire [31:0] loadUop_io_tensor_rd_0_data_bits_0_0; // @[LoadUop.scala 85:25]
   wire [31:0] _io_uop_data_bits_WIRE_1 = loadUop_io_tensor_rd_0_data_bits_0_0;
@@ -9474,7 +9474,7 @@ module GenVMECmd_2(
   wire [7:0] _firstMaxTransfer_T = _GEN_0[7:0]; // @[TensorLoadNarrowVME.scala 577:53]
   wire [7:0] _firstMaxTransfer_T_2 = 8'h80 - _firstMaxTransfer_T; // @[TensorLoadNarrowVME.scala 577:38]
   wire [4:0] firstMaxTransfer = _firstMaxTransfer_T_2[7:3]; // @[TensorLoadNarrowVME.scala 577:67]
-  reg [10:0] rdCmdStartIdx; // @[TensorLoadNarrowVME.scala 586:26]
+  reg [7:0] rdCmdStartIdx; // @[TensorLoadNarrowVME.scala 586:26]
   reg  commandsDone; // @[TensorLoadNarrowVME.scala 588:29]
   wire [18:0] blocksReadSize = {dec_xsize, 3'h0}; // @[TensorLoadNarrowVME.scala 590:35]
   reg [18:0] blocksReadNb; // @[TensorLoadNarrowVME.scala 591:25]
@@ -9513,10 +9513,10 @@ module GenVMECmd_2(
   wire  _rdCmdStartIdxValid_T_6 = ~commandsDone; // @[TensorLoadNarrowVME.scala 652:5]
   wire  rdCmdStartIdxValid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadNarrowVME.scala 651:15]
   wire [15:0] _rdCmdStartIdx_T_1 = dec_sram_offset + _GEN_35; // @[TensorLoadNarrowVME.scala 655:38]
-  wire [15:0] _GEN_42 = {{5'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 657:36]
+  wire [15:0] _GEN_42 = {{8'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 657:36]
   wire [15:0] _rdCmdStartIdx_T_3 = _GEN_42 + totalWidth; // @[TensorLoadNarrowVME.scala 657:36]
   wire [19:0] _currentRowIdx_T_1 = currentRowIdx + 20'h1; // @[TensorLoadNarrowVME.scala 658:36]
-  wire [15:0] _GEN_11 = io_isBusy & (currentRowIdx < _GEN_37 | stride) ? _rdCmdStartIdx_T_3 : {{5'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 656:68 657:19 586:26]
+  wire [15:0] _GEN_11 = io_isBusy & (currentRowIdx < _GEN_37 | stride) ? _rdCmdStartIdx_T_3 : {{8'd0}, rdCmdStartIdx}; // @[TensorLoadNarrowVME.scala 656:68 657:19 586:26]
   wire [15:0] _GEN_14 = io_start ? _rdCmdStartIdx_T_1 : _GEN_11; // @[TensorLoadNarrowVME.scala 653:19 655:19]
   wire  startIssueCmdRead = blocksReadNb == 19'h0 & rdCmdStartIdxValid; // @[TensorLoadNarrowVME.scala 661:29]
   wire [21:0] _memRow_T = {dec_xstride, 6'h0}; // @[TensorLoadNarrowVME.scala 672:56]
@@ -9532,23 +9532,23 @@ module GenVMECmd_2(
   wire  _GEN_21 = _T_14 ? stride : newReadRow; // @[TensorLoadNarrowVME.scala 670:31 683:16]
   wire [37:0] _GEN_22 = io_start ? xfer_init_addr : {{6'd0}, _GEN_19}; // @[TensorLoadNarrowVME.scala 666:19 667:18]
   wire [37:0] _GEN_23 = io_start ? xfer_init_addr : {{6'd0}, _GEN_20}; // @[TensorLoadNarrowVME.scala 666:19 668:26]
-  reg [13:0] rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 700:34]
-  wire [13:0] _rdCmdDestBlockIdx_T = {rdCmdStartIdx, 3'h0}; // @[TensorLoadNarrowVME.scala 710:42]
-  wire [13:0] _GEN_26 = startIssueCmdRead ? _rdCmdDestBlockIdx_T : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 709:29 710:25]
-  wire [13:0] rdCmdDestBlockIdx = rdCmdStartIdxValid ? _GEN_26 : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 707:28]
-  wire [13:0] _GEN_45 = {{9'd0}, readLen}; // @[TensorLoadNarrowVME.scala 711:49]
-  wire [13:0] _rdCmdDestBlockIdxNext_T_1 = rdCmdDestBlockIdx + _GEN_45; // @[TensorLoadNarrowVME.scala 711:49]
-  wire [13:0] _rdCmdDestBlockIdxNext_T_3 = rdCmdDestBlockIdxNext + _GEN_45; // @[TensorLoadNarrowVME.scala 714:53]
+  reg [10:0] rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 700:34]
+  wire [10:0] _rdCmdDestBlockIdx_T = {rdCmdStartIdx, 3'h0}; // @[TensorLoadNarrowVME.scala 710:42]
+  wire [10:0] _GEN_26 = startIssueCmdRead ? _rdCmdDestBlockIdx_T : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 709:29 710:25]
+  wire [10:0] rdCmdDestBlockIdx = rdCmdStartIdxValid ? _GEN_26 : rdCmdDestBlockIdxNext; // @[TensorLoadNarrowVME.scala 702:21 707:28]
+  wire [10:0] _GEN_45 = {{6'd0}, readLen}; // @[TensorLoadNarrowVME.scala 711:49]
+  wire [10:0] _rdCmdDestBlockIdxNext_T_1 = rdCmdDestBlockIdx + _GEN_45; // @[TensorLoadNarrowVME.scala 711:49]
+  wire [10:0] _rdCmdDestBlockIdxNext_T_3 = rdCmdDestBlockIdxNext + _GEN_45; // @[TensorLoadNarrowVME.scala 714:53]
   wire [4:0] _io_vmeCmd_bits_len_T_1 = readLen - 5'h1; // @[TensorLoadNarrowVME.scala 732:33]
   assign io_vmeCmd_valid = _rdCmdStartIdxValid_T_5 & _rdCmdStartIdxValid_T_6; // @[TensorLoadNarrowVME.scala 651:15]
   assign io_vmeCmd_bits_addr = rdCmdExtAddr; // @[TensorLoadNarrowVME.scala 731:23]
   assign io_vmeCmd_bits_len = _io_vmeCmd_bits_len_T_1[3:0]; // @[TensorLoadNarrowVME.scala 732:22]
-  assign io_vmeCmd_bits_tag = {{7'd0}, rdCmdDestBlockIdx}; // @[TensorLoadNarrowVME.scala 737:22]
+  assign io_vmeCmd_bits_tag = {{10'd0}, rdCmdDestBlockIdx}; // @[TensorLoadNarrowVME.scala 737:22]
   assign io_readLen = _GEN_10[4:0]; // @[TensorLoadNarrowVME.scala 587:21]
   assign io_done = commandsDone; // @[TensorLoadNarrowVME.scala 739:11]
   always @(posedge clock) begin
     rdCmdExtAddr <= _GEN_22[31:0];
-    rdCmdStartIdx <= _GEN_14[10:0];
+    rdCmdStartIdx <= _GEN_14[7:0];
     commandsDone <= reset | _GEN_6; // @[TensorLoadNarrowVME.scala 588:{29,29}]
     if (io_start | stride) begin // @[TensorLoadNarrowVME.scala 607:29]
       blocksReadNb <= 19'h0; // @[TensorLoadNarrowVME.scala 608:18]
@@ -9640,7 +9640,7 @@ initial begin
   _RAND_0 = {1{`RANDOM}};
   rdCmdExtAddr = _RAND_0[31:0];
   _RAND_1 = {1{`RANDOM}};
-  rdCmdStartIdx = _RAND_1[10:0];
+  rdCmdStartIdx = _RAND_1[7:0];
   _RAND_2 = {1{`RANDOM}};
   commandsDone = _RAND_2[0:0];
   _RAND_3 = {1{`RANDOM}};
@@ -9654,7 +9654,7 @@ initial begin
   _RAND_7 = {1{`RANDOM}};
   currentRowIdx = _RAND_7[19:0];
   _RAND_8 = {1{`RANDOM}};
-  rdCmdDestBlockIdxNext = _RAND_8[13:0];
+  rdCmdDestBlockIdxNext = _RAND_8[10:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -9680,7 +9680,7 @@ module ReadVMEData_2(
   output        io_vmeData_ready,
   input         io_vmeData_valid,
   input  [20:0] io_vmeData_bits_tag,
-  output [10:0] io_idx,
+  output [7:0]  io_idx,
   output [2:0]  io_col
 );
 `ifdef RANDOMIZE_REG_INIT
@@ -9710,7 +9710,7 @@ module ReadVMEData_2(
   wire [17:0] _GEN_12 = _T ? _GEN_7 : {{2'd0}, rdDataDestIdxNext}; // @[TensorLoadNarrowVME.scala 521:25 506:30]
   wire [15:0] rdDataDestIdx = _GEN_5[15:0]; // @[TensorLoadNarrowVME.scala 497:27]
   assign io_vmeData_ready = 1'h1; // @[TensorLoadNarrowVME.scala 498:20]
-  assign io_idx = rdDataDestIdx[10:0]; // @[TensorLoadNarrowVME.scala 542:10]
+  assign io_idx = rdDataDestIdx[7:0]; // @[TensorLoadNarrowVME.scala 542:10]
   assign io_col = _T_5 ? rdDataCol : rdDataDestColNext; // @[TensorLoadNarrowVME.scala 525:59 528:21 533:21]
   always @(posedge clock) begin
     if (_T) begin // @[TensorLoadNarrowVME.scala 521:25]
@@ -9803,7 +9803,7 @@ module TensorLoadNarrowVME_2(
   input  [63:0]  io_vme_rd_data_bits_data,
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_tensor_rd_0_idx_valid,
-  input  [10:0]  io_tensor_rd_0_idx_bits,
+  input  [7:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [31:0]  io_tensor_rd_0_data_bits_0_0,
   output [31:0]  io_tensor_rd_0_data_bits_0_1,
@@ -9822,7 +9822,7 @@ module TensorLoadNarrowVME_2(
   output [31:0]  io_tensor_rd_0_data_bits_0_14,
   output [31:0]  io_tensor_rd_0_data_bits_0_15,
   input          io_tensor_wr_0_valid,
-  input  [10:0]  io_tensor_wr_0_bits_idx,
+  input  [7:0]   io_tensor_wr_0_bits_idx,
   input  [31:0]  io_tensor_wr_0_bits_data_0_0,
   input  [31:0]  io_tensor_wr_0_bits_data_0_1,
   input  [31:0]  io_tensor_wr_0_bits_data_0_2,
@@ -9896,99 +9896,99 @@ module TensorLoadNarrowVME_2(
   wire  readData_io_vmeData_ready; // @[TensorLoadNarrowVME.scala 105:24]
   wire  readData_io_vmeData_valid; // @[TensorLoadNarrowVME.scala 105:24]
   wire [20:0] readData_io_vmeData_bits_tag; // @[TensorLoadNarrowVME.scala 105:24]
-  wire [10:0] readData_io_idx; // @[TensorLoadNarrowVME.scala 105:24]
+  wire [7:0] readData_io_idx; // @[TensorLoadNarrowVME.scala 105:24]
   wire [2:0] readData_io_col; // @[TensorLoadNarrowVME.scala 105:24]
   wire  fillPadding_clock; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_reset; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_canWriteMem; // @[TensorLoadNarrowVME.scala 119:27]
   wire [127:0] fillPadding_io_inst; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_tensorIdx_valid; // @[TensorLoadNarrowVME.scala 119:27]
-  wire [10:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadNarrowVME.scala 119:27]
+  wire [7:0] fillPadding_io_tensorIdx_bits; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_start; // @[TensorLoadNarrowVME.scala 119:27]
   wire  fillPadding_io_done; // @[TensorLoadNarrowVME.scala 119:27]
-  reg [63:0] tensorFile_0 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [63:0] tensorFile_0 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_8_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_0_MPORT_8_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_0_MPORT_8_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_0_MPORT_8_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_0_MPORT_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_0_MPORT_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_0_MPORT_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_0_MPORT_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_0_MPORT_8_en_pipe_0;
-  reg [10:0] tensorFile_0_MPORT_8_addr_pipe_0;
-  reg [63:0] tensorFile_1 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_0_MPORT_8_addr_pipe_0;
+  reg [63:0] tensorFile_1 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_9_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_1_MPORT_9_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_1_MPORT_9_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_1_MPORT_9_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_1_MPORT_1_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_1_MPORT_1_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_1_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_1_MPORT_1_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_1_MPORT_9_en_pipe_0;
-  reg [10:0] tensorFile_1_MPORT_9_addr_pipe_0;
-  reg [63:0] tensorFile_2 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_1_MPORT_9_addr_pipe_0;
+  reg [63:0] tensorFile_2 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_2_MPORT_10_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_2_MPORT_10_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_2_MPORT_10_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_2_MPORT_10_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_2_MPORT_2_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_2_MPORT_2_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_2_MPORT_2_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_2_MPORT_2_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_2_MPORT_2_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_2_MPORT_10_en_pipe_0;
-  reg [10:0] tensorFile_2_MPORT_10_addr_pipe_0;
-  reg [63:0] tensorFile_3 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_2_MPORT_10_addr_pipe_0;
+  reg [63:0] tensorFile_3 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_3_MPORT_11_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_3_MPORT_11_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_3_MPORT_11_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_3_MPORT_11_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_3_MPORT_3_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_3_MPORT_3_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_3_MPORT_3_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_3_MPORT_3_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_3_MPORT_3_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_3_MPORT_11_en_pipe_0;
-  reg [10:0] tensorFile_3_MPORT_11_addr_pipe_0;
-  reg [63:0] tensorFile_4 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_3_MPORT_11_addr_pipe_0;
+  reg [63:0] tensorFile_4 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_4_MPORT_12_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_4_MPORT_12_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_4_MPORT_12_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_4_MPORT_12_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_4_MPORT_4_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_4_MPORT_4_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_4_MPORT_4_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_4_MPORT_4_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_4_MPORT_4_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_4_MPORT_12_en_pipe_0;
-  reg [10:0] tensorFile_4_MPORT_12_addr_pipe_0;
-  reg [63:0] tensorFile_5 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_4_MPORT_12_addr_pipe_0;
+  reg [63:0] tensorFile_5 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_5_MPORT_13_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_5_MPORT_13_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_5_MPORT_13_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_5_MPORT_13_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_5_MPORT_5_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_5_MPORT_5_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_5_MPORT_5_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_5_MPORT_5_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_5_MPORT_5_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_5_MPORT_13_en_pipe_0;
-  reg [10:0] tensorFile_5_MPORT_13_addr_pipe_0;
-  reg [63:0] tensorFile_6 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_5_MPORT_13_addr_pipe_0;
+  reg [63:0] tensorFile_6 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_6_MPORT_14_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_6_MPORT_14_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_6_MPORT_14_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_6_MPORT_14_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_6_MPORT_6_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_6_MPORT_6_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_6_MPORT_6_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_6_MPORT_6_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_6_MPORT_6_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_6_MPORT_14_en_pipe_0;
-  reg [10:0] tensorFile_6_MPORT_14_addr_pipe_0;
-  reg [63:0] tensorFile_7 [0:2047]; // @[TensorLoadNarrowVME.scala 152:16]
+  reg [7:0] tensorFile_6_MPORT_14_addr_pipe_0;
+  reg [63:0] tensorFile_7 [0:255]; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_7_MPORT_15_en; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_7_MPORT_15_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_7_MPORT_15_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_7_MPORT_15_data; // @[TensorLoadNarrowVME.scala 152:16]
   wire [63:0] tensorFile_7_MPORT_7_data; // @[TensorLoadNarrowVME.scala 152:16]
-  wire [10:0] tensorFile_7_MPORT_7_addr; // @[TensorLoadNarrowVME.scala 152:16]
+  wire [7:0] tensorFile_7_MPORT_7_addr; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_7_MPORT_7_mask; // @[TensorLoadNarrowVME.scala 152:16]
   wire  tensorFile_7_MPORT_7_en; // @[TensorLoadNarrowVME.scala 152:16]
   reg  tensorFile_7_MPORT_15_en_pipe_0;
-  reg [10:0] tensorFile_7_MPORT_15_addr_pipe_0;
+  reg [7:0] tensorFile_7_MPORT_15_addr_pipe_0;
   reg  state; // @[TensorLoadNarrowVME.scala 54:22]
-  reg [13:0] blocksInFlight; // @[TensorLoadNarrowVME.scala 87:27]
-  wire  loadDone = blocksInFlight == 14'h0 & vmeCmd_io_done & state; // @[TensorLoadNarrowVME.scala 292:57]
+  reg [10:0] blocksInFlight; // @[TensorLoadNarrowVME.scala 87:27]
+  wire  loadDone = blocksInFlight == 11'h0 & vmeCmd_io_done & state; // @[TensorLoadNarrowVME.scala 292:57]
   wire  localDone = loadDone & fillPadding_io_done; // @[TensorLoadNarrowVME.scala 293:25]
   wire  _GEN_0 = localDone ? 1'h0 : state; // @[TensorLoadNarrowVME.scala 61:25 62:11 54:22]
   wire  _GEN_1 = io_start | _GEN_0; // @[TensorLoadNarrowVME.scala 59:18 60:11]
@@ -10000,27 +10000,27 @@ module TensorLoadNarrowVME_2(
   wire  _T = io_vme_rd_cmd_ready & io_vme_rd_cmd_valid; // @[Decoupled.scala 50:35]
   wire  _T_1 = state & _T; // @[TensorLoadNarrowVME.scala 90:21]
   wire  _T_3 = state & _T & ~vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 90:43]
-  wire [13:0] _GEN_58 = {{9'd0}, vmeCmd_io_readLen}; // @[TensorLoadNarrowVME.scala 91:38]
-  wire [13:0] _blocksInFlight_T_1 = blocksInFlight + _GEN_58; // @[TensorLoadNarrowVME.scala 91:38]
+  wire [10:0] _GEN_58 = {{6'd0}, vmeCmd_io_readLen}; // @[TensorLoadNarrowVME.scala 91:38]
+  wire [10:0] _blocksInFlight_T_1 = blocksInFlight + _GEN_58; // @[TensorLoadNarrowVME.scala 91:38]
   wire  _T_6 = _T_1 & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 92:43]
-  wire [13:0] _blocksInFlight_T_5 = _blocksInFlight_T_1 - 14'h1; // @[TensorLoadNarrowVME.scala 93:48]
+  wire [10:0] _blocksInFlight_T_5 = _blocksInFlight_T_1 - 11'h1; // @[TensorLoadNarrowVME.scala 93:48]
   wire  _T_10 = state & ~_T & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 94:44]
   wire  _T_13 = ~reset; // @[TensorLoadNarrowVME.scala 95:11]
-  wire [13:0] _blocksInFlight_T_7 = blocksInFlight - 14'h1; // @[TensorLoadNarrowVME.scala 96:38]
+  wire [10:0] _blocksInFlight_T_7 = blocksInFlight - 11'h1; // @[TensorLoadNarrowVME.scala 96:38]
   reg [127:0] fillPadding_io_inst_REG; // @[TensorLoadNarrowVME.scala 121:33]
   reg  fillPadding_io_start_REG; // @[TensorLoadNarrowVME.scala 122:34]
-  wire [10:0] waddrTensInstrTmp = fillPadding_io_tensorIdx_valid ? fillPadding_io_tensorIdx_bits : readData_io_idx; // @[TensorLoadNarrowVME.scala 166:30]
-  wire [87:0] _waddrDirect_T = {io_tensor_wr_0_bits_idx,io_tensor_wr_0_bits_idx,io_tensor_wr_0_bits_idx,
+  wire [7:0] waddrTensInstrTmp = fillPadding_io_tensorIdx_valid ? fillPadding_io_tensorIdx_bits : readData_io_idx; // @[TensorLoadNarrowVME.scala 166:30]
+  wire [63:0] _waddrDirect_T = {io_tensor_wr_0_bits_idx,io_tensor_wr_0_bits_idx,io_tensor_wr_0_bits_idx,
     io_tensor_wr_0_bits_idx,io_tensor_wr_0_bits_idx,io_tensor_wr_0_bits_idx,io_tensor_wr_0_bits_idx,
     io_tensor_wr_0_bits_idx}; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_0 = _waddrDirect_T[10:0]; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_1 = _waddrDirect_T[21:11]; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_2 = _waddrDirect_T[32:22]; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_3 = _waddrDirect_T[43:33]; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_4 = _waddrDirect_T[54:44]; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_5 = _waddrDirect_T[65:55]; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_6 = _waddrDirect_T[76:66]; // @[TensorLoadNarrowVME.scala 178:85]
-  wire [10:0] waddrDirect_7 = _waddrDirect_T[87:77]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_0 = _waddrDirect_T[7:0]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_1 = _waddrDirect_T[15:8]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_2 = _waddrDirect_T[23:16]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_3 = _waddrDirect_T[31:24]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_4 = _waddrDirect_T[39:32]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_5 = _waddrDirect_T[47:40]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_6 = _waddrDirect_T[55:48]; // @[TensorLoadNarrowVME.scala 178:85]
+  wire [7:0] waddrDirect_7 = _waddrDirect_T[63:56]; // @[TensorLoadNarrowVME.scala 178:85]
   wire  _waddr_0_T = ~state; // @[TensorLoadNarrowVME.scala 186:27]
   wire  wenTensInstr_0 = fillPadding_io_tensorIdx_valid | readData_io_col == 3'h0 & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 197:8]
   wire  wenTensInstr_1 = fillPadding_io_tensorIdx_valid | readData_io_col == 3'h1 & vmeDataFirePipe; // @[TensorLoadNarrowVME.scala 197:8]
@@ -10242,7 +10242,7 @@ module TensorLoadNarrowVME_2(
       state <= _GEN_1;
     end
     if (io_start) begin // @[TensorLoadNarrowVME.scala 88:18]
-      blocksInFlight <= 14'h0; // @[TensorLoadNarrowVME.scala 89:20]
+      blocksInFlight <= 11'h0; // @[TensorLoadNarrowVME.scala 89:20]
     end else if (state & _T & ~vmeDataFirePipe) begin // @[TensorLoadNarrowVME.scala 90:64]
       blocksInFlight <= _blocksInFlight_T_1; // @[TensorLoadNarrowVME.scala 91:20]
     end else if (_T_1 & vmeDataFirePipe) begin // @[TensorLoadNarrowVME.scala 92:63]
@@ -10277,7 +10277,7 @@ module TensorLoadNarrowVME_2(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(blocksInFlight > 14'h0)) begin
+        if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset & ~(blocksInFlight > 11'h0)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at TensorLoadNarrowVME.scala:95 assert(blocksInFlight > 0.U)\n"); // @[TensorLoadNarrowVME.scala 95:11]
         end
     `ifdef PRINTF_COND
@@ -10322,67 +10322,67 @@ initial begin
     `endif
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_0[initvar] = _RAND_0[63:0];
   _RAND_3 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_1[initvar] = _RAND_3[63:0];
   _RAND_6 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_2[initvar] = _RAND_6[63:0];
   _RAND_9 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_3[initvar] = _RAND_9[63:0];
   _RAND_12 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_4[initvar] = _RAND_12[63:0];
   _RAND_15 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_5[initvar] = _RAND_15[63:0];
   _RAND_18 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_6[initvar] = _RAND_18[63:0];
   _RAND_21 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_7[initvar] = _RAND_21[63:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_1 = {1{`RANDOM}};
   tensorFile_0_MPORT_8_en_pipe_0 = _RAND_1[0:0];
   _RAND_2 = {1{`RANDOM}};
-  tensorFile_0_MPORT_8_addr_pipe_0 = _RAND_2[10:0];
+  tensorFile_0_MPORT_8_addr_pipe_0 = _RAND_2[7:0];
   _RAND_4 = {1{`RANDOM}};
   tensorFile_1_MPORT_9_en_pipe_0 = _RAND_4[0:0];
   _RAND_5 = {1{`RANDOM}};
-  tensorFile_1_MPORT_9_addr_pipe_0 = _RAND_5[10:0];
+  tensorFile_1_MPORT_9_addr_pipe_0 = _RAND_5[7:0];
   _RAND_7 = {1{`RANDOM}};
   tensorFile_2_MPORT_10_en_pipe_0 = _RAND_7[0:0];
   _RAND_8 = {1{`RANDOM}};
-  tensorFile_2_MPORT_10_addr_pipe_0 = _RAND_8[10:0];
+  tensorFile_2_MPORT_10_addr_pipe_0 = _RAND_8[7:0];
   _RAND_10 = {1{`RANDOM}};
   tensorFile_3_MPORT_11_en_pipe_0 = _RAND_10[0:0];
   _RAND_11 = {1{`RANDOM}};
-  tensorFile_3_MPORT_11_addr_pipe_0 = _RAND_11[10:0];
+  tensorFile_3_MPORT_11_addr_pipe_0 = _RAND_11[7:0];
   _RAND_13 = {1{`RANDOM}};
   tensorFile_4_MPORT_12_en_pipe_0 = _RAND_13[0:0];
   _RAND_14 = {1{`RANDOM}};
-  tensorFile_4_MPORT_12_addr_pipe_0 = _RAND_14[10:0];
+  tensorFile_4_MPORT_12_addr_pipe_0 = _RAND_14[7:0];
   _RAND_16 = {1{`RANDOM}};
   tensorFile_5_MPORT_13_en_pipe_0 = _RAND_16[0:0];
   _RAND_17 = {1{`RANDOM}};
-  tensorFile_5_MPORT_13_addr_pipe_0 = _RAND_17[10:0];
+  tensorFile_5_MPORT_13_addr_pipe_0 = _RAND_17[7:0];
   _RAND_19 = {1{`RANDOM}};
   tensorFile_6_MPORT_14_en_pipe_0 = _RAND_19[0:0];
   _RAND_20 = {1{`RANDOM}};
-  tensorFile_6_MPORT_14_addr_pipe_0 = _RAND_20[10:0];
+  tensorFile_6_MPORT_14_addr_pipe_0 = _RAND_20[7:0];
   _RAND_22 = {1{`RANDOM}};
   tensorFile_7_MPORT_15_en_pipe_0 = _RAND_22[0:0];
   _RAND_23 = {1{`RANDOM}};
-  tensorFile_7_MPORT_15_addr_pipe_0 = _RAND_23[10:0];
+  tensorFile_7_MPORT_15_addr_pipe_0 = _RAND_23[7:0];
   _RAND_24 = {1{`RANDOM}};
   state = _RAND_24[0:0];
   _RAND_25 = {1{`RANDOM}};
-  blocksInFlight = _RAND_25[13:0];
+  blocksInFlight = _RAND_25[10:0];
   _RAND_26 = {2{`RANDOM}};
   vmeDataBitsPipe_data = _RAND_26[63:0];
   _RAND_27 = {1{`RANDOM}};
@@ -10407,7 +10407,7 @@ end // initial
   always @(posedge clock) begin
     //
     if (~io_start & ~_T_3 & ~_T_6 & _T_10 & ~reset) begin
-      assert(blocksInFlight > 14'h0); // @[TensorLoadNarrowVME.scala 95:11]
+      assert(blocksInFlight > 11'h0); // @[TensorLoadNarrowVME.scala 95:11]
     end
     //
     if (_T_13) begin
@@ -10431,7 +10431,7 @@ module TensorLoadAcc(
   input  [63:0]  io_vme_rd_data_bits_data,
   input  [20:0]  io_vme_rd_data_bits_tag,
   input          io_tensor_rd_0_idx_valid,
-  input  [10:0]  io_tensor_rd_0_idx_bits,
+  input  [7:0]   io_tensor_rd_0_idx_bits,
   output         io_tensor_rd_0_data_valid,
   output [31:0]  io_tensor_rd_0_data_bits_0_0,
   output [31:0]  io_tensor_rd_0_data_bits_0_1,
@@ -10450,7 +10450,7 @@ module TensorLoadAcc(
   output [31:0]  io_tensor_rd_0_data_bits_0_14,
   output [31:0]  io_tensor_rd_0_data_bits_0_15,
   input          io_tensor_wr_0_valid,
-  input  [10:0]  io_tensor_wr_0_bits_idx,
+  input  [7:0]   io_tensor_wr_0_bits_idx,
   input  [31:0]  io_tensor_wr_0_bits_data_0_0,
   input  [31:0]  io_tensor_wr_0_bits_data_0_1,
   input  [31:0]  io_tensor_wr_0_bits_data_0_2,
@@ -10484,7 +10484,7 @@ module TensorLoadAcc(
   wire [63:0] tensorLoad_io_vme_rd_data_bits_data; // @[TensorLoad.scala 71:28]
   wire [20:0] tensorLoad_io_vme_rd_data_bits_tag; // @[TensorLoad.scala 71:28]
   wire  tensorLoad_io_tensor_rd_0_idx_valid; // @[TensorLoad.scala 71:28]
-  wire [10:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 71:28]
+  wire [7:0] tensorLoad_io_tensor_rd_0_idx_bits; // @[TensorLoad.scala 71:28]
   wire  tensorLoad_io_tensor_rd_0_data_valid; // @[TensorLoad.scala 71:28]
   wire [31:0] tensorLoad_io_tensor_rd_0_data_bits_0_0; // @[TensorLoad.scala 71:28]
   wire [31:0] tensorLoad_io_tensor_rd_0_data_bits_0_1; // @[TensorLoad.scala 71:28]
@@ -10503,7 +10503,7 @@ module TensorLoadAcc(
   wire [31:0] tensorLoad_io_tensor_rd_0_data_bits_0_14; // @[TensorLoad.scala 71:28]
   wire [31:0] tensorLoad_io_tensor_rd_0_data_bits_0_15; // @[TensorLoad.scala 71:28]
   wire  tensorLoad_io_tensor_wr_0_valid; // @[TensorLoad.scala 71:28]
-  wire [10:0] tensorLoad_io_tensor_wr_0_bits_idx; // @[TensorLoad.scala 71:28]
+  wire [7:0] tensorLoad_io_tensor_wr_0_bits_idx; // @[TensorLoad.scala 71:28]
   wire [31:0] tensorLoad_io_tensor_wr_0_bits_data_0_0; // @[TensorLoad.scala 71:28]
   wire [31:0] tensorLoad_io_tensor_wr_0_bits_data_0_1; // @[TensorLoad.scala 71:28]
   wire [31:0] tensorLoad_io_tensor_wr_0_bits_data_0_2; // @[TensorLoad.scala 71:28]
@@ -10641,10 +10641,10 @@ module TensorGemmIndexGenerator(
   input  [13:0] io_dec_lp_0,
   input  [13:0] io_dec_uop_end,
   input  [12:0] io_dec_uop_begin,
-  output [10:0] io_acc_i,
-  output [10:0] io_inp_i,
-  output [9:0]  io_wgt_i,
-  output [10:0] io_uop_idx,
+  output [7:0]  io_acc_i,
+  output [7:0]  io_inp_i,
+  output [6:0]  io_wgt_i,
+  output [7:0]  io_uop_idx,
   output        io_valid
 );
 `ifdef RANDOMIZE_REG_INIT
@@ -10664,34 +10664,64 @@ module TensorGemmIndexGenerator(
   wire  _GEN_0 = io_last ? 1'h0 : running; // @[TensorGemm.scala 241:23 242:13 238:24]
   wire  _GEN_1 = ~running & io_start | _GEN_0; // @[TensorGemm.scala 239:30 240:13]
   reg [13:0] cnt_i; // @[TensorGemm.scala 245:18]
-  reg [10:0] acc_i; // @[TensorGemm.scala 246:18]
-  reg [10:0] inp_i; // @[TensorGemm.scala 247:18]
-  reg [9:0] wgt_i; // @[TensorGemm.scala 248:18]
+  reg [7:0] acc_i; // @[TensorGemm.scala 246:18]
+  reg [7:0] inp_i; // @[TensorGemm.scala 247:18]
+  reg [6:0] wgt_i; // @[TensorGemm.scala 248:18]
   reg [13:0] cnt_o; // @[TensorGemm.scala 250:18]
-  reg [10:0] acc_o; // @[TensorGemm.scala 251:18]
-  reg [10:0] inp_o; // @[TensorGemm.scala 252:18]
-  reg [9:0] wgt_o; // @[TensorGemm.scala 253:18]
+  reg [7:0] acc_o; // @[TensorGemm.scala 251:18]
+  reg [7:0] inp_o; // @[TensorGemm.scala 252:18]
+  reg [6:0] wgt_o; // @[TensorGemm.scala 253:18]
   reg [13:0] uop_idx; // @[TensorGemm.scala 255:20]
   wire [13:0] _T_4 = io_dec_uop_end - 14'h1; // @[TensorGemm.scala 268:38]
   wire [13:0] _uop_idx_T_1 = uop_idx + 14'h1; // @[TensorGemm.scala 269:26]
   wire [13:0] _T_7 = io_dec_lp_1 - 14'h1; // @[TensorGemm.scala 272:35]
   wire [13:0] _cnt_i_T_1 = cnt_i + 14'h1; // @[TensorGemm.scala 273:24]
-  wire [10:0] _acc_i_T_1 = acc_i + io_dec_acc_1; // @[TensorGemm.scala 274:24]
-  wire [10:0] _inp_i_T_1 = inp_i + io_dec_inp_1; // @[TensorGemm.scala 275:24]
-  wire [9:0] _wgt_i_T_1 = wgt_i + io_dec_wgt_1; // @[TensorGemm.scala 276:24]
+  wire [10:0] _GEN_40 = {{3'd0}, acc_i}; // @[TensorGemm.scala 274:24]
+  wire [10:0] _acc_i_T_1 = _GEN_40 + io_dec_acc_1; // @[TensorGemm.scala 274:24]
+  wire [10:0] _GEN_41 = {{3'd0}, inp_i}; // @[TensorGemm.scala 275:24]
+  wire [10:0] _inp_i_T_1 = _GEN_41 + io_dec_inp_1; // @[TensorGemm.scala 275:24]
+  wire [9:0] _GEN_42 = {{3'd0}, wgt_i}; // @[TensorGemm.scala 276:24]
+  wire [9:0] _wgt_i_T_1 = _GEN_42 + io_dec_wgt_1; // @[TensorGemm.scala 276:24]
   wire [13:0] _T_10 = io_dec_lp_0 - 14'h1; // @[TensorGemm.scala 278:37]
-  wire [10:0] acc_tmp = acc_o + io_dec_acc_0; // @[TensorGemm.scala 279:31]
-  wire [10:0] inp_tmp = inp_o + io_dec_inp_0; // @[TensorGemm.scala 280:31]
-  wire [9:0] wgt_tmp = wgt_o + io_dec_wgt_0; // @[TensorGemm.scala 281:31]
+  wire [10:0] _GEN_43 = {{3'd0}, acc_o}; // @[TensorGemm.scala 279:31]
+  wire [10:0] acc_tmp = _GEN_43 + io_dec_acc_0; // @[TensorGemm.scala 279:31]
+  wire [10:0] _GEN_44 = {{3'd0}, inp_o}; // @[TensorGemm.scala 280:31]
+  wire [10:0] inp_tmp = _GEN_44 + io_dec_inp_0; // @[TensorGemm.scala 280:31]
+  wire [9:0] _GEN_45 = {{3'd0}, wgt_o}; // @[TensorGemm.scala 281:31]
+  wire [9:0] wgt_tmp = _GEN_45 + io_dec_wgt_0; // @[TensorGemm.scala 281:31]
   wire [13:0] _cnt_o_T_1 = cnt_o + 14'h1; // @[TensorGemm.scala 282:26]
+  wire [10:0] _GEN_3 = cnt_o != _T_10 ? acc_tmp : {{3'd0}, acc_o}; // @[TensorGemm.scala 278:44 283:17 251:18]
+  wire [10:0] _GEN_4 = cnt_o != _T_10 ? inp_tmp : {{3'd0}, inp_o}; // @[TensorGemm.scala 278:44 284:17 252:18]
+  wire [9:0] _GEN_5 = cnt_o != _T_10 ? wgt_tmp : {{3'd0}, wgt_o}; // @[TensorGemm.scala 278:44 285:17 253:18]
+  wire [10:0] _GEN_7 = cnt_o != _T_10 ? acc_tmp : {{3'd0}, acc_i}; // @[TensorGemm.scala 278:44 287:17 246:18]
+  wire [10:0] _GEN_8 = cnt_o != _T_10 ? inp_tmp : {{3'd0}, inp_i}; // @[TensorGemm.scala 278:44 288:17 247:18]
+  wire [9:0] _GEN_9 = cnt_o != _T_10 ? wgt_tmp : {{3'd0}, wgt_i}; // @[TensorGemm.scala 278:44 289:17 248:18]
   wire  _GEN_10 = cnt_o != _T_10 ? 1'h0 : 1'h1; // @[TensorGemm.scala 236:11 278:44 291:19]
+  wire [10:0] _GEN_12 = cnt_i != _T_7 ? _acc_i_T_1 : _GEN_7; // @[TensorGemm.scala 272:42 274:15]
+  wire [10:0] _GEN_13 = cnt_i != _T_7 ? _inp_i_T_1 : _GEN_8; // @[TensorGemm.scala 272:42 275:15]
+  wire [9:0] _GEN_14 = cnt_i != _T_7 ? _wgt_i_T_1 : _GEN_9; // @[TensorGemm.scala 272:42 276:15]
+  wire [10:0] _GEN_16 = cnt_i != _T_7 ? {{3'd0}, acc_o} : _GEN_3; // @[TensorGemm.scala 251:18 272:42]
+  wire [10:0] _GEN_17 = cnt_i != _T_7 ? {{3'd0}, inp_o} : _GEN_4; // @[TensorGemm.scala 252:18 272:42]
+  wire [9:0] _GEN_18 = cnt_i != _T_7 ? {{3'd0}, wgt_o} : _GEN_5; // @[TensorGemm.scala 253:18 272:42]
   wire  _GEN_19 = cnt_i != _T_7 ? 1'h0 : _GEN_10; // @[TensorGemm.scala 236:11 272:42]
+  wire [10:0] _GEN_22 = uop_idx != _T_4 ? {{3'd0}, acc_i} : _GEN_12; // @[TensorGemm.scala 246:18 268:45]
+  wire [10:0] _GEN_23 = uop_idx != _T_4 ? {{3'd0}, inp_i} : _GEN_13; // @[TensorGemm.scala 247:18 268:45]
+  wire [9:0] _GEN_24 = uop_idx != _T_4 ? {{3'd0}, wgt_i} : _GEN_14; // @[TensorGemm.scala 248:18 268:45]
+  wire [10:0] _GEN_26 = uop_idx != _T_4 ? {{3'd0}, acc_o} : _GEN_16; // @[TensorGemm.scala 251:18 268:45]
+  wire [10:0] _GEN_27 = uop_idx != _T_4 ? {{3'd0}, inp_o} : _GEN_17; // @[TensorGemm.scala 252:18 268:45]
+  wire [9:0] _GEN_28 = uop_idx != _T_4 ? {{3'd0}, wgt_o} : _GEN_18; // @[TensorGemm.scala 253:18 268:45]
   wire  _GEN_29 = uop_idx != _T_4 ? 1'h0 : _GEN_19; // @[TensorGemm.scala 236:11 268:45]
+  wire [10:0] _GEN_31 = _T ? 11'h0 : _GEN_22; // @[TensorGemm.scala 263:18 264:25]
+  wire [10:0] _GEN_32 = _T ? 11'h0 : _GEN_23; // @[TensorGemm.scala 263:18 264:39]
+  wire [9:0] _GEN_33 = _T ? 10'h0 : _GEN_24; // @[TensorGemm.scala 263:18 264:53]
+  wire [10:0] _GEN_35 = _T ? 11'h0 : _GEN_26; // @[TensorGemm.scala 263:18 265:25]
+  wire [10:0] _GEN_36 = _T ? 11'h0 : _GEN_27; // @[TensorGemm.scala 263:18 265:39]
+  wire [9:0] _GEN_37 = _T ? 10'h0 : _GEN_28; // @[TensorGemm.scala 263:18 265:53]
   assign io_last = _T ? 1'h0 : _GEN_29; // @[TensorGemm.scala 236:11 263:18]
   assign io_acc_i = acc_i; // @[TensorGemm.scala 258:12]
   assign io_inp_i = inp_i; // @[TensorGemm.scala 259:12]
   assign io_wgt_i = wgt_i; // @[TensorGemm.scala 260:12]
-  assign io_uop_idx = uop_idx[10:0]; // @[TensorGemm.scala 261:14]
+  assign io_uop_idx = uop_idx[7:0]; // @[TensorGemm.scala 261:14]
   assign io_valid = running; // @[TensorGemm.scala 257:12]
   always @(posedge clock) begin
     if (reset) begin // @[TensorGemm.scala 238:24]
@@ -10708,33 +10738,9 @@ module TensorGemmIndexGenerator(
         cnt_i <= 14'h0; // @[TensorGemm.scala 286:17]
       end
     end
-    if (_T) begin // @[TensorGemm.scala 263:18]
-      acc_i <= 11'h0; // @[TensorGemm.scala 264:25]
-    end else if (!(uop_idx != _T_4)) begin // @[TensorGemm.scala 268:45]
-      if (cnt_i != _T_7) begin // @[TensorGemm.scala 272:42]
-        acc_i <= _acc_i_T_1; // @[TensorGemm.scala 274:15]
-      end else if (cnt_o != _T_10) begin // @[TensorGemm.scala 278:44]
-        acc_i <= acc_tmp; // @[TensorGemm.scala 287:17]
-      end
-    end
-    if (_T) begin // @[TensorGemm.scala 263:18]
-      inp_i <= 11'h0; // @[TensorGemm.scala 264:39]
-    end else if (!(uop_idx != _T_4)) begin // @[TensorGemm.scala 268:45]
-      if (cnt_i != _T_7) begin // @[TensorGemm.scala 272:42]
-        inp_i <= _inp_i_T_1; // @[TensorGemm.scala 275:15]
-      end else if (cnt_o != _T_10) begin // @[TensorGemm.scala 278:44]
-        inp_i <= inp_tmp; // @[TensorGemm.scala 288:17]
-      end
-    end
-    if (_T) begin // @[TensorGemm.scala 263:18]
-      wgt_i <= 10'h0; // @[TensorGemm.scala 264:53]
-    end else if (!(uop_idx != _T_4)) begin // @[TensorGemm.scala 268:45]
-      if (cnt_i != _T_7) begin // @[TensorGemm.scala 272:42]
-        wgt_i <= _wgt_i_T_1; // @[TensorGemm.scala 276:15]
-      end else if (cnt_o != _T_10) begin // @[TensorGemm.scala 278:44]
-        wgt_i <= wgt_tmp; // @[TensorGemm.scala 289:17]
-      end
-    end
+    acc_i <= _GEN_31[7:0];
+    inp_i <= _GEN_32[7:0];
+    wgt_i <= _GEN_33[6:0];
     if (_T) begin // @[TensorGemm.scala 263:18]
       cnt_o <= 14'h0; // @[TensorGemm.scala 265:11]
     end else if (!(uop_idx != _T_4)) begin // @[TensorGemm.scala 268:45]
@@ -10744,33 +10750,9 @@ module TensorGemmIndexGenerator(
         end
       end
     end
-    if (_T) begin // @[TensorGemm.scala 263:18]
-      acc_o <= 11'h0; // @[TensorGemm.scala 265:25]
-    end else if (!(uop_idx != _T_4)) begin // @[TensorGemm.scala 268:45]
-      if (!(cnt_i != _T_7)) begin // @[TensorGemm.scala 272:42]
-        if (cnt_o != _T_10) begin // @[TensorGemm.scala 278:44]
-          acc_o <= acc_tmp; // @[TensorGemm.scala 283:17]
-        end
-      end
-    end
-    if (_T) begin // @[TensorGemm.scala 263:18]
-      inp_o <= 11'h0; // @[TensorGemm.scala 265:39]
-    end else if (!(uop_idx != _T_4)) begin // @[TensorGemm.scala 268:45]
-      if (!(cnt_i != _T_7)) begin // @[TensorGemm.scala 272:42]
-        if (cnt_o != _T_10) begin // @[TensorGemm.scala 278:44]
-          inp_o <= inp_tmp; // @[TensorGemm.scala 284:17]
-        end
-      end
-    end
-    if (_T) begin // @[TensorGemm.scala 263:18]
-      wgt_o <= 10'h0; // @[TensorGemm.scala 265:53]
-    end else if (!(uop_idx != _T_4)) begin // @[TensorGemm.scala 268:45]
-      if (!(cnt_i != _T_7)) begin // @[TensorGemm.scala 272:42]
-        if (cnt_o != _T_10) begin // @[TensorGemm.scala 278:44]
-          wgt_o <= wgt_tmp; // @[TensorGemm.scala 285:17]
-        end
-      end
-    end
+    acc_o <= _GEN_35[7:0];
+    inp_o <= _GEN_36[7:0];
+    wgt_o <= _GEN_37[6:0];
     if (_T) begin // @[TensorGemm.scala 263:18]
       uop_idx <= {{1'd0}, io_dec_uop_begin}; // @[TensorGemm.scala 266:13]
     end else if (uop_idx != _T_4) begin // @[TensorGemm.scala 268:45]
@@ -10820,19 +10802,19 @@ initial begin
   _RAND_1 = {1{`RANDOM}};
   cnt_i = _RAND_1[13:0];
   _RAND_2 = {1{`RANDOM}};
-  acc_i = _RAND_2[10:0];
+  acc_i = _RAND_2[7:0];
   _RAND_3 = {1{`RANDOM}};
-  inp_i = _RAND_3[10:0];
+  inp_i = _RAND_3[7:0];
   _RAND_4 = {1{`RANDOM}};
-  wgt_i = _RAND_4[9:0];
+  wgt_i = _RAND_4[6:0];
   _RAND_5 = {1{`RANDOM}};
   cnt_o = _RAND_5[13:0];
   _RAND_6 = {1{`RANDOM}};
-  acc_o = _RAND_6[10:0];
+  acc_o = _RAND_6[7:0];
   _RAND_7 = {1{`RANDOM}};
-  inp_o = _RAND_7[10:0];
+  inp_o = _RAND_7[7:0];
   _RAND_8 = {1{`RANDOM}};
-  wgt_o = _RAND_8[9:0];
+  wgt_o = _RAND_8[6:0];
   _RAND_9 = {1{`RANDOM}};
   uop_idx = _RAND_9[13:0];
 `endif // RANDOMIZE_REG_INIT
@@ -10950,19 +10932,19 @@ end // initial
 `endif // SYNTHESIS
 endmodule
 module Pipe_1(
-  input         clock,
-  input         reset,
-  input         io_enq_valid,
-  input  [10:0] io_enq_bits,
-  output        io_deq_valid,
-  output [10:0] io_deq_bits
+  input        clock,
+  input        reset,
+  input        io_enq_valid,
+  input  [7:0] io_enq_bits,
+  output       io_deq_valid,
+  output [7:0] io_deq_bits
 );
 `ifdef RANDOMIZE_REG_INIT
   reg [31:0] _RAND_0;
   reg [31:0] _RAND_1;
 `endif // RANDOMIZE_REG_INIT
   reg  io_deq_v; // @[Valid.scala 127:22]
-  reg [10:0] io_deq_b; // @[Reg.scala 16:16]
+  reg [7:0] io_deq_b; // @[Reg.scala 16:16]
   assign io_deq_valid = io_deq_v; // @[Valid.scala 122:21 123:17]
   assign io_deq_bits = io_deq_b; // @[Valid.scala 122:21 124:16]
   always @(posedge clock) begin
@@ -11014,7 +10996,7 @@ initial begin
   _RAND_0 = {1{`RANDOM}};
   io_deq_v = _RAND_0[0:0];
   _RAND_1 = {1{`RANDOM}};
-  io_deq_b = _RAND_1[10:0];
+  io_deq_b = _RAND_1[7:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -11024,12 +11006,12 @@ end // initial
 `endif // SYNTHESIS
 endmodule
 module Pipe_2(
-  input         clock,
-  input         reset,
-  input         io_enq_valid,
-  input  [10:0] io_enq_bits,
-  output        io_deq_valid,
-  output [10:0] io_deq_bits
+  input        clock,
+  input        reset,
+  input        io_enq_valid,
+  input  [7:0] io_enq_bits,
+  output       io_deq_valid,
+  output [7:0] io_deq_bits
 );
 `ifdef RANDOMIZE_REG_INIT
   reg [31:0] _RAND_0;
@@ -11038,9 +11020,9 @@ module Pipe_2(
   reg [31:0] _RAND_3;
 `endif // RANDOMIZE_REG_INIT
   reg  io_deq_v; // @[Valid.scala 127:22]
-  reg [10:0] io_deq_b; // @[Reg.scala 16:16]
+  reg [7:0] io_deq_b; // @[Reg.scala 16:16]
   reg  io_deq_outPipe_valid; // @[Valid.scala 127:22]
-  reg [10:0] io_deq_outPipe_bits; // @[Reg.scala 16:16]
+  reg [7:0] io_deq_outPipe_bits; // @[Reg.scala 16:16]
   assign io_deq_valid = io_deq_outPipe_valid; // @[Valid.scala 122:21 123:17]
   assign io_deq_bits = io_deq_outPipe_bits; // @[Valid.scala 122:21 124:16]
   always @(posedge clock) begin
@@ -11100,11 +11082,11 @@ initial begin
   _RAND_0 = {1{`RANDOM}};
   io_deq_v = _RAND_0[0:0];
   _RAND_1 = {1{`RANDOM}};
-  io_deq_b = _RAND_1[10:0];
+  io_deq_b = _RAND_1[7:0];
   _RAND_2 = {1{`RANDOM}};
   io_deq_outPipe_valid = _RAND_2[0:0];
   _RAND_3 = {1{`RANDOM}};
-  io_deq_outPipe_bits = _RAND_3[10:0];
+  io_deq_outPipe_bits = _RAND_3[7:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -13956,13 +13938,13 @@ module TensorGemm(
   input         io_dec_pop_prev,
   input  [2:0]  io_dec_op,
   output        io_uop_idx_valid,
-  output [10:0] io_uop_idx_bits,
+  output [7:0]  io_uop_idx_bits,
   input         io_uop_data_valid,
   input  [9:0]  io_uop_data_bits_u2,
   input  [10:0] io_uop_data_bits_u1,
   input  [10:0] io_uop_data_bits_u0,
   output        io_inp_rd_0_idx_valid,
-  output [10:0] io_inp_rd_0_idx_bits,
+  output [7:0]  io_inp_rd_0_idx_bits,
   input         io_inp_rd_0_data_valid,
   input  [7:0]  io_inp_rd_0_data_bits_0_0,
   input  [7:0]  io_inp_rd_0_data_bits_0_1,
@@ -13981,7 +13963,7 @@ module TensorGemm(
   input  [7:0]  io_inp_rd_0_data_bits_0_14,
   input  [7:0]  io_inp_rd_0_data_bits_0_15,
   output        io_wgt_rd_0_idx_valid,
-  output [9:0]  io_wgt_rd_0_idx_bits,
+  output [6:0]  io_wgt_rd_0_idx_bits,
   input         io_wgt_rd_0_data_valid,
   input  [7:0]  io_wgt_rd_0_data_bits_0_0,
   input  [7:0]  io_wgt_rd_0_data_bits_0_1,
@@ -14240,7 +14222,7 @@ module TensorGemm(
   input  [7:0]  io_wgt_rd_0_data_bits_15_14,
   input  [7:0]  io_wgt_rd_0_data_bits_15_15,
   output        io_acc_rd_0_idx_valid,
-  output [10:0] io_acc_rd_0_idx_bits,
+  output [7:0]  io_acc_rd_0_idx_bits,
   input         io_acc_rd_0_data_valid,
   input  [31:0] io_acc_rd_0_data_bits_0_0,
   input  [31:0] io_acc_rd_0_data_bits_0_1,
@@ -14259,7 +14241,7 @@ module TensorGemm(
   input  [31:0] io_acc_rd_0_data_bits_0_14,
   input  [31:0] io_acc_rd_0_data_bits_0_15,
   output        io_acc_wr_0_valid,
-  output [10:0] io_acc_wr_0_bits_idx,
+  output [7:0]  io_acc_wr_0_bits_idx,
   output [31:0] io_acc_wr_0_bits_data_0_0,
   output [31:0] io_acc_wr_0_bits_data_0_1,
   output [31:0] io_acc_wr_0_bits_data_0_2,
@@ -14278,7 +14260,7 @@ module TensorGemm(
   output [31:0] io_acc_wr_0_bits_data_0_15,
   input         io_out_rd_0_data_valid,
   output        io_out_wr_0_valid,
-  output [10:0] io_out_wr_0_bits_idx,
+  output [7:0]  io_out_wr_0_bits_idx,
   output [7:0]  io_out_wr_0_bits_data_0_0,
   output [7:0]  io_out_wr_0_bits_data_0_1,
   output [7:0]  io_out_wr_0_bits_data_0_2,
@@ -14339,10 +14321,10 @@ module TensorGemm(
   wire [13:0] m_io_dec_lp_0; // @[TensorGemm.scala 554:17]
   wire [13:0] m_io_dec_uop_end; // @[TensorGemm.scala 554:17]
   wire [12:0] m_io_dec_uop_begin; // @[TensorGemm.scala 554:17]
-  wire [10:0] m_io_acc_i; // @[TensorGemm.scala 554:17]
-  wire [10:0] m_io_inp_i; // @[TensorGemm.scala 554:17]
-  wire [9:0] m_io_wgt_i; // @[TensorGemm.scala 554:17]
-  wire [10:0] m_io_uop_idx; // @[TensorGemm.scala 554:17]
+  wire [7:0] m_io_acc_i; // @[TensorGemm.scala 554:17]
+  wire [7:0] m_io_inp_i; // @[TensorGemm.scala 554:17]
+  wire [6:0] m_io_wgt_i; // @[TensorGemm.scala 554:17]
+  wire [7:0] m_io_uop_idx; // @[TensorGemm.scala 554:17]
   wire  m_io_valid; // @[TensorGemm.scala 554:17]
   wire  reset_pipe_clock; // @[TensorGemm.scala 603:26]
   wire  reset_pipe_reset; // @[TensorGemm.scala 603:26]
@@ -14353,27 +14335,27 @@ module TensorGemm(
   wire  acc_idx_pipe_clock; // @[TensorGemm.scala 610:28]
   wire  acc_idx_pipe_reset; // @[TensorGemm.scala 610:28]
   wire  acc_idx_pipe_io_enq_valid; // @[TensorGemm.scala 610:28]
-  wire [10:0] acc_idx_pipe_io_enq_bits; // @[TensorGemm.scala 610:28]
+  wire [7:0] acc_idx_pipe_io_enq_bits; // @[TensorGemm.scala 610:28]
   wire  acc_idx_pipe_io_deq_valid; // @[TensorGemm.scala 610:28]
-  wire [10:0] acc_idx_pipe_io_deq_bits; // @[TensorGemm.scala 610:28]
+  wire [7:0] acc_idx_pipe_io_deq_bits; // @[TensorGemm.scala 610:28]
   wire  wrpipe0_clock; // @[TensorGemm.scala 637:23]
   wire  wrpipe0_reset; // @[TensorGemm.scala 637:23]
   wire  wrpipe0_io_enq_valid; // @[TensorGemm.scala 637:23]
-  wire [10:0] wrpipe0_io_enq_bits; // @[TensorGemm.scala 637:23]
+  wire [7:0] wrpipe0_io_enq_bits; // @[TensorGemm.scala 637:23]
   wire  wrpipe0_io_deq_valid; // @[TensorGemm.scala 637:23]
-  wire [10:0] wrpipe0_io_deq_bits; // @[TensorGemm.scala 637:23]
+  wire [7:0] wrpipe0_io_deq_bits; // @[TensorGemm.scala 637:23]
   wire  wrpipeNs_clock; // @[TensorGemm.scala 641:24]
   wire  wrpipeNs_reset; // @[TensorGemm.scala 641:24]
   wire  wrpipeNs_io_enq_valid; // @[TensorGemm.scala 641:24]
-  wire [10:0] wrpipeNs_io_enq_bits; // @[TensorGemm.scala 641:24]
+  wire [7:0] wrpipeNs_io_enq_bits; // @[TensorGemm.scala 641:24]
   wire  wrpipeNs_io_deq_valid; // @[TensorGemm.scala 641:24]
-  wire [10:0] wrpipeNs_io_deq_bits; // @[TensorGemm.scala 641:24]
+  wire [7:0] wrpipeNs_io_deq_bits; // @[TensorGemm.scala 641:24]
   wire  wrpipe_0_clock; // @[TensorGemm.scala 645:22]
   wire  wrpipe_0_reset; // @[TensorGemm.scala 645:22]
   wire  wrpipe_0_io_enq_valid; // @[TensorGemm.scala 645:22]
-  wire [10:0] wrpipe_0_io_enq_bits; // @[TensorGemm.scala 645:22]
+  wire [7:0] wrpipe_0_io_enq_bits; // @[TensorGemm.scala 645:22]
   wire  wrpipe_0_io_deq_valid; // @[TensorGemm.scala 645:22]
-  wire [10:0] wrpipe_0_io_deq_bits; // @[TensorGemm.scala 645:22]
+  wire [7:0] wrpipe_0_io_deq_bits; // @[TensorGemm.scala 645:22]
   wire  mvc_0_clock; // @[TensorGemm.scala 686:55]
   wire  mvc_0_io_valid_reset; // @[TensorGemm.scala 686:55]
   wire [7:0] mvc_0_io_inp_data_bits_0_0; // @[TensorGemm.scala 686:55]
@@ -14703,14 +14685,14 @@ module TensorGemm(
   wire  wrpipe2_clock; // @[TensorGemm.scala 691:25]
   wire  wrpipe2_reset; // @[TensorGemm.scala 691:25]
   wire  wrpipe2_io_enq_valid; // @[TensorGemm.scala 691:25]
-  wire [10:0] wrpipe2_io_enq_bits; // @[TensorGemm.scala 691:25]
+  wire [7:0] wrpipe2_io_enq_bits; // @[TensorGemm.scala 691:25]
   wire  wrpipe2_io_deq_valid; // @[TensorGemm.scala 691:25]
-  wire [10:0] wrpipe2_io_deq_bits; // @[TensorGemm.scala 691:25]
+  wire [7:0] wrpipe2_io_deq_bits; // @[TensorGemm.scala 691:25]
   reg  delayed_valid; // @[Reg.scala 28:20]
   wire  _GEN_0 = m_io_valid; // @[Reg.scala 29:18 28:20 29:22]
-  reg [10:0] delayed_acc_i; // @[Reg.scala 16:16]
-  reg [10:0] delayed_inp_i; // @[Reg.scala 16:16]
-  reg [9:0] delayed_wgt_i; // @[Reg.scala 16:16]
+  reg [7:0] delayed_acc_i; // @[Reg.scala 16:16]
+  reg [7:0] delayed_inp_i; // @[Reg.scala 16:16]
+  reg [6:0] delayed_wgt_i; // @[Reg.scala 16:16]
   reg [1:0] state; // @[TensorGemm.scala 566:22]
   reg [3:0] inflight; // @[TensorGemm.scala 567:25]
   reg [9:0] capture_dec_wgt_1; // @[TensorGemm.scala 569:24]
@@ -14744,15 +14726,21 @@ module TensorGemm(
     io_dec_lp_1,io_dec_lp_0,lo_1}; // @[TensorGemm.scala 585:59]
   wire  _T_10 = _T_8 == _T_9; // @[TensorGemm.scala 585:48]
   wire  _T_13 = ~reset; // @[TensorGemm.scala 585:9]
+  wire [10:0] _GEN_31 = {{3'd0}, delayed_acc_i}; // @[TensorGemm.scala 599:54]
+  wire [10:0] uop_acc = io_uop_data_bits_u0 + _GEN_31; // @[TensorGemm.scala 599:54]
+  wire [10:0] _GEN_32 = {{3'd0}, delayed_inp_i}; // @[TensorGemm.scala 600:41]
+  wire [10:0] uop_inp = io_uop_data_bits_u1 + _GEN_32; // @[TensorGemm.scala 600:41]
+  wire [9:0] _GEN_33 = {{3'd0}, delayed_wgt_i}; // @[TensorGemm.scala 601:54]
+  wire [9:0] uop_wgt = io_uop_data_bits_u2 + _GEN_33; // @[TensorGemm.scala 601:54]
   reg  delayed_uop_valid; // @[TensorGemm.scala 618:34]
   reg  io_acc_rd_0_idx_valid_REG; // @[TensorGemm.scala 623:40]
-  reg [10:0] io_acc_rd_0_idx_bits_REG; // @[TensorGemm.scala 624:39]
+  reg [7:0] io_acc_rd_0_idx_bits_REG; // @[TensorGemm.scala 624:39]
   wire  _T_39 = m_io_valid & wrpipeNs_io_deq_valid; // @[TensorGemm.scala 654:19]
   wire [3:0] _inflight_T_1 = inflight + 4'h1; // @[TensorGemm.scala 657:26]
   wire [3:0] _inflight_T_3 = inflight - 4'h1; // @[TensorGemm.scala 660:26]
   wire [3:0] _GEN_27 = wrpipeNs_io_deq_valid ? _inflight_T_3 : inflight; // @[TensorGemm.scala 658:37 660:14 567:25]
   reg  mvc_0_io_valid_reset_REG; // @[TensorGemm.scala 698:40]
-  wire  _GEN_31 = ~_T_39; // @[TensorGemm.scala 656:11]
+  wire  _GEN_34 = ~_T_39; // @[TensorGemm.scala 656:11]
   TensorGemmIndexGenerator m ( // @[TensorGemm.scala 554:17]
     .clock(m_clock),
     .reset(m_reset),
@@ -15154,9 +15142,9 @@ module TensorGemm(
   assign io_uop_idx_valid = m_io_valid; // @[TensorGemm.scala 592:20]
   assign io_uop_idx_bits = m_io_uop_idx; // @[TensorGemm.scala 591:19]
   assign io_inp_rd_0_idx_valid = delayed_valid; // @[TensorGemm.scala 616:26]
-  assign io_inp_rd_0_idx_bits = io_uop_data_bits_u1 + delayed_inp_i; // @[TensorGemm.scala 600:41]
+  assign io_inp_rd_0_idx_bits = uop_inp[7:0]; // @[TensorGemm.scala 617:25]
   assign io_wgt_rd_0_idx_valid = delayed_valid; // @[TensorGemm.scala 627:30]
-  assign io_wgt_rd_0_idx_bits = io_uop_data_bits_u2 + delayed_wgt_i; // @[TensorGemm.scala 601:54]
+  assign io_wgt_rd_0_idx_bits = uop_wgt[6:0]; // @[TensorGemm.scala 628:29]
   assign io_acc_rd_0_idx_valid = io_acc_rd_0_idx_valid_REG; // @[TensorGemm.scala 623:30]
   assign io_acc_rd_0_idx_bits = io_acc_rd_0_idx_bits_REG; // @[TensorGemm.scala 624:29]
   assign io_acc_wr_0_valid = wrpipe_0_io_deq_valid; // @[TensorGemm.scala 723:27]
@@ -15215,11 +15203,11 @@ module TensorGemm(
   assign acc_idx_pipe_clock = clock;
   assign acc_idx_pipe_reset = reset;
   assign acc_idx_pipe_io_enq_valid = delayed_valid; // @[TensorGemm.scala 612:29]
-  assign acc_idx_pipe_io_enq_bits = io_uop_data_bits_u0 + delayed_acc_i; // @[TensorGemm.scala 599:54]
+  assign acc_idx_pipe_io_enq_bits = uop_acc[7:0]; // @[TensorGemm.scala 613:28]
   assign wrpipe0_clock = clock;
   assign wrpipe0_reset = reset;
   assign wrpipe0_io_enq_valid = delayed_valid; // @[TensorGemm.scala 638:24]
-  assign wrpipe0_io_enq_bits = io_uop_data_bits_u0 + delayed_acc_i; // @[TensorGemm.scala 599:54]
+  assign wrpipe0_io_enq_bits = uop_acc[7:0]; // @[TensorGemm.scala 639:23]
   assign wrpipeNs_clock = clock;
   assign wrpipeNs_reset = reset;
   assign wrpipeNs_io_enq_valid = wrpipe0_io_deq_valid; // @[TensorGemm.scala 642:19]
@@ -15713,7 +15701,7 @@ module TensorGemm(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (_GEN_31 & ~m_io_valid & wrpipeNs_io_deq_valid & _T_13 & ~(inflight != 4'h0)) begin
+        if (_GEN_34 & ~m_io_valid & wrpipeNs_io_deq_valid & _T_13 & ~(inflight != 4'h0)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at TensorGemm.scala:659 assert(inflight =/= 0.U)\n"); // @[TensorGemm.scala 659:11]
         end
     `ifdef PRINTF_COND
@@ -15784,11 +15772,11 @@ initial begin
   _RAND_0 = {1{`RANDOM}};
   delayed_valid = _RAND_0[0:0];
   _RAND_1 = {1{`RANDOM}};
-  delayed_acc_i = _RAND_1[10:0];
+  delayed_acc_i = _RAND_1[7:0];
   _RAND_2 = {1{`RANDOM}};
-  delayed_inp_i = _RAND_2[10:0];
+  delayed_inp_i = _RAND_2[7:0];
   _RAND_3 = {1{`RANDOM}};
-  delayed_wgt_i = _RAND_3[9:0];
+  delayed_wgt_i = _RAND_3[6:0];
   _RAND_4 = {1{`RANDOM}};
   state = _RAND_4[1:0];
   _RAND_5 = {1{`RANDOM}};
@@ -15832,7 +15820,7 @@ initial begin
   _RAND_24 = {1{`RANDOM}};
   io_acc_rd_0_idx_valid_REG = _RAND_24[0:0];
   _RAND_25 = {1{`RANDOM}};
-  io_acc_rd_0_idx_bits_REG = _RAND_25[10:0];
+  io_acc_rd_0_idx_bits_REG = _RAND_25[7:0];
   _RAND_26 = {1{`RANDOM}};
   mvc_0_io_valid_reset_REG = _RAND_26[0:0];
 `endif // RANDOMIZE_REG_INIT
@@ -15872,7 +15860,7 @@ end // initial
       assert(inflight != 4'hf); // @[TensorGemm.scala 656:11]
     end
     //
-    if (_GEN_31 & ~m_io_valid & wrpipeNs_io_deq_valid & _T_13) begin
+    if (_GEN_34 & ~m_io_valid & wrpipeNs_io_deq_valid & _T_13) begin
       assert(inflight != 4'h0); // @[TensorGemm.scala 659:11]
     end
     //
@@ -15901,9 +15889,9 @@ module TensorAluIndexGenerator(
   input  [12:0] io_dec_uop_begin,
   output        io_valid,
   output        io_src_valid,
-  output [10:0] io_dst_idx,
-  output [10:0] io_src_idx,
-  output [10:0] io_uop_idx
+  output [7:0]  io_dst_idx,
+  output [7:0]  io_src_idx,
+  output [7:0]  io_uop_idx
 );
 `ifdef RANDOMIZE_REG_INIT
   reg [31:0] _RAND_0;
@@ -15928,38 +15916,58 @@ module TensorAluIndexGenerator(
   wire  _GEN_4 = running & ~advance ? running : _GEN_1; // @[TensorAlu.scala 119:24 126:36]
   wire  _GEN_5 = ~running & io_start | _GEN_4; // @[TensorAlu.scala 124:30 125:13]
   reg [13:0] cnt_i; // @[TensorAlu.scala 135:18]
-  reg [10:0] dst_i; // @[TensorAlu.scala 136:18]
-  reg [10:0] src_i; // @[TensorAlu.scala 137:18]
+  reg [7:0] dst_i; // @[TensorAlu.scala 136:18]
+  reg [7:0] src_i; // @[TensorAlu.scala 137:18]
   reg [13:0] cnt_o; // @[TensorAlu.scala 139:18]
-  reg [10:0] dst_o; // @[TensorAlu.scala 140:18]
-  reg [10:0] src_o; // @[TensorAlu.scala 141:18]
+  reg [7:0] dst_o; // @[TensorAlu.scala 140:18]
+  reg [7:0] src_o; // @[TensorAlu.scala 141:18]
   reg [13:0] uop_idx; // @[TensorAlu.scala 143:20]
   wire [13:0] _T_7 = io_dec_uop_end - 14'h1; // @[TensorAlu.scala 158:38]
   wire [13:0] _uop_idx_T_1 = uop_idx + 14'h1; // @[TensorAlu.scala 159:26]
   wire [13:0] _T_10 = io_dec_lp_1 - 14'h1; // @[TensorAlu.scala 162:35]
   wire [13:0] _cnt_i_T_1 = cnt_i + 14'h1; // @[TensorAlu.scala 163:24]
-  wire [10:0] _dst_i_T_1 = dst_i + io_dec_dst_1; // @[TensorAlu.scala 164:24]
-  wire [10:0] _src_i_T_1 = src_i + io_dec_src_1; // @[TensorAlu.scala 165:24]
+  wire [10:0] _GEN_45 = {{3'd0}, dst_i}; // @[TensorAlu.scala 164:24]
+  wire [10:0] _dst_i_T_1 = _GEN_45 + io_dec_dst_1; // @[TensorAlu.scala 164:24]
+  wire [10:0] _GEN_46 = {{3'd0}, src_i}; // @[TensorAlu.scala 165:24]
+  wire [10:0] _src_i_T_1 = _GEN_46 + io_dec_src_1; // @[TensorAlu.scala 165:24]
   wire [13:0] _T_13 = io_dec_lp_0 - 14'h1; // @[TensorAlu.scala 167:37]
-  wire [10:0] dst_tmp = dst_o + io_dec_dst_0; // @[TensorAlu.scala 168:31]
-  wire [10:0] src_tmp = src_o + io_dec_src_0; // @[TensorAlu.scala 169:31]
+  wire [10:0] _GEN_47 = {{3'd0}, dst_o}; // @[TensorAlu.scala 168:31]
+  wire [10:0] dst_tmp = _GEN_47 + io_dec_dst_0; // @[TensorAlu.scala 168:31]
+  wire [10:0] _GEN_48 = {{3'd0}, src_o}; // @[TensorAlu.scala 169:31]
+  wire [10:0] src_tmp = _GEN_48 + io_dec_src_0; // @[TensorAlu.scala 169:31]
   wire [13:0] _cnt_o_T_1 = cnt_o + 14'h1; // @[TensorAlu.scala 170:26]
   wire [13:0] _GEN_7 = cnt_o != _T_13 ? _cnt_o_T_1 : cnt_o; // @[TensorAlu.scala 167:44 170:17 139:18]
-  wire [10:0] _GEN_8 = cnt_o != _T_13 ? dst_tmp : dst_o; // @[TensorAlu.scala 167:44 171:17 140:18]
-  wire [10:0] _GEN_9 = cnt_o != _T_13 ? src_tmp : src_o; // @[TensorAlu.scala 167:44 172:17 141:18]
+  wire [10:0] _GEN_8 = cnt_o != _T_13 ? dst_tmp : {{3'd0}, dst_o}; // @[TensorAlu.scala 167:44 171:17 140:18]
+  wire [10:0] _GEN_9 = cnt_o != _T_13 ? src_tmp : {{3'd0}, src_o}; // @[TensorAlu.scala 167:44 172:17 141:18]
   wire [13:0] _GEN_10 = cnt_o != _T_13 ? 14'h0 : cnt_i; // @[TensorAlu.scala 167:44 173:17 135:18]
-  wire [10:0] _GEN_11 = cnt_o != _T_13 ? dst_tmp : dst_i; // @[TensorAlu.scala 167:44 174:17 136:18]
-  wire [10:0] _GEN_12 = cnt_o != _T_13 ? src_tmp : src_i; // @[TensorAlu.scala 167:44 175:17 137:18]
+  wire [10:0] _GEN_11 = cnt_o != _T_13 ? dst_tmp : {{3'd0}, dst_i}; // @[TensorAlu.scala 167:44 174:17 136:18]
+  wire [10:0] _GEN_12 = cnt_o != _T_13 ? src_tmp : {{3'd0}, src_i}; // @[TensorAlu.scala 167:44 175:17 137:18]
   wire  _GEN_13 = cnt_o != _T_13 ? 1'h0 : 1'h1; // @[TensorAlu.scala 117:11 167:44 177:19]
+  wire [10:0] _GEN_15 = cnt_i != _T_10 ? _dst_i_T_1 : _GEN_11; // @[TensorAlu.scala 162:42 164:15]
+  wire [10:0] _GEN_16 = cnt_i != _T_10 ? _src_i_T_1 : _GEN_12; // @[TensorAlu.scala 162:42 165:15]
+  wire [10:0] _GEN_18 = cnt_i != _T_10 ? {{3'd0}, dst_o} : _GEN_8; // @[TensorAlu.scala 140:18 162:42]
+  wire [10:0] _GEN_19 = cnt_i != _T_10 ? {{3'd0}, src_o} : _GEN_9; // @[TensorAlu.scala 141:18 162:42]
   wire  _GEN_20 = cnt_i != _T_10 ? 1'h0 : _GEN_13; // @[TensorAlu.scala 117:11 162:42]
+  wire [10:0] _GEN_23 = uop_idx != _T_7 ? {{3'd0}, dst_i} : _GEN_15; // @[TensorAlu.scala 136:18 158:45]
+  wire [10:0] _GEN_24 = uop_idx != _T_7 ? {{3'd0}, src_i} : _GEN_16; // @[TensorAlu.scala 137:18 158:45]
+  wire [10:0] _GEN_26 = uop_idx != _T_7 ? {{3'd0}, dst_o} : _GEN_18; // @[TensorAlu.scala 140:18 158:45]
+  wire [10:0] _GEN_27 = uop_idx != _T_7 ? {{3'd0}, src_o} : _GEN_19; // @[TensorAlu.scala 141:18 158:45]
   wire  _GEN_28 = uop_idx != _T_7 ? 1'h0 : _GEN_20; // @[TensorAlu.scala 117:11 158:45]
+  wire [10:0] _GEN_31 = advance ? _GEN_23 : {{3'd0}, dst_i}; // @[TensorAlu.scala 136:18 157:25]
+  wire [10:0] _GEN_32 = advance ? _GEN_24 : {{3'd0}, src_i}; // @[TensorAlu.scala 137:18 157:25]
+  wire [10:0] _GEN_34 = advance ? _GEN_26 : {{3'd0}, dst_o}; // @[TensorAlu.scala 140:18 157:25]
+  wire [10:0] _GEN_35 = advance ? _GEN_27 : {{3'd0}, src_o}; // @[TensorAlu.scala 141:18 157:25]
   wire  _GEN_36 = advance & _GEN_28; // @[TensorAlu.scala 117:11 157:25]
+  wire [10:0] _GEN_38 = _T ? 11'h0 : _GEN_31; // @[TensorAlu.scala 153:18 154:25]
+  wire [10:0] _GEN_39 = _T ? 11'h0 : _GEN_32; // @[TensorAlu.scala 153:18 154:39]
+  wire [10:0] _GEN_41 = _T ? 11'h0 : _GEN_34; // @[TensorAlu.scala 153:18 155:25]
+  wire [10:0] _GEN_42 = _T ? 11'h0 : _GEN_35; // @[TensorAlu.scala 153:18 155:39]
   assign io_last = _T ? 1'h0 : _GEN_36; // @[TensorAlu.scala 117:11 153:18]
   assign io_valid = running & advance; // @[TensorAlu.scala 145:23]
   assign io_src_valid = running & _T_2; // @[TensorAlu.scala 146:27]
   assign io_dst_idx = dst_i; // @[TensorAlu.scala 147:14]
   assign io_src_idx = src_i; // @[TensorAlu.scala 148:14]
-  assign io_uop_idx = uop_idx[10:0]; // @[TensorAlu.scala 149:14]
+  assign io_uop_idx = uop_idx[7:0]; // @[TensorAlu.scala 149:14]
   always @(posedge clock) begin
     if (reset) begin // @[TensorAlu.scala 119:24]
       running <= 1'h0; // @[TensorAlu.scala 119:24]
@@ -15982,28 +15990,8 @@ module TensorAluIndexGenerator(
         end
       end
     end
-    if (_T) begin // @[TensorAlu.scala 153:18]
-      dst_i <= 11'h0; // @[TensorAlu.scala 154:25]
-    end else if (advance) begin // @[TensorAlu.scala 157:25]
-      if (!(uop_idx != _T_7)) begin // @[TensorAlu.scala 158:45]
-        if (cnt_i != _T_10) begin // @[TensorAlu.scala 162:42]
-          dst_i <= _dst_i_T_1; // @[TensorAlu.scala 164:15]
-        end else begin
-          dst_i <= _GEN_11;
-        end
-      end
-    end
-    if (_T) begin // @[TensorAlu.scala 153:18]
-      src_i <= 11'h0; // @[TensorAlu.scala 154:39]
-    end else if (advance) begin // @[TensorAlu.scala 157:25]
-      if (!(uop_idx != _T_7)) begin // @[TensorAlu.scala 158:45]
-        if (cnt_i != _T_10) begin // @[TensorAlu.scala 162:42]
-          src_i <= _src_i_T_1; // @[TensorAlu.scala 165:15]
-        end else begin
-          src_i <= _GEN_12;
-        end
-      end
-    end
+    dst_i <= _GEN_38[7:0];
+    src_i <= _GEN_39[7:0];
     if (_T) begin // @[TensorAlu.scala 153:18]
       cnt_o <= 14'h0; // @[TensorAlu.scala 155:11]
     end else if (advance) begin // @[TensorAlu.scala 157:25]
@@ -16013,24 +16001,8 @@ module TensorAluIndexGenerator(
         end
       end
     end
-    if (_T) begin // @[TensorAlu.scala 153:18]
-      dst_o <= 11'h0; // @[TensorAlu.scala 155:25]
-    end else if (advance) begin // @[TensorAlu.scala 157:25]
-      if (!(uop_idx != _T_7)) begin // @[TensorAlu.scala 158:45]
-        if (!(cnt_i != _T_10)) begin // @[TensorAlu.scala 162:42]
-          dst_o <= _GEN_8;
-        end
-      end
-    end
-    if (_T) begin // @[TensorAlu.scala 153:18]
-      src_o <= 11'h0; // @[TensorAlu.scala 155:39]
-    end else if (advance) begin // @[TensorAlu.scala 157:25]
-      if (!(uop_idx != _T_7)) begin // @[TensorAlu.scala 158:45]
-        if (!(cnt_i != _T_10)) begin // @[TensorAlu.scala 162:42]
-          src_o <= _GEN_9;
-        end
-      end
-    end
+    dst_o <= _GEN_41[7:0];
+    src_o <= _GEN_42[7:0];
     if (_T) begin // @[TensorAlu.scala 153:18]
       uop_idx <= {{1'd0}, io_dec_uop_begin}; // @[TensorAlu.scala 156:13]
     end else if (advance) begin // @[TensorAlu.scala 157:25]
@@ -16084,15 +16056,15 @@ initial begin
   _RAND_2 = {1{`RANDOM}};
   cnt_i = _RAND_2[13:0];
   _RAND_3 = {1{`RANDOM}};
-  dst_i = _RAND_3[10:0];
+  dst_i = _RAND_3[7:0];
   _RAND_4 = {1{`RANDOM}};
-  src_i = _RAND_4[10:0];
+  src_i = _RAND_4[7:0];
   _RAND_5 = {1{`RANDOM}};
   cnt_o = _RAND_5[13:0];
   _RAND_6 = {1{`RANDOM}};
-  dst_o = _RAND_6[10:0];
+  dst_o = _RAND_6[7:0];
   _RAND_7 = {1{`RANDOM}};
-  src_o = _RAND_7[10:0];
+  src_o = _RAND_7[7:0];
   _RAND_8 = {1{`RANDOM}};
   uop_idx = _RAND_8[13:0];
 `endif // RANDOMIZE_REG_INIT
@@ -16744,12 +16716,12 @@ module TensorAlu(
   input  [13:0] io_dec_uop_end,
   input  [12:0] io_dec_uop_begin,
   output        io_uop_idx_valid,
-  output [10:0] io_uop_idx_bits,
+  output [7:0]  io_uop_idx_bits,
   input  [9:0]  io_uop_data_bits_u2,
   input  [10:0] io_uop_data_bits_u1,
   input  [10:0] io_uop_data_bits_u0,
   output        io_acc_rd_0_idx_valid,
-  output [10:0] io_acc_rd_0_idx_bits,
+  output [7:0]  io_acc_rd_0_idx_bits,
   input         io_acc_rd_0_data_valid,
   input  [31:0] io_acc_rd_0_data_bits_0_0,
   input  [31:0] io_acc_rd_0_data_bits_0_1,
@@ -16768,7 +16740,7 @@ module TensorAlu(
   input  [31:0] io_acc_rd_0_data_bits_0_14,
   input  [31:0] io_acc_rd_0_data_bits_0_15,
   output        io_acc_wr_0_valid,
-  output [10:0] io_acc_wr_0_bits_idx,
+  output [7:0]  io_acc_wr_0_bits_idx,
   output [31:0] io_acc_wr_0_bits_data_0_0,
   output [31:0] io_acc_wr_0_bits_data_0_1,
   output [31:0] io_acc_wr_0_bits_data_0_2,
@@ -16787,7 +16759,7 @@ module TensorAlu(
   output [31:0] io_acc_wr_0_bits_data_0_15,
   input         io_out_rd_0_data_valid,
   output        io_out_wr_0_valid,
-  output [10:0] io_out_wr_0_bits_idx,
+  output [7:0]  io_out_wr_0_bits_idx,
   output [7:0]  io_out_wr_0_bits_data_0_0,
   output [7:0]  io_out_wr_0_bits_data_0_1,
   output [7:0]  io_out_wr_0_bits_data_0_2,
@@ -16857,9 +16829,9 @@ module TensorAlu(
   wire [12:0] index_generator_io_dec_uop_begin; // @[TensorAlu.scala 205:31]
   wire  index_generator_io_valid; // @[TensorAlu.scala 205:31]
   wire  index_generator_io_src_valid; // @[TensorAlu.scala 205:31]
-  wire [10:0] index_generator_io_dst_idx; // @[TensorAlu.scala 205:31]
-  wire [10:0] index_generator_io_src_idx; // @[TensorAlu.scala 205:31]
-  wire [10:0] index_generator_io_uop_idx; // @[TensorAlu.scala 205:31]
+  wire [7:0] index_generator_io_dst_idx; // @[TensorAlu.scala 205:31]
+  wire [7:0] index_generator_io_src_idx; // @[TensorAlu.scala 205:31]
+  wire [7:0] index_generator_io_uop_idx; // @[TensorAlu.scala 205:31]
   wire  alu_clock; // @[TensorAlu.scala 301:21]
   wire [2:0] alu_io_opcode; // @[TensorAlu.scala 301:21]
   wire  alu_io_acc_a_data_valid; // @[TensorAlu.scala 301:21]
@@ -16950,22 +16922,23 @@ module TensorAlu(
   wire  _GEN_11 = index_generator_io_src_valid; // @[Reg.scala 29:18 28:20 29:22]
   reg  src_valid_r2; // @[TensorAlu.scala 248:29]
   reg  src_valid_r3; // @[TensorAlu.scala 249:29]
-  reg [10:0] dst_idx_r1; // @[Reg.scala 16:16]
-  reg [10:0] src_idx_r1; // @[Reg.scala 16:16]
+  reg [7:0] dst_idx_r1; // @[Reg.scala 16:16]
+  reg [7:0] src_idx_r1; // @[Reg.scala 16:16]
   wire [10:0] u2 = {{1'd0}, io_uop_data_bits_u2}; // @[TensorAlu.scala 260:{40,40}]
-  wire [21:0] _src_offset_T = {u2, 11'h0}; // @[TensorAlu.scala 263:24]
-  wire [21:0] _GEN_14 = {{11'd0}, io_uop_data_bits_u1}; // @[TensorAlu.scala 263:30]
-  wire [21:0] src_offset = _src_offset_T | _GEN_14; // @[TensorAlu.scala 263:30]
+  wire [18:0] _src_offset_T = {u2, 8'h0}; // @[TensorAlu.scala 263:24]
+  wire [18:0] _GEN_14 = {{8'd0}, io_uop_data_bits_u1}; // @[TensorAlu.scala 263:30]
+  wire [18:0] src_offset = _src_offset_T | _GEN_14; // @[TensorAlu.scala 263:30]
   reg  io_acc_rd_0_idx_valid_REG; // @[TensorAlu.scala 268:40]
-  wire [21:0] _GEN_15 = {{11'd0}, src_idx_r1}; // @[TensorAlu.scala 271:35]
-  wire [21:0] new_src_idx_r1 = _GEN_15 + src_offset; // @[TensorAlu.scala 271:35]
-  reg [21:0] src_idx_r2; // @[TensorAlu.scala 272:27]
-  reg [21:0] src_idx_r3; // @[TensorAlu.scala 273:27]
-  wire [10:0] new_dst_idx_r1 = dst_idx_r1 + io_uop_data_bits_u0; // @[TensorAlu.scala 275:35]
+  wire [18:0] _GEN_15 = {{11'd0}, src_idx_r1}; // @[TensorAlu.scala 271:35]
+  wire [18:0] new_src_idx_r1 = _GEN_15 + src_offset; // @[TensorAlu.scala 271:35]
+  reg [18:0] src_idx_r2; // @[TensorAlu.scala 272:27]
+  reg [18:0] src_idx_r3; // @[TensorAlu.scala 273:27]
+  wire [10:0] _GEN_16 = {{3'd0}, dst_idx_r1}; // @[TensorAlu.scala 275:35]
+  wire [10:0] new_dst_idx_r1 = _GEN_16 + io_uop_data_bits_u0; // @[TensorAlu.scala 275:35]
   reg [10:0] dst_idx_r2; // @[TensorAlu.scala 276:27]
   reg [10:0] dst_idx_r3; // @[TensorAlu.scala 277:27]
   reg [10:0] dst_idx_r4; // @[TensorAlu.scala 278:27]
-  reg [21:0] io_acc_rd_0_idx_bits_REG; // @[TensorAlu.scala 283:39]
+  reg [18:0] io_acc_rd_0_idx_bits_REG; // @[TensorAlu.scala 283:39]
   reg [31:0] save_src_0_0; // @[TensorAlu.scala 311:27]
   reg [31:0] save_src_0_1; // @[TensorAlu.scala 311:27]
   reg [31:0] save_src_0_2; // @[TensorAlu.scala 311:27]
@@ -16988,9 +16961,9 @@ module TensorAlu(
   wire  neg_shift = isSHR & io_dec_alu_imm[15]; // @[TensorAlu.scala 329:27]
   reg  alu_io_acc_a_data_valid_REG; // @[TensorAlu.scala 338:39]
   wire  bypass_dst = valid_r3 & valid_r4 & dst_idx_r4 == dst_idx_r3; // @[TensorAlu.scala 386:41]
-  wire [21:0] _GEN_16 = {{11'd0}, dst_idx_r4}; // @[TensorAlu.scala 387:60]
-  wire  bypass_src = src_valid_r3 & valid_r4 & _GEN_16 == src_idx_r3; // @[TensorAlu.scala 387:45]
-  wire  _GEN_17 = ~_T_7; // @[TensorAlu.scala 233:11]
+  wire [18:0] _GEN_17 = {{8'd0}, dst_idx_r4}; // @[TensorAlu.scala 387:60]
+  wire  bypass_src = src_valid_r3 & valid_r4 & _GEN_17 == src_idx_r3; // @[TensorAlu.scala 387:45]
+  wire  _GEN_18 = ~_T_7; // @[TensorAlu.scala 233:11]
   TensorAluIndexGenerator index_generator ( // @[TensorAlu.scala 205:31]
     .clock(index_generator_clock),
     .reset(index_generator_reset),
@@ -17087,9 +17060,9 @@ module TensorAlu(
   assign io_uop_idx_valid = index_generator_io_valid | index_generator_io_src_valid; // @[TensorAlu.scala 223:48]
   assign io_uop_idx_bits = index_generator_io_uop_idx; // @[TensorAlu.scala 224:19]
   assign io_acc_rd_0_idx_valid = io_acc_rd_0_idx_valid_REG; // @[TensorAlu.scala 268:30]
-  assign io_acc_rd_0_idx_bits = io_acc_rd_0_idx_bits_REG[10:0]; // @[TensorAlu.scala 283:29]
+  assign io_acc_rd_0_idx_bits = io_acc_rd_0_idx_bits_REG[7:0]; // @[TensorAlu.scala 283:29]
   assign io_acc_wr_0_valid = valid_r4; // @[TensorAlu.scala 360:26]
-  assign io_acc_wr_0_bits_idx = dst_idx_r4; // @[TensorAlu.scala 361:29]
+  assign io_acc_wr_0_bits_idx = dst_idx_r4[7:0]; // @[TensorAlu.scala 361:29]
   assign io_acc_wr_0_bits_data_0_0 = alu_io_acc_y_data_bits_0_0; // @[TensorAlu.scala 367:62]
   assign io_acc_wr_0_bits_data_0_1 = alu_io_acc_y_data_bits_0_1; // @[TensorAlu.scala 367:62]
   assign io_acc_wr_0_bits_data_0_2 = alu_io_acc_y_data_bits_0_2; // @[TensorAlu.scala 367:62]
@@ -17107,7 +17080,7 @@ module TensorAlu(
   assign io_acc_wr_0_bits_data_0_14 = alu_io_acc_y_data_bits_0_14; // @[TensorAlu.scala 367:62]
   assign io_acc_wr_0_bits_data_0_15 = alu_io_acc_y_data_bits_0_15; // @[TensorAlu.scala 367:62]
   assign io_out_wr_0_valid = valid_r4; // @[TensorAlu.scala 381:22]
-  assign io_out_wr_0_bits_idx = dst_idx_r4; // @[TensorAlu.scala 382:25]
+  assign io_out_wr_0_bits_idx = dst_idx_r4[7:0]; // @[TensorAlu.scala 382:25]
   assign io_out_wr_0_bits_data_0_0 = alu_io_out_data_bits_0_0; // @[TensorAlu.scala 289:21 375:66]
   assign io_out_wr_0_bits_data_0_1 = alu_io_out_data_bits_0_1; // @[TensorAlu.scala 289:21 375:66]
   assign io_out_wr_0_bits_data_0_2 = alu_io_out_data_bits_0_2; // @[TensorAlu.scala 289:21 375:66]
@@ -17233,13 +17206,13 @@ module TensorAlu(
     io_acc_rd_0_idx_valid_REG <= valid_r1 | src_valid_r1; // @[TensorAlu.scala 266:32]
     src_idx_r2 <= _GEN_15 + src_offset; // @[TensorAlu.scala 271:35]
     src_idx_r3 <= src_idx_r2; // @[TensorAlu.scala 273:27]
-    dst_idx_r2 <= dst_idx_r1 + io_uop_data_bits_u0; // @[TensorAlu.scala 275:35]
+    dst_idx_r2 <= _GEN_16 + io_uop_data_bits_u0; // @[TensorAlu.scala 275:35]
     dst_idx_r3 <= dst_idx_r2; // @[TensorAlu.scala 277:27]
     dst_idx_r4 <= dst_idx_r3; // @[TensorAlu.scala 278:27]
     if (src_valid_r1 | io_dec_alu_use_imm) begin // @[TensorAlu.scala 281:25]
       io_acc_rd_0_idx_bits_REG <= new_src_idx_r1;
     end else begin
-      io_acc_rd_0_idx_bits_REG <= {{11'd0}, new_dst_idx_r1};
+      io_acc_rd_0_idx_bits_REG <= {{8'd0}, new_dst_idx_r1};
     end
     save_src_0_0 <= io_acc_rd_0_data_bits_0_0; // @[TensorAlu.scala 290:24 307:47]
     save_src_0_1 <= io_acc_rd_0_data_bits_0_1; // @[TensorAlu.scala 290:24 307:47]
@@ -17274,7 +17247,7 @@ module TensorAlu(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (_GEN_17 & ~index_generator_io_valid & valid_r4 & _T_10 & ~(inflight != 4'h0)) begin
+        if (_GEN_18 & ~index_generator_io_valid & valid_r4 & _T_10 & ~(inflight != 4'h0)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at TensorAlu.scala:236 assert(inflight =/= 0.U)\n"); // @[TensorAlu.scala 236:11]
         end
     `ifdef PRINTF_COND
@@ -17423,15 +17396,15 @@ initial begin
   _RAND_8 = {1{`RANDOM}};
   src_valid_r3 = _RAND_8[0:0];
   _RAND_9 = {1{`RANDOM}};
-  dst_idx_r1 = _RAND_9[10:0];
+  dst_idx_r1 = _RAND_9[7:0];
   _RAND_10 = {1{`RANDOM}};
-  src_idx_r1 = _RAND_10[10:0];
+  src_idx_r1 = _RAND_10[7:0];
   _RAND_11 = {1{`RANDOM}};
   io_acc_rd_0_idx_valid_REG = _RAND_11[0:0];
   _RAND_12 = {1{`RANDOM}};
-  src_idx_r2 = _RAND_12[21:0];
+  src_idx_r2 = _RAND_12[18:0];
   _RAND_13 = {1{`RANDOM}};
-  src_idx_r3 = _RAND_13[21:0];
+  src_idx_r3 = _RAND_13[18:0];
   _RAND_14 = {1{`RANDOM}};
   dst_idx_r2 = _RAND_14[10:0];
   _RAND_15 = {1{`RANDOM}};
@@ -17439,7 +17412,7 @@ initial begin
   _RAND_16 = {1{`RANDOM}};
   dst_idx_r4 = _RAND_16[10:0];
   _RAND_17 = {1{`RANDOM}};
-  io_acc_rd_0_idx_bits_REG = _RAND_17[21:0];
+  io_acc_rd_0_idx_bits_REG = _RAND_17[18:0];
   _RAND_18 = {1{`RANDOM}};
   save_src_0_0 = _RAND_18[31:0];
   _RAND_19 = {1{`RANDOM}};
@@ -17487,7 +17460,7 @@ end // initial
       assert(inflight != 4'hf); // @[TensorAlu.scala 233:11]
     end
     //
-    if (_GEN_17 & ~index_generator_io_valid & valid_r4 & _T_10) begin
+    if (_GEN_18 & ~index_generator_io_valid & valid_r4 & _T_10) begin
       assert(inflight != 4'h0); // @[TensorAlu.scala 236:11]
     end
     //
@@ -17536,21 +17509,21 @@ module TwoPortMem_1(
   reg [31:0] _RAND_1;
   reg [31:0] _RAND_2;
 `endif // RANDOMIZE_REG_INIT
-  reg [127:0] mem [0:511]; // @[SyncQueue.scala 496:24]
+  reg [127:0] mem [0:63]; // @[SyncQueue.scala 496:24]
   wire  mem_io_rd_data_MPORT_en; // @[SyncQueue.scala 496:24]
-  wire [8:0] mem_io_rd_data_MPORT_addr; // @[SyncQueue.scala 496:24]
+  wire [5:0] mem_io_rd_data_MPORT_addr; // @[SyncQueue.scala 496:24]
   wire [127:0] mem_io_rd_data_MPORT_data; // @[SyncQueue.scala 496:24]
   wire [127:0] mem_MPORT_data; // @[SyncQueue.scala 496:24]
-  wire [8:0] mem_MPORT_addr; // @[SyncQueue.scala 496:24]
+  wire [5:0] mem_MPORT_addr; // @[SyncQueue.scala 496:24]
   wire  mem_MPORT_mask; // @[SyncQueue.scala 496:24]
   wire  mem_MPORT_en; // @[SyncQueue.scala 496:24]
   reg  mem_io_rd_data_MPORT_en_pipe_0;
-  reg [8:0] mem_io_rd_data_MPORT_addr_pipe_0;
+  reg [5:0] mem_io_rd_data_MPORT_addr_pipe_0;
   assign mem_io_rd_data_MPORT_en = mem_io_rd_data_MPORT_en_pipe_0;
   assign mem_io_rd_data_MPORT_addr = mem_io_rd_data_MPORT_addr_pipe_0;
   assign mem_io_rd_data_MPORT_data = mem[mem_io_rd_data_MPORT_addr]; // @[SyncQueue.scala 496:24]
   assign mem_MPORT_data = io_wr_data;
-  assign mem_MPORT_addr = io_wr_addr[8:0];
+  assign mem_MPORT_addr = io_wr_addr[5:0];
   assign mem_MPORT_mask = 1'h1;
   assign mem_MPORT_en = io_wr_en;
   assign io_rd_data = mem_io_rd_data_MPORT_data; // @[SyncQueue.scala 502:20 503:16]
@@ -17560,7 +17533,7 @@ module TwoPortMem_1(
     end
     mem_io_rd_data_MPORT_en_pipe_0 <= io_rd_en;
     if (io_rd_en) begin
-      mem_io_rd_data_MPORT_addr_pipe_0 <= io_rd_addr[8:0];
+      mem_io_rd_data_MPORT_addr_pipe_0 <= io_rd_addr[5:0];
     end
   end
 // Register and memory initialization
@@ -17600,14 +17573,14 @@ initial begin
     `endif
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {4{`RANDOM}};
-  for (initvar = 0; initvar < 512; initvar = initvar+1)
+  for (initvar = 0; initvar < 64; initvar = initvar+1)
     mem[initvar] = _RAND_0[127:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_1 = {1{`RANDOM}};
   mem_io_rd_data_MPORT_en_pipe_0 = _RAND_1[0:0];
   _RAND_2 = {1{`RANDOM}};
-  mem_io_rd_data_MPORT_addr_pipe_0 = _RAND_2[8:0];
+  mem_io_rd_data_MPORT_addr_pipe_0 = _RAND_2[5:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -17625,7 +17598,7 @@ module OneCycleQueue_1(
   input          io_deq_ready,
   output         io_deq_valid,
   output [127:0] io_deq_bits,
-  output [9:0]   io_count
+  output [6:0]   io_count
 );
 `ifdef RANDOMIZE_REG_INIT
   reg [31:0] _RAND_0;
@@ -17640,26 +17613,26 @@ module OneCycleQueue_1(
   wire  ram0_io_rd_en; // @[SyncQueue.scala 377:20]
   wire [15:0] ram0_io_rd_addr; // @[SyncQueue.scala 377:20]
   wire [127:0] ram0_io_rd_data; // @[SyncQueue.scala 377:20]
-  reg [8:0] value; // @[Counter.scala 62:40]
-  reg [8:0] value_1; // @[Counter.scala 62:40]
+  reg [5:0] value; // @[Counter.scala 62:40]
+  reg [5:0] value_1; // @[Counter.scala 62:40]
   reg  maybe_full; // @[SyncQueue.scala 380:27]
   wire  ptr_match = value == value_1; // @[SyncQueue.scala 383:33]
   wire  empty = ptr_match & ~maybe_full; // @[SyncQueue.scala 384:25]
   wire  full = ptr_match & maybe_full; // @[SyncQueue.scala 385:24]
   wire  do_enq = io_enq_ready & io_enq_valid; // @[Decoupled.scala 50:35]
   wire  do_deq = io_deq_ready & io_deq_valid; // @[Decoupled.scala 50:35]
-  wire  wrap = value_1 == 9'h1ff; // @[Counter.scala 74:24]
-  wire [8:0] _value_T_1 = value_1 + 9'h1; // @[Counter.scala 78:24]
-  wire [8:0] _value_T_3 = value + 9'h1; // @[Counter.scala 78:24]
-  wire  _firstRead_T_1 = do_enq & io_count == 10'h0; // @[SyncQueue.scala 403:43]
+  wire  wrap = value_1 == 6'h3f; // @[Counter.scala 74:24]
+  wire [5:0] _value_T_1 = value_1 + 6'h1; // @[Counter.scala 78:24]
+  wire [5:0] _value_T_3 = value + 6'h1; // @[Counter.scala 78:24]
+  wire  _firstRead_T_1 = do_enq & io_count == 7'h0; // @[SyncQueue.scala 403:43]
   reg  firstRead; // @[Reg.scala 28:20]
   wire  _io_deq_valid_T_1 = ~firstRead; // @[SyncQueue.scala 404:29]
-  wire [8:0] _GEN_4 = wrap ? 9'h0 : _value_T_1; // @[SyncQueue.scala 413:17 414:14 416:14]
-  wire [8:0] _GEN_5 = do_deq ? _GEN_4 : value_1; // @[SyncQueue.scala 411:23 419:12]
-  wire [8:0] rdAddr = firstRead ? value_1 : _GEN_5; // @[SyncQueue.scala 409:19 410:12]
-  wire [8:0] ptr_diff = value - value_1; // @[SyncQueue.scala 430:32]
-  wire [9:0] _io_count_T_1 = maybe_full & ptr_match ? 10'h200 : 10'h0; // @[SyncQueue.scala 432:20]
-  wire [9:0] _GEN_7 = {{1'd0}, ptr_diff}; // @[SyncQueue.scala 432:62]
+  wire [5:0] _GEN_4 = wrap ? 6'h0 : _value_T_1; // @[SyncQueue.scala 413:17 414:14 416:14]
+  wire [5:0] _GEN_5 = do_deq ? _GEN_4 : value_1; // @[SyncQueue.scala 411:23 419:12]
+  wire [5:0] rdAddr = firstRead ? value_1 : _GEN_5; // @[SyncQueue.scala 409:19 410:12]
+  wire [5:0] ptr_diff = value - value_1; // @[SyncQueue.scala 430:32]
+  wire [6:0] _io_count_T_1 = maybe_full & ptr_match ? 7'h40 : 7'h0; // @[SyncQueue.scala 432:20]
+  wire [6:0] _GEN_7 = {{1'd0}, ptr_diff}; // @[SyncQueue.scala 432:62]
   TwoPortMem_1 ram0 ( // @[SyncQueue.scala 377:20]
     .clock(ram0_clock),
     .io_wr_en(ram0_io_wr_en),
@@ -17675,18 +17648,18 @@ module OneCycleQueue_1(
   assign io_count = _io_count_T_1 | _GEN_7; // @[SyncQueue.scala 432:62]
   assign ram0_clock = clock;
   assign ram0_io_wr_en = io_enq_ready & io_enq_valid; // @[Decoupled.scala 50:35]
-  assign ram0_io_wr_addr = {{7'd0}, value}; // @[SyncQueue.scala 423:19]
+  assign ram0_io_wr_addr = {{10'd0}, value}; // @[SyncQueue.scala 423:19]
   assign ram0_io_wr_data = io_enq_bits; // @[SyncQueue.scala 422:19]
   assign ram0_io_rd_en = do_deq | firstRead; // @[SyncQueue.scala 424:27]
-  assign ram0_io_rd_addr = {{7'd0}, rdAddr}; // @[SyncQueue.scala 425:19]
+  assign ram0_io_rd_addr = {{10'd0}, rdAddr}; // @[SyncQueue.scala 425:19]
   always @(posedge clock) begin
     if (reset) begin // @[Counter.scala 62:40]
-      value <= 9'h0; // @[Counter.scala 62:40]
+      value <= 6'h0; // @[Counter.scala 62:40]
     end else if (do_enq) begin // @[SyncQueue.scala 399:17]
       value <= _value_T_3; // @[Counter.scala 78:15]
     end
     if (reset) begin // @[Counter.scala 62:40]
-      value_1 <= 9'h0; // @[Counter.scala 62:40]
+      value_1 <= 6'h0; // @[Counter.scala 62:40]
     end else if (do_deq) begin // @[SyncQueue.scala 391:16]
       value_1 <= _value_T_1; // @[Counter.scala 78:15]
     end
@@ -17751,9 +17724,9 @@ initial begin
     `endif
 `ifdef RANDOMIZE_REG_INIT
   _RAND_0 = {1{`RANDOM}};
-  value = _RAND_0[8:0];
+  value = _RAND_0[5:0];
   _RAND_1 = {1{`RANDOM}};
-  value_1 = _RAND_1[8:0];
+  value_1 = _RAND_1[5:0];
   _RAND_2 = {1{`RANDOM}};
   maybe_full = _RAND_2[0:0];
   _RAND_3 = {1{`RANDOM}};
@@ -17793,7 +17766,7 @@ module SyncQueue2PortMemImpl_1(
   wire  memoryQueue_io_deq_ready; // @[SyncQueue.scala 172:27]
   wire  memoryQueue_io_deq_valid; // @[SyncQueue.scala 172:27]
   wire [127:0] memoryQueue_io_deq_bits; // @[SyncQueue.scala 172:27]
-  wire [9:0] memoryQueue_io_count; // @[SyncQueue.scala 172:27]
+  wire [6:0] memoryQueue_io_count; // @[SyncQueue.scala 172:27]
   wire  buffer_clock; // @[SyncQueue.scala 173:22]
   wire  buffer_reset; // @[SyncQueue.scala 173:22]
   wire  buffer_io_enq_ready; // @[SyncQueue.scala 173:22]
@@ -17802,15 +17775,15 @@ module SyncQueue2PortMemImpl_1(
   wire  buffer_io_deq_ready; // @[SyncQueue.scala 173:22]
   wire  buffer_io_deq_valid; // @[SyncQueue.scala 173:22]
   wire [127:0] buffer_io_deq_bits; // @[SyncQueue.scala 173:22]
-  wire  memoryQueueHasValues = memoryQueue_io_count != 10'h0; // @[SyncQueue.scala 175:51]
+  wire  memoryQueueHasValues = memoryQueue_io_count != 7'h0; // @[SyncQueue.scala 175:51]
   wire  _memoryQueue_io_enq_valid_T = io_enq_ready & io_enq_valid; // @[Decoupled.scala 50:35]
   wire  _countNext_T_1 = io_deq_ready & io_deq_valid; // @[Decoupled.scala 50:35]
   wire  _countNext_T_2 = _memoryQueue_io_enq_valid_T | _countNext_T_1; // @[SyncQueue.scala 190:26]
-  reg [9:0] countNext; // @[Reg.scala 28:20]
+  reg [6:0] countNext; // @[Reg.scala 28:20]
   wire  _T_3 = _memoryQueue_io_enq_valid_T & ~_countNext_T_1; // @[SyncQueue.scala 191:21]
-  wire [9:0] _count_T_1 = countNext + 10'h1; // @[SyncQueue.scala 193:24]
+  wire [6:0] _count_T_1 = countNext + 7'h1; // @[SyncQueue.scala 193:24]
   wire  _T_11 = ~_memoryQueue_io_enq_valid_T & _countNext_T_1; // @[SyncQueue.scala 194:28]
-  wire [9:0] _count_T_3 = countNext - 10'h1; // @[SyncQueue.scala 196:24]
+  wire [6:0] _count_T_3 = countNext - 7'h1; // @[SyncQueue.scala 196:24]
   wire  _T_6 = ~reset; // @[SyncQueue.scala 192:11]
   OneCycleQueue_1 memoryQueue ( // @[SyncQueue.scala 172:27]
     .clock(memoryQueue_clock),
@@ -17833,8 +17806,8 @@ module SyncQueue2PortMemImpl_1(
     .io_deq_valid(buffer_io_deq_valid),
     .io_deq_bits(buffer_io_deq_bits)
   );
-  assign io_enq_ready = countNext != 10'h200; // @[SyncQueue.scala 202:30]
-  assign io_deq_valid = countNext != 10'h0; // @[SyncQueue.scala 203:30]
+  assign io_enq_ready = countNext != 7'h40; // @[SyncQueue.scala 202:30]
+  assign io_deq_valid = countNext != 7'h0; // @[SyncQueue.scala 203:30]
   assign io_deq_bits = buffer_io_deq_bits; // @[SyncQueue.scala 181:10]
   assign memoryQueue_clock = clock;
   assign memoryQueue_reset = reset;
@@ -17848,7 +17821,7 @@ module SyncQueue2PortMemImpl_1(
   assign buffer_io_deq_ready = io_deq_ready; // @[SyncQueue.scala 181:10]
   always @(posedge clock) begin
     if (reset) begin // @[Reg.scala 28:20]
-      countNext <= 10'h0; // @[Reg.scala 28:20]
+      countNext <= 7'h0; // @[Reg.scala 28:20]
     end else if (_countNext_T_2) begin // @[Reg.scala 29:18]
       if (_memoryQueue_io_enq_valid_T & ~_countNext_T_1) begin // @[SyncQueue.scala 191:38]
         countNext <= _count_T_1; // @[SyncQueue.scala 193:11]
@@ -17860,7 +17833,7 @@ module SyncQueue2PortMemImpl_1(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (_T_3 & ~reset & ~(countNext < 10'h200)) begin
+        if (_T_3 & ~reset & ~(countNext < 7'h40)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at SyncQueue.scala:192 assert(countNext < entries.U)\n"); // @[SyncQueue.scala 192:11]
         end
     `ifdef PRINTF_COND
@@ -17871,7 +17844,7 @@ module SyncQueue2PortMemImpl_1(
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
     `endif
-        if (~_T_3 & _T_11 & _T_6 & ~(countNext > 10'h0)) begin
+        if (~_T_3 & _T_11 & _T_6 & ~(countNext > 7'h0)) begin
           $fwrite(32'h80000002,"Assertion failed\n    at SyncQueue.scala:195 assert(countNext > 0.U)\n"); // @[SyncQueue.scala 195:11]
         end
     `ifdef PRINTF_COND
@@ -17941,7 +17914,7 @@ initial begin
     `endif
 `ifdef RANDOMIZE_REG_INIT
   _RAND_0 = {1{`RANDOM}};
-  countNext = _RAND_0[9:0];
+  countNext = _RAND_0[6:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -17952,11 +17925,11 @@ end // initial
   always @(posedge clock) begin
     //
     if (_T_3 & ~reset) begin
-      assert(countNext < 10'h200); // @[SyncQueue.scala 192:11]
+      assert(countNext < 7'h40); // @[SyncQueue.scala 192:11]
     end
     //
     if (~_T_3 & _T_11 & _T_6) begin
-      assert(countNext > 10'h0); // @[SyncQueue.scala 195:11]
+      assert(countNext > 7'h0); // @[SyncQueue.scala 195:11]
     end
     //
     if (_T_6) begin
@@ -18104,7 +18077,7 @@ module Compute(
   input  [63:0]  io_vme_rd_1_data_bits_data,
   input  [20:0]  io_vme_rd_1_data_bits_tag,
   output         io_inp_rd_0_idx_valid,
-  output [10:0]  io_inp_rd_0_idx_bits,
+  output [7:0]   io_inp_rd_0_idx_bits,
   input          io_inp_rd_0_data_valid,
   input  [7:0]   io_inp_rd_0_data_bits_0_0,
   input  [7:0]   io_inp_rd_0_data_bits_0_1,
@@ -18123,7 +18096,7 @@ module Compute(
   input  [7:0]   io_inp_rd_0_data_bits_0_14,
   input  [7:0]   io_inp_rd_0_data_bits_0_15,
   output         io_wgt_rd_0_idx_valid,
-  output [9:0]   io_wgt_rd_0_idx_bits,
+  output [6:0]   io_wgt_rd_0_idx_bits,
   input          io_wgt_rd_0_data_valid,
   input  [7:0]   io_wgt_rd_0_data_bits_0_0,
   input  [7:0]   io_wgt_rd_0_data_bits_0_1,
@@ -18382,7 +18355,7 @@ module Compute(
   input  [7:0]   io_wgt_rd_0_data_bits_15_14,
   input  [7:0]   io_wgt_rd_0_data_bits_15_15,
   output         io_out_wr_0_valid,
-  output [10:0]  io_out_wr_0_bits_idx,
+  output [7:0]   io_out_wr_0_bits_idx,
   output [7:0]   io_out_wr_0_bits_data_0_0,
   output [7:0]   io_out_wr_0_bits_data_0_1,
   output [7:0]   io_out_wr_0_bits_data_0_2,
@@ -18440,7 +18413,7 @@ module Compute(
   wire [20:0] loadUop_io_vme_rd_data_bits_tag; // @[Compute.scala 61:23]
   wire  loadUop_io_vme_rd_data_bits_last; // @[Compute.scala 61:23]
   wire  loadUop_io_uop_idx_valid; // @[Compute.scala 61:23]
-  wire [10:0] loadUop_io_uop_idx_bits; // @[Compute.scala 61:23]
+  wire [7:0] loadUop_io_uop_idx_bits; // @[Compute.scala 61:23]
   wire  loadUop_io_uop_data_valid; // @[Compute.scala 61:23]
   wire [9:0] loadUop_io_uop_data_bits_u2; // @[Compute.scala 61:23]
   wire [10:0] loadUop_io_uop_data_bits_u1; // @[Compute.scala 61:23]
@@ -18460,7 +18433,7 @@ module Compute(
   wire [63:0] tensorAcc_io_vme_rd_data_bits_data; // @[Compute.scala 62:25]
   wire [20:0] tensorAcc_io_vme_rd_data_bits_tag; // @[Compute.scala 62:25]
   wire  tensorAcc_io_tensor_rd_0_idx_valid; // @[Compute.scala 62:25]
-  wire [10:0] tensorAcc_io_tensor_rd_0_idx_bits; // @[Compute.scala 62:25]
+  wire [7:0] tensorAcc_io_tensor_rd_0_idx_bits; // @[Compute.scala 62:25]
   wire  tensorAcc_io_tensor_rd_0_data_valid; // @[Compute.scala 62:25]
   wire [31:0] tensorAcc_io_tensor_rd_0_data_bits_0_0; // @[Compute.scala 62:25]
   wire [31:0] tensorAcc_io_tensor_rd_0_data_bits_0_1; // @[Compute.scala 62:25]
@@ -18479,7 +18452,7 @@ module Compute(
   wire [31:0] tensorAcc_io_tensor_rd_0_data_bits_0_14; // @[Compute.scala 62:25]
   wire [31:0] tensorAcc_io_tensor_rd_0_data_bits_0_15; // @[Compute.scala 62:25]
   wire  tensorAcc_io_tensor_wr_0_valid; // @[Compute.scala 62:25]
-  wire [10:0] tensorAcc_io_tensor_wr_0_bits_idx; // @[Compute.scala 62:25]
+  wire [7:0] tensorAcc_io_tensor_wr_0_bits_idx; // @[Compute.scala 62:25]
   wire [31:0] tensorAcc_io_tensor_wr_0_bits_data_0_0; // @[Compute.scala 62:25]
   wire [31:0] tensorAcc_io_tensor_wr_0_bits_data_0_1; // @[Compute.scala 62:25]
   wire [31:0] tensorAcc_io_tensor_wr_0_bits_data_0_2; // @[Compute.scala 62:25]
@@ -18518,13 +18491,13 @@ module Compute(
   wire  tensorGemm_io_dec_pop_prev; // @[Compute.scala 63:26]
   wire [2:0] tensorGemm_io_dec_op; // @[Compute.scala 63:26]
   wire  tensorGemm_io_uop_idx_valid; // @[Compute.scala 63:26]
-  wire [10:0] tensorGemm_io_uop_idx_bits; // @[Compute.scala 63:26]
+  wire [7:0] tensorGemm_io_uop_idx_bits; // @[Compute.scala 63:26]
   wire  tensorGemm_io_uop_data_valid; // @[Compute.scala 63:26]
   wire [9:0] tensorGemm_io_uop_data_bits_u2; // @[Compute.scala 63:26]
   wire [10:0] tensorGemm_io_uop_data_bits_u1; // @[Compute.scala 63:26]
   wire [10:0] tensorGemm_io_uop_data_bits_u0; // @[Compute.scala 63:26]
   wire  tensorGemm_io_inp_rd_0_idx_valid; // @[Compute.scala 63:26]
-  wire [10:0] tensorGemm_io_inp_rd_0_idx_bits; // @[Compute.scala 63:26]
+  wire [7:0] tensorGemm_io_inp_rd_0_idx_bits; // @[Compute.scala 63:26]
   wire  tensorGemm_io_inp_rd_0_data_valid; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_inp_rd_0_data_bits_0_0; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_inp_rd_0_data_bits_0_1; // @[Compute.scala 63:26]
@@ -18543,7 +18516,7 @@ module Compute(
   wire [7:0] tensorGemm_io_inp_rd_0_data_bits_0_14; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_inp_rd_0_data_bits_0_15; // @[Compute.scala 63:26]
   wire  tensorGemm_io_wgt_rd_0_idx_valid; // @[Compute.scala 63:26]
-  wire [9:0] tensorGemm_io_wgt_rd_0_idx_bits; // @[Compute.scala 63:26]
+  wire [6:0] tensorGemm_io_wgt_rd_0_idx_bits; // @[Compute.scala 63:26]
   wire  tensorGemm_io_wgt_rd_0_data_valid; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_wgt_rd_0_data_bits_0_0; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_wgt_rd_0_data_bits_0_1; // @[Compute.scala 63:26]
@@ -18802,7 +18775,7 @@ module Compute(
   wire [7:0] tensorGemm_io_wgt_rd_0_data_bits_15_14; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_wgt_rd_0_data_bits_15_15; // @[Compute.scala 63:26]
   wire  tensorGemm_io_acc_rd_0_idx_valid; // @[Compute.scala 63:26]
-  wire [10:0] tensorGemm_io_acc_rd_0_idx_bits; // @[Compute.scala 63:26]
+  wire [7:0] tensorGemm_io_acc_rd_0_idx_bits; // @[Compute.scala 63:26]
   wire  tensorGemm_io_acc_rd_0_data_valid; // @[Compute.scala 63:26]
   wire [31:0] tensorGemm_io_acc_rd_0_data_bits_0_0; // @[Compute.scala 63:26]
   wire [31:0] tensorGemm_io_acc_rd_0_data_bits_0_1; // @[Compute.scala 63:26]
@@ -18821,7 +18794,7 @@ module Compute(
   wire [31:0] tensorGemm_io_acc_rd_0_data_bits_0_14; // @[Compute.scala 63:26]
   wire [31:0] tensorGemm_io_acc_rd_0_data_bits_0_15; // @[Compute.scala 63:26]
   wire  tensorGemm_io_acc_wr_0_valid; // @[Compute.scala 63:26]
-  wire [10:0] tensorGemm_io_acc_wr_0_bits_idx; // @[Compute.scala 63:26]
+  wire [7:0] tensorGemm_io_acc_wr_0_bits_idx; // @[Compute.scala 63:26]
   wire [31:0] tensorGemm_io_acc_wr_0_bits_data_0_0; // @[Compute.scala 63:26]
   wire [31:0] tensorGemm_io_acc_wr_0_bits_data_0_1; // @[Compute.scala 63:26]
   wire [31:0] tensorGemm_io_acc_wr_0_bits_data_0_2; // @[Compute.scala 63:26]
@@ -18840,7 +18813,7 @@ module Compute(
   wire [31:0] tensorGemm_io_acc_wr_0_bits_data_0_15; // @[Compute.scala 63:26]
   wire  tensorGemm_io_out_rd_0_data_valid; // @[Compute.scala 63:26]
   wire  tensorGemm_io_out_wr_0_valid; // @[Compute.scala 63:26]
-  wire [10:0] tensorGemm_io_out_wr_0_bits_idx; // @[Compute.scala 63:26]
+  wire [7:0] tensorGemm_io_out_wr_0_bits_idx; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_out_wr_0_bits_data_0_0; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_out_wr_0_bits_data_0_1; // @[Compute.scala 63:26]
   wire [7:0] tensorGemm_io_out_wr_0_bits_data_0_2; // @[Compute.scala 63:26]
@@ -18873,12 +18846,12 @@ module Compute(
   wire [13:0] tensorAlu_io_dec_uop_end; // @[Compute.scala 64:25]
   wire [12:0] tensorAlu_io_dec_uop_begin; // @[Compute.scala 64:25]
   wire  tensorAlu_io_uop_idx_valid; // @[Compute.scala 64:25]
-  wire [10:0] tensorAlu_io_uop_idx_bits; // @[Compute.scala 64:25]
+  wire [7:0] tensorAlu_io_uop_idx_bits; // @[Compute.scala 64:25]
   wire [9:0] tensorAlu_io_uop_data_bits_u2; // @[Compute.scala 64:25]
   wire [10:0] tensorAlu_io_uop_data_bits_u1; // @[Compute.scala 64:25]
   wire [10:0] tensorAlu_io_uop_data_bits_u0; // @[Compute.scala 64:25]
   wire  tensorAlu_io_acc_rd_0_idx_valid; // @[Compute.scala 64:25]
-  wire [10:0] tensorAlu_io_acc_rd_0_idx_bits; // @[Compute.scala 64:25]
+  wire [7:0] tensorAlu_io_acc_rd_0_idx_bits; // @[Compute.scala 64:25]
   wire  tensorAlu_io_acc_rd_0_data_valid; // @[Compute.scala 64:25]
   wire [31:0] tensorAlu_io_acc_rd_0_data_bits_0_0; // @[Compute.scala 64:25]
   wire [31:0] tensorAlu_io_acc_rd_0_data_bits_0_1; // @[Compute.scala 64:25]
@@ -18897,7 +18870,7 @@ module Compute(
   wire [31:0] tensorAlu_io_acc_rd_0_data_bits_0_14; // @[Compute.scala 64:25]
   wire [31:0] tensorAlu_io_acc_rd_0_data_bits_0_15; // @[Compute.scala 64:25]
   wire  tensorAlu_io_acc_wr_0_valid; // @[Compute.scala 64:25]
-  wire [10:0] tensorAlu_io_acc_wr_0_bits_idx; // @[Compute.scala 64:25]
+  wire [7:0] tensorAlu_io_acc_wr_0_bits_idx; // @[Compute.scala 64:25]
   wire [31:0] tensorAlu_io_acc_wr_0_bits_data_0_0; // @[Compute.scala 64:25]
   wire [31:0] tensorAlu_io_acc_wr_0_bits_data_0_1; // @[Compute.scala 64:25]
   wire [31:0] tensorAlu_io_acc_wr_0_bits_data_0_2; // @[Compute.scala 64:25]
@@ -18916,7 +18889,7 @@ module Compute(
   wire [31:0] tensorAlu_io_acc_wr_0_bits_data_0_15; // @[Compute.scala 64:25]
   wire  tensorAlu_io_out_rd_0_data_valid; // @[Compute.scala 64:25]
   wire  tensorAlu_io_out_wr_0_valid; // @[Compute.scala 64:25]
-  wire [10:0] tensorAlu_io_out_wr_0_bits_idx; // @[Compute.scala 64:25]
+  wire [7:0] tensorAlu_io_out_wr_0_bits_idx; // @[Compute.scala 64:25]
   wire [7:0] tensorAlu_io_out_wr_0_bits_data_0_0; // @[Compute.scala 64:25]
   wire [7:0] tensorAlu_io_out_wr_0_bits_data_0_1; // @[Compute.scala 64:25]
   wire [7:0] tensorAlu_io_out_wr_0_bits_data_0_2; // @[Compute.scala 64:25]
@@ -20225,7 +20198,7 @@ module TensorStoreNarrowVME(
   output [63:0]  io_vme_wr_data_bits_data,
   input          io_vme_wr_ack,
   input          io_tensor_wr_0_valid,
-  input  [10:0]  io_tensor_wr_0_bits_idx,
+  input  [7:0]   io_tensor_wr_0_bits_idx,
   input  [7:0]   io_tensor_wr_0_bits_data_0_0,
   input  [7:0]   io_tensor_wr_0_bits_data_0_1,
   input  [7:0]   io_tensor_wr_0_bits_data_0_2,
@@ -20265,26 +20238,26 @@ module TensorStoreNarrowVME(
   reg [31:0] _RAND_16;
   reg [31:0] _RAND_17;
 `endif // RANDOMIZE_REG_INIT
-  reg [63:0] tensorFile_0_0 [0:2047]; // @[TensorStoreNarrowVME.scala 167:16]
+  reg [63:0] tensorFile_0_0 [0:255]; // @[TensorStoreNarrowVME.scala 167:16]
   wire  tensorFile_0_0_MPORT_1_en; // @[TensorStoreNarrowVME.scala 167:16]
-  wire [10:0] tensorFile_0_0_MPORT_1_addr; // @[TensorStoreNarrowVME.scala 167:16]
+  wire [7:0] tensorFile_0_0_MPORT_1_addr; // @[TensorStoreNarrowVME.scala 167:16]
   wire [63:0] tensorFile_0_0_MPORT_1_data; // @[TensorStoreNarrowVME.scala 167:16]
   wire [63:0] tensorFile_0_0_MPORT_data; // @[TensorStoreNarrowVME.scala 167:16]
-  wire [10:0] tensorFile_0_0_MPORT_addr; // @[TensorStoreNarrowVME.scala 167:16]
+  wire [7:0] tensorFile_0_0_MPORT_addr; // @[TensorStoreNarrowVME.scala 167:16]
   wire  tensorFile_0_0_MPORT_mask; // @[TensorStoreNarrowVME.scala 167:16]
   wire  tensorFile_0_0_MPORT_en; // @[TensorStoreNarrowVME.scala 167:16]
   reg  tensorFile_0_0_MPORT_1_en_pipe_0;
-  reg [10:0] tensorFile_0_0_MPORT_1_addr_pipe_0;
-  reg [63:0] tensorFile_0_1 [0:2047]; // @[TensorStoreNarrowVME.scala 167:16]
+  reg [7:0] tensorFile_0_0_MPORT_1_addr_pipe_0;
+  reg [63:0] tensorFile_0_1 [0:255]; // @[TensorStoreNarrowVME.scala 167:16]
   wire  tensorFile_0_1_MPORT_1_en; // @[TensorStoreNarrowVME.scala 167:16]
-  wire [10:0] tensorFile_0_1_MPORT_1_addr; // @[TensorStoreNarrowVME.scala 167:16]
+  wire [7:0] tensorFile_0_1_MPORT_1_addr; // @[TensorStoreNarrowVME.scala 167:16]
   wire [63:0] tensorFile_0_1_MPORT_1_data; // @[TensorStoreNarrowVME.scala 167:16]
   wire [63:0] tensorFile_0_1_MPORT_data; // @[TensorStoreNarrowVME.scala 167:16]
-  wire [10:0] tensorFile_0_1_MPORT_addr; // @[TensorStoreNarrowVME.scala 167:16]
+  wire [7:0] tensorFile_0_1_MPORT_addr; // @[TensorStoreNarrowVME.scala 167:16]
   wire  tensorFile_0_1_MPORT_mask; // @[TensorStoreNarrowVME.scala 167:16]
   wire  tensorFile_0_1_MPORT_en; // @[TensorStoreNarrowVME.scala 167:16]
   reg  tensorFile_0_1_MPORT_1_en_pipe_0;
-  reg [10:0] tensorFile_0_1_MPORT_1_addr_pipe_0;
+  reg [7:0] tensorFile_0_1_MPORT_1_addr_pipe_0;
   wire [15:0] dec_sram_offset = io_inst[25:10]; // @[TensorStoreNarrowVME.scala 60:29]
   wire [31:0] dec_dram_offset = io_inst[57:26]; // @[TensorStoreNarrowVME.scala 60:29]
   wire [15:0] dec_ysize = io_inst[79:64]; // @[TensorStoreNarrowVME.scala 60:29]
@@ -20403,15 +20376,15 @@ module TensorStoreNarrowVME(
   wire [7:0] _tag_T_1 = tag + 8'h1; // @[TensorStoreNarrowVME.scala 201:16]
   wire  _T_45 = set == 8'h0; // @[TensorStoreNarrowVME.scala 205:55]
   wire [7:0] _set_T_1 = set + 8'h1; // @[TensorStoreNarrowVME.scala 208:16]
-  reg [10:0] raddr_cur; // @[TensorStoreNarrowVME.scala 211:22]
-  reg [10:0] raddr_nxt; // @[TensorStoreNarrowVME.scala 212:22]
-  wire [10:0] _raddr_cur_T_1 = raddr_cur + 11'h1; // @[TensorStoreNarrowVME.scala 217:28]
-  wire [15:0] _GEN_95 = {{5'd0}, raddr_nxt}; // @[TensorStoreNarrowVME.scala 219:28]
+  reg [7:0] raddr_cur; // @[TensorStoreNarrowVME.scala 211:22]
+  reg [7:0] raddr_nxt; // @[TensorStoreNarrowVME.scala 212:22]
+  wire [7:0] _raddr_cur_T_1 = raddr_cur + 8'h1; // @[TensorStoreNarrowVME.scala 217:28]
+  wire [15:0] _GEN_95 = {{8'd0}, raddr_nxt}; // @[TensorStoreNarrowVME.scala 219:28]
   wire [15:0] _raddr_cur_T_3 = _GEN_95 + dec_xsize; // @[TensorStoreNarrowVME.scala 219:28]
-  wire [15:0] _GEN_64 = stride ? _raddr_cur_T_3 : {{5'd0}, raddr_cur}; // @[TensorStoreNarrowVME.scala 218:22 219:15 211:22]
-  wire [15:0] _GEN_65 = stride ? _raddr_cur_T_3 : {{5'd0}, raddr_nxt}; // @[TensorStoreNarrowVME.scala 218:22 220:15 212:22]
-  wire [15:0] _GEN_66 = _T_42 & _T_45 & _T_13 ? {{5'd0}, _raddr_cur_T_1} : _GEN_64; // @[TensorStoreNarrowVME.scala 216:98 217:15]
-  wire [15:0] _GEN_67 = _T_42 & _T_45 & _T_13 ? {{5'd0}, raddr_nxt} : _GEN_65; // @[TensorStoreNarrowVME.scala 212:22 216:98]
+  wire [15:0] _GEN_64 = stride ? _raddr_cur_T_3 : {{8'd0}, raddr_cur}; // @[TensorStoreNarrowVME.scala 218:22 219:15 211:22]
+  wire [15:0] _GEN_65 = stride ? _raddr_cur_T_3 : {{8'd0}, raddr_nxt}; // @[TensorStoreNarrowVME.scala 218:22 220:15 212:22]
+  wire [15:0] _GEN_66 = _T_42 & _T_45 & _T_13 ? {{8'd0}, _raddr_cur_T_1} : _GEN_64; // @[TensorStoreNarrowVME.scala 216:98 217:15]
+  wire [15:0] _GEN_67 = _T_42 & _T_45 & _T_13 ? {{8'd0}, raddr_nxt} : _GEN_65; // @[TensorStoreNarrowVME.scala 212:22 216:98]
   wire [15:0] _GEN_68 = _T_38 ? dec_sram_offset : _GEN_66; // @[TensorStoreNarrowVME.scala 213:25 214:15]
   wire [15:0] _GEN_69 = _T_38 ? dec_sram_offset : _GEN_67; // @[TensorStoreNarrowVME.scala 213:25 215:15]
   wire  _T_60 = state == 3'h3; // @[TensorStoreNarrowVME.scala 225:65]
@@ -20511,8 +20484,8 @@ module TensorStoreNarrowVME(
     end else begin
       state <= _GEN_31;
     end
-    raddr_cur <= _GEN_68[10:0];
-    raddr_nxt <= _GEN_69[10:0];
+    raddr_cur <= _GEN_68[7:0];
+    raddr_nxt <= _GEN_69[7:0];
     `ifndef SYNTHESIS
     `ifdef PRINTF_COND
       if (`PRINTF_COND) begin
@@ -20620,21 +20593,21 @@ initial begin
     `endif
 `ifdef RANDOMIZE_MEM_INIT
   _RAND_0 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_0_0[initvar] = _RAND_0[63:0];
   _RAND_3 = {2{`RANDOM}};
-  for (initvar = 0; initvar < 2048; initvar = initvar+1)
+  for (initvar = 0; initvar < 256; initvar = initvar+1)
     tensorFile_0_1[initvar] = _RAND_3[63:0];
 `endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
   _RAND_1 = {1{`RANDOM}};
   tensorFile_0_0_MPORT_1_en_pipe_0 = _RAND_1[0:0];
   _RAND_2 = {1{`RANDOM}};
-  tensorFile_0_0_MPORT_1_addr_pipe_0 = _RAND_2[10:0];
+  tensorFile_0_0_MPORT_1_addr_pipe_0 = _RAND_2[7:0];
   _RAND_4 = {1{`RANDOM}};
   tensorFile_0_1_MPORT_1_en_pipe_0 = _RAND_4[0:0];
   _RAND_5 = {1{`RANDOM}};
-  tensorFile_0_1_MPORT_1_addr_pipe_0 = _RAND_5[10:0];
+  tensorFile_0_1_MPORT_1_addr_pipe_0 = _RAND_5[7:0];
   _RAND_6 = {1{`RANDOM}};
   waddr_cur = _RAND_6[31:0];
   _RAND_7 = {1{`RANDOM}};
@@ -20656,9 +20629,9 @@ initial begin
   _RAND_15 = {1{`RANDOM}};
   state = _RAND_15[2:0];
   _RAND_16 = {1{`RANDOM}};
-  raddr_cur = _RAND_16[10:0];
+  raddr_cur = _RAND_16[7:0];
   _RAND_17 = {1{`RANDOM}};
-  raddr_nxt = _RAND_17[10:0];
+  raddr_nxt = _RAND_17[7:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -20709,7 +20682,7 @@ module TensorStoreOut(
   output [63:0]  io_vme_wr_data_bits_data,
   input          io_vme_wr_ack,
   input          io_tensor_wr_0_valid,
-  input  [10:0]  io_tensor_wr_0_bits_idx,
+  input  [7:0]   io_tensor_wr_0_bits_idx,
   input  [7:0]   io_tensor_wr_0_bits_data_0_0,
   input  [7:0]   io_tensor_wr_0_bits_data_0_1,
   input  [7:0]   io_tensor_wr_0_bits_data_0_2,
@@ -20742,7 +20715,7 @@ module TensorStoreOut(
   wire [63:0] tensorStore_io_vme_wr_data_bits_data; // @[TensorStore.scala 59:29]
   wire  tensorStore_io_vme_wr_ack; // @[TensorStore.scala 59:29]
   wire  tensorStore_io_tensor_wr_0_valid; // @[TensorStore.scala 59:29]
-  wire [10:0] tensorStore_io_tensor_wr_0_bits_idx; // @[TensorStore.scala 59:29]
+  wire [7:0] tensorStore_io_tensor_wr_0_bits_idx; // @[TensorStore.scala 59:29]
   wire [7:0] tensorStore_io_tensor_wr_0_bits_data_0_0; // @[TensorStore.scala 59:29]
   wire [7:0] tensorStore_io_tensor_wr_0_bits_data_0_1; // @[TensorStore.scala 59:29]
   wire [7:0] tensorStore_io_tensor_wr_0_bits_data_0_2; // @[TensorStore.scala 59:29]
@@ -20844,7 +20817,7 @@ module Store(
   output [63:0]  io_vme_wr_data_bits_data,
   input          io_vme_wr_ack,
   input          io_out_wr_0_valid,
-  input  [10:0]  io_out_wr_0_bits_idx,
+  input  [7:0]   io_out_wr_0_bits_idx,
   input  [7:0]   io_out_wr_0_bits_data_0_0,
   input  [7:0]   io_out_wr_0_bits_data_0_1,
   input  [7:0]   io_out_wr_0_bits_data_0_2,
@@ -20898,7 +20871,7 @@ module Store(
   wire [63:0] tensorStore_io_vme_wr_data_bits_data; // @[Store.scala 52:27]
   wire  tensorStore_io_vme_wr_ack; // @[Store.scala 52:27]
   wire  tensorStore_io_tensor_wr_0_valid; // @[Store.scala 52:27]
-  wire [10:0] tensorStore_io_tensor_wr_0_bits_idx; // @[Store.scala 52:27]
+  wire [7:0] tensorStore_io_tensor_wr_0_bits_idx; // @[Store.scala 52:27]
   wire [7:0] tensorStore_io_tensor_wr_0_bits_data_0_0; // @[Store.scala 52:27]
   wire [7:0] tensorStore_io_tensor_wr_0_bits_data_0_1; // @[Store.scala 52:27]
   wire [7:0] tensorStore_io_tensor_wr_0_bits_data_0_2; // @[Store.scala 52:27]
@@ -21286,7 +21259,7 @@ module Core(
   wire [63:0] load_io_vme_rd_1_data_bits_data; // @[Core.scala 68:20]
   wire [20:0] load_io_vme_rd_1_data_bits_tag; // @[Core.scala 68:20]
   wire  load_io_inp_rd_0_idx_valid; // @[Core.scala 68:20]
-  wire [10:0] load_io_inp_rd_0_idx_bits; // @[Core.scala 68:20]
+  wire [7:0] load_io_inp_rd_0_idx_bits; // @[Core.scala 68:20]
   wire  load_io_inp_rd_0_data_valid; // @[Core.scala 68:20]
   wire [7:0] load_io_inp_rd_0_data_bits_0_0; // @[Core.scala 68:20]
   wire [7:0] load_io_inp_rd_0_data_bits_0_1; // @[Core.scala 68:20]
@@ -21305,7 +21278,7 @@ module Core(
   wire [7:0] load_io_inp_rd_0_data_bits_0_14; // @[Core.scala 68:20]
   wire [7:0] load_io_inp_rd_0_data_bits_0_15; // @[Core.scala 68:20]
   wire  load_io_wgt_rd_0_idx_valid; // @[Core.scala 68:20]
-  wire [9:0] load_io_wgt_rd_0_idx_bits; // @[Core.scala 68:20]
+  wire [6:0] load_io_wgt_rd_0_idx_bits; // @[Core.scala 68:20]
   wire  load_io_wgt_rd_0_data_valid; // @[Core.scala 68:20]
   wire [7:0] load_io_wgt_rd_0_data_bits_0_0; // @[Core.scala 68:20]
   wire [7:0] load_io_wgt_rd_0_data_bits_0_1; // @[Core.scala 68:20]
@@ -21592,7 +21565,7 @@ module Core(
   wire [63:0] compute_io_vme_rd_1_data_bits_data; // @[Core.scala 69:23]
   wire [20:0] compute_io_vme_rd_1_data_bits_tag; // @[Core.scala 69:23]
   wire  compute_io_inp_rd_0_idx_valid; // @[Core.scala 69:23]
-  wire [10:0] compute_io_inp_rd_0_idx_bits; // @[Core.scala 69:23]
+  wire [7:0] compute_io_inp_rd_0_idx_bits; // @[Core.scala 69:23]
   wire  compute_io_inp_rd_0_data_valid; // @[Core.scala 69:23]
   wire [7:0] compute_io_inp_rd_0_data_bits_0_0; // @[Core.scala 69:23]
   wire [7:0] compute_io_inp_rd_0_data_bits_0_1; // @[Core.scala 69:23]
@@ -21611,7 +21584,7 @@ module Core(
   wire [7:0] compute_io_inp_rd_0_data_bits_0_14; // @[Core.scala 69:23]
   wire [7:0] compute_io_inp_rd_0_data_bits_0_15; // @[Core.scala 69:23]
   wire  compute_io_wgt_rd_0_idx_valid; // @[Core.scala 69:23]
-  wire [9:0] compute_io_wgt_rd_0_idx_bits; // @[Core.scala 69:23]
+  wire [6:0] compute_io_wgt_rd_0_idx_bits; // @[Core.scala 69:23]
   wire  compute_io_wgt_rd_0_data_valid; // @[Core.scala 69:23]
   wire [7:0] compute_io_wgt_rd_0_data_bits_0_0; // @[Core.scala 69:23]
   wire [7:0] compute_io_wgt_rd_0_data_bits_0_1; // @[Core.scala 69:23]
@@ -21870,7 +21843,7 @@ module Core(
   wire [7:0] compute_io_wgt_rd_0_data_bits_15_14; // @[Core.scala 69:23]
   wire [7:0] compute_io_wgt_rd_0_data_bits_15_15; // @[Core.scala 69:23]
   wire  compute_io_out_wr_0_valid; // @[Core.scala 69:23]
-  wire [10:0] compute_io_out_wr_0_bits_idx; // @[Core.scala 69:23]
+  wire [7:0] compute_io_out_wr_0_bits_idx; // @[Core.scala 69:23]
   wire [7:0] compute_io_out_wr_0_bits_data_0_0; // @[Core.scala 69:23]
   wire [7:0] compute_io_out_wr_0_bits_data_0_1; // @[Core.scala 69:23]
   wire [7:0] compute_io_out_wr_0_bits_data_0_2; // @[Core.scala 69:23]
@@ -21906,7 +21879,7 @@ module Core(
   wire [63:0] store_io_vme_wr_data_bits_data; // @[Core.scala 70:21]
   wire  store_io_vme_wr_ack; // @[Core.scala 70:21]
   wire  store_io_out_wr_0_valid; // @[Core.scala 70:21]
-  wire [10:0] store_io_out_wr_0_bits_idx; // @[Core.scala 70:21]
+  wire [7:0] store_io_out_wr_0_bits_idx; // @[Core.scala 70:21]
   wire [7:0] store_io_out_wr_0_bits_data_0_0; // @[Core.scala 70:21]
   wire [7:0] store_io_out_wr_0_bits_data_0_1; // @[Core.scala 70:21]
   wire [7:0] store_io_out_wr_0_bits_data_0_2; // @[Core.scala 70:21]
