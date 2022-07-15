@@ -1,11 +1,12 @@
 module Main(input wire clock);
 
   // Testbench parameters.
+  localparam NUM_ITERATIONS = 100000;
   localparam NUM_WORDS_TO_HOST = 100;
   localparam NUM_WORDS_FROM_HOST = 100;
 
   // For AXI4 slave memory.
-  localparam G_ADDR_WIDTH = 12;
+  localparam G_ADDR_WIDTH = 10;
   localparam G_DATA_WIDTH = 64;
   localparam G_ID_WIDTH = 8;
 
@@ -428,10 +429,14 @@ module Main(input wire clock);
     STATE_SINGLE_READ_CHECK_END = 14,
     STATE_SINGLE_READ_END = 15,
 
+    STATE_INCR_TEST_ITERS = 16,
+    STATE_CHECK_TEST_ITERS = 17,
+
     STATE_END = 100
   } state_t;
 
   state_t reg_state = STATE_IDLE, next_state;
+  int reg_test_iter_cnt, next_test_iter_cnt;
 
   int reg_host_wdata_cnt, next_host_wdata_cnt;
 
@@ -443,6 +448,7 @@ module Main(input wire clock);
   // State registers.
   always_ff @(posedge clock) begin
     reg_state <= next_state;
+    reg_test_iter_cnt = next_test_iter_cnt;
     reg_host_wdata_cnt = next_host_wdata_cnt;
     reg_host_rdata_cnt = next_host_rdata_cnt;
     reg_host_rdata_parity = next_host_rdata_parity;
@@ -458,6 +464,7 @@ module Main(input wire clock);
   always_comb begin
     // Default values.
     next_state = reg_state;
+    next_test_iter_cnt = reg_test_iter_cnt;
     next_host_wdata_cnt = reg_host_wdata_cnt;
     next_host_rdata_cnt = reg_host_rdata_cnt;
     next_host_rdata_parity = reg_host_rdata_parity;
@@ -501,14 +508,14 @@ module Main(input wire clock);
       STATE_IDLE:
       begin
         reset = 1;
-        next_host_wdata_cnt = 0;
-        next_host_rdata_cnt = 0;
-        next_host_rdata_parity = 0;
         next_state = STATE_START;
       end
 
       STATE_START:
       begin
+        next_host_wdata_cnt = 0;
+        next_host_rdata_cnt = 0;
+        next_host_rdata_parity = 0;
         next_state = STATE_SINGLE_WRITE_START;
       end
 
@@ -610,7 +617,22 @@ module Main(input wire clock);
 
       STATE_SINGLE_READ_END:
       begin
-        next_state = STATE_END;
+        next_state = STATE_INCR_TEST_ITERS;
+      end
+
+      STATE_INCR_TEST_ITERS:
+      begin
+        next_test_iter_cnt = reg_test_iter_cnt + 1;
+        next_state = STATE_CHECK_TEST_ITERS;
+      end
+
+      STATE_CHECK_TEST_ITERS:
+      begin
+        if (reg_test_iter_cnt == NUM_ITERATIONS) begin
+          next_state = STATE_END;
+        end else begin
+          next_state = STATE_START;
+        end
       end
 
       STATE_END:
