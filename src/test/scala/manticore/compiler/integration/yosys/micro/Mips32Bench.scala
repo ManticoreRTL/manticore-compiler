@@ -15,11 +15,11 @@ final class Mips32Bench extends MicroBench {
   case class TestConfig(bin: Seq[Int])
   override def benchName: String = "Single-Cycle Mips32"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/mips32.sv")
   )
 
-  override def hexSources: Seq[FileDescriptor] = Seq.empty
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
@@ -72,7 +72,7 @@ final class Mips32Bench extends MicroBench {
     )
   }
 
-  override def outputReference(config: TestConfig): ArrayBuffer[String] = {
+  override def outputReference(cfg: TestConfig): ArrayBuffer[String] = {
 
     val tempDir = Files.createTempDirectory("vref")
     val vfile   = tempDir.resolve("tb.sv")
@@ -80,7 +80,7 @@ final class Mips32Bench extends MicroBench {
     val writer = new PrintWriter(vfile.toFile())
 
     // Read each source and concatenate them together.
-    val tb = (verilogSources :+ testBench(config))
+    val tb = (verilogSources(cfg) :+ testBench(cfg))
       .map { res =>
         scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
       }

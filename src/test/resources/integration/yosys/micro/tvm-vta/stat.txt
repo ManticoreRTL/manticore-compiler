@@ -1,0 +1,32 @@
+# started on Fri Jul 15 15:09:22 2022
+
+
+ Performance counter stats for './obj_dir/VMain 1000000':
+
+         35,552.25 msec task-clock                #    1.000 CPUs utilized          
+                33      context-switches          #    0.001 K/sec                  
+                 3      cpu-migrations            #    0.000 K/sec                  
+               450      page-faults               #    0.013 K/sec                  
+   104,503,425,605      cycles                    #    2.939 GHz                      (30.74%)
+   132,615,703,648      instructions              #    1.27  insn per cycle           (38.44%)
+    10,636,059,765      branches                  #  299.167 M/sec                    (38.45%)
+        25,704,938      branch-misses             #    0.24% of all branches          (38.46%)
+    26,734,126,826      L1-dcache-loads           #  751.967 M/sec                    (38.44%)
+       628,907,243      L1-dcache-load-misses     #    2.35% of all L1-dcache hits    (15.39%)
+       396,240,264      LLC-loads                 #   11.145 M/sec                    (15.39%)
+           136,718      LLC-load-misses           #    0.03% of all LL-cache hits     (23.09%)
+   <not supported>      L1-icache-loads                                             
+     4,361,961,340      L1-icache-load-misses                                         (30.78%)
+    26,759,190,774      dTLB-loads                #  752.672 M/sec                    (30.76%)
+            66,885      dTLB-load-misses          #    0.00% of all dTLB cache hits   (15.38%)
+         9,747,006      iTLB-loads                #    0.274 M/sec                    (15.37%)
+           317,984      iTLB-load-misses          #    3.26% of all iTLB cache hits   (23.05%)
+   <not supported>      L1-dcache-prefetches                                        
+   <not supported>      L1-dcache-prefetch-misses                                   
+
+      35.554081546 seconds time elapsed
+
+      35.548834000 seconds user
+       0.004000000 seconds sys
+
+

@@ -82,11 +82,12 @@ final class MipsAluBench extends MicroBench {
   type TestConfig = Int
 
   def benchName = "MIPS ALU"
-  def verilogSources: Seq[FileDescriptor] = Seq(
+
+  def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/alu.sv")
   )
 
-  override def hexSources: Seq[FileDescriptor] = Seq.empty
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   def outputReference(testSize: Int) =
     ArrayBuffer[String](f"Finished without errors at ${testSize - 1}%5d")

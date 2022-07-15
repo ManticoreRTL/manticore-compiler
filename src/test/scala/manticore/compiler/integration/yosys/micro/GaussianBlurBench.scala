@@ -16,12 +16,12 @@ final class GaussianBlurBench extends MicroBench with CancelAfterFailure {
   case class TestConfig(replications: Int, loops: Int)
   override def benchName: String = "Gaussian Blur Kernel"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/stencil/Gaussian3x3Kernel.sv"),
     WithResource("integration/yosys/micro/stencil/TestBench.sv")
   )
 
-  override def hexSources: Seq[FileDescriptor] = Seq.empty
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
@@ -56,14 +56,14 @@ final class GaussianBlurBench extends MicroBench with CancelAfterFailure {
     )
   }
 
-  override def outputReference(config: TestConfig): ArrayBuffer[String] = {
+  override def outputReference(cfg: TestConfig): ArrayBuffer[String] = {
     val tempDir = Files.createTempDirectory("vref")
     val vfile   = tempDir.resolve("tb.sv")
 
     val writer = new PrintWriter(vfile.toFile())
 
     // Read each source and concatenate them together.
-    val tb = (verilogSources :+ testBench(config))
+    val tb = (verilogSources(cfg) :+ testBench(cfg))
       .map { res =>
         scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
       }

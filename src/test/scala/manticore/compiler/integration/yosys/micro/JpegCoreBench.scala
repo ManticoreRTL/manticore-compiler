@@ -17,7 +17,7 @@ final class JpegCoreBench extends MicroBench with CancelAfterFailure {
   type TestConfig = Int
   override def benchName: String = "jpeg_core"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/jpeg_core/src/jpeg_bitbuffer.v"),
     WithResource("integration/yosys/micro/jpeg_core/src/jpeg_core.v"),
     WithResource("integration/yosys/micro/jpeg_core/src/jpeg_dht.v"),
@@ -43,7 +43,7 @@ final class JpegCoreBench extends MicroBench with CancelAfterFailure {
     WithResource("integration/yosys/micro/jpeg_core/src/jpeg_output_y_ram.v"),
   )
 
-    override def hexSources: Seq[FileDescriptor] = Seq(
+    override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
       WithResource("integration/yosys/micro/jpeg_core/hex/red-100x75_data.hex"),
       WithResource("integration/yosys/micro/jpeg_core/hex/red-100x75_strb.hex"),
       WithResource("integration/yosys/micro/jpeg_core/hex/green-100x75_strb.hex"),
@@ -56,7 +56,7 @@ final class JpegCoreBench extends MicroBench with CancelAfterFailure {
     WithResource("integration/yosys/micro/jpeg_core/TestBench.sv")
   }
 
-  override def outputReference(config: TestConfig): ArrayBuffer[String] = {
+  override def outputReference(cfg: TestConfig): ArrayBuffer[String] = {
 
     val tempDir = Files.createTempDirectory("vref")
 
@@ -64,8 +64,8 @@ final class JpegCoreBench extends MicroBench with CancelAfterFailure {
       log_file = Some(tempDir.resolve("verilator.log").toFile())
     )
 
-    val vPaths = (verilogSources :+ testBench(config)).map(f => f.p)
-    val hPaths = hexSources.map(f => f.p)
+    val vPaths = (verilogSources(cfg) :+ testBench(cfg)).map(f => f.p)
+    val hPaths = hexSources(cfg).map(f => f.p)
     YosysUnitTest.verilate(vPaths, hPaths, timeOut)
   }
 
