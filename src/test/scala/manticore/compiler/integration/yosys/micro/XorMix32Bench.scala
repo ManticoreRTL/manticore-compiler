@@ -11,9 +11,11 @@ final class XorMix32Bench extends MicroBench {
   type TestConfig = Unit
   override def benchName: String = "XorMix32"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/xormix32.sv")
   )
+
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   override def testBench(cfg: TestConfig): FileDescriptor = {
 

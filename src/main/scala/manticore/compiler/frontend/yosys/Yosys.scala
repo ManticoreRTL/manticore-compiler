@@ -29,8 +29,11 @@ object Yosys {
     "manticore_check"
   ) runsAfter (Flatten, ManticoreDff, MemoryUnpack)
 
+  val Stat = YosysPassProxy("stat")
+
   val PreparationPasses =
-    (Hierarchy << "-auto-top" << "-check") andThen
+    (Hierarchy << "-check") andThen
+      (Hierarchy << "-auto-top") andThen
       Proc andThen
       Opt andThen
       (WReduce << "-memx")  andThen
@@ -46,7 +49,8 @@ object Yosys {
     ManticoreDff andThen
     ManticoreOptReplicate andThen
     ManticoreSubword andThen
-    ManticoreCheck
+    ManticoreCheck andThen
+    Stat
 
   val YosysDefaultPassAggregator =
     YosysVerilogReader andThen PreparationPasses andThen LoweringPasses

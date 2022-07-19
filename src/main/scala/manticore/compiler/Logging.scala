@@ -67,7 +67,8 @@ trait Logger {
   )(implicit phase_id: HasLoggerId): Unit
 
   def dumpArtifact(
-      file_name: String
+      file_name: String,
+      forceDump: Boolean = false
   )(gen: => String)(implicit phase_id: HasLoggerId): Unit
 
   def openFile(file_name: String)(implicit phase_id: HasLoggerId): File
@@ -210,11 +211,12 @@ object Logger {
     }
 
     def dumpArtifact(
-        file_name: String
+        file_name: String,
+        forceDump: Boolean = false
     )(gen: => String)(implicit phase_id: HasLoggerId): Unit = {
 
       dump_dir match {
-        case Some(dir) if dump_all =>
+        case Some(dir) if dump_all || forceDump =>
           Files.createDirectories(dir.toPath())
           val actualFileName = s"${countProgress()}_${phase_id}_${file_name}"
           info(s"Dumping ${dir.toPath.toAbsolutePath}/${actualFileName}")

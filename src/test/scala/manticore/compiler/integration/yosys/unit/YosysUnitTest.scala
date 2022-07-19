@@ -35,8 +35,12 @@ case class CodeResource(path: String) extends TestCode
 
 object YosysUnitTest {
 
-  def verilate(filenames: Seq[Path], timeOut: Int)(implicit
-      ctx: AssemblyContext
+  def verilate(
+    vFilenames: Seq[Path],
+    hFilenames: Seq[Path],
+    timeOut: Int
+  )(implicit
+    ctx: AssemblyContext
   ): ArrayBuffer[String] = {
     import scala.sys.process.{Process, ProcessLogger}
 
@@ -68,8 +72,23 @@ object YosysUnitTest {
     }
 
     val runDir = Files.createTempDirectory("verilator_rundir")
+
+    // Copy all files to the run directory.
+    val runDirFileNames = (vFilenames ++ hFilenames).map { filepath =>
+      val filename = filepath.toString.split("/").last
+      val targetPath = runDir.resolve(filename)
+      val content = scala.io.Source.fromFile(filepath.toFile()).getLines().mkString("\n")
+      val writer = new PrintWriter(targetPath.toFile())
+      writer.write(content)
+      writer.flush()
+      writer.close()
+      filepath -> targetPath
+    }.toMap
+
+    // We only call verilator on the verilog files. The hex files should be picked up automatically as
+    // they use relative names in the verilog files.
     val verilteCmd =
-      s"verilator $flags ${filenames.map(_.toAbsolutePath()).mkString(" ")} ${harnessPath}"
+      s"verilator $flags ${vFilenames.map(f => runDirFileNames(f).toAbsolutePath()).mkString(" ")} ${harnessPath}"
     ctx.logger.info(s"Running command:\n${verilteCmd}")
     val ret = Process(
       command = verilteCmd,
@@ -97,6 +116,12 @@ object YosysUnitTest {
       )
     }
     out
+  }
+
+  def verilate(filenames: Seq[Path], timeOut: Int)(implicit
+      ctx: AssemblyContext
+  ): ArrayBuffer[String] = {
+    verilate(filenames, Seq.empty, timeOut)
   }
 
   def compare(reference: ArrayBuffer[String], results: ArrayBuffer[String])(

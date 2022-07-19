@@ -17,9 +17,11 @@ final class PicoRv32ArrayBench extends MicroBench {
   }
   override def benchName: String = "Replicated Array of PicoRV32 processors"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/picorv32.v")
   )
+
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   override def testBench(cfg: TestConfig): FileDescriptor = {
 
@@ -137,15 +139,14 @@ final class PicoRv32ArrayBench extends MicroBench {
 
   override def timeOut: Int = 10000
 
-  override def outputReference(testSize: TestConfig): ArrayBuffer[String] = {
-
-    val tempDir = Files.createTempDirectory("picorv32_ref")
-    val vfile = tempDir.resolve("picorv32_tb.sv")
+  override def outputReference(cfg: TestConfig): ArrayBuffer[String] = {
+    val tempDir = Files.createTempDirectory("vref")
+    val vfile   = tempDir.resolve("tb.sv")
 
     val writer = new PrintWriter(vfile.toFile())
 
     // Read each source and concatenate them together.
-    val tb = (verilogSources :+ testBench(testSize))
+    val tb = (verilogSources(cfg) :+ testBench(cfg))
       .map { res =>
         scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
       }

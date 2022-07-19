@@ -12,9 +12,11 @@ final class SimpleArrayMultiplierBench extends MicroBench {
 
   override def benchName: String = "Simple array multiplier"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/array_mult.sv")
   )
+
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   override def testBench(config: TestConfig): FileDescriptor = {
 

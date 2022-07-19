@@ -16,24 +16,26 @@ final class TensilBench extends MicroBench with CancelAfterFailure {
   type TestConfig = Int
   override def benchName: String = "tensil"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/tensil/AXIWrapperTCU.v"),
     WithResource("integration/yosys/micro/tensil/bram_dp_128x64.v"),
     WithResource("integration/yosys/micro/axi4_full_slave/axi4_full_slave.sv")
   )
 
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
+
   override def testBench(cfg: TestConfig): FileDescriptor = {
     WithResource("integration/yosys/micro/tensil/tb_AXIWrapperTCU.sv")
   }
 
-  override def outputReference(config: TestConfig): ArrayBuffer[String] = {
-    val tempDir = Files.createTempDirectory("tensil_ref")
-    val vfile   = tempDir.resolve("tensil_tb.sv")
+  override def outputReference(cfg: TestConfig): ArrayBuffer[String] = {
+    val tempDir = Files.createTempDirectory("vref")
+    val vfile   = tempDir.resolve("tb.sv")
 
     val writer = new PrintWriter(vfile.toFile())
 
     // Read each source and concatenate them together.
-    val tb = (verilogSources :+ testBench(config))
+    val tb = (verilogSources(cfg) :+ testBench(cfg))
       .map { res =>
         scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
       }

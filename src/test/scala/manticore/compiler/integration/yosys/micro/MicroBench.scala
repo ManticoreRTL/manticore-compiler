@@ -46,6 +46,8 @@ import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.integration.yosys.unit.YosysUnitTest
 
 import scala.collection.mutable.ArrayBuffer
+import java.nio.file.Path
+import java.io.PrintWriter
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -58,7 +60,9 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
   val randGen = new scala.util.Random(7891268)
 
-  def verilogSources: Seq[FileDescriptor]
+  def verilogSources(cfg: TestConfig): Seq[FileDescriptor]
+
+  def hexSources(cfg: TestConfig): Seq[FileDescriptor]
 
   def testBench(cfg: TestConfig): FileDescriptor
 
@@ -66,18 +70,23 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
   def testCase(label: String, cfg: TestConfig): Unit = {
 
+    def readResource(res: FileDescriptor): String = {
+      scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
+    }
+
     s"$label" should "match expected results" in { fixture =>
+      // Read each verilog source and concatenate them together.
       val tbCode     = testBench(cfg)
-      val allSources = verilogSources :+ tbCode
-
-      // Read each source and concatenate them together.
-      val finalVerilog = allSources
-        .map { res =>
-          scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
-        }
-        .mkString("\n")
-
+      val allVerilog = verilogSources(cfg) :+ tbCode
+      val finalVerilog = allVerilog.map(res => readResource(res)).mkString("\n")
       val vFilePath = fixture.dump("benchmark.sv", finalVerilog)
+
+      // The hex files must be copied to the same directory as the single concatenated verilog file.
+      hexSources(cfg).foreach { res =>
+        val name = res.p.toString().split("/").last
+        val content = readResource(res)
+        fixture.dump(name, content)
+      }
 
       implicit val ctx = AssemblyContext(
         dump_all = false,
@@ -105,7 +114,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program1  = yosysCompiler(Seq(vFilePath))
       val reference = outputReference(cfg)
       val dumper    = { (n: String, t: String) => fixture.dump(n, t); () }
-      checkUnconstrained("yosys + ordering", program1, reference, dumper)
+      // checkUnconstrained("yosys + ordering", program1, reference, dumper)
       val program2 = CompilationStage.unconstrainedOptimizations(program1)
       // checkUnconstrained("prelim opts", program2, reference, dumper)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
@@ -119,10 +128,10 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program6 = CompilationStage.placedOptimizations(program5)
       // checkPlaced("placed opts", program6, reference, dumper)
       val program7 = CompilationStage.parallelization(program6)
-      checkPlaced("parallelization", program7, reference, dumper)
+      // checkPlaced("parallelization", program7, reference, dumper)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       val program8 = CompilationStage.customLuts(program7)
-      checkPlaced("custom luts", program8, reference, dumper)
+      // checkPlaced("custom luts", program8, reference, dumper)
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
       // temporary disabled until I fix the bugs with lowering passes :(
@@ -145,21 +154,33 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       if (ctx.logger.countErrors() > 0) {
         dumper("reference.txt", reference.mkString("\n"))
         dumper("results.txt", serialOut.mkString("\n"))
+        ctx.logger.flush()
         fail(s"Complete schedule: failed due to earlier errors")
       }
       if (!YosysUnitTest.compare(reference, serialOut)) {
-        ctx.logger.flush()
         dumper("reference.txt", reference.mkString("\n"))
         dumper("results.txt", serialOut.mkString("\n"))
+        ctx.logger.flush()
         fail(s"Complete schedule: results did not match the reference")
       }
       if (ctx.logger.countErrors() > 0) {
-        ctx.logger.flush()
         dumper("reference.txt", reference.mkString("\n"))
         dumper("results.txt", serialOut.mkString("\n"))
+        ctx.logger.flush()
         fail(s"Complete schedule: Errors occurred")
       }
     }
+  }
+
+  def copyResource(res: FileDescriptor, cwd: Path): Path = {
+    val name = res.p.toString().split("/").last
+    val targetPath = cwd.resolve(name)
+    val content = scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
+    val writer = new PrintWriter(targetPath.toFile())
+    writer.write(content)
+    writer.flush()
+    writer.close()
+    targetPath
   }
 
   def interpretUnconstrained(

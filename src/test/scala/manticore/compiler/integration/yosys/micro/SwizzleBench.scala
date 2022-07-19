@@ -11,9 +11,11 @@ final class SwizzleBench extends MicroBench {
   type TestConfig = Unit
   override def benchName: String = "swizzle"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/swizzle.sv")
   )
+
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   override def testBench(cfg: TestConfig): FileDescriptor = {
 

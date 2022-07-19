@@ -10,9 +10,11 @@ final class ManticoreBench extends MicroBench {
   type TestConfig = Unit
   override def benchName: String = "Manticore"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(cfg: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/Manticore.v")
   )
+
+  override def hexSources(cfg: TestConfig): Seq[FileDescriptor] = Seq.empty
 
   override def testBench(cfg: TestConfig): FileDescriptor =
     WithResource("integration/yosys/micro/Manticore_tb.sv")
