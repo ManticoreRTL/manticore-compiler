@@ -27,7 +27,7 @@ verilator_exists:
 
 verilate: $(VERILOG_SOURCES) verilator_exists
 	@echo "Verilating files $@"
-	$(VERILATOR) $(VERILATOR_FLAGS) $(VERILOG_SOURCES)
+	$(VERILATOR) $(VERILATOR_FLAGS) $(VERILOG_INCLUDES) $(VERILOG_SOURCES)
 
 # thyrio: $(VERILOG_SOURCES) thyrio_exists
 # 	thyrio_frontend -vlog_in $(VERILOG_SOURCES) -masm_out main.masm -top Main -no_techmap -dump -track $(TRACK_YML)
