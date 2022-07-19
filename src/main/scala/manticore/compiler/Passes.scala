@@ -22,6 +22,8 @@ import manticore.compiler.assembly.levels.placed.lowering.Lowering
 import manticore.compiler.assembly.levels.unconstrained._
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.levels.placed.parallel.AnalyticalPlacerTransform
+import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
+import manticore.compiler.assembly.levels.placed.CustomLutInsertion
 
 object ManticorePasses {
 
@@ -54,7 +56,7 @@ object ManticorePasses {
     AtomicInterpreter.withCondition(cond)
 
   val ExtractParallelism =
-    ProcessSplittingTransform andThen
+    BalancedSplitMergerTransform andThen
       PlacedNameChecker andThen
       AnalyticalPlacerTransform
 
@@ -66,6 +68,8 @@ object ManticorePasses {
       PlacedIRCommonSubExpressionElimination andThen
       PlacedIRDeadCodeElimination andThen
       ExtractParallelism andThen
+      CustomLutInsertion andThen
+      PlacedIRDeadCodeElimination andThen
       BackendLowerEnd
 
 }

@@ -909,13 +909,10 @@ module Datapath(
   input  [31:0] io_host_fromhost_bits,
   output [31:0] io_host_tohost,
   output        io_icache_req_valid,
-  output [31:0] io_icache_req_bits_addr,
   input         io_icache_resp_valid,
   input  [31:0] io_icache_resp_bits_data,
   output        io_dcache_abort,
   output        io_dcache_req_valid,
-  output [31:0] io_dcache_req_bits_addr,
-  output [31:0] io_dcache_req_bits_data,
   output [3:0]  io_dcache_req_bits_mask,
   input         io_dcache_resp_valid,
   input  [31:0] io_dcache_resp_bits_data,
@@ -1015,9 +1012,6 @@ module Datapath(
   wire [32:0] _npc_T_7 = pc + 33'h4; // @[Datapath.scala 69:47]
   wire [32:0] _npc_T_8 = io_ctrl_pc_sel == 2'h2 ? pc : _npc_T_7; // @[Datapath.scala 69:14]
   wire [32:0] _npc_T_9 = _npc_T_2 ? _npc_T_4 : _npc_T_8; // @[Datapath.scala 66:12]
-  wire [32:0] _npc_T_10 = _npc_T ? {{1'd0}, csr_io_epc} : _npc_T_9; // @[Datapath.scala 63:10]
-  wire [32:0] _npc_T_11 = csr_io_expt ? {{1'd0}, csr_io_evec} : _npc_T_10; // @[Datapath.scala 60:8]
-  wire [32:0] npc = stall ? pc : _npc_T_11; // @[Datapath.scala 57:16]
   wire  _io_icache_req_valid_T = ~stall; // @[Datapath.scala 80:26]
   wire [4:0] rs1_addr = fe_inst[19:15]; // @[Datapath.scala 96:25]
   wire [4:0] rs2_addr = fe_inst[24:20]; // @[Datapath.scala 97:25]
@@ -1028,17 +1022,6 @@ module Datapath(
   wire [31:0] rs1 = wb_sel == 2'h0 & rs1hazard ? ew_alu : regFile_io_rdata1; // @[Datapath.scala 109:16]
   wire [31:0] rs2 = _rs1_T & rs2hazard ? ew_alu : regFile_io_rdata2; // @[Datapath.scala 110:16]
   wire [32:0] _alu_io_A_T_1 = io_ctrl_A_sel ? {{1'd0}, rs1} : fe_pc; // @[Datapath.scala 113:18]
-  wire [31:0] _daddr_T = stall ? ew_alu : alu_io_sum; // @[Datapath.scala 123:18]
-  wire [31:0] _daddr_T_1 = {{2'd0}, _daddr_T[31:2]}; // @[Datapath.scala 123:46]
-  wire [33:0] _GEN_26 = {_daddr_T_1, 2'h0}; // @[Datapath.scala 123:53]
-  wire [34:0] daddr = {{1'd0}, _GEN_26}; // @[Datapath.scala 123:53]
-  wire [4:0] _GEN_27 = {alu_io_sum[1], 4'h0}; // @[Datapath.scala 124:32]
-  wire [7:0] _woffset_T_1 = {{3'd0}, _GEN_27}; // @[Datapath.scala 124:32]
-  wire [3:0] _woffset_T_3 = {alu_io_sum[0], 3'h0}; // @[Datapath.scala 124:64]
-  wire [7:0] _GEN_28 = {{4'd0}, _woffset_T_3}; // @[Datapath.scala 124:47]
-  wire [7:0] woffset = _woffset_T_1 | _GEN_28; // @[Datapath.scala 124:47]
-  wire [286:0] _GEN_0 = {{255'd0}, rs2}; // @[Datapath.scala 127:34]
-  wire [286:0] _io_dcache_req_bits_data_T = _GEN_0 << woffset; // @[Datapath.scala 127:34]
   wire [1:0] _io_dcache_req_bits_mask_T = stall ? st_type : io_ctrl_st_type; // @[Datapath.scala 129:8]
   wire [4:0] _io_dcache_req_bits_mask_T_2 = 5'h3 << alu_io_sum[1:0]; // @[Datapath.scala 131:47]
   wire [3:0] _io_dcache_req_bits_mask_T_4 = 4'h1 << alu_io_sum[1:0]; // @[Datapath.scala 131:86]
@@ -1121,11 +1104,8 @@ module Datapath(
   );
   assign io_host_tohost = csr_io_host_tohost; // @[Datapath.scala 181:11]
   assign io_icache_req_valid = ~stall; // @[Datapath.scala 80:26]
-  assign io_icache_req_bits_addr = npc[31:0]; // @[Datapath.scala 77:27]
   assign io_dcache_abort = csr_io_expt; // @[Datapath.scala 192:19]
   assign io_dcache_req_valid = _io_icache_req_valid_T & (|io_ctrl_st_type | |io_ctrl_ld_type); // @[Datapath.scala 125:33]
-  assign io_dcache_req_bits_addr = daddr[31:0]; // @[Datapath.scala 126:27]
-  assign io_dcache_req_bits_data = _io_dcache_req_bits_data_T[31:0]; // @[Datapath.scala 127:27]
   assign io_dcache_req_bits_mask = _io_dcache_req_bits_mask_T_10[3:0]; // @[Datapath.scala 128:27]
   assign io_ctrl_inst = fe_inst; // @[Datapath.scala 92:16]
   assign csr_clock = clock;
@@ -1818,13 +1798,10 @@ module Core(
   input  [31:0] io_host_fromhost_bits,
   output [31:0] io_host_tohost,
   output        io_icache_req_valid,
-  output [31:0] io_icache_req_bits_addr,
   input         io_icache_resp_valid,
   input  [31:0] io_icache_resp_bits_data,
   output        io_dcache_abort,
   output        io_dcache_req_valid,
-  output [31:0] io_dcache_req_bits_addr,
-  output [31:0] io_dcache_req_bits_data,
   output [3:0]  io_dcache_req_bits_mask,
   input         io_dcache_resp_valid,
   input  [31:0] io_dcache_resp_bits_data
@@ -1835,13 +1812,10 @@ module Core(
   wire [31:0] dpath_io_host_fromhost_bits; // @[Core.scala 27:21]
   wire [31:0] dpath_io_host_tohost; // @[Core.scala 27:21]
   wire  dpath_io_icache_req_valid; // @[Core.scala 27:21]
-  wire [31:0] dpath_io_icache_req_bits_addr; // @[Core.scala 27:21]
   wire  dpath_io_icache_resp_valid; // @[Core.scala 27:21]
   wire [31:0] dpath_io_icache_resp_bits_data; // @[Core.scala 27:21]
   wire  dpath_io_dcache_abort; // @[Core.scala 27:21]
   wire  dpath_io_dcache_req_valid; // @[Core.scala 27:21]
-  wire [31:0] dpath_io_dcache_req_bits_addr; // @[Core.scala 27:21]
-  wire [31:0] dpath_io_dcache_req_bits_data; // @[Core.scala 27:21]
   wire [3:0] dpath_io_dcache_req_bits_mask; // @[Core.scala 27:21]
   wire  dpath_io_dcache_resp_valid; // @[Core.scala 27:21]
   wire [31:0] dpath_io_dcache_resp_bits_data; // @[Core.scala 27:21]
@@ -1880,13 +1854,10 @@ module Core(
     .io_host_fromhost_bits(dpath_io_host_fromhost_bits),
     .io_host_tohost(dpath_io_host_tohost),
     .io_icache_req_valid(dpath_io_icache_req_valid),
-    .io_icache_req_bits_addr(dpath_io_icache_req_bits_addr),
     .io_icache_resp_valid(dpath_io_icache_resp_valid),
     .io_icache_resp_bits_data(dpath_io_icache_resp_bits_data),
     .io_dcache_abort(dpath_io_dcache_abort),
     .io_dcache_req_valid(dpath_io_dcache_req_valid),
-    .io_dcache_req_bits_addr(dpath_io_dcache_req_bits_addr),
-    .io_dcache_req_bits_data(dpath_io_dcache_req_bits_data),
     .io_dcache_req_bits_mask(dpath_io_dcache_req_bits_mask),
     .io_dcache_resp_valid(dpath_io_dcache_resp_valid),
     .io_dcache_resp_bits_data(dpath_io_dcache_resp_bits_data),
@@ -1923,11 +1894,8 @@ module Core(
   );
   assign io_host_tohost = dpath_io_host_tohost; // @[Core.scala 30:11]
   assign io_icache_req_valid = dpath_io_icache_req_valid; // @[Core.scala 31:19]
-  assign io_icache_req_bits_addr = dpath_io_icache_req_bits_addr; // @[Core.scala 31:19]
   assign io_dcache_abort = dpath_io_dcache_abort; // @[Core.scala 32:19]
   assign io_dcache_req_valid = dpath_io_dcache_req_valid; // @[Core.scala 32:19]
-  assign io_dcache_req_bits_addr = dpath_io_dcache_req_bits_addr; // @[Core.scala 32:19]
-  assign io_dcache_req_bits_data = dpath_io_dcache_req_bits_data; // @[Core.scala 32:19]
   assign io_dcache_req_bits_mask = dpath_io_dcache_req_bits_mask; // @[Core.scala 32:19]
   assign dpath_clock = clock;
   assign dpath_reset = reset;
@@ -1952,681 +1920,72 @@ module Core(
   assign dpath_io_ctrl_illegal = ctrl_io_illegal; // @[Core.scala 33:17]
   assign ctrl_io_inst = dpath_io_ctrl_inst; // @[Core.scala 33:17]
 endmodule
-module Cache(
+module NoCache(
   input         clock,
   input         reset,
   input         io_cpu_abort,
   input         io_cpu_req_valid,
-  input  [31:0] io_cpu_req_bits_addr,
-  input  [31:0] io_cpu_req_bits_data,
   input  [3:0]  io_cpu_req_bits_mask,
   output        io_cpu_resp_valid,
   output [31:0] io_cpu_resp_bits_data,
   input         io_nasti_aw_ready,
   output        io_nasti_aw_valid,
-  output [31:0] io_nasti_aw_bits_addr,
   input         io_nasti_w_ready,
   output        io_nasti_w_valid,
-  output [63:0] io_nasti_w_bits_data,
-  output        io_nasti_w_bits_last,
   output        io_nasti_b_ready,
   input         io_nasti_b_valid,
   input         io_nasti_ar_ready,
   output        io_nasti_ar_valid,
-  output [31:0] io_nasti_ar_bits_addr,
   output        io_nasti_r_ready,
   input         io_nasti_r_valid,
   input  [63:0] io_nasti_r_bits_data
 );
-`ifdef RANDOMIZE_MEM_INIT
-  reg [31:0] _RAND_0;
-  reg [31:0] _RAND_3;
-  reg [31:0] _RAND_6;
-  reg [31:0] _RAND_9;
-  reg [31:0] _RAND_12;
-  reg [31:0] _RAND_15;
-  reg [31:0] _RAND_18;
-  reg [31:0] _RAND_21;
-  reg [31:0] _RAND_24;
-  reg [31:0] _RAND_27;
-  reg [31:0] _RAND_30;
-  reg [31:0] _RAND_33;
-  reg [31:0] _RAND_36;
-  reg [31:0] _RAND_39;
-  reg [31:0] _RAND_42;
-  reg [31:0] _RAND_45;
-  reg [31:0] _RAND_48;
-`endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
-  reg [31:0] _RAND_1;
-  reg [31:0] _RAND_2;
-  reg [31:0] _RAND_4;
-  reg [31:0] _RAND_5;
-  reg [31:0] _RAND_7;
-  reg [31:0] _RAND_8;
-  reg [31:0] _RAND_10;
-  reg [31:0] _RAND_11;
-  reg [31:0] _RAND_13;
-  reg [31:0] _RAND_14;
-  reg [31:0] _RAND_16;
-  reg [31:0] _RAND_17;
-  reg [31:0] _RAND_19;
-  reg [31:0] _RAND_20;
-  reg [31:0] _RAND_22;
-  reg [31:0] _RAND_23;
-  reg [31:0] _RAND_25;
-  reg [31:0] _RAND_26;
-  reg [31:0] _RAND_28;
-  reg [31:0] _RAND_29;
-  reg [31:0] _RAND_31;
-  reg [31:0] _RAND_32;
-  reg [31:0] _RAND_34;
-  reg [31:0] _RAND_35;
-  reg [31:0] _RAND_37;
-  reg [31:0] _RAND_38;
-  reg [31:0] _RAND_40;
-  reg [31:0] _RAND_41;
-  reg [31:0] _RAND_43;
-  reg [31:0] _RAND_44;
-  reg [31:0] _RAND_46;
-  reg [31:0] _RAND_47;
-  reg [31:0] _RAND_49;
-  reg [31:0] _RAND_50;
-  reg [31:0] _RAND_51;
-  reg [255:0] _RAND_52;
-  reg [255:0] _RAND_53;
-  reg [31:0] _RAND_54;
-  reg [31:0] _RAND_55;
-  reg [31:0] _RAND_56;
-  reg [31:0] _RAND_57;
-  reg [31:0] _RAND_58;
-  reg [31:0] _RAND_59;
-  reg [31:0] _RAND_60;
-  reg [127:0] _RAND_61;
-  reg [63:0] _RAND_62;
-  reg [63:0] _RAND_63;
+  reg [31:0] _RAND_0;
+  reg [63:0] _RAND_1;
 `endif // RANDOMIZE_REG_INIT
-  reg [19:0] metaMem_tag [0:255]; // @[Cache.scala 62:28]
-  wire  metaMem_tag_rmeta_en; // @[Cache.scala 62:28]
-  wire [7:0] metaMem_tag_rmeta_addr; // @[Cache.scala 62:28]
-  wire [19:0] metaMem_tag_rmeta_data; // @[Cache.scala 62:28]
-  wire [19:0] metaMem_tag_MPORT_data; // @[Cache.scala 62:28]
-  wire [7:0] metaMem_tag_MPORT_addr; // @[Cache.scala 62:28]
-  wire  metaMem_tag_MPORT_mask; // @[Cache.scala 62:28]
-  wire  metaMem_tag_MPORT_en; // @[Cache.scala 62:28]
-  reg  metaMem_tag_rmeta_en_pipe_0;
-  reg [7:0] metaMem_tag_rmeta_addr_pipe_0;
-  reg [7:0] dataMem_0_0 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_0_0_rdata_MPORT_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_0_rdata_MPORT_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_0_rdata_MPORT_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_0_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_0_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire  dataMem_0_0_MPORT_1_mask; // @[Cache.scala 63:45]
-  wire  dataMem_0_0_MPORT_1_en; // @[Cache.scala 63:45]
-  reg  dataMem_0_0_rdata_MPORT_en_pipe_0;
-  reg [7:0] dataMem_0_0_rdata_MPORT_addr_pipe_0;
-  reg [7:0] dataMem_0_1 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_0_1_rdata_MPORT_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_1_rdata_MPORT_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_1_rdata_MPORT_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_1_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_1_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire  dataMem_0_1_MPORT_1_mask; // @[Cache.scala 63:45]
-  wire  dataMem_0_1_MPORT_1_en; // @[Cache.scala 63:45]
-  reg  dataMem_0_1_rdata_MPORT_en_pipe_0;
-  reg [7:0] dataMem_0_1_rdata_MPORT_addr_pipe_0;
-  reg [7:0] dataMem_0_2 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_0_2_rdata_MPORT_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_2_rdata_MPORT_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_2_rdata_MPORT_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_2_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_2_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire  dataMem_0_2_MPORT_1_mask; // @[Cache.scala 63:45]
-  wire  dataMem_0_2_MPORT_1_en; // @[Cache.scala 63:45]
-  reg  dataMem_0_2_rdata_MPORT_en_pipe_0;
-  reg [7:0] dataMem_0_2_rdata_MPORT_addr_pipe_0;
-  reg [7:0] dataMem_0_3 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_0_3_rdata_MPORT_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_3_rdata_MPORT_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_3_rdata_MPORT_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_3_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_0_3_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire  dataMem_0_3_MPORT_1_mask; // @[Cache.scala 63:45]
-  wire  dataMem_0_3_MPORT_1_en; // @[Cache.scala 63:45]
-  reg  dataMem_0_3_rdata_MPORT_en_pipe_0;
-  reg [7:0] dataMem_0_3_rdata_MPORT_addr_pipe_0;
-  reg [7:0] dataMem_1_0 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_1_0_rdata_MPORT_1_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_0_rdata_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_0_rdata_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_0_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_0_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire  dataMem_1_0_MPORT_2_mask; // @[Cache.scala 63:45]
-  wire  dataMem_1_0_MPORT_2_en; // @[Cache.scala 63:45]
-  reg  dataMem_1_0_rdata_MPORT_1_en_pipe_0;
-  reg [7:0] dataMem_1_0_rdata_MPORT_1_addr_pipe_0;
-  reg [7:0] dataMem_1_1 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_1_1_rdata_MPORT_1_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_1_rdata_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_1_rdata_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_1_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_1_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire  dataMem_1_1_MPORT_2_mask; // @[Cache.scala 63:45]
-  wire  dataMem_1_1_MPORT_2_en; // @[Cache.scala 63:45]
-  reg  dataMem_1_1_rdata_MPORT_1_en_pipe_0;
-  reg [7:0] dataMem_1_1_rdata_MPORT_1_addr_pipe_0;
-  reg [7:0] dataMem_1_2 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_1_2_rdata_MPORT_1_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_2_rdata_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_2_rdata_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_2_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_2_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire  dataMem_1_2_MPORT_2_mask; // @[Cache.scala 63:45]
-  wire  dataMem_1_2_MPORT_2_en; // @[Cache.scala 63:45]
-  reg  dataMem_1_2_rdata_MPORT_1_en_pipe_0;
-  reg [7:0] dataMem_1_2_rdata_MPORT_1_addr_pipe_0;
-  reg [7:0] dataMem_1_3 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_1_3_rdata_MPORT_1_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_3_rdata_MPORT_1_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_3_rdata_MPORT_1_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_3_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_1_3_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire  dataMem_1_3_MPORT_2_mask; // @[Cache.scala 63:45]
-  wire  dataMem_1_3_MPORT_2_en; // @[Cache.scala 63:45]
-  reg  dataMem_1_3_rdata_MPORT_1_en_pipe_0;
-  reg [7:0] dataMem_1_3_rdata_MPORT_1_addr_pipe_0;
-  reg [7:0] dataMem_2_0 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_2_0_rdata_MPORT_2_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_0_rdata_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_0_rdata_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_0_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_0_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire  dataMem_2_0_MPORT_3_mask; // @[Cache.scala 63:45]
-  wire  dataMem_2_0_MPORT_3_en; // @[Cache.scala 63:45]
-  reg  dataMem_2_0_rdata_MPORT_2_en_pipe_0;
-  reg [7:0] dataMem_2_0_rdata_MPORT_2_addr_pipe_0;
-  reg [7:0] dataMem_2_1 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_2_1_rdata_MPORT_2_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_1_rdata_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_1_rdata_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_1_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_1_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire  dataMem_2_1_MPORT_3_mask; // @[Cache.scala 63:45]
-  wire  dataMem_2_1_MPORT_3_en; // @[Cache.scala 63:45]
-  reg  dataMem_2_1_rdata_MPORT_2_en_pipe_0;
-  reg [7:0] dataMem_2_1_rdata_MPORT_2_addr_pipe_0;
-  reg [7:0] dataMem_2_2 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_2_2_rdata_MPORT_2_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_2_rdata_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_2_rdata_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_2_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_2_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire  dataMem_2_2_MPORT_3_mask; // @[Cache.scala 63:45]
-  wire  dataMem_2_2_MPORT_3_en; // @[Cache.scala 63:45]
-  reg  dataMem_2_2_rdata_MPORT_2_en_pipe_0;
-  reg [7:0] dataMem_2_2_rdata_MPORT_2_addr_pipe_0;
-  reg [7:0] dataMem_2_3 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_2_3_rdata_MPORT_2_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_3_rdata_MPORT_2_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_3_rdata_MPORT_2_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_3_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_2_3_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire  dataMem_2_3_MPORT_3_mask; // @[Cache.scala 63:45]
-  wire  dataMem_2_3_MPORT_3_en; // @[Cache.scala 63:45]
-  reg  dataMem_2_3_rdata_MPORT_2_en_pipe_0;
-  reg [7:0] dataMem_2_3_rdata_MPORT_2_addr_pipe_0;
-  reg [7:0] dataMem_3_0 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_3_0_rdata_MPORT_3_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_0_rdata_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_0_rdata_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_0_MPORT_4_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_0_MPORT_4_addr; // @[Cache.scala 63:45]
-  wire  dataMem_3_0_MPORT_4_mask; // @[Cache.scala 63:45]
-  wire  dataMem_3_0_MPORT_4_en; // @[Cache.scala 63:45]
-  reg  dataMem_3_0_rdata_MPORT_3_en_pipe_0;
-  reg [7:0] dataMem_3_0_rdata_MPORT_3_addr_pipe_0;
-  reg [7:0] dataMem_3_1 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_3_1_rdata_MPORT_3_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_1_rdata_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_1_rdata_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_1_MPORT_4_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_1_MPORT_4_addr; // @[Cache.scala 63:45]
-  wire  dataMem_3_1_MPORT_4_mask; // @[Cache.scala 63:45]
-  wire  dataMem_3_1_MPORT_4_en; // @[Cache.scala 63:45]
-  reg  dataMem_3_1_rdata_MPORT_3_en_pipe_0;
-  reg [7:0] dataMem_3_1_rdata_MPORT_3_addr_pipe_0;
-  reg [7:0] dataMem_3_2 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_3_2_rdata_MPORT_3_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_2_rdata_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_2_rdata_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_2_MPORT_4_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_2_MPORT_4_addr; // @[Cache.scala 63:45]
-  wire  dataMem_3_2_MPORT_4_mask; // @[Cache.scala 63:45]
-  wire  dataMem_3_2_MPORT_4_en; // @[Cache.scala 63:45]
-  reg  dataMem_3_2_rdata_MPORT_3_en_pipe_0;
-  reg [7:0] dataMem_3_2_rdata_MPORT_3_addr_pipe_0;
-  reg [7:0] dataMem_3_3 [0:255]; // @[Cache.scala 63:45]
-  wire  dataMem_3_3_rdata_MPORT_3_en; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_3_rdata_MPORT_3_addr; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_3_rdata_MPORT_3_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_3_MPORT_4_data; // @[Cache.scala 63:45]
-  wire [7:0] dataMem_3_3_MPORT_4_addr; // @[Cache.scala 63:45]
-  wire  dataMem_3_3_MPORT_4_mask; // @[Cache.scala 63:45]
-  wire  dataMem_3_3_MPORT_4_en; // @[Cache.scala 63:45]
-  reg  dataMem_3_3_rdata_MPORT_3_en_pipe_0;
-  reg [7:0] dataMem_3_3_rdata_MPORT_3_addr_pipe_0;
-  reg [2:0] state; // @[Cache.scala 58:22]
-  reg [255:0] v; // @[Cache.scala 60:18]
-  reg [255:0] d; // @[Cache.scala 61:18]
-  reg [31:0] addr_reg; // @[Cache.scala 65:21]
-  reg [31:0] cpu_data; // @[Cache.scala 66:21]
-  reg [3:0] cpu_mask; // @[Cache.scala 67:21]
-  wire  _T = io_nasti_r_ready & io_nasti_r_valid; // @[Decoupled.scala 50:35]
-  reg  read_count; // @[Counter.scala 62:40]
-  wire  read_wrap_out = _T & read_count; // @[Counter.scala 120:{16,23}]
-  wire  _T_1 = io_nasti_w_ready & io_nasti_w_valid; // @[Decoupled.scala 50:35]
-  reg  write_count; // @[Counter.scala 62:40]
-  wire  write_wrap_out = _T_1 & write_count; // @[Counter.scala 120:{16,23}]
-  wire  is_idle = state == 3'h0; // @[Cache.scala 74:23]
-  wire  is_read = state == 3'h1; // @[Cache.scala 75:23]
-  wire  is_write = state == 3'h2; // @[Cache.scala 76:24]
-  wire  is_alloc = state == 3'h6 & read_wrap_out; // @[Cache.scala 77:36]
-  reg  is_alloc_reg; // @[Cache.scala 78:29]
-  wire [7:0] idx_reg = addr_reg[11:4]; // @[Cache.scala 88:25]
-  wire [255:0] _hit_T = v >> idx_reg; // @[Cache.scala 97:11]
-  wire [19:0] tag_reg = addr_reg[31:12]; // @[Cache.scala 87:25]
-  wire  hit = _hit_T[0] & metaMem_tag_rmeta_data == tag_reg; // @[Cache.scala 97:21]
-  wire  _wen_T = hit | is_alloc_reg; // @[Cache.scala 81:30]
-  wire  _wen_T_3 = is_write & (hit | is_alloc_reg) & ~io_cpu_abort; // @[Cache.scala 81:47]
-  wire  wen = is_write & (hit | is_alloc_reg) & ~io_cpu_abort | is_alloc; // @[Cache.scala 81:64]
-  wire  _ren_T_2 = ~wen & (is_idle | is_read); // @[Cache.scala 82:18]
-  reg  ren_reg; // @[Cache.scala 83:24]
-  wire [1:0] off_reg = addr_reg[3:2]; // @[Cache.scala 89:25]
-  wire [63:0] rdata_lo_4 = {dataMem_1_3_rdata_MPORT_1_data,dataMem_1_2_rdata_MPORT_1_data,dataMem_1_1_rdata_MPORT_1_data
-    ,dataMem_1_0_rdata_MPORT_1_data,dataMem_0_3_rdata_MPORT_data,dataMem_0_2_rdata_MPORT_data,
-    dataMem_0_1_rdata_MPORT_data,dataMem_0_0_rdata_MPORT_data}; // @[Cat.scala 31:58]
-  wire [127:0] rdata = {dataMem_3_3_rdata_MPORT_3_data,dataMem_3_2_rdata_MPORT_3_data,dataMem_3_1_rdata_MPORT_3_data,
-    dataMem_3_0_rdata_MPORT_3_data,dataMem_2_3_rdata_MPORT_2_data,dataMem_2_2_rdata_MPORT_2_data,
-    dataMem_2_1_rdata_MPORT_2_data,dataMem_2_0_rdata_MPORT_2_data,rdata_lo_4}; // @[Cat.scala 31:58]
-  reg [127:0] rdata_buf; // @[Reg.scala 16:16]
-  wire [127:0] _GEN_12 = ren_reg ? rdata : rdata_buf; // @[Reg.scala 16:16 17:{18,22}]
-  reg [63:0] refill_buf_0; // @[Cache.scala 94:23]
-  reg [63:0] refill_buf_1; // @[Cache.scala 94:23]
-  wire [127:0] _read_T = {refill_buf_1,refill_buf_0}; // @[Cache.scala 95:43]
-  wire [127:0] read = is_alloc_reg ? _read_T : _GEN_12; // @[Cache.scala 95:17]
-  wire [31:0] _GEN_14 = 2'h1 == off_reg ? read[63:32] : read[31:0]; // @[Cache.scala 100:{25,25}]
-  wire [31:0] _GEN_15 = 2'h2 == off_reg ? read[95:64] : _GEN_14; // @[Cache.scala 100:{25,25}]
-  wire  _io_cpu_resp_valid_T_2 = |cpu_mask; // @[Cache.scala 101:79]
-  wire  _wmask_T = ~is_alloc; // @[Cache.scala 112:19]
-  wire [3:0] _wmask_T_1 = {off_reg,2'h0}; // @[Cat.scala 31:58]
-  wire [18:0] _GEN_1 = {{15'd0}, cpu_mask}; // @[Cache.scala 112:40]
-  wire [18:0] _wmask_T_2 = _GEN_1 << _wmask_T_1; // @[Cache.scala 112:40]
-  wire [19:0] _wmask_T_3 = {1'b0,$signed(_wmask_T_2)}; // @[Cache.scala 112:80]
-  wire [19:0] wmask = ~is_alloc ? $signed(_wmask_T_3) : $signed(-20'sh1); // @[Cache.scala 112:18]
-  wire [127:0] _wdata_T_2 = {cpu_data,cpu_data,cpu_data,cpu_data}; // @[Cat.scala 31:58]
-  wire [127:0] _wdata_T_3 = {io_nasti_r_bits_data,refill_buf_0}; // @[Cat.scala 31:58]
-  wire [127:0] wdata = _wmask_T ? _wdata_T_2 : _wdata_T_3; // @[Cache.scala 113:18]
-  wire [255:0] _v_T = 256'h1 << idx_reg; // @[Cache.scala 120:18]
-  wire [255:0] _v_T_1 = v | _v_T; // @[Cache.scala 120:18]
-  wire [255:0] _d_T_2 = d | _v_T; // @[Cache.scala 121:18]
-  wire [255:0] _d_T_3 = ~d; // @[Cache.scala 121:18]
-  wire [255:0] _d_T_4 = _d_T_3 | _v_T; // @[Cache.scala 121:18]
-  wire [255:0] _d_T_5 = ~_d_T_4; // @[Cache.scala 121:18]
-  wire [27:0] _io_nasti_ar_bits_T = {tag_reg,idx_reg}; // @[Cat.scala 31:58]
-  wire [31:0] _GEN_146 = {_io_nasti_ar_bits_T, 4'h0}; // @[Cache.scala 135:28]
-  wire [34:0] _io_nasti_ar_bits_T_1 = {{3'd0}, _GEN_146}; // @[Cache.scala 135:28]
-  wire [27:0] _io_nasti_aw_bits_T = {metaMem_tag_rmeta_data,idx_reg}; // @[Cat.scala 31:58]
-  wire [31:0] _GEN_147 = {_io_nasti_aw_bits_T, 4'h0}; // @[Cache.scala 149:30]
-  wire [34:0] _io_nasti_aw_bits_T_1 = {{3'd0}, _GEN_147}; // @[Cache.scala 149:30]
-  wire [255:0] _is_dirty_T_2 = d >> idx_reg; // @[Cache.scala 165:33]
-  wire  is_dirty = _hit_T[0] & _is_dirty_T_2[0]; // @[Cache.scala 165:29]
-  wire [1:0] _state_T_1 = |io_cpu_req_bits_mask ? 2'h2 : 2'h1; // @[Cache.scala 169:21]
-  wire [1:0] _GEN_106 = io_cpu_req_valid ? _state_T_1 : 2'h0; // @[Cache.scala 174:32 175:17 177:17]
-  wire  _io_nasti_ar_valid_T = ~is_dirty; // @[Cache.scala 181:30]
-  wire  _T_29 = io_nasti_aw_ready & io_nasti_aw_valid; // @[Decoupled.scala 50:35]
-  wire  _T_30 = io_nasti_ar_ready & io_nasti_ar_valid; // @[Decoupled.scala 50:35]
-  wire [2:0] _GEN_107 = _T_30 ? 3'h6 : state; // @[Cache.scala 184:38 185:17 58:22]
-  wire [2:0] _GEN_108 = _T_29 ? 3'h3 : _GEN_107; // @[Cache.scala 182:32 183:17]
-  wire  _GEN_110 = hit ? 1'h0 : is_dirty; // @[Cache.scala 173:17 153:21 180:27]
-  wire  _GEN_111 = hit ? 1'h0 : ~is_dirty; // @[Cache.scala 173:17 139:21 181:27]
-  wire [2:0] _GEN_114 = _wen_T | io_cpu_abort ? 3'h0 : _GEN_108; // @[Cache.scala 190:49 191:15]
-  wire  _GEN_115 = _wen_T | io_cpu_abort ? 1'h0 : is_dirty; // @[Cache.scala 153:21 190:49 193:27]
-  wire  _GEN_116 = _wen_T | io_cpu_abort ? 1'h0 : _io_nasti_ar_valid_T; // @[Cache.scala 139:21 190:49 194:27]
-  wire [2:0] _GEN_117 = write_wrap_out ? 3'h4 : state; // @[Cache.scala 204:28 205:15 58:22]
-  wire  _T_44 = io_nasti_b_ready & io_nasti_b_valid; // @[Decoupled.scala 50:35]
-  wire [2:0] _GEN_118 = _T_44 ? 3'h5 : state; // @[Cache.scala 210:29 211:15 58:22]
-  wire [1:0] _state_T_5 = _io_cpu_resp_valid_T_2 ? 2'h2 : 2'h0; // @[Cache.scala 222:21]
-  wire [2:0] _GEN_120 = read_wrap_out ? {{1'd0}, _state_T_5} : state; // @[Cache.scala 221:27 222:15 58:22]
-  wire [2:0] _GEN_121 = 3'h6 == state ? _GEN_120 : state; // @[Cache.scala 166:17 58:22]
-  wire [2:0] _GEN_123 = 3'h5 == state ? _GEN_107 : _GEN_121; // @[Cache.scala 166:17]
-  wire [2:0] _GEN_125 = 3'h4 == state ? _GEN_118 : _GEN_123; // @[Cache.scala 166:17]
-  wire  _GEN_126 = 3'h4 == state ? 1'h0 : 3'h5 == state; // @[Cache.scala 166:17 139:21]
-  wire [2:0] _GEN_128 = 3'h3 == state ? _GEN_117 : _GEN_125; // @[Cache.scala 166:17]
-  wire  _GEN_129 = 3'h3 == state ? 1'h0 : 3'h4 == state; // @[Cache.scala 166:17 162:20]
-  wire  _GEN_130 = 3'h3 == state ? 1'h0 : _GEN_126; // @[Cache.scala 166:17 139:21]
-  wire  _GEN_132 = 3'h2 == state & _GEN_115; // @[Cache.scala 166:17 153:21]
-  wire  _GEN_133 = 3'h2 == state ? _GEN_116 : _GEN_130; // @[Cache.scala 166:17]
-  wire  _GEN_134 = 3'h2 == state ? 1'h0 : 3'h3 == state; // @[Cache.scala 166:17 160:20]
-  wire  _GEN_135 = 3'h2 == state ? 1'h0 : _GEN_129; // @[Cache.scala 166:17 162:20]
-  wire  _GEN_137 = 3'h1 == state ? _GEN_110 : _GEN_132; // @[Cache.scala 166:17]
-  wire  _GEN_138 = 3'h1 == state ? _GEN_111 : _GEN_133; // @[Cache.scala 166:17]
-  wire  _GEN_139 = 3'h1 == state ? 1'h0 : _GEN_134; // @[Cache.scala 166:17 160:20]
-  wire  _GEN_140 = 3'h1 == state ? 1'h0 : _GEN_135; // @[Cache.scala 166:17 162:20]
-  assign metaMem_tag_rmeta_en = metaMem_tag_rmeta_en_pipe_0;
-  assign metaMem_tag_rmeta_addr = metaMem_tag_rmeta_addr_pipe_0;
-  assign metaMem_tag_rmeta_data = metaMem_tag[metaMem_tag_rmeta_addr]; // @[Cache.scala 62:28]
-  assign metaMem_tag_MPORT_data = addr_reg[31:12];
-  assign metaMem_tag_MPORT_addr = addr_reg[11:4];
-  assign metaMem_tag_MPORT_mask = 1'h1;
-  assign metaMem_tag_MPORT_en = wen & is_alloc;
-  assign dataMem_0_0_rdata_MPORT_en = dataMem_0_0_rdata_MPORT_en_pipe_0;
-  assign dataMem_0_0_rdata_MPORT_addr = dataMem_0_0_rdata_MPORT_addr_pipe_0;
-  assign dataMem_0_0_rdata_MPORT_data = dataMem_0_0[dataMem_0_0_rdata_MPORT_addr]; // @[Cache.scala 63:45]
-  assign dataMem_0_0_MPORT_1_data = wdata[7:0];
-  assign dataMem_0_0_MPORT_1_addr = addr_reg[11:4];
-  assign dataMem_0_0_MPORT_1_mask = wmask[0];
-  assign dataMem_0_0_MPORT_1_en = _wen_T_3 | is_alloc;
-  assign dataMem_0_1_rdata_MPORT_en = dataMem_0_1_rdata_MPORT_en_pipe_0;
-  assign dataMem_0_1_rdata_MPORT_addr = dataMem_0_1_rdata_MPORT_addr_pipe_0;
-  assign dataMem_0_1_rdata_MPORT_data = dataMem_0_1[dataMem_0_1_rdata_MPORT_addr]; // @[Cache.scala 63:45]
-  assign dataMem_0_1_MPORT_1_data = wdata[15:8];
-  assign dataMem_0_1_MPORT_1_addr = addr_reg[11:4];
-  assign dataMem_0_1_MPORT_1_mask = wmask[1];
-  assign dataMem_0_1_MPORT_1_en = _wen_T_3 | is_alloc;
-  assign dataMem_0_2_rdata_MPORT_en = dataMem_0_2_rdata_MPORT_en_pipe_0;
-  assign dataMem_0_2_rdata_MPORT_addr = dataMem_0_2_rdata_MPORT_addr_pipe_0;
-  assign dataMem_0_2_rdata_MPORT_data = dataMem_0_2[dataMem_0_2_rdata_MPORT_addr]; // @[Cache.scala 63:45]
-  assign dataMem_0_2_MPORT_1_data = wdata[23:16];
-  assign dataMem_0_2_MPORT_1_addr = addr_reg[11:4];
-  assign dataMem_0_2_MPORT_1_mask = wmask[2];
-  assign dataMem_0_2_MPORT_1_en = _wen_T_3 | is_alloc;
-  assign dataMem_0_3_rdata_MPORT_en = dataMem_0_3_rdata_MPORT_en_pipe_0;
-  assign dataMem_0_3_rdata_MPORT_addr = dataMem_0_3_rdata_MPORT_addr_pipe_0;
-  assign dataMem_0_3_rdata_MPORT_data = dataMem_0_3[dataMem_0_3_rdata_MPORT_addr]; // @[Cache.scala 63:45]
-  assign dataMem_0_3_MPORT_1_data = wdata[31:24];
-  assign dataMem_0_3_MPORT_1_addr = addr_reg[11:4];
-  assign dataMem_0_3_MPORT_1_mask = wmask[3];
-  assign dataMem_0_3_MPORT_1_en = _wen_T_3 | is_alloc;
-  assign dataMem_1_0_rdata_MPORT_1_en = dataMem_1_0_rdata_MPORT_1_en_pipe_0;
-  assign dataMem_1_0_rdata_MPORT_1_addr = dataMem_1_0_rdata_MPORT_1_addr_pipe_0;
-  assign dataMem_1_0_rdata_MPORT_1_data = dataMem_1_0[dataMem_1_0_rdata_MPORT_1_addr]; // @[Cache.scala 63:45]
-  assign dataMem_1_0_MPORT_2_data = wdata[39:32];
-  assign dataMem_1_0_MPORT_2_addr = addr_reg[11:4];
-  assign dataMem_1_0_MPORT_2_mask = wmask[4];
-  assign dataMem_1_0_MPORT_2_en = _wen_T_3 | is_alloc;
-  assign dataMem_1_1_rdata_MPORT_1_en = dataMem_1_1_rdata_MPORT_1_en_pipe_0;
-  assign dataMem_1_1_rdata_MPORT_1_addr = dataMem_1_1_rdata_MPORT_1_addr_pipe_0;
-  assign dataMem_1_1_rdata_MPORT_1_data = dataMem_1_1[dataMem_1_1_rdata_MPORT_1_addr]; // @[Cache.scala 63:45]
-  assign dataMem_1_1_MPORT_2_data = wdata[47:40];
-  assign dataMem_1_1_MPORT_2_addr = addr_reg[11:4];
-  assign dataMem_1_1_MPORT_2_mask = wmask[5];
-  assign dataMem_1_1_MPORT_2_en = _wen_T_3 | is_alloc;
-  assign dataMem_1_2_rdata_MPORT_1_en = dataMem_1_2_rdata_MPORT_1_en_pipe_0;
-  assign dataMem_1_2_rdata_MPORT_1_addr = dataMem_1_2_rdata_MPORT_1_addr_pipe_0;
-  assign dataMem_1_2_rdata_MPORT_1_data = dataMem_1_2[dataMem_1_2_rdata_MPORT_1_addr]; // @[Cache.scala 63:45]
-  assign dataMem_1_2_MPORT_2_data = wdata[55:48];
-  assign dataMem_1_2_MPORT_2_addr = addr_reg[11:4];
-  assign dataMem_1_2_MPORT_2_mask = wmask[6];
-  assign dataMem_1_2_MPORT_2_en = _wen_T_3 | is_alloc;
-  assign dataMem_1_3_rdata_MPORT_1_en = dataMem_1_3_rdata_MPORT_1_en_pipe_0;
-  assign dataMem_1_3_rdata_MPORT_1_addr = dataMem_1_3_rdata_MPORT_1_addr_pipe_0;
-  assign dataMem_1_3_rdata_MPORT_1_data = dataMem_1_3[dataMem_1_3_rdata_MPORT_1_addr]; // @[Cache.scala 63:45]
-  assign dataMem_1_3_MPORT_2_data = wdata[63:56];
-  assign dataMem_1_3_MPORT_2_addr = addr_reg[11:4];
-  assign dataMem_1_3_MPORT_2_mask = wmask[7];
-  assign dataMem_1_3_MPORT_2_en = _wen_T_3 | is_alloc;
-  assign dataMem_2_0_rdata_MPORT_2_en = dataMem_2_0_rdata_MPORT_2_en_pipe_0;
-  assign dataMem_2_0_rdata_MPORT_2_addr = dataMem_2_0_rdata_MPORT_2_addr_pipe_0;
-  assign dataMem_2_0_rdata_MPORT_2_data = dataMem_2_0[dataMem_2_0_rdata_MPORT_2_addr]; // @[Cache.scala 63:45]
-  assign dataMem_2_0_MPORT_3_data = wdata[71:64];
-  assign dataMem_2_0_MPORT_3_addr = addr_reg[11:4];
-  assign dataMem_2_0_MPORT_3_mask = wmask[8];
-  assign dataMem_2_0_MPORT_3_en = _wen_T_3 | is_alloc;
-  assign dataMem_2_1_rdata_MPORT_2_en = dataMem_2_1_rdata_MPORT_2_en_pipe_0;
-  assign dataMem_2_1_rdata_MPORT_2_addr = dataMem_2_1_rdata_MPORT_2_addr_pipe_0;
-  assign dataMem_2_1_rdata_MPORT_2_data = dataMem_2_1[dataMem_2_1_rdata_MPORT_2_addr]; // @[Cache.scala 63:45]
-  assign dataMem_2_1_MPORT_3_data = wdata[79:72];
-  assign dataMem_2_1_MPORT_3_addr = addr_reg[11:4];
-  assign dataMem_2_1_MPORT_3_mask = wmask[9];
-  assign dataMem_2_1_MPORT_3_en = _wen_T_3 | is_alloc;
-  assign dataMem_2_2_rdata_MPORT_2_en = dataMem_2_2_rdata_MPORT_2_en_pipe_0;
-  assign dataMem_2_2_rdata_MPORT_2_addr = dataMem_2_2_rdata_MPORT_2_addr_pipe_0;
-  assign dataMem_2_2_rdata_MPORT_2_data = dataMem_2_2[dataMem_2_2_rdata_MPORT_2_addr]; // @[Cache.scala 63:45]
-  assign dataMem_2_2_MPORT_3_data = wdata[87:80];
-  assign dataMem_2_2_MPORT_3_addr = addr_reg[11:4];
-  assign dataMem_2_2_MPORT_3_mask = wmask[10];
-  assign dataMem_2_2_MPORT_3_en = _wen_T_3 | is_alloc;
-  assign dataMem_2_3_rdata_MPORT_2_en = dataMem_2_3_rdata_MPORT_2_en_pipe_0;
-  assign dataMem_2_3_rdata_MPORT_2_addr = dataMem_2_3_rdata_MPORT_2_addr_pipe_0;
-  assign dataMem_2_3_rdata_MPORT_2_data = dataMem_2_3[dataMem_2_3_rdata_MPORT_2_addr]; // @[Cache.scala 63:45]
-  assign dataMem_2_3_MPORT_3_data = wdata[95:88];
-  assign dataMem_2_3_MPORT_3_addr = addr_reg[11:4];
-  assign dataMem_2_3_MPORT_3_mask = wmask[11];
-  assign dataMem_2_3_MPORT_3_en = _wen_T_3 | is_alloc;
-  assign dataMem_3_0_rdata_MPORT_3_en = dataMem_3_0_rdata_MPORT_3_en_pipe_0;
-  assign dataMem_3_0_rdata_MPORT_3_addr = dataMem_3_0_rdata_MPORT_3_addr_pipe_0;
-  assign dataMem_3_0_rdata_MPORT_3_data = dataMem_3_0[dataMem_3_0_rdata_MPORT_3_addr]; // @[Cache.scala 63:45]
-  assign dataMem_3_0_MPORT_4_data = wdata[103:96];
-  assign dataMem_3_0_MPORT_4_addr = addr_reg[11:4];
-  assign dataMem_3_0_MPORT_4_mask = wmask[12];
-  assign dataMem_3_0_MPORT_4_en = _wen_T_3 | is_alloc;
-  assign dataMem_3_1_rdata_MPORT_3_en = dataMem_3_1_rdata_MPORT_3_en_pipe_0;
-  assign dataMem_3_1_rdata_MPORT_3_addr = dataMem_3_1_rdata_MPORT_3_addr_pipe_0;
-  assign dataMem_3_1_rdata_MPORT_3_data = dataMem_3_1[dataMem_3_1_rdata_MPORT_3_addr]; // @[Cache.scala 63:45]
-  assign dataMem_3_1_MPORT_4_data = wdata[111:104];
-  assign dataMem_3_1_MPORT_4_addr = addr_reg[11:4];
-  assign dataMem_3_1_MPORT_4_mask = wmask[13];
-  assign dataMem_3_1_MPORT_4_en = _wen_T_3 | is_alloc;
-  assign dataMem_3_2_rdata_MPORT_3_en = dataMem_3_2_rdata_MPORT_3_en_pipe_0;
-  assign dataMem_3_2_rdata_MPORT_3_addr = dataMem_3_2_rdata_MPORT_3_addr_pipe_0;
-  assign dataMem_3_2_rdata_MPORT_3_data = dataMem_3_2[dataMem_3_2_rdata_MPORT_3_addr]; // @[Cache.scala 63:45]
-  assign dataMem_3_2_MPORT_4_data = wdata[119:112];
-  assign dataMem_3_2_MPORT_4_addr = addr_reg[11:4];
-  assign dataMem_3_2_MPORT_4_mask = wmask[14];
-  assign dataMem_3_2_MPORT_4_en = _wen_T_3 | is_alloc;
-  assign dataMem_3_3_rdata_MPORT_3_en = dataMem_3_3_rdata_MPORT_3_en_pipe_0;
-  assign dataMem_3_3_rdata_MPORT_3_addr = dataMem_3_3_rdata_MPORT_3_addr_pipe_0;
-  assign dataMem_3_3_rdata_MPORT_3_data = dataMem_3_3[dataMem_3_3_rdata_MPORT_3_addr]; // @[Cache.scala 63:45]
-  assign dataMem_3_3_MPORT_4_data = wdata[127:120];
-  assign dataMem_3_3_MPORT_4_addr = addr_reg[11:4];
-  assign dataMem_3_3_MPORT_4_mask = wmask[15];
-  assign dataMem_3_3_MPORT_4_en = _wen_T_3 | is_alloc;
-  assign io_cpu_resp_valid = is_idle | is_read & hit | is_alloc_reg & ~(|cpu_mask); // @[Cache.scala 101:50]
-  assign io_cpu_resp_bits_data = 2'h3 == off_reg ? read[127:96] : _GEN_15; // @[Cache.scala 100:{25,25}]
-  assign io_nasti_aw_valid = 3'h0 == state ? 1'h0 : _GEN_137; // @[Cache.scala 166:17 153:21]
-  assign io_nasti_aw_bits_addr = _io_nasti_aw_bits_T_1[31:0]; // @[nasti.scala 66:18 68:13]
-  assign io_nasti_w_valid = 3'h0 == state ? 1'h0 : _GEN_139; // @[Cache.scala 166:17 160:20]
-  assign io_nasti_w_bits_data = write_count ? read[127:64] : read[63:0]; // @[nasti.scala 97:{12,12}]
-  assign io_nasti_w_bits_last = _T_1 & write_count; // @[Counter.scala 120:{16,23}]
-  assign io_nasti_b_ready = 3'h0 == state ? 1'h0 : _GEN_140; // @[Cache.scala 166:17 162:20]
-  assign io_nasti_ar_valid = 3'h0 == state ? 1'h0 : _GEN_138; // @[Cache.scala 166:17 139:21]
-  assign io_nasti_ar_bits_addr = _io_nasti_ar_bits_T_1[31:0]; // @[nasti.scala 66:18 68:13]
-  assign io_nasti_r_ready = state == 3'h6; // @[Cache.scala 141:29]
+  reg [2:0] state; // @[Cache.scala 63:22]
+  wire  _io_nasti_aw_valid_T_1 = ~io_cpu_abort; // @[Cache.scala 86:50]
+  reg [63:0] io_cpu_resp_bits_data_r; // @[Reg.scala 16:16]
+  wire [1:0] _state_T_1 = |io_cpu_req_bits_mask ? 2'h2 : 2'h1; // @[Cache.scala 103:21]
+  wire  _T_6 = io_nasti_ar_ready & io_nasti_ar_valid; // @[Decoupled.scala 50:35]
+  wire  _T_10 = io_nasti_r_ready & io_nasti_r_valid; // @[Decoupled.scala 50:35]
+  wire [2:0] _GEN_3 = _T_10 ? 3'h0 : state; // @[Cache.scala 112:29 113:15 63:22]
+  wire  _T_14 = io_nasti_aw_ready & io_nasti_aw_valid; // @[Decoupled.scala 50:35]
+  wire [2:0] _GEN_4 = _T_14 ? 3'h4 : state; // @[Cache.scala 119:36 120:15 63:22]
+  wire [2:0] _GEN_5 = io_cpu_abort ? 3'h0 : _GEN_4; // @[Cache.scala 117:26 118:15]
+  wire  _T_18 = io_nasti_w_ready & io_nasti_w_valid; // @[Decoupled.scala 50:35]
+  wire [2:0] _GEN_6 = _T_18 ? 3'h5 : state; // @[Cache.scala 124:29 125:15 63:22]
+  wire  _T_22 = io_nasti_b_ready & io_nasti_b_valid; // @[Decoupled.scala 50:35]
+  wire [2:0] _GEN_7 = _T_22 ? 3'h0 : state; // @[Cache.scala 129:29 130:15 63:22]
+  wire [2:0] _GEN_8 = 3'h5 == state ? _GEN_7 : state; // @[Cache.scala 100:17 63:22]
+  wire [2:0] _GEN_9 = 3'h4 == state ? _GEN_6 : _GEN_8; // @[Cache.scala 100:17]
+  wire [2:0] _GEN_10 = 3'h2 == state ? _GEN_5 : _GEN_9; // @[Cache.scala 100:17]
+  assign io_cpu_resp_valid = state == 3'h0; // @[Cache.scala 96:31]
+  assign io_cpu_resp_bits_data = io_cpu_resp_bits_data_r[31:0]; // @[Cache.scala 98:25]
+  assign io_nasti_aw_valid = state == 3'h2 & ~io_cpu_abort; // @[Cache.scala 86:47]
+  assign io_nasti_w_valid = state == 3'h4 & _io_nasti_aw_valid_T_1; // @[Cache.scala 94:46]
+  assign io_nasti_b_ready = state == 3'h5; // @[Cache.scala 78:30]
+  assign io_nasti_ar_valid = state == 3'h1; // @[Cache.scala 76:31]
+  assign io_nasti_r_ready = state == 3'h3; // @[Cache.scala 77:30]
   always @(posedge clock) begin
-    if (metaMem_tag_MPORT_en & metaMem_tag_MPORT_mask) begin
-      metaMem_tag[metaMem_tag_MPORT_addr] <= metaMem_tag_MPORT_data; // @[Cache.scala 62:28]
-    end
-    metaMem_tag_rmeta_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      metaMem_tag_rmeta_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_0_0_MPORT_1_en & dataMem_0_0_MPORT_1_mask) begin
-      dataMem_0_0[dataMem_0_0_MPORT_1_addr] <= dataMem_0_0_MPORT_1_data; // @[Cache.scala 63:45]
-    end
-    dataMem_0_0_rdata_MPORT_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_0_0_rdata_MPORT_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_0_1_MPORT_1_en & dataMem_0_1_MPORT_1_mask) begin
-      dataMem_0_1[dataMem_0_1_MPORT_1_addr] <= dataMem_0_1_MPORT_1_data; // @[Cache.scala 63:45]
-    end
-    dataMem_0_1_rdata_MPORT_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_0_1_rdata_MPORT_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_0_2_MPORT_1_en & dataMem_0_2_MPORT_1_mask) begin
-      dataMem_0_2[dataMem_0_2_MPORT_1_addr] <= dataMem_0_2_MPORT_1_data; // @[Cache.scala 63:45]
-    end
-    dataMem_0_2_rdata_MPORT_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_0_2_rdata_MPORT_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_0_3_MPORT_1_en & dataMem_0_3_MPORT_1_mask) begin
-      dataMem_0_3[dataMem_0_3_MPORT_1_addr] <= dataMem_0_3_MPORT_1_data; // @[Cache.scala 63:45]
-    end
-    dataMem_0_3_rdata_MPORT_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_0_3_rdata_MPORT_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_1_0_MPORT_2_en & dataMem_1_0_MPORT_2_mask) begin
-      dataMem_1_0[dataMem_1_0_MPORT_2_addr] <= dataMem_1_0_MPORT_2_data; // @[Cache.scala 63:45]
-    end
-    dataMem_1_0_rdata_MPORT_1_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_1_0_rdata_MPORT_1_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_1_1_MPORT_2_en & dataMem_1_1_MPORT_2_mask) begin
-      dataMem_1_1[dataMem_1_1_MPORT_2_addr] <= dataMem_1_1_MPORT_2_data; // @[Cache.scala 63:45]
-    end
-    dataMem_1_1_rdata_MPORT_1_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_1_1_rdata_MPORT_1_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_1_2_MPORT_2_en & dataMem_1_2_MPORT_2_mask) begin
-      dataMem_1_2[dataMem_1_2_MPORT_2_addr] <= dataMem_1_2_MPORT_2_data; // @[Cache.scala 63:45]
-    end
-    dataMem_1_2_rdata_MPORT_1_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_1_2_rdata_MPORT_1_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_1_3_MPORT_2_en & dataMem_1_3_MPORT_2_mask) begin
-      dataMem_1_3[dataMem_1_3_MPORT_2_addr] <= dataMem_1_3_MPORT_2_data; // @[Cache.scala 63:45]
-    end
-    dataMem_1_3_rdata_MPORT_1_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_1_3_rdata_MPORT_1_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_2_0_MPORT_3_en & dataMem_2_0_MPORT_3_mask) begin
-      dataMem_2_0[dataMem_2_0_MPORT_3_addr] <= dataMem_2_0_MPORT_3_data; // @[Cache.scala 63:45]
-    end
-    dataMem_2_0_rdata_MPORT_2_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_2_0_rdata_MPORT_2_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_2_1_MPORT_3_en & dataMem_2_1_MPORT_3_mask) begin
-      dataMem_2_1[dataMem_2_1_MPORT_3_addr] <= dataMem_2_1_MPORT_3_data; // @[Cache.scala 63:45]
-    end
-    dataMem_2_1_rdata_MPORT_2_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_2_1_rdata_MPORT_2_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_2_2_MPORT_3_en & dataMem_2_2_MPORT_3_mask) begin
-      dataMem_2_2[dataMem_2_2_MPORT_3_addr] <= dataMem_2_2_MPORT_3_data; // @[Cache.scala 63:45]
-    end
-    dataMem_2_2_rdata_MPORT_2_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_2_2_rdata_MPORT_2_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_2_3_MPORT_3_en & dataMem_2_3_MPORT_3_mask) begin
-      dataMem_2_3[dataMem_2_3_MPORT_3_addr] <= dataMem_2_3_MPORT_3_data; // @[Cache.scala 63:45]
-    end
-    dataMem_2_3_rdata_MPORT_2_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_2_3_rdata_MPORT_2_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_3_0_MPORT_4_en & dataMem_3_0_MPORT_4_mask) begin
-      dataMem_3_0[dataMem_3_0_MPORT_4_addr] <= dataMem_3_0_MPORT_4_data; // @[Cache.scala 63:45]
-    end
-    dataMem_3_0_rdata_MPORT_3_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_3_0_rdata_MPORT_3_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_3_1_MPORT_4_en & dataMem_3_1_MPORT_4_mask) begin
-      dataMem_3_1[dataMem_3_1_MPORT_4_addr] <= dataMem_3_1_MPORT_4_data; // @[Cache.scala 63:45]
-    end
-    dataMem_3_1_rdata_MPORT_3_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_3_1_rdata_MPORT_3_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_3_2_MPORT_4_en & dataMem_3_2_MPORT_4_mask) begin
-      dataMem_3_2[dataMem_3_2_MPORT_4_addr] <= dataMem_3_2_MPORT_4_data; // @[Cache.scala 63:45]
-    end
-    dataMem_3_2_rdata_MPORT_3_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_3_2_rdata_MPORT_3_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (dataMem_3_3_MPORT_4_en & dataMem_3_3_MPORT_4_mask) begin
-      dataMem_3_3[dataMem_3_3_MPORT_4_addr] <= dataMem_3_3_MPORT_4_data; // @[Cache.scala 63:45]
-    end
-    dataMem_3_3_rdata_MPORT_3_en_pipe_0 <= _ren_T_2 & io_cpu_req_valid;
-    if (_ren_T_2 & io_cpu_req_valid) begin
-      dataMem_3_3_rdata_MPORT_3_addr_pipe_0 <= io_cpu_req_bits_addr[11:4];
-    end
-    if (reset) begin // @[Cache.scala 58:22]
-      state <= 3'h0; // @[Cache.scala 58:22]
-    end else if (3'h0 == state) begin // @[Cache.scala 166:17]
-      if (io_cpu_req_valid) begin // @[Cache.scala 168:30]
-        state <= {{1'd0}, _state_T_1}; // @[Cache.scala 169:15]
+    if (reset) begin // @[Cache.scala 63:22]
+      state <= 3'h0; // @[Cache.scala 63:22]
+    end else if (3'h0 == state) begin // @[Cache.scala 100:17]
+      if (io_cpu_req_valid) begin // @[Cache.scala 102:30]
+        state <= {{1'd0}, _state_T_1}; // @[Cache.scala 103:15]
       end
-    end else if (3'h1 == state) begin // @[Cache.scala 166:17]
-      if (hit) begin // @[Cache.scala 173:17]
-        state <= {{1'd0}, _GEN_106};
-      end else begin
-        state <= _GEN_108;
+    end else if (3'h1 == state) begin // @[Cache.scala 100:17]
+      if (_T_6) begin // @[Cache.scala 107:30]
+        state <= 3'h3; // @[Cache.scala 108:15]
       end
-    end else if (3'h2 == state) begin // @[Cache.scala 166:17]
-      state <= _GEN_114;
+    end else if (3'h3 == state) begin // @[Cache.scala 100:17]
+      state <= _GEN_3;
     end else begin
-      state <= _GEN_128;
+      state <= _GEN_10;
     end
-    if (reset) begin // @[Cache.scala 60:18]
-      v <= 256'h0; // @[Cache.scala 60:18]
-    end else if (wen) begin // @[Cache.scala 119:13]
-      v <= _v_T_1; // @[Cache.scala 120:7]
-    end
-    if (reset) begin // @[Cache.scala 61:18]
-      d <= 256'h0; // @[Cache.scala 61:18]
-    end else if (wen) begin // @[Cache.scala 119:13]
-      if (_wmask_T) begin // @[Cache.scala 121:18]
-        d <= _d_T_2;
-      end else begin
-        d <= _d_T_5;
-      end
-    end
-    if (io_cpu_resp_valid) begin // @[Cache.scala 103:27]
-      addr_reg <= io_cpu_req_bits_addr; // @[Cache.scala 104:14]
-    end
-    if (io_cpu_resp_valid) begin // @[Cache.scala 103:27]
-      cpu_data <= io_cpu_req_bits_data; // @[Cache.scala 105:14]
-    end
-    if (io_cpu_resp_valid) begin // @[Cache.scala 103:27]
-      cpu_mask <= io_cpu_req_bits_mask; // @[Cache.scala 106:14]
-    end
-    if (reset) begin // @[Counter.scala 62:40]
-      read_count <= 1'h0; // @[Counter.scala 62:40]
-    end else if (_T) begin // @[Counter.scala 120:16]
-      read_count <= read_count + 1'h1; // @[Counter.scala 78:15]
-    end
-    if (reset) begin // @[Counter.scala 62:40]
-      write_count <= 1'h0; // @[Counter.scala 62:40]
-    end else if (_T_1) begin // @[Counter.scala 120:16]
-      write_count <= write_count + 1'h1; // @[Counter.scala 78:15]
-    end
-    is_alloc_reg <= state == 3'h6 & read_wrap_out; // @[Cache.scala 77:36]
-    ren_reg <= ~wen & (is_idle | is_read) & io_cpu_req_valid; // @[Cache.scala 82:42]
-    if (ren_reg) begin // @[Reg.scala 17:18]
-      rdata_buf <= rdata; // @[Reg.scala 17:22]
-    end
-    if (_T) begin // @[Cache.scala 142:25]
-      if (~read_count) begin // @[Cache.scala 143:28]
-        refill_buf_0 <= io_nasti_r_bits_data; // @[Cache.scala 143:28]
-      end
-    end
-    if (_T) begin // @[Cache.scala 142:25]
-      if (read_count) begin // @[Cache.scala 143:28]
-        refill_buf_1 <= io_nasti_r_bits_data; // @[Cache.scala 143:28]
-      end
+    if (io_nasti_r_valid) begin // @[Reg.scala 17:18]
+      io_cpu_resp_bits_data_r <= io_nasti_r_bits_data; // @[Reg.scala 17:22]
     end
   end
 // Register and memory initialization
@@ -2664,154 +2023,11 @@ initial begin
         #0.002 begin end
       `endif
     `endif
-`ifdef RANDOMIZE_MEM_INIT
-  _RAND_0 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    metaMem_tag[initvar] = _RAND_0[19:0];
-  _RAND_3 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_0_0[initvar] = _RAND_3[7:0];
-  _RAND_6 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_0_1[initvar] = _RAND_6[7:0];
-  _RAND_9 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_0_2[initvar] = _RAND_9[7:0];
-  _RAND_12 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_0_3[initvar] = _RAND_12[7:0];
-  _RAND_15 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_1_0[initvar] = _RAND_15[7:0];
-  _RAND_18 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_1_1[initvar] = _RAND_18[7:0];
-  _RAND_21 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_1_2[initvar] = _RAND_21[7:0];
-  _RAND_24 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_1_3[initvar] = _RAND_24[7:0];
-  _RAND_27 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_2_0[initvar] = _RAND_27[7:0];
-  _RAND_30 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_2_1[initvar] = _RAND_30[7:0];
-  _RAND_33 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_2_2[initvar] = _RAND_33[7:0];
-  _RAND_36 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_2_3[initvar] = _RAND_36[7:0];
-  _RAND_39 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_3_0[initvar] = _RAND_39[7:0];
-  _RAND_42 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_3_1[initvar] = _RAND_42[7:0];
-  _RAND_45 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_3_2[initvar] = _RAND_45[7:0];
-  _RAND_48 = {1{`RANDOM}};
-  for (initvar = 0; initvar < 256; initvar = initvar+1)
-    dataMem_3_3[initvar] = _RAND_48[7:0];
-`endif // RANDOMIZE_MEM_INIT
 `ifdef RANDOMIZE_REG_INIT
-  _RAND_1 = {1{`RANDOM}};
-  metaMem_tag_rmeta_en_pipe_0 = _RAND_1[0:0];
-  _RAND_2 = {1{`RANDOM}};
-  metaMem_tag_rmeta_addr_pipe_0 = _RAND_2[7:0];
-  _RAND_4 = {1{`RANDOM}};
-  dataMem_0_0_rdata_MPORT_en_pipe_0 = _RAND_4[0:0];
-  _RAND_5 = {1{`RANDOM}};
-  dataMem_0_0_rdata_MPORT_addr_pipe_0 = _RAND_5[7:0];
-  _RAND_7 = {1{`RANDOM}};
-  dataMem_0_1_rdata_MPORT_en_pipe_0 = _RAND_7[0:0];
-  _RAND_8 = {1{`RANDOM}};
-  dataMem_0_1_rdata_MPORT_addr_pipe_0 = _RAND_8[7:0];
-  _RAND_10 = {1{`RANDOM}};
-  dataMem_0_2_rdata_MPORT_en_pipe_0 = _RAND_10[0:0];
-  _RAND_11 = {1{`RANDOM}};
-  dataMem_0_2_rdata_MPORT_addr_pipe_0 = _RAND_11[7:0];
-  _RAND_13 = {1{`RANDOM}};
-  dataMem_0_3_rdata_MPORT_en_pipe_0 = _RAND_13[0:0];
-  _RAND_14 = {1{`RANDOM}};
-  dataMem_0_3_rdata_MPORT_addr_pipe_0 = _RAND_14[7:0];
-  _RAND_16 = {1{`RANDOM}};
-  dataMem_1_0_rdata_MPORT_1_en_pipe_0 = _RAND_16[0:0];
-  _RAND_17 = {1{`RANDOM}};
-  dataMem_1_0_rdata_MPORT_1_addr_pipe_0 = _RAND_17[7:0];
-  _RAND_19 = {1{`RANDOM}};
-  dataMem_1_1_rdata_MPORT_1_en_pipe_0 = _RAND_19[0:0];
-  _RAND_20 = {1{`RANDOM}};
-  dataMem_1_1_rdata_MPORT_1_addr_pipe_0 = _RAND_20[7:0];
-  _RAND_22 = {1{`RANDOM}};
-  dataMem_1_2_rdata_MPORT_1_en_pipe_0 = _RAND_22[0:0];
-  _RAND_23 = {1{`RANDOM}};
-  dataMem_1_2_rdata_MPORT_1_addr_pipe_0 = _RAND_23[7:0];
-  _RAND_25 = {1{`RANDOM}};
-  dataMem_1_3_rdata_MPORT_1_en_pipe_0 = _RAND_25[0:0];
-  _RAND_26 = {1{`RANDOM}};
-  dataMem_1_3_rdata_MPORT_1_addr_pipe_0 = _RAND_26[7:0];
-  _RAND_28 = {1{`RANDOM}};
-  dataMem_2_0_rdata_MPORT_2_en_pipe_0 = _RAND_28[0:0];
-  _RAND_29 = {1{`RANDOM}};
-  dataMem_2_0_rdata_MPORT_2_addr_pipe_0 = _RAND_29[7:0];
-  _RAND_31 = {1{`RANDOM}};
-  dataMem_2_1_rdata_MPORT_2_en_pipe_0 = _RAND_31[0:0];
-  _RAND_32 = {1{`RANDOM}};
-  dataMem_2_1_rdata_MPORT_2_addr_pipe_0 = _RAND_32[7:0];
-  _RAND_34 = {1{`RANDOM}};
-  dataMem_2_2_rdata_MPORT_2_en_pipe_0 = _RAND_34[0:0];
-  _RAND_35 = {1{`RANDOM}};
-  dataMem_2_2_rdata_MPORT_2_addr_pipe_0 = _RAND_35[7:0];
-  _RAND_37 = {1{`RANDOM}};
-  dataMem_2_3_rdata_MPORT_2_en_pipe_0 = _RAND_37[0:0];
-  _RAND_38 = {1{`RANDOM}};
-  dataMem_2_3_rdata_MPORT_2_addr_pipe_0 = _RAND_38[7:0];
-  _RAND_40 = {1{`RANDOM}};
-  dataMem_3_0_rdata_MPORT_3_en_pipe_0 = _RAND_40[0:0];
-  _RAND_41 = {1{`RANDOM}};
-  dataMem_3_0_rdata_MPORT_3_addr_pipe_0 = _RAND_41[7:0];
-  _RAND_43 = {1{`RANDOM}};
-  dataMem_3_1_rdata_MPORT_3_en_pipe_0 = _RAND_43[0:0];
-  _RAND_44 = {1{`RANDOM}};
-  dataMem_3_1_rdata_MPORT_3_addr_pipe_0 = _RAND_44[7:0];
-  _RAND_46 = {1{`RANDOM}};
-  dataMem_3_2_rdata_MPORT_3_en_pipe_0 = _RAND_46[0:0];
-  _RAND_47 = {1{`RANDOM}};
-  dataMem_3_2_rdata_MPORT_3_addr_pipe_0 = _RAND_47[7:0];
-  _RAND_49 = {1{`RANDOM}};
-  dataMem_3_3_rdata_MPORT_3_en_pipe_0 = _RAND_49[0:0];
-  _RAND_50 = {1{`RANDOM}};
-  dataMem_3_3_rdata_MPORT_3_addr_pipe_0 = _RAND_50[7:0];
-  _RAND_51 = {1{`RANDOM}};
-  state = _RAND_51[2:0];
-  _RAND_52 = {8{`RANDOM}};
-  v = _RAND_52[255:0];
-  _RAND_53 = {8{`RANDOM}};
-  d = _RAND_53[255:0];
-  _RAND_54 = {1{`RANDOM}};
-  addr_reg = _RAND_54[31:0];
-  _RAND_55 = {1{`RANDOM}};
-  cpu_data = _RAND_55[31:0];
-  _RAND_56 = {1{`RANDOM}};
-  cpu_mask = _RAND_56[3:0];
-  _RAND_57 = {1{`RANDOM}};
-  read_count = _RAND_57[0:0];
-  _RAND_58 = {1{`RANDOM}};
-  write_count = _RAND_58[0:0];
-  _RAND_59 = {1{`RANDOM}};
-  is_alloc_reg = _RAND_59[0:0];
-  _RAND_60 = {1{`RANDOM}};
-  ren_reg = _RAND_60[0:0];
-  _RAND_61 = {4{`RANDOM}};
-  rdata_buf = _RAND_61[127:0];
-  _RAND_62 = {2{`RANDOM}};
-  refill_buf_0 = _RAND_62[63:0];
-  _RAND_63 = {2{`RANDOM}};
-  refill_buf_1 = _RAND_63[63:0];
+  _RAND_0 = {1{`RANDOM}};
+  state = _RAND_0[2:0];
+  _RAND_1 = {2{`RANDOM}};
+  io_cpu_resp_bits_data_r = _RAND_1[63:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
 end // initial
@@ -2825,36 +2041,28 @@ module MemArbiter(
   input         reset,
   output        io_icache_ar_ready,
   input         io_icache_ar_valid,
-  input  [31:0] io_icache_ar_bits_addr,
   input         io_icache_r_ready,
   output        io_icache_r_valid,
   output [63:0] io_icache_r_bits_data,
   output        io_dcache_aw_ready,
   input         io_dcache_aw_valid,
-  input  [31:0] io_dcache_aw_bits_addr,
   output        io_dcache_w_ready,
   input         io_dcache_w_valid,
-  input  [63:0] io_dcache_w_bits_data,
-  input         io_dcache_w_bits_last,
   input         io_dcache_b_ready,
   output        io_dcache_b_valid,
   output        io_dcache_ar_ready,
   input         io_dcache_ar_valid,
-  input  [31:0] io_dcache_ar_bits_addr,
   input         io_dcache_r_ready,
   output        io_dcache_r_valid,
   output [63:0] io_dcache_r_bits_data,
   input         io_nasti_aw_ready,
   output        io_nasti_aw_valid,
-  output [31:0] io_nasti_aw_bits_addr,
   input         io_nasti_w_ready,
   output        io_nasti_w_valid,
-  output [63:0] io_nasti_w_bits_data,
   output        io_nasti_b_ready,
   input         io_nasti_b_valid,
   input         io_nasti_ar_ready,
   output        io_nasti_ar_valid,
-  output [31:0] io_nasti_ar_bits_addr,
   output        io_nasti_r_ready,
   input         io_nasti_r_valid,
   input  [63:0] io_nasti_r_bits_data,
@@ -2879,7 +2087,7 @@ module MemArbiter(
   wire  _T_9 = io_nasti_r_ready & io_nasti_r_valid; // @[Decoupled.scala 50:35]
   wire [2:0] _GEN_3 = _T_9 & io_nasti_r_bits_last ? 3'h0 : state; // @[Tile.scala 75:53 76:15 24:22]
   wire  _T_19 = io_dcache_w_ready & io_dcache_w_valid; // @[Decoupled.scala 50:35]
-  wire [2:0] _GEN_5 = _T_19 & io_dcache_w_bits_last ? 3'h4 : state; // @[Tile.scala 85:55 86:15 24:22]
+  wire [2:0] _GEN_5 = _T_19 ? 3'h4 : state; // @[Tile.scala 85:55 86:15 24:22]
   wire  _T_24 = io_nasti_b_ready & io_nasti_b_valid; // @[Decoupled.scala 50:35]
   wire [2:0] _GEN_6 = _T_24 ? 3'h0 : state; // @[Tile.scala 90:29 91:15 24:22]
   wire [2:0] _GEN_7 = 3'h4 == state ? _GEN_6 : state; // @[Tile.scala 64:17 24:22]
@@ -2894,12 +2102,9 @@ module MemArbiter(
   assign io_dcache_r_valid = io_nasti_r_valid & state == 3'h2; // @[Tile.scala 60:41]
   assign io_dcache_r_bits_data = io_nasti_r_bits_data; // @[Tile.scala 58:20]
   assign io_nasti_aw_valid = io_dcache_aw_valid & state == 3'h0; // @[Tile.scala 28:43]
-  assign io_nasti_aw_bits_addr = io_dcache_aw_bits_addr; // @[Tile.scala 27:20]
   assign io_nasti_w_valid = io_dcache_w_valid & state == 3'h3; // @[Tile.scala 34:41]
-  assign io_nasti_w_bits_data = io_dcache_w_bits_data; // @[Tile.scala 33:19]
   assign io_nasti_b_ready = io_dcache_b_ready & _io_dcache_b_valid_T; // @[Tile.scala 41:41]
   assign io_nasti_ar_valid = _io_nasti_ar_valid_T_2 & _io_nasti_aw_valid_T; // @[Tile.scala 52:24]
-  assign io_nasti_ar_bits_addr = io_dcache_ar_valid ? io_dcache_ar_bits_addr : io_icache_ar_bits_addr; // @[Tile.scala 47:8]
   assign io_nasti_r_ready = io_icache_r_ready & _io_icache_r_valid_T | _io_nasti_r_ready_T_3; // @[Tile.scala 61:66]
   always @(posedge clock) begin
     if (reset) begin // @[Tile.scala 24:22]
@@ -2974,15 +2179,12 @@ module Tile(
   output [31:0] io_host_tohost,
   input         io_nasti_aw_ready,
   output        io_nasti_aw_valid,
-  output [31:0] io_nasti_aw_bits_addr,
   input         io_nasti_w_ready,
   output        io_nasti_w_valid,
-  output [63:0] io_nasti_w_bits_data,
   output        io_nasti_b_ready,
   input         io_nasti_b_valid,
   input         io_nasti_ar_ready,
   output        io_nasti_ar_valid,
-  output [31:0] io_nasti_ar_bits_addr,
   output        io_nasti_r_ready,
   input         io_nasti_r_valid,
   input  [63:0] io_nasti_r_bits_data,
@@ -2994,13 +2196,10 @@ module Tile(
   wire [31:0] core_io_host_fromhost_bits; // @[Tile.scala 109:20]
   wire [31:0] core_io_host_tohost; // @[Tile.scala 109:20]
   wire  core_io_icache_req_valid; // @[Tile.scala 109:20]
-  wire [31:0] core_io_icache_req_bits_addr; // @[Tile.scala 109:20]
   wire  core_io_icache_resp_valid; // @[Tile.scala 109:20]
   wire [31:0] core_io_icache_resp_bits_data; // @[Tile.scala 109:20]
   wire  core_io_dcache_abort; // @[Tile.scala 109:20]
   wire  core_io_dcache_req_valid; // @[Tile.scala 109:20]
-  wire [31:0] core_io_dcache_req_bits_addr; // @[Tile.scala 109:20]
-  wire [31:0] core_io_dcache_req_bits_data; // @[Tile.scala 109:20]
   wire [3:0] core_io_dcache_req_bits_mask; // @[Tile.scala 109:20]
   wire  core_io_dcache_resp_valid; // @[Tile.scala 109:20]
   wire [31:0] core_io_dcache_resp_bits_data; // @[Tile.scala 109:20]
@@ -3008,23 +2207,17 @@ module Tile(
   wire  icache_reset; // @[Tile.scala 110:22]
   wire  icache_io_cpu_abort; // @[Tile.scala 110:22]
   wire  icache_io_cpu_req_valid; // @[Tile.scala 110:22]
-  wire [31:0] icache_io_cpu_req_bits_addr; // @[Tile.scala 110:22]
-  wire [31:0] icache_io_cpu_req_bits_data; // @[Tile.scala 110:22]
   wire [3:0] icache_io_cpu_req_bits_mask; // @[Tile.scala 110:22]
   wire  icache_io_cpu_resp_valid; // @[Tile.scala 110:22]
   wire [31:0] icache_io_cpu_resp_bits_data; // @[Tile.scala 110:22]
   wire  icache_io_nasti_aw_ready; // @[Tile.scala 110:22]
   wire  icache_io_nasti_aw_valid; // @[Tile.scala 110:22]
-  wire [31:0] icache_io_nasti_aw_bits_addr; // @[Tile.scala 110:22]
   wire  icache_io_nasti_w_ready; // @[Tile.scala 110:22]
   wire  icache_io_nasti_w_valid; // @[Tile.scala 110:22]
-  wire [63:0] icache_io_nasti_w_bits_data; // @[Tile.scala 110:22]
-  wire  icache_io_nasti_w_bits_last; // @[Tile.scala 110:22]
   wire  icache_io_nasti_b_ready; // @[Tile.scala 110:22]
   wire  icache_io_nasti_b_valid; // @[Tile.scala 110:22]
   wire  icache_io_nasti_ar_ready; // @[Tile.scala 110:22]
   wire  icache_io_nasti_ar_valid; // @[Tile.scala 110:22]
-  wire [31:0] icache_io_nasti_ar_bits_addr; // @[Tile.scala 110:22]
   wire  icache_io_nasti_r_ready; // @[Tile.scala 110:22]
   wire  icache_io_nasti_r_valid; // @[Tile.scala 110:22]
   wire [63:0] icache_io_nasti_r_bits_data; // @[Tile.scala 110:22]
@@ -3032,23 +2225,17 @@ module Tile(
   wire  dcache_reset; // @[Tile.scala 111:22]
   wire  dcache_io_cpu_abort; // @[Tile.scala 111:22]
   wire  dcache_io_cpu_req_valid; // @[Tile.scala 111:22]
-  wire [31:0] dcache_io_cpu_req_bits_addr; // @[Tile.scala 111:22]
-  wire [31:0] dcache_io_cpu_req_bits_data; // @[Tile.scala 111:22]
   wire [3:0] dcache_io_cpu_req_bits_mask; // @[Tile.scala 111:22]
   wire  dcache_io_cpu_resp_valid; // @[Tile.scala 111:22]
   wire [31:0] dcache_io_cpu_resp_bits_data; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_aw_ready; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_aw_valid; // @[Tile.scala 111:22]
-  wire [31:0] dcache_io_nasti_aw_bits_addr; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_w_ready; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_w_valid; // @[Tile.scala 111:22]
-  wire [63:0] dcache_io_nasti_w_bits_data; // @[Tile.scala 111:22]
-  wire  dcache_io_nasti_w_bits_last; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_b_ready; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_b_valid; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_ar_ready; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_ar_valid; // @[Tile.scala 111:22]
-  wire [31:0] dcache_io_nasti_ar_bits_addr; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_r_ready; // @[Tile.scala 111:22]
   wire  dcache_io_nasti_r_valid; // @[Tile.scala 111:22]
   wire [63:0] dcache_io_nasti_r_bits_data; // @[Tile.scala 111:22]
@@ -3056,36 +2243,28 @@ module Tile(
   wire  arb_reset; // @[Tile.scala 112:19]
   wire  arb_io_icache_ar_ready; // @[Tile.scala 112:19]
   wire  arb_io_icache_ar_valid; // @[Tile.scala 112:19]
-  wire [31:0] arb_io_icache_ar_bits_addr; // @[Tile.scala 112:19]
   wire  arb_io_icache_r_ready; // @[Tile.scala 112:19]
   wire  arb_io_icache_r_valid; // @[Tile.scala 112:19]
   wire [63:0] arb_io_icache_r_bits_data; // @[Tile.scala 112:19]
   wire  arb_io_dcache_aw_ready; // @[Tile.scala 112:19]
   wire  arb_io_dcache_aw_valid; // @[Tile.scala 112:19]
-  wire [31:0] arb_io_dcache_aw_bits_addr; // @[Tile.scala 112:19]
   wire  arb_io_dcache_w_ready; // @[Tile.scala 112:19]
   wire  arb_io_dcache_w_valid; // @[Tile.scala 112:19]
-  wire [63:0] arb_io_dcache_w_bits_data; // @[Tile.scala 112:19]
-  wire  arb_io_dcache_w_bits_last; // @[Tile.scala 112:19]
   wire  arb_io_dcache_b_ready; // @[Tile.scala 112:19]
   wire  arb_io_dcache_b_valid; // @[Tile.scala 112:19]
   wire  arb_io_dcache_ar_ready; // @[Tile.scala 112:19]
   wire  arb_io_dcache_ar_valid; // @[Tile.scala 112:19]
-  wire [31:0] arb_io_dcache_ar_bits_addr; // @[Tile.scala 112:19]
   wire  arb_io_dcache_r_ready; // @[Tile.scala 112:19]
   wire  arb_io_dcache_r_valid; // @[Tile.scala 112:19]
   wire [63:0] arb_io_dcache_r_bits_data; // @[Tile.scala 112:19]
   wire  arb_io_nasti_aw_ready; // @[Tile.scala 112:19]
   wire  arb_io_nasti_aw_valid; // @[Tile.scala 112:19]
-  wire [31:0] arb_io_nasti_aw_bits_addr; // @[Tile.scala 112:19]
   wire  arb_io_nasti_w_ready; // @[Tile.scala 112:19]
   wire  arb_io_nasti_w_valid; // @[Tile.scala 112:19]
-  wire [63:0] arb_io_nasti_w_bits_data; // @[Tile.scala 112:19]
   wire  arb_io_nasti_b_ready; // @[Tile.scala 112:19]
   wire  arb_io_nasti_b_valid; // @[Tile.scala 112:19]
   wire  arb_io_nasti_ar_ready; // @[Tile.scala 112:19]
   wire  arb_io_nasti_ar_valid; // @[Tile.scala 112:19]
-  wire [31:0] arb_io_nasti_ar_bits_addr; // @[Tile.scala 112:19]
   wire  arb_io_nasti_r_ready; // @[Tile.scala 112:19]
   wire  arb_io_nasti_r_valid; // @[Tile.scala 112:19]
   wire [63:0] arb_io_nasti_r_bits_data; // @[Tile.scala 112:19]
@@ -3097,65 +2276,50 @@ module Tile(
     .io_host_fromhost_bits(core_io_host_fromhost_bits),
     .io_host_tohost(core_io_host_tohost),
     .io_icache_req_valid(core_io_icache_req_valid),
-    .io_icache_req_bits_addr(core_io_icache_req_bits_addr),
     .io_icache_resp_valid(core_io_icache_resp_valid),
     .io_icache_resp_bits_data(core_io_icache_resp_bits_data),
     .io_dcache_abort(core_io_dcache_abort),
     .io_dcache_req_valid(core_io_dcache_req_valid),
-    .io_dcache_req_bits_addr(core_io_dcache_req_bits_addr),
-    .io_dcache_req_bits_data(core_io_dcache_req_bits_data),
     .io_dcache_req_bits_mask(core_io_dcache_req_bits_mask),
     .io_dcache_resp_valid(core_io_dcache_resp_valid),
     .io_dcache_resp_bits_data(core_io_dcache_resp_bits_data)
   );
-  Cache icache ( // @[Tile.scala 110:22]
+  NoCache icache ( // @[Tile.scala 110:22]
     .clock(icache_clock),
     .reset(icache_reset),
     .io_cpu_abort(icache_io_cpu_abort),
     .io_cpu_req_valid(icache_io_cpu_req_valid),
-    .io_cpu_req_bits_addr(icache_io_cpu_req_bits_addr),
-    .io_cpu_req_bits_data(icache_io_cpu_req_bits_data),
     .io_cpu_req_bits_mask(icache_io_cpu_req_bits_mask),
     .io_cpu_resp_valid(icache_io_cpu_resp_valid),
     .io_cpu_resp_bits_data(icache_io_cpu_resp_bits_data),
     .io_nasti_aw_ready(icache_io_nasti_aw_ready),
     .io_nasti_aw_valid(icache_io_nasti_aw_valid),
-    .io_nasti_aw_bits_addr(icache_io_nasti_aw_bits_addr),
     .io_nasti_w_ready(icache_io_nasti_w_ready),
     .io_nasti_w_valid(icache_io_nasti_w_valid),
-    .io_nasti_w_bits_data(icache_io_nasti_w_bits_data),
-    .io_nasti_w_bits_last(icache_io_nasti_w_bits_last),
     .io_nasti_b_ready(icache_io_nasti_b_ready),
     .io_nasti_b_valid(icache_io_nasti_b_valid),
     .io_nasti_ar_ready(icache_io_nasti_ar_ready),
     .io_nasti_ar_valid(icache_io_nasti_ar_valid),
-    .io_nasti_ar_bits_addr(icache_io_nasti_ar_bits_addr),
     .io_nasti_r_ready(icache_io_nasti_r_ready),
     .io_nasti_r_valid(icache_io_nasti_r_valid),
     .io_nasti_r_bits_data(icache_io_nasti_r_bits_data)
   );
-  Cache dcache ( // @[Tile.scala 111:22]
+  NoCache dcache ( // @[Tile.scala 111:22]
     .clock(dcache_clock),
     .reset(dcache_reset),
     .io_cpu_abort(dcache_io_cpu_abort),
     .io_cpu_req_valid(dcache_io_cpu_req_valid),
-    .io_cpu_req_bits_addr(dcache_io_cpu_req_bits_addr),
-    .io_cpu_req_bits_data(dcache_io_cpu_req_bits_data),
     .io_cpu_req_bits_mask(dcache_io_cpu_req_bits_mask),
     .io_cpu_resp_valid(dcache_io_cpu_resp_valid),
     .io_cpu_resp_bits_data(dcache_io_cpu_resp_bits_data),
     .io_nasti_aw_ready(dcache_io_nasti_aw_ready),
     .io_nasti_aw_valid(dcache_io_nasti_aw_valid),
-    .io_nasti_aw_bits_addr(dcache_io_nasti_aw_bits_addr),
     .io_nasti_w_ready(dcache_io_nasti_w_ready),
     .io_nasti_w_valid(dcache_io_nasti_w_valid),
-    .io_nasti_w_bits_data(dcache_io_nasti_w_bits_data),
-    .io_nasti_w_bits_last(dcache_io_nasti_w_bits_last),
     .io_nasti_b_ready(dcache_io_nasti_b_ready),
     .io_nasti_b_valid(dcache_io_nasti_b_valid),
     .io_nasti_ar_ready(dcache_io_nasti_ar_ready),
     .io_nasti_ar_valid(dcache_io_nasti_ar_valid),
-    .io_nasti_ar_bits_addr(dcache_io_nasti_ar_bits_addr),
     .io_nasti_r_ready(dcache_io_nasti_r_ready),
     .io_nasti_r_valid(dcache_io_nasti_r_valid),
     .io_nasti_r_bits_data(dcache_io_nasti_r_bits_data)
@@ -3165,36 +2329,28 @@ module Tile(
     .reset(arb_reset),
     .io_icache_ar_ready(arb_io_icache_ar_ready),
     .io_icache_ar_valid(arb_io_icache_ar_valid),
-    .io_icache_ar_bits_addr(arb_io_icache_ar_bits_addr),
     .io_icache_r_ready(arb_io_icache_r_ready),
     .io_icache_r_valid(arb_io_icache_r_valid),
     .io_icache_r_bits_data(arb_io_icache_r_bits_data),
     .io_dcache_aw_ready(arb_io_dcache_aw_ready),
     .io_dcache_aw_valid(arb_io_dcache_aw_valid),
-    .io_dcache_aw_bits_addr(arb_io_dcache_aw_bits_addr),
     .io_dcache_w_ready(arb_io_dcache_w_ready),
     .io_dcache_w_valid(arb_io_dcache_w_valid),
-    .io_dcache_w_bits_data(arb_io_dcache_w_bits_data),
-    .io_dcache_w_bits_last(arb_io_dcache_w_bits_last),
     .io_dcache_b_ready(arb_io_dcache_b_ready),
     .io_dcache_b_valid(arb_io_dcache_b_valid),
     .io_dcache_ar_ready(arb_io_dcache_ar_ready),
     .io_dcache_ar_valid(arb_io_dcache_ar_valid),
-    .io_dcache_ar_bits_addr(arb_io_dcache_ar_bits_addr),
     .io_dcache_r_ready(arb_io_dcache_r_ready),
     .io_dcache_r_valid(arb_io_dcache_r_valid),
     .io_dcache_r_bits_data(arb_io_dcache_r_bits_data),
     .io_nasti_aw_ready(arb_io_nasti_aw_ready),
     .io_nasti_aw_valid(arb_io_nasti_aw_valid),
-    .io_nasti_aw_bits_addr(arb_io_nasti_aw_bits_addr),
     .io_nasti_w_ready(arb_io_nasti_w_ready),
     .io_nasti_w_valid(arb_io_nasti_w_valid),
-    .io_nasti_w_bits_data(arb_io_nasti_w_bits_data),
     .io_nasti_b_ready(arb_io_nasti_b_ready),
     .io_nasti_b_valid(arb_io_nasti_b_valid),
     .io_nasti_ar_ready(arb_io_nasti_ar_ready),
     .io_nasti_ar_valid(arb_io_nasti_ar_valid),
-    .io_nasti_ar_bits_addr(arb_io_nasti_ar_bits_addr),
     .io_nasti_r_ready(arb_io_nasti_r_ready),
     .io_nasti_r_valid(arb_io_nasti_r_valid),
     .io_nasti_r_bits_data(arb_io_nasti_r_bits_data),
@@ -3202,12 +2358,9 @@ module Tile(
   );
   assign io_host_tohost = core_io_host_tohost; // @[Tile.scala 114:11]
   assign io_nasti_aw_valid = arb_io_nasti_aw_valid; // @[Tile.scala 119:12]
-  assign io_nasti_aw_bits_addr = arb_io_nasti_aw_bits_addr; // @[Tile.scala 119:12]
   assign io_nasti_w_valid = arb_io_nasti_w_valid; // @[Tile.scala 119:12]
-  assign io_nasti_w_bits_data = arb_io_nasti_w_bits_data; // @[Tile.scala 119:12]
   assign io_nasti_b_ready = arb_io_nasti_b_ready; // @[Tile.scala 119:12]
   assign io_nasti_ar_valid = arb_io_nasti_ar_valid; // @[Tile.scala 119:12]
-  assign io_nasti_ar_bits_addr = arb_io_nasti_ar_bits_addr; // @[Tile.scala 119:12]
   assign io_nasti_r_ready = arb_io_nasti_r_ready; // @[Tile.scala 119:12]
   assign core_clock = clock;
   assign core_reset = reset;
@@ -3221,8 +2374,6 @@ module Tile(
   assign icache_reset = reset;
   assign icache_io_cpu_abort = 1'h0; // @[Tile.scala 115:18]
   assign icache_io_cpu_req_valid = core_io_icache_req_valid; // @[Tile.scala 115:18]
-  assign icache_io_cpu_req_bits_addr = core_io_icache_req_bits_addr; // @[Tile.scala 115:18]
-  assign icache_io_cpu_req_bits_data = 32'h0; // @[Tile.scala 115:18]
   assign icache_io_cpu_req_bits_mask = 4'h0; // @[Tile.scala 115:18]
   assign icache_io_nasti_aw_ready = 1'h0; // @[Tile.scala 117:17]
   assign icache_io_nasti_w_ready = 1'h0; // @[Tile.scala 117:17]
@@ -3234,8 +2385,6 @@ module Tile(
   assign dcache_reset = reset;
   assign dcache_io_cpu_abort = core_io_dcache_abort; // @[Tile.scala 116:18]
   assign dcache_io_cpu_req_valid = core_io_dcache_req_valid; // @[Tile.scala 116:18]
-  assign dcache_io_cpu_req_bits_addr = core_io_dcache_req_bits_addr; // @[Tile.scala 116:18]
-  assign dcache_io_cpu_req_bits_data = core_io_dcache_req_bits_data; // @[Tile.scala 116:18]
   assign dcache_io_cpu_req_bits_mask = core_io_dcache_req_bits_mask; // @[Tile.scala 116:18]
   assign dcache_io_nasti_aw_ready = arb_io_dcache_aw_ready; // @[Tile.scala 118:17]
   assign dcache_io_nasti_w_ready = arb_io_dcache_w_ready; // @[Tile.scala 118:17]
@@ -3246,16 +2395,11 @@ module Tile(
   assign arb_clock = clock;
   assign arb_reset = reset;
   assign arb_io_icache_ar_valid = icache_io_nasti_ar_valid; // @[Tile.scala 117:17]
-  assign arb_io_icache_ar_bits_addr = icache_io_nasti_ar_bits_addr; // @[Tile.scala 117:17]
   assign arb_io_icache_r_ready = icache_io_nasti_r_ready; // @[Tile.scala 117:17]
   assign arb_io_dcache_aw_valid = dcache_io_nasti_aw_valid; // @[Tile.scala 118:17]
-  assign arb_io_dcache_aw_bits_addr = dcache_io_nasti_aw_bits_addr; // @[Tile.scala 118:17]
   assign arb_io_dcache_w_valid = dcache_io_nasti_w_valid; // @[Tile.scala 118:17]
-  assign arb_io_dcache_w_bits_data = dcache_io_nasti_w_bits_data; // @[Tile.scala 118:17]
-  assign arb_io_dcache_w_bits_last = dcache_io_nasti_w_bits_last; // @[Tile.scala 118:17]
   assign arb_io_dcache_b_ready = dcache_io_nasti_b_ready; // @[Tile.scala 118:17]
   assign arb_io_dcache_ar_valid = dcache_io_nasti_ar_valid; // @[Tile.scala 118:17]
-  assign arb_io_dcache_ar_bits_addr = dcache_io_nasti_ar_bits_addr; // @[Tile.scala 118:17]
   assign arb_io_dcache_r_ready = dcache_io_nasti_r_ready; // @[Tile.scala 118:17]
   assign arb_io_nasti_aw_ready = io_nasti_aw_ready; // @[Tile.scala 119:12]
   assign arb_io_nasti_w_ready = io_nasti_w_ready; // @[Tile.scala 119:12]
@@ -3550,15 +2694,12 @@ module NastiMemory(
   input         reset,
   output        io_aw_ready,
   input         io_aw_valid,
-  input  [31:0] io_aw_bits_addr,
   output        io_w_ready,
   input         io_w_valid,
-  input  [63:0] io_w_bits_data,
   input         io_b_ready,
   output        io_b_valid,
   output        io_ar_ready,
   input         io_ar_valid,
-  input  [31:0] io_ar_bits_addr,
   input         io_r_ready,
   output        io_r_valid,
   output [63:0] io_r_bits_data,
@@ -3611,7 +2752,6 @@ module NastiMemory(
   reg [1:0] rstate; // @[nasti.scala 259:23]
   wire [6:0] _read_delay_T_1 = read_delay + 7'h1; // @[nasti.scala 261:28]
   wire  _T_2 = 2'h0 == rstate; // @[nasti.scala 264:18]
-  wire [31:0] _read_addr_T = {{3'd0}, io_ar_bits_addr[31:3]}; // @[nasti.scala 268:38]
   wire  last = outstanding_reads == 8'h0; // @[nasti.scala 283:39]
   wire [7:0] _outstanding_reads_T_1 = outstanding_reads - 8'h1; // @[nasti.scala 287:50]
   wire [1:0] _GEN_6 = last ? 2'h0 : rstate; // @[nasti.scala 284:20 285:18 259:23]
@@ -3629,7 +2769,6 @@ module NastiMemory(
   reg [7:0] outstanding_writes; // @[nasti.scala 311:31]
   wire [6:0] _write_delay_T_1 = write_delay + 7'h1; // @[nasti.scala 313:30]
   wire  _T_12 = 2'h0 == wstate; // @[nasti.scala 317:18]
-  wire [31:0] _store_addr_T = {{3'd0}, io_aw_bits_addr[31:3]}; // @[nasti.scala 320:39]
   wire  last_1 = outstanding_writes == 8'h0; // @[nasti.scala 334:40]
   wire [31:0] wide_word_addr = {{1'd0}, store_addr[31:1]}; // @[nasti.scala 335:41]
   wire  _T_21 = ~store_addr[0]; // @[nasti.scala 337:28]
@@ -3673,11 +2812,11 @@ module NastiMemory(
   assign data_read_data_wide_MPORT_1_en = _T_12 ? 1'h0 : _GEN_115;
   assign data_read_data_wide_MPORT_1_addr = wide_word_addr[19:0];
   assign data_read_data_wide_MPORT_1_data = data[data_read_data_wide_MPORT_1_addr]; // @[nasti.scala 228:17]
-  assign data_MPORT_data = {read_data_wide_1[127:64],io_w_bits_data};
+  assign data_MPORT_data = {read_data_wide_1[127:64],64'h0};
   assign data_MPORT_addr = wide_word_addr[19:0];
   assign data_MPORT_mask = 1'h1;
   assign data_MPORT_en = _T_12 ? 1'h0 : _GEN_118;
-  assign data_MPORT_1_data = {io_w_bits_data,read_data_wide_1[63:0]};
+  assign data_MPORT_1_data = {64'h0,read_data_wide_1[63:0]};
   assign data_MPORT_1_addr = wide_word_addr[19:0];
   assign data_MPORT_1_mask = 1'h1;
   assign data_MPORT_1_en = _T_12 ? 1'h0 : _GEN_123;
@@ -3727,7 +2866,7 @@ module NastiMemory(
     end
     if (2'h0 == rstate) begin // @[nasti.scala 264:18]
       if (io_ar_valid) begin // @[nasti.scala 266:25]
-        read_addr <= _read_addr_T; // @[nasti.scala 268:19]
+        read_addr <= 32'h0; // @[nasti.scala 268:19]
       end
     end else if (!(2'h1 == rstate)) begin // @[nasti.scala 264:18]
       if (2'h2 == rstate) begin // @[nasti.scala 264:18]
@@ -3764,7 +2903,7 @@ module NastiMemory(
     end
     if (2'h0 == wstate) begin // @[nasti.scala 317:18]
       if (io_aw_valid) begin // @[nasti.scala 319:25]
-        store_addr <= _store_addr_T; // @[nasti.scala 320:20]
+        store_addr <= 32'h0; // @[nasti.scala 320:20]
       end
     end else if (!(2'h1 == wstate)) begin // @[nasti.scala 317:18]
       if (2'h2 == wstate) begin // @[nasti.scala 317:18]
@@ -3846,7 +2985,7 @@ initial begin
   outstanding_writes = _RAND_7[7:0];
 `endif // RANDOMIZE_REG_INIT
   `endif // RANDOMIZE
-  // $readmemh("program.hex", data);
+  $readmemh("program.hex", data);
 end // initial
 `ifdef FIRRTL_AFTER_INITIAL
 `FIRRTL_AFTER_INITIAL
@@ -3867,15 +3006,12 @@ module TileWithMemory(
   wire [31:0] tile_io_host_tohost; // @[Tile.scala 127:20]
   wire  tile_io_nasti_aw_ready; // @[Tile.scala 127:20]
   wire  tile_io_nasti_aw_valid; // @[Tile.scala 127:20]
-  wire [31:0] tile_io_nasti_aw_bits_addr; // @[Tile.scala 127:20]
   wire  tile_io_nasti_w_ready; // @[Tile.scala 127:20]
   wire  tile_io_nasti_w_valid; // @[Tile.scala 127:20]
-  wire [63:0] tile_io_nasti_w_bits_data; // @[Tile.scala 127:20]
   wire  tile_io_nasti_b_ready; // @[Tile.scala 127:20]
   wire  tile_io_nasti_b_valid; // @[Tile.scala 127:20]
   wire  tile_io_nasti_ar_ready; // @[Tile.scala 127:20]
   wire  tile_io_nasti_ar_valid; // @[Tile.scala 127:20]
-  wire [31:0] tile_io_nasti_ar_bits_addr; // @[Tile.scala 127:20]
   wire  tile_io_nasti_r_ready; // @[Tile.scala 127:20]
   wire  tile_io_nasti_r_valid; // @[Tile.scala 127:20]
   wire [63:0] tile_io_nasti_r_bits_data; // @[Tile.scala 127:20]
@@ -3884,15 +3020,12 @@ module TileWithMemory(
   wire  memory_reset; // @[Tile.scala 129:22]
   wire  memory_io_aw_ready; // @[Tile.scala 129:22]
   wire  memory_io_aw_valid; // @[Tile.scala 129:22]
-  wire [31:0] memory_io_aw_bits_addr; // @[Tile.scala 129:22]
   wire  memory_io_w_ready; // @[Tile.scala 129:22]
   wire  memory_io_w_valid; // @[Tile.scala 129:22]
-  wire [63:0] memory_io_w_bits_data; // @[Tile.scala 129:22]
   wire  memory_io_b_ready; // @[Tile.scala 129:22]
   wire  memory_io_b_valid; // @[Tile.scala 129:22]
   wire  memory_io_ar_ready; // @[Tile.scala 129:22]
   wire  memory_io_ar_valid; // @[Tile.scala 129:22]
-  wire [31:0] memory_io_ar_bits_addr; // @[Tile.scala 129:22]
   wire  memory_io_r_ready; // @[Tile.scala 129:22]
   wire  memory_io_r_valid; // @[Tile.scala 129:22]
   wire [63:0] memory_io_r_bits_data; // @[Tile.scala 129:22]
@@ -3905,15 +3038,12 @@ module TileWithMemory(
     .io_host_tohost(tile_io_host_tohost),
     .io_nasti_aw_ready(tile_io_nasti_aw_ready),
     .io_nasti_aw_valid(tile_io_nasti_aw_valid),
-    .io_nasti_aw_bits_addr(tile_io_nasti_aw_bits_addr),
     .io_nasti_w_ready(tile_io_nasti_w_ready),
     .io_nasti_w_valid(tile_io_nasti_w_valid),
-    .io_nasti_w_bits_data(tile_io_nasti_w_bits_data),
     .io_nasti_b_ready(tile_io_nasti_b_ready),
     .io_nasti_b_valid(tile_io_nasti_b_valid),
     .io_nasti_ar_ready(tile_io_nasti_ar_ready),
     .io_nasti_ar_valid(tile_io_nasti_ar_valid),
-    .io_nasti_ar_bits_addr(tile_io_nasti_ar_bits_addr),
     .io_nasti_r_ready(tile_io_nasti_r_ready),
     .io_nasti_r_valid(tile_io_nasti_r_valid),
     .io_nasti_r_bits_data(tile_io_nasti_r_bits_data),
@@ -3924,15 +3054,12 @@ module TileWithMemory(
     .reset(memory_reset),
     .io_aw_ready(memory_io_aw_ready),
     .io_aw_valid(memory_io_aw_valid),
-    .io_aw_bits_addr(memory_io_aw_bits_addr),
     .io_w_ready(memory_io_w_ready),
     .io_w_valid(memory_io_w_valid),
-    .io_w_bits_data(memory_io_w_bits_data),
     .io_b_ready(memory_io_b_ready),
     .io_b_valid(memory_io_b_valid),
     .io_ar_ready(memory_io_ar_ready),
     .io_ar_valid(memory_io_ar_valid),
-    .io_ar_bits_addr(memory_io_ar_bits_addr),
     .io_r_ready(memory_io_r_ready),
     .io_r_valid(memory_io_r_valid),
     .io_r_bits_data(memory_io_r_bits_data),
@@ -3953,11 +3080,8 @@ module TileWithMemory(
   assign memory_clock = clock;
   assign memory_reset = reset;
   assign memory_io_aw_valid = tile_io_nasti_aw_valid; // @[Tile.scala 133:17]
-  assign memory_io_aw_bits_addr = tile_io_nasti_aw_bits_addr; // @[Tile.scala 133:17]
   assign memory_io_w_valid = tile_io_nasti_w_valid; // @[Tile.scala 133:17]
-  assign memory_io_w_bits_data = tile_io_nasti_w_bits_data; // @[Tile.scala 133:17]
   assign memory_io_b_ready = tile_io_nasti_b_ready; // @[Tile.scala 133:17]
   assign memory_io_ar_valid = tile_io_nasti_ar_valid; // @[Tile.scala 133:17]
-  assign memory_io_ar_bits_addr = tile_io_nasti_ar_bits_addr; // @[Tile.scala 133:17]
   assign memory_io_r_ready = tile_io_nasti_r_ready; // @[Tile.scala 133:17]
 endmodule

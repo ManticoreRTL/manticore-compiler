@@ -85,10 +85,11 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
-        max_dimx = 3,
-        max_dimy = 3,
+        max_dimx = 16,
+        max_dimy = 16,
         debug_message = false,
         max_registers = 2048,
+        max_local_memory = 4096,
         max_carries = 64,
         optimize_common_custom_functions = true,
         placement_timeout_s = 10

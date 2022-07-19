@@ -79,7 +79,8 @@ final class GaussianBlurBench extends MicroBench with CancelAfterFailure {
   override def timeOut: Int = 10000
 
 
-  testCase("32 gaussian kernels", TestConfig(32, 1))
+  testCase("3 gaussian kernels", TestConfig(3, 1))
+  // testCase("32 gaussian kernels", TestConfig(32, 1))
 
 
 }
