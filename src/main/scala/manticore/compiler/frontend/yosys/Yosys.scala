@@ -31,9 +31,12 @@ object Yosys {
 
   val Stat = YosysPassProxy("stat")
 
-  val PreparationPasses =
+  def PreparationPasses(
+    top: Option[String] = None
+  ) = {
+    val hierarchyArg = top.map(t => s"-top ${t}").getOrElse("-auto-top")
     (Hierarchy << "-check") andThen
-      (Hierarchy << "-auto-top") andThen
+      (Hierarchy << hierarchyArg) andThen
       Proc andThen
       Opt andThen
       (WReduce << "-memx")  andThen
@@ -41,6 +44,7 @@ object Yosys {
       OptClean andThen
       (Check << "-assert") andThen
       MemoryCollect andThen MemoryUnpack andThen MemoryDff
+  }
 
   val LoweringPasses = ManticoreInit andThen
     Flatten andThen
@@ -53,6 +57,6 @@ object Yosys {
     Stat
 
   val YosysDefaultPassAggregator =
-    YosysVerilogReader andThen PreparationPasses andThen LoweringPasses
+    YosysVerilogReader andThen PreparationPasses() andThen LoweringPasses
 
 }

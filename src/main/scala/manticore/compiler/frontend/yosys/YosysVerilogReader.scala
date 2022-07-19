@@ -6,23 +6,36 @@ import manticore.compiler.FunctionalTransformation
 
 import java.nio.file.Path
 
+trait YosysVerilogReader extends FunctionalTransformation[Iterable[Path], YosysResultProxy]
 
-object YosysVerilogReader
-    extends FunctionalTransformation[Iterable[Path], YosysResultProxy] {
+object YosysVerilogReader extends FunctionalTransformation[Iterable[Path], YosysResultProxy] {
 
-  implicit val loggerId = LoggerId("VerilogReader")
-  override def apply(files: Iterable[Path])(implicit
-      ctx: AssemblyContext
-  ): YosysResultProxy = {
+  private class Impl(extraArgs: Iterable[String]) extends YosysVerilogReader {
 
-    val read = files.foldLeft(YosysResultProxy()) { case (r, fpath) =>
-      r :+ (YosysPassProxy("read_verilog") << "-sv" << "-masm" << fpath
-        .toAbsolutePath()
-        .toString())
+    private val cmd = YosysPassProxy("read_verilog") << "-sv" << "-masm" << extraArgs.mkString(" ")
+
+    override def apply(
+        files: Iterable[Path]
+    )(implicit
+        ctx: AssemblyContext
+    ): YosysResultProxy = {
+
+      val reader = cmd << files.map(_.toAbsolutePath()).mkString(" ")
+      YosysResultProxy() :+ reader
     }
-    read
   }
 
+  def deferred: YosysVerilogReader = new Impl(List("-defer"))
+
+  implicit val loggerId = LoggerId("VerilogReader")
+  override def apply(
+      files: Iterable[Path]
+  )(implicit
+      ctx: AssemblyContext
+  ): YosysResultProxy = {
+    val impl = new Impl(Nil)
+    impl(files)
+
+  }
 
 }
-

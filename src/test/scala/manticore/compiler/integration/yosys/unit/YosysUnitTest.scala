@@ -246,7 +246,7 @@ trait YosysUnitTest {
 
   def yosysSelection: Seq[YosysPass] = Nil
   private def yosysRunnables = {
-    val prelim = Yosys.PreparationPasses
+    val prelim = Yosys.PreparationPasses()
     val lowering = Yosys.LoweringPasses
     if (yosysSelection.nonEmpty) {
       yosysSelection.foldLeft(prelim) { case (agg, p) =>

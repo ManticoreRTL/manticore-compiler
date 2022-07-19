@@ -58,6 +58,8 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
   def timeOut: Int = 1000
   def benchName: String
 
+  def top: Option[String] = None
+
   val randGen = new scala.util.Random(7891268)
 
   def verilogSources(cfg: TestConfig): Seq[FileDescriptor]
@@ -105,8 +107,8 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         // log_file = None,
       )
 
-      val yosysCompiler = YosysVerilogReader andThen
-        Yosys.PreparationPasses andThen
+      val yosysCompiler = (if (top.isEmpty) YosysVerilogReader else YosysVerilogReader.deferred) andThen
+        Yosys.PreparationPasses(top) andThen
         Yosys.LoweringPasses andThen
         YosysRunner(fixture.test_dir) andThen
         CompilationStage.preparation
