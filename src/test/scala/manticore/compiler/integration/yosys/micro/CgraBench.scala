@@ -15,13 +15,15 @@ final class CgraBench extends MicroBench {
   type TestConfig = Unit
   override def benchName: String = "A latency-insensitive CGRA"
 
-  override def verilogSources: Seq[FileDescriptor] = Seq(
+  override def verilogSources(config: TestConfig): Seq[FileDescriptor] = Seq(
     WithResource("integration/yosys/micro/cgra/DataflowTester.v"),
     WithResource("integration/yosys/micro/cgra/fp_add.v"),
     WithResource("integration/yosys/micro/cgra/fp_mult.v")
   )
 
   override def testBench(cfg: TestConfig): FileDescriptor = WithResource("integration/yosys/micro/cgra/Main.v")
+
+  override def hexSources(cfg: TestConfig) = Seq.empty
 
   override def outputReference(config: TestConfig): ArrayBuffer[String] = ArrayBuffer()
 
