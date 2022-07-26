@@ -27,9 +27,9 @@ final class GaussianBlurBench extends MicroBench with CancelAfterFailure {
 
     WithInlineVerilog(
       s"""|
-          |module Main(input wire clk);
+          |module Main(input wire clock);
           |
-          |    wire clock = clk;
+          |    wire clk = clock;
           |    parameter NUM_LOOPS = ${cfg.loops};
           |
           |

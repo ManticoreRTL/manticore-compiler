@@ -25,10 +25,9 @@ final class PicoRv32Bench extends MicroBench {
 
     WithInlineVerilog(
       s"""|
-          |module Main(input wire clk);
+          |module Main(input wire clock);
           |
-          |
-          |   wire clock = clk;
+          | wire clk = clock;
           |	localparam NUM_CYCLES = ${cfg};
           |	localparam RESET_CYCLES = 10;
           |	wire resetn;

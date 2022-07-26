@@ -127,19 +127,21 @@ object Logger {
     override protected def message[N <: HasSerialized with Positional](
         msg: => String,
         node: N
-    )(implicit phase_id: HasLoggerId): Unit =
+    )(implicit phase_id: HasLoggerId): Unit = {
       printer.println(
         s"${msg} \n at \n${node.serialized}:${node.pos}\n\t\t reported by ${BOLD}${phase_id}${RESET}"
       )
-    flush()
+      flush()
+    }
 
     override protected def message(
         msg: => String
-    )(implicit phase_id: HasLoggerId): Unit =
+    )(implicit phase_id: HasLoggerId): Unit = {
       printer.println(
         s"${msg} \n\t\treported by ${BOLD}${phase_id}${RESET}"
       )
-    flush()
+      flush()
+    }
 
     def error[N <: HasSerialized with Positional](
         msg: => String,
@@ -151,9 +153,10 @@ object Logger {
     }
     def error(msg: => String)(implicit phase_id: HasLoggerId): Unit = {
       message(s"[${RED}error${RESET}] ${msg}")
+      flush()
       error_count += 1
     }
-    flush()
+
     def countErrors(): Int   = error_count
     def countWarnings(): Int = warn_count
     def countProgress(): Int = transform_index

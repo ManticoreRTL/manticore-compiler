@@ -274,7 +274,7 @@ trait ProcessInterpreter extends InterpreterBase {
           ctx.logger.info("Got finish!", intr)
           trap(FinishTrap)
         case StopInterrupt if en =>
-          ctx.logger.info("Got stop!", intr)
+          ctx.logger.error("Got stop!", intr)
           trap(FailureTrap)
         case SerialInterrupt(fmt) if en =>
           val values      = flushSerial().map(x => BigInt(x.toInt))
