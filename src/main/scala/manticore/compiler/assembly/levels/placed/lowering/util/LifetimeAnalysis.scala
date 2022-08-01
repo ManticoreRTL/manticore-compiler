@@ -180,7 +180,9 @@ private[lowering] object LifetimeAnalysis {
       if (intervals.contains(operand)) {
         intervals += (operand -> intervals(operand).trimStart(from))
       } else {
-        intervals += (operand -> IntervalSet(from, Int.MaxValue))
+        // possibly a dead register, there is no use downstream, otherwise
+        // we would have some interval already in our container
+        intervals += (operand -> IntervalSet(from, from + 1))
       }
     }
     def buildInterval(codeBlock: CodeBlock): Unit = {
@@ -210,7 +212,7 @@ private[lowering] object LifetimeAnalysis {
       // for any of the operands live in the successor or the phis of the
       // successor, create lifetime interval containing the this whole block
       // note that if such an operand is defined in this block, we'll trim the
-      // start of its interval to the position at which it is defined
+      // start of its interval to the position at which it is defined later
       for (liveOperand <- codeBlock.liveIn) {
         addInterval(liveOperand, Interval(codeBlock.from, codeBlock.to + 1))
       }
@@ -264,6 +266,7 @@ private[lowering] object LifetimeAnalysis {
         .map { case (name, intervals) => s"${name}: ${intervals}" }
         .mkString("\n")
     }
+
     val asFunc = intervals.toMap.withDefault(_ => IntervalSet.empty)
     new LifetimeAnalysis {
 
