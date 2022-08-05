@@ -1012,7 +1012,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     val pathIdToPath = enumeratePaths(ctx.max_dimx, ctx.max_dimy)
 
-    ctx.logger.dumpArtifact("process_graph.dot") {
+    ctx.logger.dumpArtifact("process_graph.dot", forceDump = true) {
       val weights = procEdgeWeights.map { case (procEdge, weight) =>
         (procEdge.src, procEdge.dst) -> weight
       }
@@ -1065,7 +1065,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //   roundRobinAssignmentHint
     // )
 
-    ctx.logger.dumpArtifact("core_graph.dot") {
+    ctx.logger.dumpArtifact("core_graph.dot", forceDump = true) {
       val coreEdgeWeights = getCoreEdgeWeights(procEdgeWeights, procIdToCoreId, ctx.max_dimx, ctx.max_dimy)
       dumpCoreGraph(procIdToProcName, procIdToCoreId, coreEdgeWeights, ctx.max_dimx, ctx.max_dimy)
     }

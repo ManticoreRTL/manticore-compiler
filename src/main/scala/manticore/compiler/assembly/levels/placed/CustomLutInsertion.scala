@@ -1007,7 +1007,8 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
     // showing each cone category with a different color.
     ctx.logger.dumpArtifact(
-      s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_selectedCustomInstructionCones.dot"
+      s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_selectedCustomInstructionCones.dot",
+      forceDump = true
     ) {
       val reprIds = coneIdToReprId.values.toSet
 
