@@ -33,7 +33,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
   ) = {
 
     val locked = scala.collection.mutable.Set.empty[NodeT]
-
+    var time_point = System.currentTimeMillis()
     case class MergeChoice(candidate: NodeT, neighbor: NodeT, score: Int)
 
     def replace(choice: MergeChoice): Unit = {
@@ -127,6 +127,11 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
     @tailrec
     def tryContraction(processCount: Int): Unit = {
       require(processCount >= 1)
+      val now_time = System.currentTimeMillis()
+      if ((now_time - time_point) > 1000 * 30 ) { // report at about every 30 seconds
+        ctx.logger.info(s"process count ${processCount}")
+        time_point = now_time
+      }
       // assert(graph.nodes.size == processCount)
       val (shortestNodeOpt, shortestVcycle, longestNodeOpt, longestVcycle) = findShortestAndLongestProcessingTime()
 
@@ -260,7 +265,9 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
     assert(clusters.size == 1, "can not handle disconnected graphs yet") // handle core budget allocation later
 
-    ctx.logger.info(s"max split gives a vcycle estimate of ${vcycle(clusters.head.nodes.maxBy(vcycle))}")
+    ctx.logger.info(
+      s"max split gives a vcycle estimate of ${vcycle(clusters.head.nodes.maxBy(vcycle))} in ${clusters.head.nodes.size} processes"
+    )
     // mutates clusters.head
     ctx.stats.recordRunTime("merging") {
       mergeConnectedGraphWithBudget(numCores, clusters.head, parContext)

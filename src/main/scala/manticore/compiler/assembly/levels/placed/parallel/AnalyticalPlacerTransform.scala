@@ -956,30 +956,50 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
   )(implicit
       ctx: AssemblyContext
   ): Map[ProcId, CoreId] = {
-    val procIdToCoreId = program.processes
-      .sortBy { proc =>
-        proc.body.count {
-          case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
-          case _                                                                             => false
+
+    if (ctx.use_loc) {
+      import manticore.compiler.assembly.annotations.Loc
+      val allHaveLoc = program.processes.forall { p =>
+        p.annons.exists {
+          case _: Loc => true
+          case _      => false
         }
-      } {
-        Ordering[Int].reverse
       }
-      .zip {
-        Range(0, ctx.max_dimx).flatMap { x =>
-          Range(0, ctx.max_dimy).map { y =>
-            CoreId(x, y)
+      if (!allHaveLoc) {
+        ctx.logger.fail("not all processes have @LOC annotation!")
+      } else {
+        program.processes.map { proc =>
+          procNameToProcId(proc.id.id) -> proc.annons.collectFirst { case l: Loc => CoreId(l.getX(), l.getY()) }.get
+        }.toMap
+      }
+
+    } else {
+      val procIdToCoreId = program.processes
+        .sortBy { proc =>
+          proc.body.count {
+            case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
+            case _                                                                             => false
+          }
+        } {
+          Ordering[Int].reverse
+        }
+        .zip {
+          Range(0, ctx.max_dimx).flatMap { x =>
+            Range(0, ctx.max_dimy).map { y =>
+              CoreId(x, y)
+            }
           }
         }
-      }
-      .map { case (proc, coreId) =>
-        val procName = proc.id.id
-        val procId   = procNameToProcId(procName)
-        procId -> coreId
-      }
-      .toMap
+        .map { case (proc, coreId) =>
+          val procName = proc.id.id
+          val procId   = procNameToProcId(procName)
+          procId -> coreId
+        }
+        .toMap
 
-    procIdToCoreId
+      procIdToCoreId
+    }
+
   }
 
   override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {

@@ -213,10 +213,11 @@ trait SingleInstructionTest
     // generate initialization files
     MachineCodeGenerator.generateCode(assembled_program)(context)
 
-    val expected_address: Int = assembled_program
-      .find(_.orig.id.x == 1)
+    val des_proc = assembled_program
+      .find(p => p.orig.id.x == 1 && p.orig.id.y == 0)
       .get
       .orig
+    val expected_address = des_proc
       .registers
       .find(r =>
         r.annons
