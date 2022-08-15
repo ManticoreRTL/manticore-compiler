@@ -136,16 +136,18 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
             }
 
           case Right(instr) =>
+            // Helper
+            def nameToExpr(n: Name): CustomFunctionImpl.ExprTree = {
+              nameToInstrMap.get(n) match {
+                case None        => makeExpr(Left(n))
+                case Some(instr) => makeExpr(Right(instr))
+              }
+            }
+
             instr match {
               case BinaryArithmetic(operator, rd, rs1, rs2, _) =>
-                val rs1Expr = nameToInstrMap.get(rs1) match {
-                  case None           => makeExpr(Left(rs1))
-                  case Some(rs1Instr) => makeExpr(Right(rs1Instr))
-                }
-                val rs2Expr = nameToInstrMap.get(rs2) match {
-                  case None           => makeExpr(Left(rs2))
-                  case Some(rs2Instr) => makeExpr(Right(rs2Instr))
-                }
+                val rs1Expr = nameToExpr(rs1)
+                val rs2Expr = nameToExpr(rs2)
 
                 operator match {
                   case AND => AndExpr(rs1Expr, rs2Expr)
@@ -156,6 +158,12 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
                       s"Unexpected non-logic operator ${operator}."
                     )
                 }
+
+              case Mux(rd, sel, rfalse, rtrue, _) =>
+                val selExpr    = nameToExpr(sel)
+                val rfalseExpr = nameToExpr(rfalse)
+                val rtrueExpr  = nameToExpr(rtrue)
+                MuxExpr(selExpr, rfalseExpr, rtrueExpr)
 
               case _ =>
                 throw new IllegalArgumentException(
@@ -263,6 +271,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
   def isLogicInstr(instr: Instruction): Boolean = {
     instr match {
       case BinaryArithmetic(AND | OR | XOR, _, _, _, _) => true
+      // case _: Mux                                       => true
       case _                                            => false
     }
   }
