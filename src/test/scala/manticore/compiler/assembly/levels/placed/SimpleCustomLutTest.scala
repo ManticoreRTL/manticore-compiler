@@ -241,8 +241,7 @@ class SimpleCustomLutTester extends UnitFixtureTest {
     )
 
     val lutCompiler =
-      CustomLutInsertion andThen
-      PlacedIRDeadCodeElimination
+      CustomLutInsertion
 
     withClue("The program without LUTs should successfully run:") {
       // Interpret the placed program to ensure it does not fail.

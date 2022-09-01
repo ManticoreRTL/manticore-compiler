@@ -42,8 +42,7 @@ class CustomLutInsertionCommonFunctionDetectionTest extends UnitFixtureTest with
       PlacedIRCommonSubExpressionElimination
 
     val lutCompiler =
-      CustomLutInsertion andThen
-      PlacedIRDeadCodeElimination
+      CustomLutInsertion
 
     val prog = XorReduce(fixture)
 
