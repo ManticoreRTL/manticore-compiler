@@ -57,7 +57,7 @@ object AbstractExecution extends PlacedIRChecker {
     def checkOvfUse(use: Name, instr: AddCarry) = {
       val (_, id) = lookup(use)
       val writes = ovfRegisterFile(id)
-      if (writes.nonEmpty && writes.top != use) {
+      if (writes.nonEmpty) {
         if (writes.top != use) {
           ctx.logger.error(
              s"Conflicted overflow physical register sharing at id ${id}! Expected to read the overflow value for " +

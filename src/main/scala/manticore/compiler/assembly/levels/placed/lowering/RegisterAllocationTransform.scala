@@ -11,7 +11,6 @@ import manticore.compiler.assembly.levels.placed.Helpers.InputOutputPairs
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
-import manticore.compiler.assembly.levels.CarryType
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
@@ -217,11 +216,11 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
     val allocatedNames   = scala.collection.mutable.Queue.empty[DefReg]
 
     // create a list of register with
-    val mainFreeList =
+    val freeList =
       ArrayDeque.empty[Int] ++ Seq.tabulate(registerCapacity - numImmortals) { i =>
         i + numImmortals
       }
-    val freeCarryList = ArrayDeque.empty[Int] ++ Range(0, carryCapacity)
+
 
     val allocationHint =
       scala.collection.mutable.Map.empty[Name, AllocationHint]
@@ -253,12 +252,7 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
         val mayHavePassedInterval = lifetime(firstActive.variable.name)
         if (mayHavePassedInterval.max <= currentInterval.min) { // <= because interval end in exclusive
           // the firstActive is no longer alive
-          if (firstActive.variable.varType == CarryType) {
-            freeCarryList += firstActive.variable.id
-          } else {
-            mainFreeList += firstActive.variable.id
-          }
-
+          freeList += firstActive.variable.id
           ctx.logger.debug(
             s"Freed ${firstActive.variable.name}:${firstActive.variable.id}"
           )
@@ -307,20 +301,16 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
         val currentRegToAllocate = unallocatedList.dequeue()
         val currentInterval      = lifetime(currentRegToAllocate.variable.name)
 
-        val freeListUsed =
-          if (currentRegToAllocate.variable.varType == CarryType) {
-            freeCarryList
-          } else {
-            mainFreeList
-          }
+        // val freeListUsed = mainFreeList
+
         // release any registers whose intervals are passed
         tryRelease(currentInterval)
 
-        if (freeListUsed.nonEmpty) {
+        if (freeList.nonEmpty) {
           // look for any hint for allocation
           def allocate(removeIndex: Int) = {
 
-            val allocationId = freeListUsed.remove(removeIndex)
+            val allocationId = freeList.remove(removeIndex)
             val regWithId    = withId(currentRegToAllocate, allocationId)
             allocatedList += regWithId
             activeList += regWithId
@@ -332,7 +322,7 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
             case Some(lastHint) =>
               // try to use lastId
               val idPosition =
-                tryFindIdPositionInFreeList(lastHint.lastId, freeListUsed)
+                tryFindIdPositionInFreeList(lastHint.lastId, freeList)
               idPosition match {
                 case Some(index) =>
                   // there is valid hint that we can use (by construction
