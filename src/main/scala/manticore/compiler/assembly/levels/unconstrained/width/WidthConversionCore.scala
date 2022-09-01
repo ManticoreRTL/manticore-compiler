@@ -244,58 +244,57 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
     val constTrue  = builder.mkConstant(1)
     val instQ      = scala.collection.mutable.ArrayBuffer.empty[DataInstruction]
     val (_, result) =
-      rs1Array.zip(rs2Array).foldRight((constFalse, constFalse)) {
-        case ((op1, op2), (foundPrev, resultPrev)) =>
-          val eq = builder.mkWire("eq", 1)
-          val lt = builder.mkWire("lt", 1)
-          instQ += BinaryArithmetic(
-            operator = BinaryOperator.SEQ,
-            rd = eq,
-            rs1 = op1,
-            rs2 = op2
-          )
-          instQ += BinaryArithmetic(
-            operator = BinaryOperator.SLT,
-            rd = lt,
-            rs1 = op1,
-            rs2 = op2
-          )
-          val rlt = builder.mkWire("rlt", 1)
-          instQ += Mux(
-            rd = rlt,
-            sel = lt,
-            rtrue = constTrue,
-            rfalse = constFalse
-          )
-          val req = builder.mkWire("req", 1)
-          instQ += Mux(
-            rd = req,
-            sel = eq,
-            rtrue = constFalse,
-            rfalse = rlt
-          )
-          val resultNext = builder.mkWire("resultNext", 1)
-          instQ += Mux(
-            rd = resultNext,
-            sel = foundPrev,
-            rtrue = resultPrev,
-            rfalse = req
-          )
-          val feq = builder.mkWire("feq", 1)
-          instQ += Mux(
-            rd = feq,
-            sel = eq,
-            rtrue = constFalse,
-            rfalse = constTrue
-          )
-          val foundNext = builder.mkWire("foundNext", 1)
-          instQ += Mux(
-            rd = foundNext,
-            sel = foundPrev,
-            rtrue = constTrue,
-            rfalse = feq
-          )
-          (foundNext, resultNext)
+      rs1Array.zip(rs2Array).foldRight((constFalse, constFalse)) { case ((op1, op2), (foundPrev, resultPrev)) =>
+        val eq = builder.mkWire("eq", 1)
+        val lt = builder.mkWire("lt", 1)
+        instQ += BinaryArithmetic(
+          operator = BinaryOperator.SEQ,
+          rd = eq,
+          rs1 = op1,
+          rs2 = op2
+        )
+        instQ += BinaryArithmetic(
+          operator = BinaryOperator.SLT,
+          rd = lt,
+          rs1 = op1,
+          rs2 = op2
+        )
+        val rlt = builder.mkWire("rlt", 1)
+        instQ += Mux(
+          rd = rlt,
+          sel = lt,
+          rtrue = constTrue,
+          rfalse = constFalse
+        )
+        val req = builder.mkWire("req", 1)
+        instQ += Mux(
+          rd = req,
+          sel = eq,
+          rtrue = constFalse,
+          rfalse = rlt
+        )
+        val resultNext = builder.mkWire("resultNext", 1)
+        instQ += Mux(
+          rd = resultNext,
+          sel = foundPrev,
+          rtrue = resultPrev,
+          rfalse = req
+        )
+        val feq = builder.mkWire("feq", 1)
+        instQ += Mux(
+          rd = feq,
+          sel = eq,
+          rtrue = constFalse,
+          rfalse = constTrue
+        )
+        val foundNext = builder.mkWire("foundNext", 1)
+        instQ += Mux(
+          rd = foundNext,
+          sel = foundPrev,
+          rtrue = constTrue,
+          rfalse = feq
+        )
+        (foundNext, resultNext)
       }
     (instQ.toSeq, result)
   }
@@ -336,15 +335,14 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
       val rs1_uint16_array = builder.getConversion(bitwise_inst.rs1).parts
       val rs2_uint16_array = builder.getConversion(bitwise_inst.rs2).parts
 
-      rd_uint16_array zip (rs1_uint16_array zip rs2_uint16_array) foreach {
-        case (rd_16, (rs1_16, rs2_16)) =>
-          inst_q += BinaryArithmetic(
-            bitwise_inst.operator,
-            rd_16,
-            rs1_16,
-            rs2_16,
-            bitwise_inst.annons
-          )
+      rd_uint16_array zip (rs1_uint16_array zip rs2_uint16_array) foreach { case (rd_16, (rs1_16, rs2_16)) =>
+        inst_q += BinaryArithmetic(
+          bitwise_inst.operator,
+          rd_16,
+          rs1_16,
+          rs2_16,
+          bitwise_inst.annons
+        )
       }
 
     }
@@ -452,17 +450,14 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
           // set the carry-in to be zero for the first partial sum
           (rs1_uint16_array_aligned zip
             rs2_uint16_array_aligned zip
-            rd_uint16_array_mutable).foldLeft(builder.mkCarry0()) {
-            case (cin, ((rs1_16, rs2_16), rd_16)) =>
-              val cout = builder.mkCarry()
-              inst_q += AddC(
-                rd = rd_16,
-                co = cout,
-                rs1 = rs1_16,
-                rs2 = rs2_16,
-                ci = cin
-              )
-              cout
+            rd_uint16_array_mutable).foldLeft(builder.mkCarry0()) { case (cin, ((rs1_16, rs2_16), rd_16)) =>
+            inst_q += AddCarry(
+              rd = rd_16,
+              rs1 = rs1_16,
+              rs2 = rs2_16,
+              cin = cin
+            )
+            rd_16
           }
 
         } else {
@@ -557,16 +552,13 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
                 rs2_16,
                 const_0xFFFF
               )
-              val cout = builder.mkCarry()
-              inst_q += AddC(
-                co = cout,
+              inst_q += AddCarry(
                 rd = rd_16,
                 rs1 = rs1_16,
                 rs2 = rs2_16_neg,
-                ci = cin
+                cin = cin
               )
-              cout
-
+              rd_16
             }
 
         } else {
@@ -598,15 +590,14 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
           rs1_uint16_array.size == rs2_uint16_array.size && rs1_uint16_array.size == rd_uint16_array.size,
           s"size miss match in ${instruction.serialized}"
         )
-        rd_uint16_array_mutable zip (rs1_uint16_array zip rs2_uint16_array) foreach {
-          case (rd_16, (rs1_16, rs2_16)) =>
-            inst_q += instruction
-              .copy(
-                rd = rd_16,
-                rs1 = rs1_16,
-                rs2 = rs2_16
-              )
-              .setPos(instruction.pos)
+        rd_uint16_array_mutable zip (rs1_uint16_array zip rs2_uint16_array) foreach { case (rd_16, (rs1_16, rs2_16)) =>
+          inst_q += instruction
+            .copy(
+              rd = rd_16,
+              rs1 = rs1_16,
+              rs2 = rs2_16
+            )
+            .setPos(instruction.pos)
         }
         // no need to mask since we can not increase the bit width in any way
         // with bit-wise operations
@@ -1554,41 +1545,40 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
                   rs_array: Seq[Name],
                   initial_carry_in: Name
               ): Unit =
-                (rd_array zip rs_array).foldRight(initial_carry_in) {
-                  case ((rd_16_t, rs_16), carry_in) =>
-                    // compute the carry out but not for the first one (carry out is not used anywhere)
-                    val carry_out = builder.mkWire("srl_co", 16)
-                    if (rd_16_t != rd_array.head) {
-                      inst_q += instruction.copy(
-                        operator = BinaryOperator.SLL,
-                        rd = carry_out,
-                        rs1 = rs_16,
-                        rs2 = builder.mkConstant(16 - last_shift_amount)
-                      )
-                    }
-                    // do the shifting
-                    if (carry_in != builder.mkConstant(0)) {
-                      val srl_builder = builder.mkWire("srl_builder", 16)
-                      inst_q += instruction.copy(
-                        rd = srl_builder,
-                        rs1 = rs_16,
-                        rs2 = builder.mkConstant(last_shift_amount)
-                      )
-                      inst_q += instruction.copy(
-                        operator = BinaryOperator.OR,
-                        rd = rd_16_t,
-                        rs1 = srl_builder,
-                        rs2 = carry_in
-                      )
-                    } else {
-                      inst_q += instruction.copy(
-                        rd = rd_16_t,
-                        rs1 = rs_16,
-                        rs2 = builder.mkConstant(last_shift_amount)
-                      )
-                    }
+                (rd_array zip rs_array).foldRight(initial_carry_in) { case ((rd_16_t, rs_16), carry_in) =>
+                  // compute the carry out but not for the first one (carry out is not used anywhere)
+                  val carry_out = builder.mkWire("srl_co", 16)
+                  if (rd_16_t != rd_array.head) {
+                    inst_q += instruction.copy(
+                      operator = BinaryOperator.SLL,
+                      rd = carry_out,
+                      rs1 = rs_16,
+                      rs2 = builder.mkConstant(16 - last_shift_amount)
+                    )
+                  }
+                  // do the shifting
+                  if (carry_in != builder.mkConstant(0)) {
+                    val srl_builder = builder.mkWire("srl_builder", 16)
+                    inst_q += instruction.copy(
+                      rd = srl_builder,
+                      rs1 = rs_16,
+                      rs2 = builder.mkConstant(last_shift_amount)
+                    )
+                    inst_q += instruction.copy(
+                      operator = BinaryOperator.OR,
+                      rd = rd_16_t,
+                      rs1 = srl_builder,
+                      rs2 = carry_in
+                    )
+                  } else {
+                    inst_q += instruction.copy(
+                      rd = rd_16_t,
+                      rs1 = rs_16,
+                      rs2 = builder.mkConstant(last_shift_amount)
+                    )
+                  }
 
-                    carry_out
+                  carry_out
                 }
               if (rd_uint16_array.length > pre_shifted.length) {
                 //
@@ -2009,17 +1999,14 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
             )
           }
           val diffArray = rs2Array.map(_ => builder.mkWire("diff", 16))
-          diffArray.zip(rs1Array.zip(rs2Flipped)).foldLeft(builder.mkCarry1()) {
-            case (cin, (diff, (rs1, rs2f))) =>
-              val cout = builder.mkCarry()
-              inst_q += AddC(
-                rd = diff,
-                rs1 = rs1,
-                rs2 = rs2f,
-                ci = cin,
-                co = cout
-              )
-              cout
+          diffArray.zip(rs1Array.zip(rs2Flipped)).foldLeft(builder.mkCarry1()) { case (cin, (diff, (rs1, rs2f))) =>
+            inst_q += AddCarry(
+              rd = diff,
+              rs1 = rs1,
+              rs2 = rs2f,
+              cin = cin,
+            )
+            diff
           }
 
           // A < B (signed) is (A_msb & ~B_msb) | (diff_msb & (~A_msb ^ B_msb)
@@ -2085,7 +2072,6 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
         }
       // no need to mask
       case mulOperator @ (BinaryOperator.MUL | BinaryOperator.MULS) =>
-
         val rs1Width = builder.originalWidth(instruction.rs1)
         val rs2Width = builder.originalWidth(instruction.rs2)
         val rdWidth  = builder.originalWidth(instruction.rd)
@@ -2199,17 +2185,14 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
             assert(prev.length == curr.length, s"${prev.length} != ${curr.length}")
             val res = Seq.fill(prev.length) { builder.mkWire("adder_chain", 16) }
 
-            (res zip (prev zip curr)).foldLeft(builder.mkCarry0()) {
-              case (carryIn, (ro, (r1, r2))) =>
-                val carryOut = builder.mkCarry()
-                inst_q += AddC(
-                  rd = ro,
-                  co = carryOut,
-                  rs1 = r1,
-                  rs2 = r2,
-                  ci = carryIn
-                )
-                carryOut
+            (res zip (prev zip curr)).foldLeft(builder.mkCarry0()) { case (carryIn, (ro, (r1, r2))) =>
+              inst_q += AddCarry(
+                rd = ro,
+                rs1 = r1,
+                rs2 = r2,
+                cin = carryIn
+              )
+              ro
             }
             res
           }
@@ -2284,17 +2267,14 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
 
     val (_, carryChain) = padOrigAddr
       .zip(globalAddress.zip(constBase))
-      .foldLeft(builder.mkCarry0(), Seq.empty[Instruction]) {
-        case ((carryIn, prev), (offset16, (addr16, base16))) =>
-          val carryOut = builder.mkCarry()
-          val adder = AddC(
-            rd = addr16,
-            co = carryOut,
-            rs1 = offset16,
-            rs2 = base16,
-            ci = carryIn
-          )
-          (carryOut, prev :+ adder)
+      .foldLeft(builder.mkCarry0(), Seq.empty[Instruction]) { case ((carryIn, prev), (offset16, (addr16, base16))) =>
+        val adder = AddCarry(
+          rd = addr16,
+          rs1 = offset16,
+          rs2 = base16,
+          cin = carryIn
+        )
+        (addr16, prev :+ adder)
       }
     (carryChain, globalAddress)
   }
@@ -2542,14 +2522,13 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
       }
       val rfalse_uint16_array = builder.getConversion(rfalse).parts
       val rtrue_uint16_array  = builder.getConversion(rtrue).parts
-      rd_uint16_array zip (rfalse_uint16_array zip rtrue_uint16_array) map {
-        case (rd16, (rfalse16, rtrue16)) =>
-          i.copy(
-            rd = rd16,
-            sel = sel_uint16_array.head,
-            rfalse = rfalse16,
-            rtrue = rtrue16
-          ).setPos(i.pos)
+      rd_uint16_array zip (rfalse_uint16_array zip rtrue_uint16_array) map { case (rd16, (rfalse16, rtrue16)) =>
+        i.copy(
+          rd = rd16,
+          sel = sel_uint16_array.head,
+          rfalse = rfalse16,
+          rtrue = rtrue16
+        ).setPos(i.pos)
       } // don't need to mask the results though, rfalse and rtrue are masked
     // where they are produced and MUX cannot overflow them
     case i: AddC =>
@@ -2637,13 +2616,12 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
       if (default_uint16_array.length != rd_uint16_array.length) {
         ctx.logger.error("Expected aligned default case", i)
       }
-      rd_uint16_array.zip(case_rs).zip(default_uint16_array).map {
-        case ((rd16, rs16_array), def16) =>
-          i.copy(
-            rd = rd16,
-            choices = case_conds zip rs16_array map { case (a, b) => ParMuxCase(a, b) },
-            default = def16
-          ).setPos(i.pos)
+      rd_uint16_array.zip(case_rs).zip(default_uint16_array).map { case ((rd16, rs16_array), def16) =>
+        i.copy(
+          rd = rd16,
+          choices = case_conds zip rs16_array map { case (a, b) => ParMuxCase(a, b) },
+          default = def16
+        ).setPos(i.pos)
       }
     case i @ Lookup(rd, index, base, _) =>
       val rd16_array = builder.getConversion(rd).parts

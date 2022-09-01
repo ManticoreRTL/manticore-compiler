@@ -496,6 +496,17 @@ trait ManticoreAssemblyIR {
 
   }
 
+  case class AddCarry(
+    rd: Name,
+    rs1: Name,
+    rs2: Name,
+    cin: Name,
+    annons: Seq[AssemblyAnnotation] = Nil
+  ) extends DataInstruction {
+    override def toString: String =
+      s"ADDCARRY ${rd}, ${rs1}, ${rs2}, ${cin}"
+  }
+
   case class ClearCarry(
       carry: Name,
       annons: Seq[AssemblyAnnotation] = Nil
