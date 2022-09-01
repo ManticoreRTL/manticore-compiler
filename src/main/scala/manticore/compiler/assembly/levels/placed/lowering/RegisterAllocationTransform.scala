@@ -207,9 +207,8 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
 
     ctx.logger.debug(s"Register allocation for ${process.id}")
 
-    val lifetime = ctx.stats.recordRunTime(s"lifetime ${process.id}") {
-      util.LifetimeAnalysis(process)
-    }
+    val lifetime = util.LifetimeAnalysis(process)
+
 
     val immortals        = allocateImmortals(process)
     val numImmortals     = immortals.length
