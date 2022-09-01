@@ -26,10 +26,10 @@ final class Mips32Bench extends MicroBench {
     WithInlineVerilog(
       s"""|
           |module Main (
-          |    input wire clk
+          |    input wire clock
           |);
           |
-          |  wire clock = clk;
+          |  wire clk = clock;
           |  reg  [31:0] inst_mem[255:0];
           |  reg  [15:0] cycle_counter = 0;
           |

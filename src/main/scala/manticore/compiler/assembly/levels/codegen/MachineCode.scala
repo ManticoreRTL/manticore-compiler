@@ -82,10 +82,10 @@ object MachineCodeGenerator
     // PROGRAM_BODY_LENGTH + EPILOGUE_LENGTH instruction at every virtual cycle
     // and the roll over to the first instruction.
     // SLEEP_LENGTH indicates the number of cycles a processor should go to sleep
-    // after it has executed all of teh PROGRAM_BODY_LENGTH + EPILOGUE_LENGTH
+    // after it has executed all of the PROGRAM_BODY_LENGTH + EPILOGUE_LENGTH
     // instructions. The SLEEP_LENGTH cycles is used to synchronize all processors
     // at the end of a virtual cycle.
-    /// IMPORTANT: It is a good idea to have SLEEP_CYCLE >= MIN_LATENCY
+    /// IMPORTANT: It is required to have SLEEP_CYCLE >= MIN_LATENCY
     // to ensure that all instructions are finished write back when a new
     // virtual cycles begins.
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

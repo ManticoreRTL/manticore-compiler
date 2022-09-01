@@ -27,8 +27,8 @@ final class QueueCascadeBench extends MicroBench {
 
     WithInlineVerilog(
       s"""|
-          |module Main(input wire clk);
-          |
+          |module Main(input wire clock);
+          |  wire clk = clock;
           |  reg [15:0] counter;
           |  wire rst = (counter < 10);
           |  wire enq_ready;
