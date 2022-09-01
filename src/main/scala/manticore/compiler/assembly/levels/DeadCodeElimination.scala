@@ -359,12 +359,12 @@ trait DeadCodeElimination
         }
       }
       ctx.logger.info(s"DCE on outer block ${index}")
-      val outerDceResult = ctx.stats.recordRunTime(s"outer_dce_${index}") {
+      val outerDceResult =
         dceBlock(current) {
           globallyTrackedSet
           // only keep Names with Track annons
         }
-      }
+
       ctx.logger.info(s"DCE on inner block ${index} (if any)")
       val finalDceResult = outerDceResult.map {
         // perform DCE for the body of the jump
