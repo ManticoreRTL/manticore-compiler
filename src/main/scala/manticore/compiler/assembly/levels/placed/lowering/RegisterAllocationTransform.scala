@@ -209,7 +209,6 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
 
     val lifetime = util.LifetimeAnalysis(process)
 
-
     val immortals        = allocateImmortals(process)
     val numImmortals     = immortals.length
     val registerCapacity = ctx.max_registers
@@ -368,6 +367,16 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
           allocateWhileHaveFree(unallocatedList)
 
         } else {
+          ctx.logger.error(s"Could not allocate ${currentRegToAllocate.variable.name} in interval ${currentInterval}")
+          def mkMessage(): String = {
+            val actives = activeList.dequeueAll[DefReg]
+            actives
+              .map { a =>
+                s"${a.variable.name}: ${lifetime(a.variable.name)}"
+              }
+              .mkString("\n")
+          }
+          ctx.logger.error(s"There are ${activeList.length} active registers: \n${mkMessage()}")
           // failed register allocation!
           unallocatedList.dequeueAll
         }
@@ -408,7 +417,7 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
         }
         .mkString("\n")
       ctx.logger.error(
-        s"Failed to allocate registers in process ${process.id}:\n${msg}"
+        s"Failed to allocate registers in process ${process.id}"
       )
       process
     } else {
