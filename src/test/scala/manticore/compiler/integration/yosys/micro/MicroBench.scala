@@ -25,7 +25,6 @@ import manticore.compiler.assembly.levels.placed.lowering.Lowering
 import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
 import manticore.compiler.assembly.levels.placed.parallel.AnalyticalPlacerTransform
 import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
-import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedCloseSequentialCycles
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
@@ -101,7 +100,6 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         debug_message = false,
         max_registers = 2048,
         max_local_memory = 1 << 16,
-        max_carries = 64,
         optimize_common_custom_functions = true,
         placement_timeout_s = 10
         // log_file = None,

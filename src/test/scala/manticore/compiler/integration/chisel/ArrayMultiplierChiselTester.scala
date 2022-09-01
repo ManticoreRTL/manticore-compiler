@@ -55,7 +55,6 @@ class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
         dump_all = true,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
         expected_cycles = Some(2 + 16),
-        max_carries = 16,
         debug_message = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile())
         // debug_message = true
