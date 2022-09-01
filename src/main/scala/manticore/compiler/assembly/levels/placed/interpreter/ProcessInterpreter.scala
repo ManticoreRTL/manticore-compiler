@@ -23,9 +23,10 @@ trait ProcessInterpreter extends InterpreterBase {
   def getFunc(name: Name): CustomFunction
   // write a register
   def write(rd: Name, value: UInt16): Unit
+  def writeOvf(rd: Name, v: Boolean): Unit
   // read a register
   def read(rs: Name): UInt16
-
+  def readOvf(rs: Name): Boolean
   def updatePc(pc: Int): Unit
 
   // local load/store
@@ -310,16 +311,18 @@ trait ProcessInterpreter extends InterpreterBase {
           rtrue_val
       }
       write(rd, rd_val)
-    case AddC(rd, co, rs1, rs2, ci, _) =>
+    case AddCarry(rd, rs1, rs2, ci, _) =>
       val rs1_val = read(rs1).toInt
       val rs2_val = read(rs2).toInt
-      val ci_val  = read(ci).toInt
+      val ci_val  = if (readOvf(ci)) 1 else 0
+
       val sum     = rs1_val + rs2_val + ci_val
       val rd_val  = UInt16.clipped(sum)
       val co_val  = sum >> 16
       assert(co_val <= 1, "invalid carry computation")
       write(rd, rd_val)
-      write(co, UInt16(co_val))
+      writeOvf(rd, co_val == 1)
+
     case PadZero(rd, rs, width, annons) =>
       ctx.logger.warn(
         s"Did not expect instruction in Placed flavor",
@@ -331,9 +334,9 @@ trait ProcessInterpreter extends InterpreterBase {
       val rs_val = read(rs)
       write(rd, rs_val)
     case SetCarry(carry, _) =>
-      write(carry, UInt16(1))
+      writeOvf(carry, true)
     case ClearCarry(carry, _) =>
-      write(carry, UInt16(0))
+      writeOvf(carry, false)
     case Recv(rd, rs, source_id, _) =>
       val rd_val = recv(rd, source_id)
       rd_val match {

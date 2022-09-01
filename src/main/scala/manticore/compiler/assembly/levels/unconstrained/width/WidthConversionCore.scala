@@ -2531,7 +2531,7 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
         ).setPos(i.pos)
       } // don't need to mask the results though, rfalse and rtrue are masked
     // where they are produced and MUX cannot overflow them
-    case i: AddC =>
+    case i: AddCarry =>
       ctx.logger.error("AddC can only be inserted by the compiler!", i)
       Seq.empty[Instruction]
     case Nop =>

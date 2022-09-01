@@ -190,7 +190,7 @@ trait ConstantFolding
     block.foldLeft(scope) { case (builder, inst) =>
       inst match {
         case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore | _: GlobalStore | _: PadZero | _: SetCarry |
-            _: ClearCarry | _: Predicate | _: PadZero | _: Lookup | _: PutSerial | _: Interrupt) =>
+            _: ClearCarry | _: Predicate | _: PadZero | _: Lookup | _: PutSerial | _: Interrupt | _: AddCarry) =>
           builder.keep(i)
         case Nop =>
           // don't keep
@@ -207,18 +207,18 @@ trait ConstantFolding
             case _ => builder.keep(i)
 
           }
-        case i @ AddC(rd, co, rs1, rs2, ci, _) =>
-          val ci_val  = builder.computedValue(ci)
-          val rs1_val = builder.computedValue(rs1)
-          val rs2_val = builder.computedValue(rs2)
-          (rs1_val, rs2_val, ci_val) match {
-            case (Right(v1), Right(v2), Right(vci)) =>
-              val (rd_val, co_val) = addCarryEvaluator(v1, v2, vci)
-              builder.bindConst(rd, rd_val).bindConst(co, co_val)
-            case (Right(c0), Right(c1), Left(ci_subst)) if isFalse(c0) && isTrue(c1) =>
-              builder.bindName(co, ci_subst)
-            case _ => builder.keep(i)
-          }
+        // case i @ AddCarry(rd, rs1, rs2, ci, _) =>
+        //   val ci_val  = builder.computedValue(ci)
+        //   val rs1_val = builder.computedValue(rs1)
+        //   val rs2_val = builder.computedValue(rs2)
+        //   (rs1_val, rs2_val, ci_val) match {
+        //     case (Right(v1), Right(v2), Right(vci)) =>
+        //       val (rd_val, co_val) = addCarryEvaluator(v1, v2, vci)
+        //       builder.bindConst(rd, rd_val).bindConst(co, co_val)
+        //     case (Right(c0), Right(c1), Left(ci_subst)) if isFalse(c0) && isTrue(c1) =>
+        //       builder.bindName(co, ci_subst)
+        //     case _ => builder.keep(i)
+        //   }
         case SetValue(rd, value, annons) =>
           builder.bindConst(rd, asConcrete(value) { builder.widthLookup(rd) })
 

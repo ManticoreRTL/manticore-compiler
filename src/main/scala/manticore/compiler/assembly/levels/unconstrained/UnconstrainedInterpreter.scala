@@ -603,10 +603,6 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         update(rd, rd_val)
         updateOvf(rd, co_val)
 
-      case AddC(rd, co, rs1, rs2, ci, annons) =>
-        ctx.logger.error("Invalid instruction", instruction)
-
-
       case PadZero(rd, rs, width, annons) =>
         val rs_val = state.register_file(rs)
         update(rd, rs_val)

@@ -12,7 +12,7 @@ case class ProcessStatistic(
     length: Int,
     registers: Seq[(String, Int)],
     functs: Int,
-    vcycle: Int = 0,
+    vcycle: Int = 0
 )
 
 trait CanCollectProgramStatistics extends Flavored {
@@ -30,33 +30,33 @@ trait CanCollectProgramStatistics extends Flavored {
     )(implicit ctx: AssemblyContext): InstructionStat = {
 
       var inst_count: ListMap[String, Int] = ListMap[String, Int](
-        "CUST" -> 0,
-        "LLD" -> 0,
-        "LST" -> 0,
-        "GLD" -> 0,
-        "GST" -> 0,
-        "SET" -> 0,
-        "SEND" -> 0,
-        "RECV" -> 0,
-        "EXPECT" -> 0,
-        "MUX" -> 0,
-        "NOP" -> 0,
-        "ADDCARRY" -> 0,
+        "CUST"       -> 0,
+        "LLD"        -> 0,
+        "LST"        -> 0,
+        "GLD"        -> 0,
+        "GST"        -> 0,
+        "SET"        -> 0,
+        "SEND"       -> 0,
+        "RECV"       -> 0,
+        "EXPECT"     -> 0,
+        "MUX"        -> 0,
+        "NOP"        -> 0,
+        "ADDCARRY"   -> 0,
         "CLEARCARRY" -> 0,
-        "SETCARRY" -> 0,
-        "PADZERO" -> 0,
-        "MOV" -> 0,
-        "PREDICATE" -> 0,
-        "PARMUX" -> 0,
-        "LOOKUP" -> 0,
-        "SWITCH" -> 0,
-        "SLICE" -> 0,
-        "BREAK" -> 0,
-        "PUT" -> 0,
-        "FINISH" -> 0,
-        "FLUSH" -> 0,
-        "STOP" -> 0,
-        "ASSERT" -> 0
+        "SETCARRY"   -> 0,
+        "PADZERO"    -> 0,
+        "MOV"        -> 0,
+        "PREDICATE"  -> 0,
+        "PARMUX"     -> 0,
+        "LOOKUP"     -> 0,
+        "SWITCH"     -> 0,
+        "SLICE"      -> 0,
+        "BREAK"      -> 0,
+        "PUT"        -> 0,
+        "FINISH"     -> 0,
+        "FLUSH"      -> 0,
+        "STOP"       -> 0,
+        "ASSERT"     -> 0
       ) ++ Seq
         .tabulate(BinaryOperator.maxId) { i => BinaryOperator(i) }
         .filter { k =>
@@ -100,7 +100,7 @@ trait CanCollectProgramStatistics extends Flavored {
         case _: LocalStore  => incr("LST")
         case _: Expect      => incr("EXPECT")
         case _: Predicate   => incr("PREDICATE")
-        case _: AddC        => incr("ADDCARRY")
+        case _: AddCarry    => incr("ADDCARRY")
         case _: ClearCarry  => incr("CLEARCARRY")
         case _: SetCarry    => incr("SETCARRY")
         case _: Mov         => incr("MOV")
@@ -130,10 +130,10 @@ trait CanCollectProgramStatistics extends Flavored {
           numInsts + dslotInsts + incr("SWITCH")
         case Interrupt(action, _, _, _) =>
           action match {
-            case AssertionInterrupt => incr("ASSERT")
-            case FinishInterrupt => incr("FINISH")
+            case AssertionInterrupt   => incr("ASSERT")
+            case FinishInterrupt      => incr("FINISH")
             case SerialInterrupt(fmt) => incr("FLUSH")
-            case StopInterrupt => incr("STOP")
+            case StopInterrupt        => incr("STOP")
           }
         case _: PutSerial => incr("PUT")
       }
@@ -149,18 +149,16 @@ trait CanCollectProgramStatistics extends Flavored {
     )(implicit ctx: AssemblyContext): Seq[(String, Int)] = {
 
       var counts = ListMap[VariableType, Int](
-        ConstType -> 0,
-        WireType -> 0,
-        InputType -> 0,
+        ConstType  -> 0,
+        WireType   -> 0,
+        InputType  -> 0,
         OutputType -> 0,
         MemoryType -> 0,
-        CarryType -> 0,
-        RegType -> 0
+        RegType    -> 0
       )
 
       proc.registers.foreach { r =>
-        counts =
-          counts.updated(r.variable.varType, counts(r.variable.varType) + 1)
+        counts = counts.updated(r.variable.varType, counts(r.variable.varType) + 1)
       }
 
       counts.map { case (k, v) => k.typeName.tail -> v }.toSeq
@@ -176,7 +174,7 @@ trait CanCollectProgramStatistics extends Flavored {
         instructions = instStat.count,
         registers = mkRegStats(proc),
         functs = proc.functions.size,
-        vcycle = instStat.vcycle,
+        vcycle = instStat.vcycle
       )
     }
 
@@ -196,8 +194,8 @@ trait StatisticCollector {
     */
   def timed[R](action: => R): (R, Double) = {
     val start_time = System.nanoTime()
-    val result = action
-    val end_time = System.nanoTime()
+    val result     = action
+    val end_time   = System.nanoTime()
     val elapsed_ms = (end_time - start_time) * 1e-6
     (result, elapsed_ms)
   }
@@ -284,7 +282,7 @@ object StatisticCollector {
       val (runtime, units) = runtimeMs match {
         case t if t > numMsInMin => (t / numMsInMin, "m")
         case t if t > numMsInSec => (t / numMsInSec, "s")
-        case t => (t, "ms")
+        case t                   => (t, "ms")
       }
       f"${runtime}%.3f ${units}"
     }
@@ -295,8 +293,8 @@ object StatisticCollector {
     ) {
       def nonEmpty: Boolean = runtime.nonEmpty || pairs.nonEmpty
       def toYaml(indent: Int): String = {
-        val str = new StringBuilder
-        val tab: String = "    "
+        val str          = new StringBuilder
+        val tab: String  = "    "
         val tabs: String = tab * indent
         str ++= s"${tabs}user:\n"
         if (runtime.nonEmpty) {
@@ -339,9 +337,7 @@ object StatisticCollector {
         milliseconds: Double
     ): Unit = {
       currentTrans = currentTrans.copy(
-        user = currentTrans.user.copy(runtime =
-          currentTrans.user.runtime :+ (label -> milliseconds)
-        )
+        user = currentTrans.user.copy(runtime = currentTrans.user.runtime :+ (label -> milliseconds))
       )
     }
 
@@ -358,9 +354,7 @@ object StatisticCollector {
     override def record(name: String, value: Any): Unit = value match {
       case (_: Double | _: Int | _: String) =>
         currentTrans = currentTrans.copy(
-          user = currentTrans.user.copy(pairs =
-            currentTrans.user.pairs :+ (name -> value)
-          )
+          user = currentTrans.user.copy(pairs = currentTrans.user.pairs :+ (name -> value))
         )
       case _ => throw new RuntimeException("Can not handle value type!")
     }

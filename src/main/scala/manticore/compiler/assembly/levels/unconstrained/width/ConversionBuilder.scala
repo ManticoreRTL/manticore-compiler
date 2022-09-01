@@ -3,7 +3,6 @@ package manticore.compiler.assembly.levels.unconstrained.width
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.WireType
-import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
