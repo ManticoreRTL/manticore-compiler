@@ -16,6 +16,7 @@ import manticore.compiler.assembly.CanBuildDependenceGraph
 import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.CanOrderInstructions
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
+import manticore.compiler.assembly.levels.DeadCodeElimination
 
 /** IR level with placed processes and allocated registers.
   *
@@ -32,26 +33,18 @@ object PlacedIR extends ManticoreAssemblyIR {
       with HasVariableType
       with HasWidth {
     override def serialized: String = s"${varType.typeName} ${name} -> ${id} 16"
-    override def width = 16
+    override def width              = 16
     val id: Int
 
     def withId(new_id: Int): PlacedVariable
 
   }
-  import manticore.compiler.assembly.levels.{
-    WireType,
-    RegType,
-    ConstType,
-    InputType,
-    OutputType,
-    MemoryType
-  }
+  import manticore.compiler.assembly.levels.{WireType, RegType, ConstType, InputType, OutputType, MemoryType}
 
-  case class ValueVariable(name: Name, id: Int, tpe: VariableType)
-      extends PlacedVariable {
-    override def varType: VariableType = tpe
+  case class ValueVariable(name: Name, id: Int, tpe: VariableType) extends PlacedVariable {
+    override def varType: VariableType           = tpe
     def withName(new_name: Name): PlacedVariable = this.copy(name = new_name)
-    def withId(new_id: Int): PlacedVariable = this.copy(id = new_id)
+    def withId(new_id: Int): PlacedVariable      = this.copy(id = new_id)
   }
 
   case class MemoryVariable(
@@ -60,9 +53,9 @@ object PlacedIR extends ManticoreAssemblyIR {
       id: Int,
       initialContent: Seq[UInt16] = Nil
   ) extends PlacedVariable {
-    def withName(n: Name) = this.copy(name = n)
+    def withName(n: Name)              = this.copy(name = n)
     override def varType: VariableType = MemoryType
-    def withId(new_id: Int) = this.copy(id = new_id)
+    def withId(new_id: Int)            = this.copy(id = new_id)
   }
 
   // case class MemoryBlock(
@@ -133,10 +126,10 @@ object PlacedIR extends ManticoreAssemblyIR {
 
     sealed trait Atom
 
-    case class AtomConst(v: UInt16) extends Atom
-    abstract class AtomArg extends Atom
+    case class AtomConst(v: UInt16)  extends Atom
+    abstract class AtomArg           extends Atom
     case class PositionalArg(v: Int) extends AtomArg
-    case class NamedArg(v: Name) extends AtomArg
+    case class NamedArg(v: Name)     extends AtomArg
 
     sealed trait ExprTree
 
@@ -182,9 +175,9 @@ object PlacedIR extends ManticoreAssemblyIR {
     // This can be used to interpret the expression tree.
     def evaluate(tree: ExprTree): UInt16 = {
       tree match {
-        case AndExpr(op1, op2)           => evaluate(op1) & evaluate(op2)
-        case OrExpr(op1, op2)            => evaluate(op1) | evaluate(op2)
-        case XorExpr(op1, op2)           => evaluate(op1) ^ evaluate(op2)
+        case AndExpr(op1, op2) => evaluate(op1) & evaluate(op2)
+        case OrExpr(op1, op2)  => evaluate(op1) | evaluate(op2)
+        case XorExpr(op1, op2) => evaluate(op1) ^ evaluate(op2)
         // TODO (skashani): This is probably not correct as you need to extend the value of the sel signal and not just
         // directly compare against all-zero.
         case MuxExpr(sel, rfalse, rtrue) => if (evaluate(sel) == UInt16(0)) evaluate(rfalse) else evaluate(rtrue)
@@ -236,14 +229,14 @@ object PlacedIR extends ManticoreAssemblyIR {
       //  1. a consecutive list of integers (starting from 0)
       //  2. a list of names.
       // Mixes of both are not possible.
-      val args = collectArgs(tree)
+      val args  = collectArgs(tree)
       val arity = args.size
 
       val argsArePositional = args.forall {
         case _: PositionalArg => true
         case _                => false
       } && {
-        val foundPositions = args.collect { case PositionalArg(pos) => pos }
+        val foundPositions    = args.collect { case PositionalArg(pos) => pos }
         val expectedPositions = Set.tabulate(arity)(idx => idx)
         foundPositions == expectedPositions
       }
@@ -270,26 +263,25 @@ object PlacedIR extends ManticoreAssemblyIR {
 
       def accumulate(
           expr: ExprTree,
-          acc: Map[Either[Constant, BinaryOperator.BinaryOperator], Int] =
-            Map.empty.withDefaultValue(0)
+          acc: Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = Map.empty.withDefaultValue(0)
       ): Map[Either[Constant, BinaryOperator.BinaryOperator], Int] = {
         expr match {
           case OrExpr(op1, op2) =>
             val childrenAcc = accumulate(op1, accumulate(op2, acc))
-            val key = Right(BinaryOperator.OR)
-            val cnt = childrenAcc(key) + 1
+            val key         = Right(BinaryOperator.OR)
+            val cnt         = childrenAcc(key) + 1
             childrenAcc + (key -> cnt)
 
           case AndExpr(op1, op2) =>
             val childrenAcc = accumulate(op1, accumulate(op2, acc))
-            val key = Right(BinaryOperator.AND)
-            val cnt = childrenAcc(key) + 1
+            val key         = Right(BinaryOperator.AND)
+            val cnt         = childrenAcc(key) + 1
             childrenAcc + (key -> cnt)
 
           case XorExpr(op1, op2) =>
             val childrenAcc = accumulate(op1, accumulate(op2, acc))
-            val key = Right(BinaryOperator.XOR)
-            val cnt = childrenAcc(key) + 1
+            val key         = Right(BinaryOperator.XOR)
+            val cnt         = childrenAcc(key) + 1
             childrenAcc + (key -> cnt)
 
           // TODO (skashani): Add MuxExpr here.
@@ -391,9 +383,8 @@ object PlacedIR extends ManticoreAssemblyIR {
         val lutOutputs = inputCombinations.map { inputCombination =>
           // The expression tree has arguments that are mapped to indices starting from 0.
           // We replace these indices with constants (defined by the LUT's current input combination).
-          val subst: Map[AtomArg, Atom] = inputCombination.zipWithIndex.map {
-            case (const, idx) =>
-              PositionalArg(idx) -> AtomConst(const)
+          val subst: Map[AtomArg, Atom] = inputCombination.zipWithIndex.map { case (const, idx) =>
+            PositionalArg(idx) -> AtomConst(const)
           }.toMap
 
           val resFullDatapath = evaluate(substitute(expr)(subst))
@@ -419,7 +410,7 @@ object PlacedIR extends ManticoreAssemblyIR {
     def apply(expr: ExprTree): CustomFunctionImpl = {
       // We compute the arity here so we can reject incorrectly-constructed expression trees
       // given by the user.
-      val arity = computeArity(expr)
+      val arity     = computeArity(expr)
       val resources = computeResources(expr)
       new CustomFunctionImpl(arity, resources, expr)
     }
@@ -429,12 +420,12 @@ object PlacedIR extends ManticoreAssemblyIR {
     }
   }
 
-  type Name = String
-  type Variable = PlacedVariable
+  type Name           = String
+  type Variable       = PlacedVariable
   type CustomFunction = CustomFunctionImpl
-  type ProcessId = ProcessIdImpl
-  type Constant = UInt16
-  type ExceptionId = ExceptionIdImpl
+  type ProcessId      = ProcessIdImpl
+  type Constant       = UInt16
+  type ExceptionId    = ExceptionIdImpl
 
   type Label = String
 }
@@ -472,15 +463,15 @@ object LatencyAnalysis {
       target: ProcessId,
       dim: (Int, Int)
   ) = {
-    val x_dist = xHops(source, target, dim)
-    val y_dist = yHops(source, target, dim)
+    val x_dist    = xHops(source, target, dim)
+    val y_dist    = yHops(source, target, dim)
     val manhattan = x_dist + y_dist
     manhattan
   }
 }
 
 trait PlacedIRTransformer extends AssemblyTransformer[PlacedIR.DefProgram] {}
-trait PlacedIRChecker extends AssemblyChecker[PlacedIR.DefProgram] {}
+trait PlacedIRChecker     extends AssemblyChecker[PlacedIR.DefProgram]     {}
 
 object PlacedIRPrinter extends AssemblyPrinter[PlacedIR.DefProgram] {}
 
@@ -494,6 +485,7 @@ object PlacedIRInputOutputCollector extends CanCollectInputOutputPairs {
   val flavor = PlacedIR
 
 }
+
 object Helpers
     extends CanBuildDependenceGraph
     with CanCollectInputOutputPairs
@@ -502,4 +494,5 @@ object Helpers
     with CanCollectProgramStatistics {
   val flavor = PlacedIR
 
+  object DeadCode extends DeadCodeElimination { val flavor = PlacedIR }
 }

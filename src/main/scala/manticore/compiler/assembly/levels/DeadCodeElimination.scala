@@ -192,11 +192,10 @@ trait DeadCodeElimination
     // ctx.logger.info(s"graph size: ${graph.nodes.size}")
     val alive = scala.collection.mutable.Set.empty[Instruction]
     val toVisit =
-      ctx.stats.recordRunTime("collecting initial sinks") {
-        scala.collection.mutable.Queue.empty[graph.NodeT] ++ sinks.map {
-          graph.get(_)
-        }
+      scala.collection.mutable.Queue.empty[graph.NodeT] ++ sinks.map {
+        graph.get(_)
       }
+
     ctx.logger.info(s"starting search")
     // perform a backward bfs
     var cnt = 0
@@ -212,7 +211,7 @@ trait DeadCodeElimination
         // them leads to a forever loop!)
       }
     }
-    ctx.stats.record("number of iterations to collect live nodes" -> cnt)
+    // ctx.stats.record("number of iterations to collect live nodes" -> cnt)
     // ctx.logger.info(s"number of iterations to search the graph: ${cnt}")
     alive
   }
@@ -287,9 +286,8 @@ trait DeadCodeElimination
     val closedBlock = process.body ++ inputOutputPairs.map {
       case (curr, next) => Mov(curr, next)
     }
-    val defInst = ctx.stats.recordRunTime("def map colleciton") {
-      createDefMap(closedBlock)
-    }
+    val defInst =  createDefMap(closedBlock)
+
     // With the inclusion of JumpTables, a single pass on the data dependence
     // graph would not rid us of all the dead code. If we first remove the dead
     // from the program body, without peeking inside JumpTables, then we may

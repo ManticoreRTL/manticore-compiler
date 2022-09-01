@@ -38,6 +38,9 @@ import scala.collection.mutable.LinkedHashMap
 import scala.collection.mutable.{HashMap => MHashMap}
 import scala.collection.mutable.{HashSet => MHashSet}
 import scala.jdk.CollectionConverters._
+import manticore.compiler.assembly.levels.DeadCodeElimination
+import manticore.compiler.assembly.levels.placed.Helpers.DeadCode
+
 
 object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
 
@@ -1017,7 +1020,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     // showing each cone category with a different color.
     ctx.logger.dumpArtifact(
       s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_selectedCustomInstructionCones.dot",
-      forceDump = true
+      forceDump = false
     ) {
       val reprIds = coneIdToReprId.values.toSet
 
@@ -1136,10 +1139,15 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
   override def transform(
       program: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
+
+
     val newProcesses = program.processes.map(proc => onProcess(proc)(ctx))
+      .map(DeadCode.doDce)
     val newProgram   = program.copy(processes = newProcesses)
     ctx.stats.record(ProgramStatistics.mkProgramStats(newProgram))
+
     newProgram
+
   }
 
   // Helper method to dump a graph of clusters in DOT format.
