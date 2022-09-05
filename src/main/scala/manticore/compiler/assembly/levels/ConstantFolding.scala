@@ -4,7 +4,6 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.Track
 import manticore.compiler.assembly.levels.CanRename
-import javax.xml.crypto.Data
 import manticore.compiler.assembly.CanComputeNameDependence
 import scala.collection.immutable.ListMap
 import scala.collection.mutable.ArrayBuffer
