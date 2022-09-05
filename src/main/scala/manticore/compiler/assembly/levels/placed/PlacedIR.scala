@@ -127,7 +127,7 @@ object PlacedIR extends ManticoreAssemblyIR {
     sealed trait Atom
 
     case class AtomConst(v: UInt16)  extends Atom
-    abstract class AtomArg           extends Atom
+    sealed abstract class AtomArg    extends Atom
     case class PositionalArg(v: Int) extends AtomArg
     case class NamedArg(v: Name)     extends AtomArg
 

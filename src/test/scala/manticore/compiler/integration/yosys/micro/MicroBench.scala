@@ -8,6 +8,7 @@ import manticore.compiler.UnitTestMatchers
 import manticore.compiler.WithInlineVerilog
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.placed.CustomLutInsertion
+import manticore.compiler.assembly.levels.placed.CustomLutOverflowFixup
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
 import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
 import manticore.compiler.assembly.levels.placed.PlacedIR
@@ -25,7 +26,6 @@ import manticore.compiler.assembly.levels.placed.lowering.Lowering
 import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
 import manticore.compiler.assembly.levels.placed.parallel.AnalyticalPlacerTransform
 import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
-import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedCloseSequentialCycles
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
@@ -78,14 +78,14 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
     s"$label" should "match expected results" in { fixture =>
       // Read each verilog source and concatenate them together.
-      val tbCode     = testBench(cfg)
-      val allVerilog = verilogSources(cfg) :+ tbCode
+      val tbCode       = testBench(cfg)
+      val allVerilog   = verilogSources(cfg) :+ tbCode
       val finalVerilog = allVerilog.map(res => readResource(res)).mkString("\n")
-      val vFilePath = fixture.dump("benchmark.sv", finalVerilog)
+      val vFilePath    = fixture.dump("benchmark.sv", finalVerilog)
 
       // The hex files must be copied to the same directory as the single concatenated verilog file.
       hexSources(cfg).foreach { res =>
-        val name = res.p.toString().split("/").last
+        val name    = res.p.toString().split("/").last
         val content = readResource(res)
         fixture.dump(name, content)
       }
@@ -132,7 +132,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program7 = CompilationStage.parallelization(program6)
       // checkPlaced("parallelization", program7, reference, dumper)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
-      val program8 = CompilationStage.customLuts(program7)
+      val program8 = CompilationStage.customLutsFixup(program7)
       // checkPlaced("custom luts", program8, reference, dumper)
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
@@ -175,10 +175,10 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
   }
 
   def copyResource(res: FileDescriptor, cwd: Path): Path = {
-    val name = res.p.toString().split("/").last
+    val name       = res.p.toString().split("/").last
     val targetPath = cwd.resolve(name)
-    val content = scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
-    val writer = new PrintWriter(targetPath.toFile())
+    val content    = scala.io.Source.fromFile(res.p.toFile()).getLines().mkString("\n")
+    val writer     = new PrintWriter(targetPath.toFile())
     writer.write(content)
     writer.flush()
     writer.close()
@@ -308,7 +308,8 @@ object CompilationStage {
   val placedOptimizations =
     PlacedIRConstantFolding andThen
       PlacedIRCommonSubExpressionElimination andThen
-      PlacedIRDeadCodeElimination
+      PlacedIRDeadCodeElimination andThen
+      CustomLutInsertion
 
   val parallelization =
     BalancedSplitMergerTransform andThen
@@ -316,8 +317,8 @@ object CompilationStage {
       PlacedNameChecker andThen
       AnalyticalPlacerTransform
 
-  val customLuts =
-    CustomLutInsertion
+  val customLutsFixup =
+    CustomLutOverflowFixup
 
   val finalLowering = Lowering.Transformation andThen
     AbstractExecution andThen UtilizationChecker

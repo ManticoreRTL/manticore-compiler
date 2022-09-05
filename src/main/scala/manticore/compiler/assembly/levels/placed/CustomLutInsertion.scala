@@ -987,7 +987,8 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
       findOptimalConeCover(
         cones,
         coneIdToReprId,
-        maxNumConeTypes = ctx.max_custom_instructions
+        maxNumConeTypes = Integer.MAX_VALUE
+        // maxNumConeTypes = ctx.max_custom_instructions
       )(ctx)
     }
 
