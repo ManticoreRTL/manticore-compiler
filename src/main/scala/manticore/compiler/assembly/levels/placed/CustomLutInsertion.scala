@@ -41,7 +41,6 @@ import scala.jdk.CollectionConverters._
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.placed.Helpers.DeadCode
 
-
 object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
 
   val flavor = PlacedIR
@@ -162,12 +161,6 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
                     )
                 }
 
-              case Mux(rd, sel, rfalse, rtrue, _) =>
-                val selExpr    = nameToExpr(sel)
-                val rfalseExpr = nameToExpr(rfalse)
-                val rtrueExpr  = nameToExpr(rtrue)
-                MuxExpr(selExpr, rfalseExpr, rtrueExpr)
-
               case _ =>
                 throw new IllegalArgumentException(
                   s"Expected to see a logic instruction, but saw \"${instr}\" instead."
@@ -274,7 +267,6 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
   def isLogicInstr(instr: Instruction): Boolean = {
     instr match {
       case BinaryArithmetic(AND | OR | XOR, _, _, _, _) => true
-      // case _: Mux                                       => true
       case _                                            => false
     }
   }
@@ -1140,10 +1132,10 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
       program: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
 
-
-    val newProcesses = program.processes.map(proc => onProcess(proc)(ctx))
+    val newProcesses = program.processes
+      .map(proc => onProcess(proc)(ctx))
       .map(DeadCode.doDce)
-    val newProgram   = program.copy(processes = newProcesses)
+    val newProgram = program.copy(processes = newProcesses)
     ctx.stats.record(ProgramStatistics.mkProgramStats(newProgram))
 
     newProgram

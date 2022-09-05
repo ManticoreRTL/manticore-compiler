@@ -151,12 +151,6 @@ object PlacedIR extends ManticoreAssemblyIR {
       }
     }
 
-    case class MuxExpr(sel: ExprTree, rfalse: ExprTree, rtrue: ExprTree) extends ExprTree {
-      override def toString(): String = {
-        s"(${sel} ? ${rtrue} : ${rfalse})"
-      }
-    }
-
     case class IdExpr(id: Atom) extends ExprTree {
       override def toString(): String = {
         id match {
@@ -175,13 +169,10 @@ object PlacedIR extends ManticoreAssemblyIR {
     // This can be used to interpret the expression tree.
     def evaluate(tree: ExprTree): UInt16 = {
       tree match {
-        case AndExpr(op1, op2) => evaluate(op1) & evaluate(op2)
-        case OrExpr(op1, op2)  => evaluate(op1) | evaluate(op2)
-        case XorExpr(op1, op2) => evaluate(op1) ^ evaluate(op2)
-        // TODO (skashani): This is probably not correct as you need to extend the value of the sel signal and not just
-        // directly compare against all-zero.
-        case MuxExpr(sel, rfalse, rtrue) => if (evaluate(sel) == UInt16(0)) evaluate(rfalse) else evaluate(rtrue)
-        case IdExpr(AtomConst(v))        => v
+        case AndExpr(op1, op2)    => evaluate(op1) & evaluate(op2)
+        case OrExpr(op1, op2)     => evaluate(op1) | evaluate(op2)
+        case XorExpr(op1, op2)    => evaluate(op1) ^ evaluate(op2)
+        case IdExpr(AtomConst(v)) => v
         case IdExpr(_: AtomArg) =>
           throw new IllegalArgumentException(
             "Tree does not evaluate to constant! Cannot determine final value."
@@ -201,8 +192,6 @@ object PlacedIR extends ManticoreAssemblyIR {
           OrExpr(substitute(op1)(subst), substitute(op2)(subst))
         case XorExpr(op1, op2) =>
           XorExpr(substitute(op1)(subst), substitute(op2)(subst))
-        case MuxExpr(sel, rfalse, rtrue) =>
-          MuxExpr(substitute(sel)(subst), substitute(rfalse)(subst), substitute(rtrue)(subst))
         case IdExpr(arg: AtomArg) =>
           IdExpr(subst.getOrElse(arg, arg))
         case expr @ IdExpr(const: AtomConst) =>
@@ -216,12 +205,11 @@ object PlacedIR extends ManticoreAssemblyIR {
     private def computeArity(tree: ExprTree): Int = {
       def collectArgs(tree: ExprTree): Set[AtomArg] = {
         tree match {
-          case AndExpr(op1, op2)           => collectArgs(op1) ++ collectArgs(op2)
-          case OrExpr(op1, op2)            => collectArgs(op1) ++ collectArgs(op2)
-          case XorExpr(op1, op2)           => collectArgs(op1) ++ collectArgs(op2)
-          case MuxExpr(sel, rfalse, rtrue) => collectArgs(sel) ++ collectArgs(rfalse) ++ collectArgs(rtrue)
-          case IdExpr(a: AtomArg)          => Set(a)
-          case IdExpr(_: AtomConst)        => Set.empty
+          case AndExpr(op1, op2)    => collectArgs(op1) ++ collectArgs(op2)
+          case OrExpr(op1, op2)     => collectArgs(op1) ++ collectArgs(op2)
+          case XorExpr(op1, op2)    => collectArgs(op1) ++ collectArgs(op2)
+          case IdExpr(a: AtomArg)   => Set(a)
+          case IdExpr(_: AtomConst) => Set.empty
         }
       }
 
@@ -283,8 +271,6 @@ object PlacedIR extends ManticoreAssemblyIR {
             val key         = Right(BinaryOperator.XOR)
             val cnt         = childrenAcc(key) + 1
             childrenAcc + (key -> cnt)
-
-          // TODO (skashani): Add MuxExpr here.
 
           case IdExpr(const: AtomConst) =>
             val key = Left(const.v)
