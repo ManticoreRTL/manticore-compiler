@@ -28,10 +28,9 @@ import manticore.compiler.assembly.annotations.IntValue
 import manticore.compiler.assembly.levels.CanRenameToDebugSymbols
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
+import manticore.compiler.assembly.levels.CleanupConstants
 
-object UnconstrainedNameChecker
-    extends AssemblyNameChecker
-    with UnconstrainedIRChecker {
+object UnconstrainedNameChecker extends AssemblyNameChecker with UnconstrainedIRChecker {
   val flavor = UnconstrainedIR
   import flavor._
   override def check(
@@ -64,17 +63,14 @@ object UnconstrainedNameChecker
     NameCheck.checkSends(program)(
       badDest = inst => context.logger.error("invalid destination", inst),
       selfDest = inst => context.logger.error("self SEND is not allowed", inst),
-      badRegister =
-        inst => context.logger.error("Bad destination register", inst)
+      badRegister = inst => context.logger.error("Bad destination register", inst)
     )
 
   }
 
 }
 
-object UnconstrainedRenameVariables
-    extends RenameTransformation
-    with UnconstrainedIRTransformer {
+object UnconstrainedRenameVariables extends RenameTransformation with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
   import flavor._
@@ -101,9 +97,7 @@ object UnconstrainedRenameVariables
   override def transform(p: DefProgram)(implicit ctx: AssemblyContext) =
     do_transform(p, ctx)
 }
-object UnconstrainedOrderInstructions
-    extends OrderInstructions
-    with UnconstrainedIRTransformer {
+object UnconstrainedOrderInstructions extends OrderInstructions with UnconstrainedIRTransformer {
   val flavor = UnconstrainedIR
   import flavor._
   override def transform(source: DefProgram)(implicit
@@ -111,9 +105,7 @@ object UnconstrainedOrderInstructions
   ): DefProgram = do_transform(source, context)
 }
 
-object UnconstrainedDeadCodeElimination
-    extends DeadCodeElimination
-    with UnconstrainedIRTransformer {
+object UnconstrainedDeadCodeElimination extends DeadCodeElimination with UnconstrainedIRTransformer {
   val flavor = UnconstrainedIR
   import flavor._
   override def transform(
@@ -125,9 +117,7 @@ object UnconstrainedDeadCodeElimination
   }
 }
 
-object UnconstrainedCloseSequentialCycles
-    extends CloseSequentialCycles
-    with UnconstrainedIRTransformer {
+object UnconstrainedCloseSequentialCycles extends CloseSequentialCycles with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
 
@@ -139,9 +129,7 @@ object UnconstrainedCloseSequentialCycles
 
 }
 
-object UnconstrainedBreakSequentialCycles
-    extends BreakSequentialCycles
-    with UnconstrainedIRTransformer {
+object UnconstrainedBreakSequentialCycles extends BreakSequentialCycles with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
 
@@ -153,12 +141,9 @@ object UnconstrainedBreakSequentialCycles
 
 }
 
-object UnconstrainedPrinter
-    extends AssemblyPrinter[UnconstrainedIR.DefProgram] {}
+object UnconstrainedPrinter extends AssemblyPrinter[UnconstrainedIR.DefProgram] {}
 
-object UnconstrainedJumpTableConstruction
-    extends JumpTableConstruction
-    with UnconstrainedIRTransformer {
+object UnconstrainedJumpTableConstruction extends JumpTableConstruction with UnconstrainedIRTransformer {
 
   val flavor = UnconstrainedIR
 
@@ -181,9 +166,9 @@ object UnconstrainedJumpTableConstruction
       Seq(
         Memblock(
           Map(
-            AssemblyAnnotationFields.Block.name -> StringValue(name),
+            AssemblyAnnotationFields.Block.name    -> StringValue(name),
             AssemblyAnnotationFields.Capacity.name -> IntValue(size),
-            AssemblyAnnotationFields.Width.name -> IntValue(width)
+            AssemblyAnnotationFields.Width.name    -> IntValue(width)
           )
         )
       )
@@ -214,9 +199,7 @@ object UnconstrainedJumpTableConstruction
 
 }
 
-object UnconstrainedIRParMuxDeconstructionTransform
-    extends ParMuxDeconstruction
-    with UnconstrainedIRTransformer {
+object UnconstrainedIRParMuxDeconstructionTransform extends ParMuxDeconstruction with UnconstrainedIRTransformer {
   val flavor = UnconstrainedIR
   import flavor._
 
@@ -257,4 +240,13 @@ object UnconstrainedIRDebugSymbolRenamer extends CanRenameToDebugSymbols {
 
 object UnconstrainedIRStatisticsCollector extends CanCollectProgramStatistics {
   val flavor = UnconstrainedIR
+}
+
+object UnconstrainedIRCleanupConstants extends UnconstrainedIRTransformer with CleanupConstants {
+  val flavor = UnconstrainedIR
+  import flavor._
+
+  override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
+    do_transform(program)(ctx)
+  }
 }

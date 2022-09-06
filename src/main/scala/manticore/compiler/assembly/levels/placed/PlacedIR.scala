@@ -17,6 +17,7 @@ import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.CanOrderInstructions
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 import manticore.compiler.assembly.levels.DeadCodeElimination
+import manticore.compiler.assembly.levels.CanRename
 
 /** IR level with placed processes and allocated registers.
   *
@@ -477,7 +478,8 @@ object Helpers
     with CanCollectInputOutputPairs
     with CanComputeNameDependence
     with CanOrderInstructions
-    with CanCollectProgramStatistics {
+    with CanCollectProgramStatistics
+    with CanRename {
   val flavor = PlacedIR
 
   object DeadCode extends DeadCodeElimination { val flavor = PlacedIR }

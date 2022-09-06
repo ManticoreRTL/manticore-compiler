@@ -12,6 +12,7 @@ import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.BreakSequentialCycles
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 import manticore.compiler.assembly.levels.CanRename
+import manticore.compiler.assembly.levels.CleanupConstants
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
@@ -24,16 +25,14 @@ object PlacedIRDeadCodeElimination
       source: DefProgram
   )(implicit context: AssemblyContext): DefProgram = {
     val newProgram = source
-    .copy(processes = source.processes.map { doDce(_)(context) })
-    .setPos(source.pos)
+      .copy(processes = source.processes.map { doDce(_)(context) })
+      .setPos(source.pos)
     context.stats.record(ProgramStatistics.mkProgramStats(newProgram))
     newProgram
   }
 }
 
-object PlacedIROrderInstructions
-    extends OrderInstructions
-    with PlacedIRTransformer {
+object PlacedIROrderInstructions extends OrderInstructions with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
@@ -42,9 +41,7 @@ object PlacedIROrderInstructions
   ): DefProgram = do_transform(source, context)
 }
 
-object PlacedIRCloseSequentialCycles
-    extends CloseSequentialCycles
-    with PlacedIRTransformer {
+object PlacedIRCloseSequentialCycles extends CloseSequentialCycles with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
@@ -53,9 +50,7 @@ object PlacedIRCloseSequentialCycles
   ): DefProgram = do_transform(source)(context)
 }
 
-object PlacedIRBreakSequentialCycles
-    extends BreakSequentialCycles
-    with PlacedIRTransformer {
+object PlacedIRBreakSequentialCycles extends BreakSequentialCycles with PlacedIRTransformer {
 
   val flavor = PlacedIR
   import flavor._
@@ -85,4 +80,13 @@ object PlacedIRRenamer extends CanRename {
 
   val flavor = PlacedIR
 
+}
+
+object PlacedIRCleanupConstants extends PlacedIRTransformer with CleanupConstants {
+  val flavor = PlacedIR
+  import flavor._
+
+  override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
+    do_transform(program)(ctx)
+  }
 }
