@@ -852,7 +852,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     val vars_dPa  = MHashMap.empty[CorePathId, IntVar]
     val hints_dPa = MHashMap.empty[CorePathId, Int]
     val minDist   = 0 // Using 1 yields infeasible solutions, but I can't tell why?
-    val maxDist   = (ctx.max_dimx - 1) + (ctx.max_dimy - 1)
+    val maxDist   = (ctx.hw_config.dimX- 1) + (ctx.hw_config.dimY - 1)
     pathIdToPath.foreach { case (pathId, path) =>
       val dPa = model.newIntVar(minDist, maxDist, s"d_${pathId}")
       vars_dPa += pathId -> dPa
@@ -984,8 +984,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
           Ordering[Int].reverse
         }
         .zip {
-          Range(0, ctx.max_dimx).flatMap { x =>
-            Range(0, ctx.max_dimy).map { y =>
+          Range(0, ctx.hw_config.dimX).flatMap { x =>
+            Range(0, ctx.hw_config.dimY).map { y =>
               CoreId(x, y)
             }
           }
@@ -1008,9 +1008,9 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     val procNameToProcId = procIdToProcName.map(x => x.swap)
 
-    val coreGraph = getCoreGraph(ctx.max_dimx, ctx.max_dimy)
+    val coreGraph = getCoreGraph(ctx.hw_config.dimX, ctx.hw_config.dimY)
 
-    val pathIdToPath = enumeratePaths(ctx.max_dimx, ctx.max_dimy)
+    val pathIdToPath = enumeratePaths(ctx.hw_config.dimX, ctx.hw_config.dimY)
 
     ctx.logger.dumpArtifact("process_graph.dot", forceDump = false) {
       val weights = procEdgeWeights.map { case (procEdge, weight) =>
@@ -1066,8 +1066,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // )
 
     ctx.logger.dumpArtifact("core_graph.dot", forceDump = true) {
-      val coreEdgeWeights = getCoreEdgeWeights(procEdgeWeights, procIdToCoreId, ctx.max_dimx, ctx.max_dimy)
-      dumpCoreGraph(procIdToProcName, procIdToCoreId, coreEdgeWeights, ctx.max_dimx, ctx.max_dimy)
+      val coreEdgeWeights = getCoreEdgeWeights(procEdgeWeights, procIdToCoreId, ctx.hw_config.dimX, ctx.hw_config.dimY)
+      dumpCoreGraph(procIdToProcName, procIdToCoreId, coreEdgeWeights, ctx.hw_config.dimX, ctx.hw_config.dimY)
     }
 
     val oldProcNameToNewProcId = procIdToCoreId.map { case (procId, CoreId(x, y)) =>

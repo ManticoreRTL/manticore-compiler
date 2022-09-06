@@ -14,7 +14,6 @@ import java.nio.file.Files
 import manticore.machine.core.Processor
 import manticore.machine.ManticoreBaseISA
 
-import manticore.compiler.assembly.levels.placed.LinkUtilizationChecker
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
 
 

@@ -16,6 +16,7 @@ import manticore.compiler.assembly.annotations.DebugSymbol
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.HasLoggerId
+import manticore.compiler.DefaultHardwareConfig
 
 /**
   * Base test trait to verify correctness of the compiler and the
@@ -23,11 +24,7 @@ import manticore.compiler.HasLoggerId
   *
   * @author Mahyar Emami <mahyar.emami@epfl.ch>
   */
-trait SingleInstructionTest
-    extends UnitFixtureTest
-    with ChiselScalatestTester
-    with ProgramTester
-    with ProcessorTester {
+trait SingleInstructionTest extends UnitFixtureTest with ChiselScalatestTester with ProgramTester with ProcessorTester {
   import BinaryOperator._
 
   val operator: BinaryOperator
@@ -181,12 +178,11 @@ trait SingleInstructionTest
   ): Unit = {
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      max_dimx = 2,
-      max_dimy = 2,
+      hw_config = DefaultHardwareConfig(dimX = 2, dimY = 2),
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
-      use_loc = true,
+      use_loc = true
       // debug_message = true
       // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
       // log_file = None
@@ -217,8 +213,7 @@ trait SingleInstructionTest
       .find(p => p.orig.id.x == 1 && p.orig.id.y == 0)
       .get
       .orig
-    val expected_address = des_proc
-      .registers
+    val expected_address = des_proc.registers
       .find(r =>
         r.annons
           .collectFirst { case x: DebugSymbol =>

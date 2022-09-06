@@ -14,6 +14,7 @@ import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
 import manticore.compiler.assembly.utils.XorReduce
+import manticore.compiler.DefaultHardwareConfig
 
 class CustomLutInsertionCommonFunctionDetectionTest extends UnitFixtureTest with UnitTestMatchers {
 
@@ -24,11 +25,8 @@ class CustomLutInsertionCommonFunctionDetectionTest extends UnitFixtureTest with
       dump_all = true,
       dump_dir = Some(fixture.test_dir.toFile()),
       debug_message = true,
-      max_custom_instructions = 32,
-      max_custom_instruction_inputs = 6,
+      hw_config = DefaultHardwareConfig(dimX = 1, dimY = 1, nCustomFunctions = 32, nCfuInputs = 6),
       optimize_common_custom_functions = true,
-      max_dimx = 1,
-      max_dimy = 1,
       max_cycles = 200,
       log_file = Some(fixture.test_dir.resolve("output.log").toFile())
     )

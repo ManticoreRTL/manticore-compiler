@@ -69,7 +69,7 @@ object AtomicInterpreter extends PlacedIRChecker {
           proc,
           vcd,
           monitor,
-          ctx.max_registers
+          ctx.hw_config.nRegisters,
         )(
           undefinedConstant,
           badAlloc,
@@ -106,7 +106,7 @@ object AtomicInterpreter extends PlacedIRChecker {
         val memories = proc.registers.collect { case m @ DefReg(v: MemoryVariable, _, _) =>
           m
         }
-        val max_avail   = ctx.max_local_memory / (16 / 8)
+        val max_avail   = ctx.hw_config.nScratchPad
         val needs_alloc = memories.exists(_.value.isEmpty)
         if (needs_alloc) {
           ctx.logger.warn(

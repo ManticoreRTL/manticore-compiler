@@ -1,4 +1,4 @@
-package manticore.compiler.assembly.levels.placed
+package manticore.compiler.assembly.levels.placed.lowering
 
 import manticore.compiler.assembly.levels.AssemblyTransformer
 
@@ -6,6 +6,7 @@ import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
+import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 
 /** A pass to set the pointer values in each process or fail if more memory is
   * needed than available.
@@ -32,7 +33,7 @@ object LocalMemoryAllocation extends PlacedIRTransformer {
       }
 
     // maximum number of short we can fit in a local memory
-    val max_local_mem_size = ctx.max_local_memory / (16 / 8)
+    val max_local_mem_size = ctx.hw_config.nScratchPad
     if (mem_end > max_local_mem_size) {
       ctx.logger.error(
         s"Could not allocate local memory in process ${proc.id}! " +

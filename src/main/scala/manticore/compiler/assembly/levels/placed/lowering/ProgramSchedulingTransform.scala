@@ -12,7 +12,6 @@ import scalax.collection.mutable.{Graph => MutableGraph}
 import scalax.collection.Graph
 import scalax.collection.GraphEdge
 import manticore.compiler.assembly.annotations.Memblock
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.TaggedInstruction
 import scala.annotation.tailrec
@@ -81,7 +80,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
     // instructions should be scheduled first
     val cores = program.processes.sorted(StaticOrdering).map { createProcessor }
 
-    val network = new NetworkOnChip(ctx.max_dimx, ctx.max_dimy)
+    val network = NetworkOnChip(ctx.hw_config)
 
     val getCore: ProcessId => Processor = cores.map { core =>
       core.process.id -> core
@@ -194,7 +193,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
       def activateInstruction(inst: Instruction): Unit = {
         // make the node active
         val commitCycle =
-          LatencyAnalysis.latency(
+          ctx.hw_config.latency(
             inst
           ) + core.currentCycle + 1
 
@@ -544,7 +543,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
       case _               => withRecvs
     }
 
-    if (finalCycle + 1 + LatencyAnalysis.maxLatency() >= ctx.max_instructions) {
+    if (finalCycle + 1 + ctx.hw_config.maxLatency >= ctx.hw_config.nInstructions) {
       ctx.logger.error(
         s"Could not schedule process ${core.process.id} that requires ${finalCycle + 1} instruction."
       )
@@ -575,11 +574,10 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
       val dist = estimatePriority(dependenceGraph) { targetId =>
         // penalty of Send is a SetValue instruction and the number of hops
         // in the NoC
-        LatencyAnalysis.manhattan(
+        ctx.hw_config.manhattan(
           process.id,
-          targetId,
-          (ctx.max_dimx, ctx.max_dimy)
-        ) + LatencyAnalysis.latency(SetValue("", UInt16(0)))
+          targetId
+        ) + ctx.hw_config.latency(SetValue("", UInt16(0)))
       }
 
       ctx.logger.dumpArtifact(s"${process.id}_priorities.txt") {
@@ -674,7 +672,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
 
   private def estimatePriority(
       dependenceGraph: Processor.DependenceGraph
-  )(sendPenalty: ProcessId => Int) = {
+  )(sendPenalty: ProcessId => Int)(implicit ctx: AssemblyContext) = {
 
     val sources = dependenceGraph.nodes.filter { _.inDegree == 0 }
 
@@ -696,8 +694,9 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
           // we penalize the send latency by a user defined function,
           // this penalty will most likely be the manhattan distance plus
           // some added latency for the SET instruction in the destination
-          LatencyAnalysis.latency(send) + sendPenalty(send.dest_id)
-        case inst => LatencyAnalysis.latency(inst)
+          ctx.hw_config.latency(send) + sendPenalty(send.dest_id)
+
+        case inst => ctx.hw_config.latency(inst)
 
       }
       dist
@@ -799,7 +798,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
             s"@$time: Scheduling ${toSchedule.toOuter.serialized}"
           )
           val commitTime =
-            time + LatencyAnalysis.latency(toSchedule.toOuter) + 1
+            time + ctx.hw_config.latency(toSchedule.toOuter) + 1
 
           scheduleContext += toSchedule.toOuter
           scheduleContext.activeList += (toSchedule -> commitTime)

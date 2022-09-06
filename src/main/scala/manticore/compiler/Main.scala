@@ -10,16 +10,7 @@ import manticore.compiler.assembly.levels.AssemblyPrinter
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.codegen.InitializerProgram
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
-import manticore.compiler.assembly.levels.placed.GlobalPacketSchedulerTransform
-import manticore.compiler.assembly.levels.placed.ListSchedulerTransform
-import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
-import manticore.compiler.assembly.levels.placed.PlacedIR
-import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
-import manticore.compiler.assembly.levels.placed.PlacedIRDeadCodeElimination
-import manticore.compiler.assembly.levels.placed.PlacedIROrderInstructions
-import manticore.compiler.assembly.levels.placed.PlacedNameChecker
-import manticore.compiler.assembly.levels.placed.ProcessSplittingTransform
-import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
+
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedNameChecker
@@ -49,8 +40,7 @@ case class CliConfig(
     debug_en: Boolean = false,
     report: Option[File] = None,
     /** Machine configurations * */
-    dimx: Int = 1,
-    dimy: Int = 1,
+    hw_config: HardwareConfig = DefaultHardwareConfig(2, 2),
     /** Dev configurations * */
     simulate: Boolean = false,
     interpret: Boolean = false,
@@ -158,12 +148,11 @@ object Main {
         output_dir = cfg.output_dir,
         dump_all = cfg.dump_all,
         dump_dir = cfg.dump_dir,
-        max_dimx = cfg.dimx,
-        max_dimy = cfg.dimy,
         dump_ra = cfg.dump_ra,
         dump_rf = cfg.dump_rf,
         dump_ascii = cfg.dump_ascii,
-        log_file = cfg.log_file
+        log_file = cfg.log_file,
+        hw_config = cfg.hw_config
       )
 
     val compiler = AssemblyFileParser andThen

@@ -12,7 +12,6 @@ import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
 import scala.annotation.tailrec
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
 
 /** Register allocation pass using a linear scan-like algorithm
@@ -93,11 +92,11 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
 
     val immortals = withZeroAndOne ++ memories
 
-    if (immortals.length > ctx.max_registers) {
+    if (immortals.length > ctx.hw_config.nRegisters) {
       ctx.logger.error(
         s"Can not allocate register in process ${process.id}! There are " +
           s"${immortals.length} immortal registers but only have " +
-          s"${ctx.max_registers} machine registers!"
+          s"${ctx.hw_config.nRegisters} machine registers!"
       )
       ctx.logger.fail("Aborting!")
     }
@@ -210,7 +209,8 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
 
     val immortals        = allocateImmortals(process)
     val numImmortals     = immortals.length
-    val registerCapacity = ctx.max_registers
+    val registerCapacity = ctx.hw_config.nRegisters
+    val carryCapacity    = ctx.hw_config.nCarries
     val allocatedCarries = scala.collection.mutable.Queue.empty[DefReg]
     val allocatedNames   = scala.collection.mutable.Queue.empty[DefReg]
 
@@ -490,7 +490,7 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
     // end. Note that we also add a bunch of Nops before these moves to make sure
     // any read-after-write dependency through the pipeline is satisfied
 
-    val withMoves = process.body ++ Seq.fill(LatencyAnalysis.maxLatency()) {
+    val withMoves = process.body ++ Seq.fill(ctx.hw_config.maxLatency) {
       Nop
     } ++ moveQueue.map(_._1)
 
