@@ -542,7 +542,7 @@ object MachineCodeGenerator
           .Rs2(0) // reg 0 is tied to zero
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength)
           .toLong
-      case AddC(rd, co, rs1, rs2, ci, _) =>
+      case AddCarry(rd, rs1, rs2, ci, _) =>
         asm
           .Opcode(Opcodes.ARITH) // Note that ADDCARRY is not a real opcode
           .Rd(local(rd))
@@ -550,7 +550,7 @@ object MachineCodeGenerator
           .Rs1(local(rs1))
           .Rs2(local(rs2))
           .Rs3(local(ci))
-          .Rs4(local(co))
+          .Zero(Rs4Field.bitLength)
           .toLong
       case SetValue(rd, value, _) =>
         asm

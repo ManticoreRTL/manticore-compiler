@@ -53,11 +53,9 @@ object AssemblyContext {
       val dump_all: Boolean,
       val dump_dir: Option[File],
       val debug_message: Boolean,
-
       val optimize_common_custom_functions: Boolean,
       val max_cycles: Int,
       val quiet: Boolean,
-
       val placement_timeout_s: Int,
       val use_loc: Boolean,
       val dump_rf: Boolean,

@@ -34,6 +34,3 @@ case object OutputType extends VariableType {
 case object MemoryType extends VariableType {
   override def typeName: String = ".mem"
 }
-case object CarryType extends VariableType {
-  override def typeName: String = ".carry"
-}

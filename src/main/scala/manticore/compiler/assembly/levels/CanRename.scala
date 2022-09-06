@@ -19,13 +19,12 @@ trait CanRename extends Flavored {
             rfalse = renaming(rfalse),
             rtrue = renaming(rtrue)
           )
-        case i @ AddC(rd, co, rs1, rs2, ci, _) =>
+        case i @ AddCarry(rd, rs1, rs2, ci, _) =>
           i.copy(
             rd = renaming(rd),
             rs1 = renaming(rs1),
             rs2 = renaming(rs2),
-            ci = renaming(ci),
-            co = renaming(co)
+            cin = renaming(ci)
           )
         case i @ SetValue(rd, value, _) =>
           i.copy(rd = renaming(rd))

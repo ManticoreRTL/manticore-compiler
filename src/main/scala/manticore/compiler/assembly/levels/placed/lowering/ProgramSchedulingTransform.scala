@@ -22,7 +22,6 @@ import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
 import manticore.compiler.assembly.levels.placed.lowering.util.RecvEvent
 import manticore.compiler.assembly.CanBuildDependenceGraph
 import manticore.compiler.assembly.levels.OutputType
-import manticore.compiler.assembly.levels.CarryType
 import java.io.PrintWriter
 
 /** Program scheduler pass
@@ -218,6 +217,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
           newActive.inst match {
             case jtb: JumpTable =>
               // do not push jtb into the schedule yet
+              ctx.logger.error(s"JumpTables are a thing of the past!")
               core.state = Processor.DelaySlot(jtb, 0)
               core.jtbBuilder = new Processor.JtbBuilder(jtb)
               core.currentCycle += 1
@@ -316,9 +316,8 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
                     }
 
                     for ((origOutput, rdNew) <- newOutputNames) {
-                      val tpe =
-                        if (core.getDef(origOutput).variable.varType == CarryType) CarryType
-                        else WireType
+                      val tpe = WireType
+
                       // create a new definition
                       core.newDefs += DefReg(
                         ValueVariable(rdNew, -1, tpe),
@@ -342,8 +341,8 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
                 // allocation (i.e., we wrongfully extends lifetimes by keeping
                 // dead Phis and thus introduce artificial register pressure)
 
-                val newPhis = phiOutputs.zip(phiInputs.transpose).map {
-                  case (rd: Name, rsx: Seq[(Label, Name)]) => Phi(rd, rsx)
+                val newPhis = phiOutputs.zip(phiInputs.transpose).map { case (rd: Name, rsx: Seq[(Label, Name)]) =>
+                  Phi(rd, rsx)
                 }
 
                 if (newInst != Nop && newPhis.isEmpty) {
