@@ -28,7 +28,6 @@ import manticore.compiler.assembly.annotations.IntValue
 import manticore.compiler.assembly.levels.CanRenameToDebugSymbols
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
-import manticore.compiler.assembly.levels.CleanupConstants
 
 object UnconstrainedNameChecker extends AssemblyNameChecker with UnconstrainedIRChecker {
   val flavor = UnconstrainedIR
@@ -240,13 +239,4 @@ object UnconstrainedIRDebugSymbolRenamer extends CanRenameToDebugSymbols {
 
 object UnconstrainedIRStatisticsCollector extends CanCollectProgramStatistics {
   val flavor = UnconstrainedIR
-}
-
-object UnconstrainedIRCleanupConstants extends UnconstrainedIRTransformer with CleanupConstants {
-  val flavor = UnconstrainedIR
-  import flavor._
-
-  override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
-    cleanupConsts(program)(ctx)
-  }
 }

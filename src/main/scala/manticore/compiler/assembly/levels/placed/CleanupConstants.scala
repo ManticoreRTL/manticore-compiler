@@ -1,13 +1,13 @@
-package manticore.compiler.assembly.levels
+package manticore.compiler.assembly.levels.placed
 
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.ConstType
 
-import manticore.compiler.assembly.levels.Flavored
 import manticore.compiler.assembly.levels.CanRename
 
-trait CleanupConstants extends Flavored with CanRename {
+object CleanupConstants extends PlacedIRTransformer with CanRename {
 
+  val flavor = PlacedIR
   import flavor._
 
   def cleanupConsts(
@@ -40,13 +40,15 @@ trait CleanupConstants extends Flavored with CanRename {
       }
     }
 
-    proc.copy(
+    val newProc = proc.copy(
       body = newBody,
       registers = newRegs
     )
+
+    newProc
   }
 
-  def cleanupConsts(
+  override def transform(
       program: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
     program.copy(

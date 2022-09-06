@@ -12,7 +12,6 @@ import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.BreakSequentialCycles
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 import manticore.compiler.assembly.levels.CanRename
-import manticore.compiler.assembly.levels.CleanupConstants
 
 object PlacedIRDeadCodeElimination
     extends DeadCodeElimination
@@ -80,13 +79,4 @@ object PlacedIRRenamer extends CanRename {
 
   val flavor = PlacedIR
 
-}
-
-object PlacedIRCleanupConstants extends PlacedIRTransformer with CleanupConstants {
-  val flavor = PlacedIR
-  import flavor._
-
-  override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
-    cleanupConsts(program)(ctx)
-  }
 }

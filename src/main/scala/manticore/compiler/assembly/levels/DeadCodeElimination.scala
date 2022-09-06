@@ -24,7 +24,7 @@ import scala.annotation.tailrec
   * split processes that do not have their Send instructions because otherwise
   * useful code gets removed.
   */
-trait DeadCodeElimination extends CanComputeNameDependence with CanCollectInputOutputPairs with CleanupConstants {
+trait DeadCodeElimination extends CanComputeNameDependence with CanCollectInputOutputPairs {
 
   import flavor._
 
@@ -478,9 +478,7 @@ trait DeadCodeElimination extends CanComputeNameDependence with CanCollectInputO
       )
       .setPos(process.pos)
 
-    val finalProc = cleanupConsts(dceProc)
-
-    finalProc
+    dceProc
   }
 
 }
