@@ -14,6 +14,9 @@ import manticore.compiler.assembly.annotations.Reg
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.placed.PlacedIRTransformer
 import manticore.compiler.assembly.annotations.Loc
+
+import collection.mutable.{Map => MMap}
+
 trait BasicProcessExtraction extends PlacedIRTransformer {
 
   import PlacedIR._
@@ -40,9 +43,9 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
     val statePairs =
       InputOutputPairs.createInputOutputPairs(process).toArray
 
-    val outputIndices = scala.collection.mutable.Map.empty[Name, Int]
-    val inputIndices  = scala.collection.mutable.Map.empty[Name, Int]
-    val instrIndices  = scala.collection.mutable.Map.empty[Instruction, Int]
+    val outputIndices = MMap.empty[Name, Int]
+    val inputIndices  = MMap.empty[Name, Int]
+    val instrIndices  = MMap.empty[Instruction, Int]
     var idx           = 0
     statePairs.foreach { case (current, next) =>
       inputIndices += (current.variable.name -> idx)
@@ -59,7 +62,7 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
       (n, sz)
     }.toArray
     idx = 0
-    val memoryIndices = scala.collection.mutable.Map.empty[Name, Int]
+    val memoryIndices = MMap.empty[Name, Int]
     memories.foreach { case (name, sz) =>
       memoryIndices += (name -> idx)
       idx += 1
@@ -84,7 +87,7 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
   protected def extractIndependentInstructionSequences(
       proc: DefProcess,
       parContext: ParallelizationContext
-  )(implicit ctx: AssemblyContext) = {
+  )(implicit ctx: AssemblyContext): Iterable[ProcessDescriptor] = {
 
     sealed trait SetElement
     case object Syscall                  extends SetElement
@@ -99,12 +102,12 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
       GraphBuilder.toDotGraph(executionGraph)
     }
     // Collect the sink nodes in the graph. These are either writes to OutputType
-    // registers, stores or system calls. Anything else is basically dead code
+    // registers, stores or system calls. Anything else is basically dead code.
     val sinkNodes = executionGraph.nodes.filter(_.outDegree == 0)
 
     // Collect all the memories that are not read-only. We distinguish between
     // read-only and read-write memory when we are trying to split the process.
-    // read-only memories can be easily copied and do not constrain parallelization.
+    // Read-only memories can be easily copied and do not constrain parallelization.
     val nonCopyableMemory: Name => Boolean = proc.body.collect { case store: LocalStore =>
       assert(store.base == store.order.memory)
       store.base
@@ -114,9 +117,11 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
       case r if r.variable.varType == OutputType => State(r.variable.name)
       case r if r.variable.varType == MemoryType && nonCopyableMemory(r.variable.name) =>
         Memory(r.variable.name)
-    } ++ sinkNodes.map(n => Instr(n.toOuter)) :+ Syscall
+    } ++ sinkNodes.map(n =>
+      Instr(n.toOuter)
+    ) :+ Syscall // All syscalls are on 1 core, so there is just 1 "syscall" in the disjoint set.
 
-    // initialize the disjoint sets with elements that are either sink instructions,
+    // Initialize the disjoint sets with elements that are either sink instructions,
     // memories, next state registers, or a unique Syscall object
     val disjoint = DisjointSets(elements)
 
@@ -141,21 +146,20 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
 
         sink.outerNodeTraverser
           .withDirection(GraphTraversal.Predecessors)
-          .foreach { instr =>
-            // if this instruction references an state element, we should
-            // make the union of the state element with the sink instruction
-            // so that sink instruction that reference the same output variables
-            // or memories are grouped together
-            val namesReferenced =
-              NameDependence.regDef(instr) ++ NameDependence.regUses(instr)
+          .foreach { predInstr =>
+            // If this instruction references a state element, we should
+            // union of the state element with the sink instruction
+            // so that sink instructions that reference the same output variables
+            // or memories are grouped together.
+            val namesReferenced = NameDependence.regDef(predInstr) ++ NameDependence.regUses(predInstr)
             namesReferenced.foreach { name =>
-              // in case in our traversal we reference some output name we should
-              // create a union between the sink node and the output names
+              // In case in our traversal we reference some output name we should
+              // create a union between the sink node and the output names.
               if (parContext.isOutput(name)) {
                 disjoint.union(Instr(sinkInst), State(name))
               }
             }
-            instr match {
+            predInstr match {
               case _ @(_: Expect | _: Interrupt | _: PutSerial | _: GlobalLoad | _: GlobalStore) =>
                 disjoint.union(Instr(sinkInst), Syscall)
               case load @ LocalLoad(_, mem, _, order, _) if nonCopyableMemory(mem) =>
@@ -203,7 +207,7 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
           }
       }
 
-      new ProcessorDescriptor(
+      new ProcessDescriptor(
         inSet = inBitSet,
         outSet = outBitSet,
         body = bodyBitSet,
@@ -242,11 +246,9 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
 
     import scala.collection.mutable.ArrayBuffer
     case class StateId(id: String, index: Int)
-    val stateUsers =
-      scala.collection.mutable.Map
-        .empty[StateId, ArrayBuffer[DefProcess]]
+    val stateUsers = MMap.empty[StateId, ArrayBuffer[DefProcess]]
 
-    val currentState = scala.collection.mutable.Map.empty[StateId, Name]
+    val currentState = MMap.empty[StateId, Name]
 
     def getStateId(r: DefReg) = r.annons.collectFirst { case x: Reg =>
       StateId(x.getId(), x.getIndex().getOrElse(0))

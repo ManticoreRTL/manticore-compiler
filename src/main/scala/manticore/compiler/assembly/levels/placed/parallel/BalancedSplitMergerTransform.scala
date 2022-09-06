@@ -1,7 +1,7 @@
 package manticore.compiler.assembly.levels.placed.parallel
 
 import manticore.compiler.assembly.levels.placed.parallel.util.BasicProcessExtraction
-import manticore.compiler.assembly.levels.placed.parallel.util.ProcessorDescriptor
+import manticore.compiler.assembly.levels.placed.parallel.util.ProcessDescriptor
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
 import manticore.compiler.AssemblyContext
@@ -16,7 +16,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
   import PlacedIR._
 
-  private type NodeT = Graph[ProcessorDescriptor, WDiEdge]#NodeT
+  private type NodeT = Graph[ProcessDescriptor, WDiEdge]#NodeT
 
   def vcycle(node: NodeT) = {
     val numSends = node.outgoing.foldLeft(0.0) { case (acc, e) => acc + e.weight }.toInt
@@ -26,7 +26,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
   }
   private def mergeConnectedGraphWithBudget(
       coreBudget: Int,
-      graph: MutableGraph[ProcessorDescriptor, WDiEdge],
+      graph: MutableGraph[ProcessDescriptor, WDiEdge],
       parContext: ParallelizationContext
   )(implicit
       ctx: AssemblyContext
@@ -146,8 +146,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
                 // terminate (maybe with a failure)
                 locked += shortestNode
                 ctx.logger.info("potential high memory pressure in merging")
-                tryContraction(processCount) // do not decrease process count because we
-              // did not merge any two nodes
+                tryContraction(processCount) // do not decrease process count because we did not merge any two nodes
               case Some(choice) =>
                 // There is a viable choice. Let's see if this choice increase the
                 // current estimated vcycle.
@@ -239,11 +238,11 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
     val numCores     = dimX * dimY      // N
     val numProcesses = processes.length // M
 
-    // we want to contract a graph with M maximally independent processes to
+    // We want to contract a graph with M maximally independent processes to
     // a graph of at most N parallel processes where N = dimX * dimY.
-    val graph = MutableGraph.empty[ProcessorDescriptor, WDiEdge]
-    // create a directed graph with vertices representing ProcessorDescriptors
-    // and edges the messages that flow between them (weighted by number of messages)
+    val graph = MutableGraph.empty[ProcessDescriptor, WDiEdge]
+    // Create a directed graph with vertices representing ProcessorDescriptors
+    // and edges the messages that flow between them (weighted by number of messages).
     // Graph construction is almost O(M^2) in complexity because in the worst case
     // the graph could be complete with O(M^2) edges
     for (txProcess <- processes) {
@@ -283,7 +282,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
   }
 
-  def createProcesses(originalProcess: DefProcess, cores: Seq[ProcessorDescriptor], parContext: ParallelizationContext)(
+  def createProcesses(originalProcess: DefProcess, cores: Seq[ProcessDescriptor], parContext: ParallelizationContext)(
       implicit ctx: AssemblyContext
   ) = {
 
@@ -312,12 +311,21 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
         } else {
           Nil
         }
-      assert(originalProcess.functions == Nil, "can not handle custom functions yet")
+
+      val funcs = body.collect {
+        case CustomInstruction(funcName, _, _, _) => funcName
+      }
+      .toSet
+      .map { funcName: Name =>
+        originalProcess.functions.find(f => f.name == funcName).get
+      }
+      .toSeq
+      // assert(originalProcess.functions == Nil, "can not handle custom functions yet")
 
       val p = DefProcess(
         id = processId(coreIndex),
         registers = usedRegs,
-        functions = Nil,
+        functions = funcs,
         labels = usedLabelGrps,
         body = bodyWithSends,
         globalMemories = usedGlobalMemories
@@ -329,7 +337,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
     processes
   }
 
-  private def computeStateUsers(parContext: ParallelizationContext, processes: Iterable[ProcessorDescriptor]) = {
+  private def computeStateUsers(parContext: ParallelizationContext, processes: Iterable[ProcessDescriptor]) = {
 
     val stateUsers = Array.fill(parContext.numStateRegs()) { BitSet.empty }
 

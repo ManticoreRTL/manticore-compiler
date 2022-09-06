@@ -53,8 +53,8 @@ sealed private[parallel] trait DisjointSets[T] {
   def add(a: T): scala.collection.Set[T]
 }
 
-private[parallel] case class ProcessorDescriptor(
-    inSet: BitSet, // the set of state elements read
+private[parallel] case class ProcessDescriptor(
+    inSet: BitSet,  // the set of state elements read
     outSet: BitSet, // the set of state elements owned which may overlap with inSet
     body: BitSet,
     memory: BitSet
@@ -71,15 +71,15 @@ private[parallel] case class ProcessorDescriptor(
   // we can not know!
   val inBound = inSet diff outSet // the set of state elements to receive, i.e., state elements
   // owned by another processor
-  def merged(other: ProcessorDescriptor): ProcessorDescriptor = {
+  def merged(other: ProcessDescriptor): ProcessDescriptor = {
     val newOutSet = other.outSet union outSet
     val newInSet  = (inSet union other.inSet)
     val newBody   = body union other.body
-    ProcessorDescriptor(newInSet, newOutSet, newBody, memory union other.memory)
+    ProcessDescriptor(newInSet, newOutSet, newBody, memory union other.memory)
   }
 }
 
-private[parallel] object ProcessorDescriptor {
-  def empty = ProcessorDescriptor(BitSet.empty, BitSet.empty, BitSet.empty, BitSet.empty)
+private[parallel] object ProcessDescriptor {
+  def empty = ProcessDescriptor(BitSet.empty, BitSet.empty, BitSet.empty, BitSet.empty)
 
 }
