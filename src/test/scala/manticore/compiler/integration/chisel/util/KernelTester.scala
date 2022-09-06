@@ -9,7 +9,6 @@ import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.machine.xrt.ManticoreFlatSimKernel
 import chiseltest._
 import chisel3._
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import java.io.PrintWriter
 
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
@@ -46,13 +45,13 @@ trait KernelTester
     }
     MachineCodeGenerator.generateCode(assembled_program)(context)
     val vcycles_length =
-      assembled_program.map(_.total).max + LatencyAnalysis.maxLatency()
+      assembled_program.map(_.total).max + context.hw_config.maxLatency
     context.logger.info(s"Virtual cycles length is ${vcycles_length}")
 
     test(
       new ManticoreFlatSimKernel(
-        DimX = context.max_dimx,
-        DimY = context.max_dimy,
+        DimX = context.hw_config.dimX,
+        DimY = context.hw_config.dimY,
         debug_enable = true
         // prefix_path =
         //   fixture.test_dir.resolve("out").toAbsolutePath().toString()
@@ -93,7 +92,7 @@ trait KernelTester
           tick()
 
           dut.clock.setTimeout(
-            context.max_instructions + bstream.length * 600 * context.max_dimx * context.max_dimy
+            context.hw_config.nInstructions + bstream.length * 600 * context.hw_config.dimX * context.hw_config.dimY
           )
 
           while (!dut.io.kernel_ctrl.idle.peek().litToBoolean) {
@@ -116,7 +115,7 @@ trait KernelTester
           // set the timeout to be the the time required for execution plus
           // some time required to program the processors
           vcycles_length * context.expected_cycles.get +
-            vcycles_length * 100 * context.max_dimx * context.max_dimy
+            vcycles_length * 100 * context.hw_config.dimX * context.hw_config.dimY
         )
 
         while (!dut.io.kernel_ctrl.idle.peek().litToBoolean) {

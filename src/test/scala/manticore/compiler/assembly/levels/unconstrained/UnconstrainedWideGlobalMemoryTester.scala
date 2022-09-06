@@ -5,6 +5,7 @@ import manticore.compiler.assembly.utils.XorShift128
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.parser.AssemblyParser
 import manticore.compiler.AssemblyContext
+import manticore.compiler.DefaultHardwareConfig
 
 
 
@@ -109,7 +110,7 @@ class UnconstrainedWideGlobalMemoryTester extends UnitFixtureTest {
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         debug_message = true,
         max_cycles = size + 2,
-        max_local_memory = 256 // artificially limit the local memory cap
+        hw_config = DefaultHardwareConfig(dimX = 1, dimY = 1, nScratchPad = 128)
       )
       fixture.dump("main.masm", text)
       compiler(text)

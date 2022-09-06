@@ -16,6 +16,7 @@ import manticore.compiler.integration.chisel.util.KernelTester
 import manticore.compiler.WithInlineVerilog
 import manticore.compiler.frontend.yosys.Yosys
 import manticore.compiler.frontend.yosys.YosysRunner
+import manticore.compiler.DefaultHardwareConfig
 
 class ShiftRegFifofTest extends KernelTester {
   behavior of "ShiftRegFifo"
@@ -106,10 +107,7 @@ class ShiftRegFifofTest extends KernelTester {
 
       implicit val context = AssemblyContext(
         output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-        max_dimx = 1,
-        max_dimy = 1,
-        max_registers = 32,
-        max_carries = 2,
+        hw_config = DefaultHardwareConfig(dimX = 2, dimY = 2, nRegisters = 32),
         dump_all = false,
         debug_message = false,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
@@ -124,26 +122,5 @@ class ShiftRegFifofTest extends KernelTester {
 
   }
 
-  // it should "shift values in a shift register using 4 cores" in {
-  //   fixture =>
-  //     val source: String = scala.io.Source
-  //       .fromResource(
-  //         "integration/microbench/baked_tests/shift_reg_fifo/shift.masm"
-  //       )
-  //       .mkString("")
-
-  //     val context = AssemblyContext(
-  //       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-  //       max_dimx = 2,
-  //       max_dimy = 2,
-  //       dump_all = true,
-  //       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
-  //       expected_cycles = Some(6),
-  //       log_file = Some(fixture.test_dir.resolve("run.log").toFile())
-  //     )
-
-  //     compileAndRun(source, context)(fixture)
-
-  // }
 
 }
