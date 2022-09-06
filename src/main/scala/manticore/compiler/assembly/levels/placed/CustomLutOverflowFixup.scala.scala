@@ -7,6 +7,7 @@ import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 import scala.collection.mutable.{Map => MMap}
 import manticore.compiler.assembly.BinaryOperator
 import scala.collection.mutable.ArrayBuffer
+import manticore.compiler.assembly.levels.ConstType
 
 // This pass reverts excessive custom functions in processes back into standard instructions.
 // We revert the custom functions that result in the smallest number of additional instructions that get added
@@ -19,20 +20,26 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
   import CustomFunctionImpl._
 
   def undoCustomInstruction(
-      proc: DefProcess,
-      ci: CustomInstruction
+      // Custom instruction to undo.
+      ci: CustomInstruction,
+      // Constants that already exist.
+      // We use collection.Map instead of `Map` as we want to pass either a mutable or immutable Map here.
+      consts: collection.Map[Constant, Name],
+      // Functions available in the enclosing process.
+      funcs: Map[Name, CustomFunction]
   )(implicit
       ctx: AssemblyContext
   ): (
-      Seq[Instruction], // Instructions that replace the custom function.
-      Seq[DefReg]       // Constants used by the custom function.
+      // Instructions that replace the custom function.
+      Seq[Instruction],
+      // New constants used by the custom function. These constants did not already exist in the list of input constants provided to this function.
+      Map[Constant, Name]
   ) = {
-
-    // Name is defined by the DefReg.
-    val consts = MMap.empty[Name, DefReg]
 
     // Name is defined by the Instruction.
     val instrs = MMap.empty[Name, Instruction]
+
+    val newConsts = MMap.empty[Constant, Name]
 
     def exprTreeToName(
         expr: ExprTree
@@ -50,15 +57,32 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
       expr match {
         case IdExpr(id) =>
           id match {
-            case NamedArg(n) =>
+            case NamedArg(name) =>
               // This is a named parameter, so it already has a name and we just return it.
-              n
+              name
 
             case AtomConst(v) =>
-              // Create a new DefReg for the constant.
-              val reg = PlacedIRConstantFolding.freshConst(v)
-              consts += reg.variable.name -> reg
-              reg.variable.name
+              consts.get(v) match {
+                case None =>
+                  // The constant does not exist under a known name, so we need a new name for it.
+                  // Before creating a name, first check in the list of new constants to see if it already
+                  // exists as another branch in the exprTree might have already created the constant.
+                  newConsts.get(v) match {
+                    case None =>
+                      // The constant really doesn't exist. We create one and record it.
+                      val resName = freshName
+                      newConsts += v -> resName
+                      resName
+
+                    case Some(name) =>
+                      // Some other branch in the exprTree created the constant already. We reuse its name.
+                      name
+                  }
+
+                case Some(name) =>
+                  // The constant was already defined, so we reuse its existing name.
+                  name
+              }
 
             case PositionalArg(p) =>
               // Will never come here as custom functions can only reference named args or constants.
@@ -91,10 +115,8 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
       }
     }
 
-    val funcExpr = proc.functions.find(f => f.name == ci.func).get.value.expr
-
-    // This populates the `instrs` and `consts` maps.
-    val rootName = exprTreeToName(funcExpr)
+    // This populates the `instrs` and `newConsts` maps.
+    val rootName = exprTreeToName(funcs(ci.func).expr)
 
     // We order the instructions before returning so the caller can just replace
     // the call to the custom function with a sequence of instructions such that
@@ -108,8 +130,8 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
     //           ^^
     //           original root name
     //
-    // We replace the name defined by the last instruction by the root name of the
-    // custom function so the caller doesn't need to change references in the rest
+    // We replace the name that the last instruction defines by the root name of the
+    // custom function such that the caller doesn't need to change references in the rest
     // of the program.
     val newLastInstr = instrsOrdered.last match {
       case BinaryArithmetic(operator, rd, rs1, rs2, annons) =>
@@ -121,7 +143,7 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
 
     val newInstrsOrdered = instrsOrdered.dropRight(1) :+ newLastInstr
 
-    (newInstrsOrdered, consts.values.toSeq)
+    (newInstrsOrdered, newConsts.toMap)
   }
 
   def onProcess(
@@ -139,12 +161,20 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
       // result in the least number of instructions that would be added to the process
       // when undone.
 
+      val procConsts = proc.registers.collect { case DefReg(ValueVariable(name, _, ConstType), value, _) =>
+        name -> value.get
+      }.toMap
+
+      val procFuncs = proc.functions.map { defFunc =>
+        defFunc.name -> defFunc.value
+      }.toMap
+
       val totalInstrsCoveredByFuncs: Map[Name, Int] = proc.body
         .collect { case CustomInstruction(funcName, rd, rsx, annons) => funcName }
         .groupBy { funcName => funcName }
         .map { case (funcName, group) =>
           val numCalls      = group.size
-          val funcResources = proc.functions.find(f => f.name == funcName).get.value.resources
+          val funcResources = procFuncs(funcName).resources
           // We only look for Right(binOp) as Left(const) doesn't add an instruction (just storage space
           // in the register file).
           val instrsPerCall = funcResources.collect { case (Right(binOp), cnt) => cnt }.sum
@@ -153,39 +183,61 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
 
       // Select least significant functions to remove.
       val numFuncsToRemove = numCustomFunctions - ctx.hw_config.nCustomFunctions
-      val funcsToRemove = totalInstrsCoveredByFuncs.toSeq
+
+      val funcNamesToRemove = totalInstrsCoveredByFuncs.toSeq
         .sortBy { case (funcName, numInstrs) =>
           numInstrs
+        }
+        .map { case (funcName, numInstrs) =>
+          funcName
         }
         .take(numFuncsToRemove)
 
       ctx.logger.info {
-        val overflowFuncsStr = funcsToRemove
-          .map { case (funcName, numInstrs) =>
-            s"\tOverflow func ${funcName} covers ${numInstrs} total instructions"
+        val overflowFuncsStr = funcNamesToRemove
+          .map { funcName =>
+            s"\tOverflow func ${funcName} covers ${totalInstrsCoveredByFuncs(funcName)} total instructions"
           }
           .mkString("\n")
 
         s"Removing ${numFuncsToRemove} overflow funcs in process ${proc.id}:\n${overflowFuncsStr}"
       }
 
-      val newConsts = ArrayBuffer.empty[DefReg]
+      // We need to replace a subset of the custom instructions in the process body.
+      // Removing a custom instruction may introduce new constants (constants that were unseen until now).
+      //
+      // To replace instructions in the body you may think of using flatMap and simply replacing one
+      // custom instruction with a sequence of instructions, but this will not allow subsequent calls to
+      // `undoCustomInstruction` to see that new constants have been introduced.
+      //
+      // So we instead use `foreach` and keep a mutable data structure for the constants so future calls of
+      // `undoCustomInstruction` see the updated constants.
 
-      val newBody = proc.body.flatMap { instr =>
-        instr match {
-          case ci: CustomInstruction =>
-            val (undoInstrs, undoConsts) = undoCustomInstruction(proc, ci)
-            // Replace the single custom instruction with a sequence of instructions.
-            newConsts ++= undoConsts
-            undoInstrs
+      val finalBody   = ArrayBuffer.empty[Instruction]
+      val finalRegs   = ArrayBuffer.from(proc.registers)
+      val constToName = MMap.from(procConsts.map(_.swap))
 
-          case other => Seq(other)
-        }
+      proc.body.foreach {
+        case ci @ CustomInstruction(funcName, _, _, _) if funcNamesToRemove.contains(funcName) =>
+          val (undoInstrs, undoConsts) = undoCustomInstruction(ci, constToName, procFuncs)
+          // Replace the single custom instruction with a sequence of instructions.
+          finalBody ++= undoInstrs
+          // Add any new constants generated to the map of constants.
+          constToName ++= undoConsts
+          finalRegs ++= undoConsts.map { case (value, name) => PlacedIRConstantFolding.freshConst(value) }
+
+        case other =>
+          // The instruction is not marked to be modified, so we just add it as-is to the new body.
+          // No constant has been added here.
+          finalBody += other
       }
 
+      val finalFuncs = proc.functions.filter(f => !funcNamesToRemove.contains(f.name))
+
       val newProc = proc.copy(
-        registers = proc.registers ++ newConsts,
-        body = newBody
+        body = finalBody.toSeq,
+        registers = finalRegs.toSeq,
+        functions = finalFuncs.toSeq
       )
 
       newProc
@@ -195,6 +247,8 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
   override def transform(
       program: DefProgram
   )(implicit ctx: AssemblyContext): DefProgram = {
-    program
+    program.copy(
+      processes = program.processes.map(proc => onProcess(proc))
+    )
   }
 }

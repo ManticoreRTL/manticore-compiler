@@ -48,7 +48,6 @@ import manticore.compiler.integration.yosys.unit.YosysUnitTest
 import scala.collection.mutable.ArrayBuffer
 import java.nio.file.Path
 import java.io.PrintWriter
-import manticore.compiler.assembly.levels.placed.CleanupConstants
 import manticore.compiler.DefaultHardwareConfig
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
@@ -310,7 +309,6 @@ object CompilationStage {
     PlacedIRConstantFolding andThen
       PlacedIRCommonSubExpressionElimination andThen
       PlacedIRDeadCodeElimination andThen
-      CleanupConstants andThen
       CustomLutInsertion
 
   val parallelization =
@@ -320,8 +318,7 @@ object CompilationStage {
       AnalyticalPlacerTransform
 
   val customLutsFixup =
-    CustomLutOverflowFixup andThen
-      CleanupConstants
+    CustomLutOverflowFixup
 
   val finalLowering = Lowering.Transformation andThen
     AbstractExecution andThen UtilizationChecker
