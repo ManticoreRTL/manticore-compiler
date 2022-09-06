@@ -8,6 +8,7 @@ import manticore.compiler.integration.chisel.util.ProcessorTester
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.parser.AssemblyParser
+import manticore.compiler.DefaultHardwareConfig
 
 class Mips32ChiselTester extends KernelTester with ProcessorTester {
 
@@ -42,12 +43,10 @@ class Mips32ChiselTester extends KernelTester with ProcessorTester {
 
       val context = AssemblyContext(
         output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-        max_dimx = dimy,
-        max_dimy = dimx,
+        hw_config = DefaultHardwareConfig(dimX = dimx, dimY = dimy),
         dump_all = true,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
         expected_cycles = Some(54),
-        max_carries = 16,
         debug_message = false
         // log_file = Some(fixture.test_dir.resolve("run.log").toFile())
         // log_file = None

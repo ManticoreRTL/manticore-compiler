@@ -3,6 +3,7 @@ package manticore.compiler.assembly.levels.unconstrained
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.AssemblyContext
 import org.scalatest.CancelAfterFailure
+import manticore.compiler.DefaultHardwareConfig
 
 class UnconstrainedWideMulTest extends UnconstrainedWideTest with CancelAfterFailure {
 
@@ -97,7 +98,7 @@ class UnconstrainedWideMulTest extends UnconstrainedWideTest with CancelAfterFai
         dump_dir = Some(fixture.test_dir.toFile),
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
-        max_local_memory = (1 << 20),
+        hw_config = DefaultHardwareConfig(dimX = 1, dimY = 1, nScratchPad = 1 << 19),
         max_cycles = 10500
       )
       backend(text)

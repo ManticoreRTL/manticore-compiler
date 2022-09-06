@@ -17,7 +17,6 @@ import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.OutputType
 import manticore.compiler.assembly.levels.CloseSequentialCycles
 import manticore.compiler.assembly.levels.BreakSequentialCycles
-import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.JumpTableConstruction
 import manticore.compiler.assembly.levels.ParMuxDeconstruction
 import manticore.compiler.assembly.annotations.Memblock
@@ -91,7 +90,6 @@ object UnconstrainedRenameVariables extends RenameTransformation with Unconstrai
       case ConstType  => s"%c${id}"
       case InputType  => s"%i${id}"
       case OutputType => s"%o${id}"
-      case CarryType  => s"%s${id}"
     }
   override def transform(p: DefProgram)(implicit ctx: AssemblyContext) =
     do_transform(p, ctx)

@@ -13,9 +13,9 @@ import manticore.compiler.ManticorePasses
 import manticore.machine.xrt.ManticoreFlatSimKernel
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.levels.TransformationID
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.HasLoggerId
 import manticore.compiler.integration.chisel.util.KernelTester
+import manticore.compiler.DefaultHardwareConfig
 
 /** A stress for the NoC implementation.
   */
@@ -260,8 +260,7 @@ class NoCStressTest extends KernelTester {
   ): Unit = {
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      max_dimx = dimx,
-      max_dimy = dimy,
+      hw_config = DefaultHardwareConfig(dimX = dimx, dimY = dimy),
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(5), // has to be at least 2
@@ -271,8 +270,8 @@ class NoCStressTest extends KernelTester {
     )
     val source = createTest(
       context.output_dir.get.toPath(),
-      context.max_dimx,
-      context.max_dimy,
+      context.hw_config.dimX,
+      context.hw_config.dimY,
       context.expected_cycles.get - 1 // test size is one less than the expected cycles, because the first checksum
       // is zero, so if we want to have 2 tests, we need to simulate 3 virtual cycles
       // With a test_size = 1 we basically cover anything that can happen NoC-wise,

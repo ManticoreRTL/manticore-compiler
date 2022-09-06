@@ -129,7 +129,7 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
   )(implicit ctx: AssemblyContext): DefProcess = {
     val numCustomFunctions = proc.functions.length
 
-    if (numCustomFunctions <= ctx.max_custom_instructions) {
+    if (numCustomFunctions <= ctx.hw_config.nCustomFunctions) {
       // The number of custom functions is valid. We don't need to undo any work.
       proc
 
@@ -152,7 +152,7 @@ object CustomLutOverflowFixup extends DependenceGraphBuilder with PlacedIRTransf
         }
 
       // Select least significant functions to remove.
-      val numFuncsToRemove = numCustomFunctions - ctx.max_custom_instructions
+      val numFuncsToRemove = numCustomFunctions - ctx.hw_config.nCustomFunctions
       val funcsToRemove = totalInstrsCoveredByFuncs.toSeq
         .sortBy { case (funcName, numInstrs) =>
           numInstrs

@@ -134,12 +134,12 @@ trait RenameTransformation extends Flavored {
             ).copy(rd = outerRenamer(rd))
           case i @ PadZero(rd, rs, _, _) =>
             i.copy(rs = subst(rs)).copy(rd = outerRenamer(rd))
-          case i @ AddC(rd, co, rs1, rs2, ci, _) =>
+          case i @ AddCarry(rd, rs1, rs2, ci, _) =>
             i.copy(
               rs1 = subst(rs1),
               rs2 = subst(rs2),
-              ci = subst(ci)
-            ).copy(rd = outerRenamer(rd), co = outerRenamer(co))
+              cin = subst(ci)
+            ).copy(rd = outerRenamer(rd))
           case i @ Mov(rd, rs, _) =>
             i.copy(
               rs = subst(rs)

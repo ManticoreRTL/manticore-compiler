@@ -3,7 +3,6 @@ package manticore.compiler.assembly.levels.unconstrained.width
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.WireType
-import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.annotations.DebugSymbol
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
@@ -44,7 +43,7 @@ trait ConversionBuilder extends Flavored {
     private var m_serial_queue  = scala.collection.mutable.Queue.empty[Seq[Name]]
     // private val m_wires = scala.collection.mutable.Queue.empty[DefReg]
     private val m_wires      = scala.collection.mutable.Map.empty[Name, DefReg]
-    private val m_carries    = scala.collection.mutable.Queue.empty[DefReg]
+
     private var m_carry_zero = Option.empty[DefReg]
     private var m_carry_one  = Option.empty[DefReg]
 
@@ -139,7 +138,7 @@ trait ConversionBuilder extends Flavored {
       proc
         .copy(
           registers =
-            (m_wires.values ++ m_constants.values ++ const_carries ++ m_carries).toSeq.distinct,
+            (m_wires.values ++ m_constants.values ++ const_carries).toSeq.distinct,
           body = preamble ++ instructions,
           labels = proc.labels.map { lgrp =>
             lgrp.copy(memory = getConversion(lgrp.memory).parts.head)
@@ -190,7 +189,7 @@ trait ConversionBuilder extends Flavored {
     def mkCarry0(): Name = {
       if (m_carry_zero.isEmpty) {
         val carry = DefReg(
-          LogicVariable(freshName(s"carry0"), 1, CarryType)
+          LogicVariable(freshName(s"carry0"), 1, WireType)
         )
         m_carry_zero = Some(carry)
       }
@@ -200,21 +199,14 @@ trait ConversionBuilder extends Flavored {
     def mkCarry1(): Name = {
       if (m_carry_one.isEmpty) {
         val carry = DefReg(
-          LogicVariable(freshName(s"carry0"), 1, CarryType)
+          LogicVariable(freshName(s"carry0"), 1, WireType)
         )
         m_carry_one = Some(carry)
       }
       m_carry_one.get.variable.name
     }
 
-    def mkCarry(): Name = {
-      val new_carry =
-        DefReg(
-          LogicVariable(freshName(s"carry"), 1, CarryType)
-        )
-      m_carries += new_carry
-      new_carry.variable.name
-    }
+
 
     /** Helper function to create temp wires, do not use this function if you
       * are converting a wire

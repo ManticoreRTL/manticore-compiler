@@ -20,7 +20,6 @@ import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeEli
 import manticore.compiler.assembly.utils.XorShift128
 import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
-import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 
 class LivenessIntervalTester extends UnitFixtureTest {
 

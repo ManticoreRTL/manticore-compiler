@@ -125,8 +125,8 @@ trait AssemblyNameChecker extends Flavored {
               acc ++ Seq(rd, base, order.memory).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
-            case AddC(rd, co, rs1, rs2, ci, annons) =>
-              acc ++ Seq(rd, co, rs1, rs2, ci).collect {
+            case AddCarry(rd, rs1, rs2, cin, _) =>
+              acc ++ Seq(rd, rs1, rs2, cin).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
               }
             case LocalStore(rs, base, offset, predicate, order, annons) =>
@@ -220,9 +220,8 @@ trait AssemblyNameChecker extends Flavored {
             case Mux(rd, _, _, _, _)     => prev - rd
             case GlobalLoad(rd, _, _, _) => prev - rd
             case Slice(rd, _, _, _, _)   => prev - rd
-
             case BinaryArithmetic(_, rd, _, _, _) => prev - rd
-            case AddC(rd, co, _, _, _, _)         => prev -- Seq(rd, co)
+            case AddCarry(rd, _, _, _, _)         => prev -- Seq(rd)
             case CustomInstruction(_, rd, _, _)   => prev - rd
           }
         }
@@ -297,10 +296,8 @@ trait AssemblyNameChecker extends Flavored {
 
             case CustomInstruction(func, rd, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
-            case AddC(rd, co, _, _, _, _) =>
-              assigns + (rd -> (assigns(rd) :+ inst)) + (co -> (assigns(
-                co
-              ) :+ inst))
+            case AddCarry(rd, _, _, _, _) =>
+              assigns + (rd -> (assigns(rd) :+ inst))
             case Mov(rd, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
             case BinaryArithmetic(_, rd, _, _, _) =>

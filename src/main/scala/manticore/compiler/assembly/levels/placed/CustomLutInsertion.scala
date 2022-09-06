@@ -897,7 +897,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
       getFanoutFreeCones(
         dependenceGraph,
         logicClusters.flatten,
-        ctx.max_custom_instruction_inputs,
+        ctx.hw_config.nCfuInputs,
         vToConstMap
       ).filter { cone =>
         // We don't care about cones that consist of a single instruction as there

@@ -49,6 +49,7 @@ import scala.collection.mutable.ArrayBuffer
 import java.nio.file.Path
 import java.io.PrintWriter
 import manticore.compiler.assembly.levels.placed.CleanupConstants
+import manticore.compiler.DefaultHardwareConfig
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -97,12 +98,11 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
         quiet = false,
         log_file = Some(fixture.test_dir.resolve("run.log").toFile()),
         max_cycles = timeOut,
-        max_dimx = 16,
-        max_dimy = 16,
+        hw_config = DefaultHardwareConfig(
+          dimX = 16,
+          dimY = 16
+        ),
         debug_message = false,
-        max_registers = 2048,
-        max_local_memory = 1 << 16,
-        max_carries = 64,
         optimize_common_custom_functions = true,
         placement_timeout_s = 10
         // log_file = None,

@@ -29,6 +29,7 @@ import manticore.compiler.assembly.levels.ParMuxDeconstruction
 import manticore.compiler.assembly.levels.unconstrained.width.WidthConversion
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRCommonSubExpressionElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRParMuxDeconstructionTransform
+import manticore.compiler.DefaultHardwareConfig
 
 class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
 
@@ -99,11 +100,8 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
                 dump_all = true,
                 dump_dir = Some(f.test_dir.toFile()),
                 debug_message = false,
-                max_custom_instructions = 32,
-                max_custom_instruction_inputs = numCustomInstrInputs,
+                hw_config = DefaultHardwareConfig(dimX = dimx, dimY = dimy, nCustomFunctions = 32, nCfuInputs = numCustomInstrInputs),
                 optimize_common_custom_functions = shareLuts,
-                max_dimx = dimx,
-                max_dimy = dimy,
                 max_cycles = 200,
                 log_file = Some(f.test_dir.resolve("output.log").toFile())
               )
