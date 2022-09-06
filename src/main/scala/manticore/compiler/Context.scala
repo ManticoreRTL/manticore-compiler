@@ -24,18 +24,9 @@ trait AssemblyContext {
   val dump_all: Boolean // dump all intermediate steps
   val dump_dir: Option[File] // location to dump intermediate steps
   val debug_message: Boolean // print debug messages
-  // val max_registers: Int // maximum number of registers usable in a process
-  // val max_carries: Int // maximum number of carry bit registers
-  // val max_local_memory: Int // maximum local memory size in bytes
-  // val max_instructions: Int // maximum number of instruction a processor can host
-  // val max_instructions_threshold: Int // the threshold number of instructions for merging processes
-  // val max_custom_instructions: Int // maximum number of custom instructions a process can host
-  // val max_custom_instruction_inputs: Int // maximum number of inputs a custom instruction can use
   val optimize_common_custom_functions: Boolean // whether common custom functions should be identified and merged
   val max_cycles: Int // maximum number of cycles to interpret before erroring out
   val quiet: Boolean // do not print info messages
-  // val max_dimx: Int // maximum dimension in X
-  // val max_dimy: Int // maximum dimension in Y
   val placement_timeout_s: Int // timeout for analytic placement
   val expected_cycles: Option[
     Int
@@ -62,18 +53,11 @@ object AssemblyContext {
       val dump_all: Boolean,
       val dump_dir: Option[File],
       val debug_message: Boolean,
-      // val max_registers: Int,
-      // val max_carries: Int,
-      // val max_local_memory: Int,
-      // val max_instructions: Int,
-      // val max_instructions_threshold: Int,
-      // val max_custom_instructions: Int,
-      // val max_custom_instruction_inputs: Int,
+
       val optimize_common_custom_functions: Boolean,
       val max_cycles: Int,
       val quiet: Boolean,
-      // val max_dimx: Int,
-      // val max_dimy: Int,
+
       val placement_timeout_s: Int,
       val use_loc: Boolean,
       val dump_rf: Boolean,
@@ -101,18 +85,9 @@ object AssemblyContext {
       dump_all: Boolean = false,
       dump_dir: Option[File] = None,
       debug_message: Boolean = false,
-      // max_registers: Int = 1024,
-      // max_carries: Int = 32,
-      // max_local_memory: Int = 4096,
-      // max_instructions: Int = 4096,
-      // max_instructions_threshold: Int = 4096 - 128,
-      // max_custom_instructions: Int = 32,
-      // max_custom_instruction_inputs: Int = 4,
       optimize_common_custom_functions: Boolean = false,
       max_cycles: Int = 1000,
       quiet: Boolean = false,
-      // max_dimx: Int = 2,
-      // max_dimy: Int = 2,
       placement_timeout_s: Int = 10,
       use_loc: Boolean = false,
       dump_ra: Boolean = true,
