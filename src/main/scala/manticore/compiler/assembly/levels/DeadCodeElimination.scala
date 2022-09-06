@@ -18,7 +18,6 @@ import scalax.collection.edge.LDiEdge
 import manticore.compiler.assembly.annotations.Track
 import scalax.collection.GraphEdge
 import scalax.collection.GraphTraversal
-import javax.xml.crypto.Data
 import scala.annotation.tailrec
 
 /** A functional interface for performing DCE on processes. Do not use DCE on
@@ -244,7 +243,7 @@ trait DeadCodeElimination
   }
   def doDce(process: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
 
-    // we create a set of instructions that are produce something useful.
+    // We create a set of instructions that produce something useful.
     // Any assertion, store to memory, send to other processes, or an instruction
     // that computes a tracked value is deemed useful.
     def hasTrackAnnotation(r: DefReg): Boolean = r.annons.exists {

@@ -10,7 +10,6 @@ import scalax.collection.Graph
 import scalax.collection.mutable.{Graph => MutableGraph}
 
 import scalax.collection.GraphEdge.DiEdge
-import javax.xml.crypto.Data
 import manticore.compiler.assembly.annotations.Memblock
 import manticore.compiler.assembly.annotations.Track
 import manticore.compiler.assembly.CanBuildDependenceGraph

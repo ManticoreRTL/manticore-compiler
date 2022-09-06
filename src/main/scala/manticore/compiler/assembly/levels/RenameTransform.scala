@@ -2,7 +2,6 @@ package manticore.compiler.assembly.levels
 
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.annotations.DebugSymbol
-import javax.xml.crypto.Data
 
 /** Template transformation for renaming all variable. You need to override the
   * `flavor` and the `mkName` function to specialize this transformation
