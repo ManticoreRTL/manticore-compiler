@@ -112,7 +112,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
         // lower is better
         val score = (candidateVcycle + vcycle(neighbor)) - sendsReduction - recvReduction
-        if (memoryRequirement <= (ctx.max_local_memory / (16 / 8))) {
+        if (memoryRequirement <= (ctx.hw_config.nScratchPad)) {
           if (choice.isEmpty) {
             choice = Some(MergeChoice(mergeCandidate, neighbor, score))
           } else if (choice.get.score > score) {
@@ -234,8 +234,8 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
     val processes  = extractIndependentInstructionSequences(program.processes.head, parContext).toIndexedSeq
     val stateUsers = computeStateUsers(parContext, processes)
 
-    val dimY         = ctx.max_dimy
-    val dimX         = ctx.max_dimx
+    val dimY         = ctx.hw_config.dimY
+    val dimX         = ctx.hw_config.dimX
     val numCores     = dimX * dimY      // N
     val numProcesses = processes.length // M
 

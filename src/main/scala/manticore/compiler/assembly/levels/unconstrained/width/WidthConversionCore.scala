@@ -2327,7 +2327,7 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
         val offsetArray = builder.getConversion(offset).parts
         val rdArray     = builder.getConversion(rd).parts
 
-        if (memVar.size * memVar.width >= ctx.max_local_memory * 8) {
+        if (memVar.size * memVar.width >= ctx.hw_config.nScratchPad * 16) {
           // promote to global memory
           val gMemory = builder.mkGlobalMemory(memVar.name)
           ctx.logger.info(s"Converting ${memVar.name} to a global memory", gMemory)
@@ -2404,7 +2404,7 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
           }
           t.head
         }
-        if (memVar.size * memVar.width >= ctx.max_local_memory * 8) {
+        if (memVar.size * memVar.width >= ctx.hw_config.nScratchPad * 16) {
           // promote to global memory
           val gMemory = builder.mkGlobalMemory(memVar.name)
           ctx.logger.info(s"Converting ${memVar.name} to a global memory", gMemory)

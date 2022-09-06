@@ -1,7 +1,8 @@
 package manticore.compiler.assembly.levels.placed.lowering.util
 import manticore.compiler.assembly.levels.placed.PlacedIR._
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import java.io.PrintWriter
+import manticore.compiler.AssemblyContext
+import manticore.compiler.HardwareConfig
 
 private[lowering] case class RecvEvent(recv: Recv, cycle: Int)
 
@@ -14,7 +15,7 @@ private[lowering] case class RecvEvent(recv: Recv, cycle: Int)
   *
   * @author Mahyar emami <mahyar.emami@epfl.ch>
   */
-private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
+private[lowering] class NetworkOnChip(val cfg: HardwareConfig) {
 
   sealed abstract trait Response
   case object Denied               extends Response
@@ -24,6 +25,7 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
 
   // plus Latency
 
+
   case class Step(loc: Int, t: Int)
   class Path private[NetworkOnChip] (
       val from: ProcessId,
@@ -31,11 +33,12 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
       val scheduleCycle: Int
   ) {
 
+
     val to = send.dest_id
     val xDist =
-      LatencyAnalysis.xHops(from, to, (dimX, dimY))
+      cfg.xHops(from, to)
     val yDist =
-      LatencyAnalysis.yHops(from, to, (dimX, dimY))
+      cfg.yHops(from, to)
 
     /** [[LatencyAnalysis.latency]] gives the number of NOPs required between
       * two depending instruction, that is, it gives the latency between
@@ -44,17 +47,17 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
       * decoding. That is why we add "2" to the number given by
       * [[LatencyAnalysis.latency]]
       */
-    val enqueueTime = LatencyAnalysis.latency(send) + 2 + scheduleCycle
+    val enqueueTime = cfg.latency(send) + 2 + scheduleCycle
     val xHops: Seq[Step] =
       Seq.tabulate(xDist) { i =>
-        val x_v = (from.x + i + 1) % dimX
+        val x_v = (from.x + i + 1) % cfg.dimX
 
         Step(x_v, (enqueueTime + i))
       }
     val yHops: Seq[Step] = {
 
       val p = Seq.tabulate(yDist) { i =>
-        val y_v = (from.y + i + 1) % dimY
+        val y_v = (from.y + i + 1) % cfg.dimY
         xHops match {
           case _ :+ last => Step(y_v, (xHops.last.t + i + 1))
           case Seq() => // there are no steps in the X direction
@@ -64,7 +67,7 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
       // the last hop always occupies a Y link which the is Y output of
       // the target switch (Y output is shared with the local output)
       val lastHop = p match {
-        case _ :+ last => Step((to.y + 1) % dimY, (last.t + 1))
+        case _ :+ last => Step((to.y + 1) % cfg.dimY, (last.t + 1))
         case Nil       =>
           // this happens if the packet only goes in the X direction. The
           // packet should have at least one X hop, hence xHops can not be
@@ -74,15 +77,15 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
             xHops.nonEmpty,
             s"Can not have self messages send ${send.serialized} from ${from} with xdist = $xDist and ydist = $yDist"
           )
-          Step((to.y + 1) % dimY, (xHops.last.t + 1))
+          Step((to.y + 1) % cfg.dimY, (xHops.last.t + 1))
       }
       p :+ lastHop
     }
 
   }
   private type LinkOccupancy = scala.collection.mutable.Set[Int]
-  private val linksX    = Array.ofDim[LinkOccupancy](dimX, dimY)
-  private val linksY    = Array.ofDim[LinkOccupancy](dimX, dimY)
+  private val linksX    = Array.ofDim[LinkOccupancy](cfg.dimX, cfg.dimY)
+  private val linksY    = Array.ofDim[LinkOccupancy](cfg.dimX, cfg.dimY)
   private val usedPaths = scala.collection.mutable.ArrayBuffer.empty[Path]
   def draw(): String = {
 
@@ -92,19 +95,19 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
       val botY = new StringBuilder
 
       val ln = new StringBuilder
-      for (x <- 0 until dimX) {
+      for (x <- 0 until cfg.dimX) {
         ln ++= f"${"|"}%12s"
       }
       ln ++= "\n"
-      for (x <- 0 until dimX) {
+      for (x <- 0 until cfg.dimX) {
         ln ++= f"    ${linksY(x)(y).size}%8d"
       }
       ln ++= "\n"
-      for (x <- 0 until dimX) {
+      for (x <- 0 until cfg.dimX) {
         ln ++= f"${"v"}%12s"
       }
       ln ++= "\n"
-      for (x <- 0 until dimX) {
+      for (x <- 0 until cfg.dimX) {
         ln ++= f"${linksX(x)(y).size}%7d->[ ]".replace(" ", "-")
       }
       ln ++= "\n"
@@ -112,14 +115,14 @@ private[lowering] class NetworkOnChip(val dimX: Int, val dimY: Int) {
     }
     val str = new StringBuilder
     str ++= "\n"
-    for (y <- 0 until dimY) { str ++= renderLine(y) }
+    for (y <- 0 until cfg.dimY) { str ++= renderLine(y) }
     str.toString()
   }
 
   def getPaths(): Iterable[Path] = usedPaths
 
   // initially no link is occupied
-  for (x <- 0 until dimX; y <- 0 until dimY) {
+  for (x <- 0 until cfg.dimX; y <- 0 until cfg.dimY) {
     linksX(x)(y) = scala.collection.mutable.Set.empty[Int]
     linksY(x)(y) = scala.collection.mutable.Set.empty[Int]
   }
@@ -176,7 +179,7 @@ object NetworkOnChip {
   def jsonDump(network: NetworkOnChip): String = {
 
     val printer = new StringBuilder
-    printer ++= (s"{\n\"topology\": [${network.dimX}, ${network.dimY}], \n\"paths\": [")
+    printer ++= (s"{\n\"topology\": [${network.cfg.dimX}, ${network.cfg.dimY}], \n\"paths\": [")
 
     network.getPaths().foreach { p =>
       val ln = s"\"source\": [${p.from.x}, ${p.from.y}],\n" +
@@ -194,4 +197,7 @@ object NetworkOnChip {
     printer ++= ("]}")
     printer.toString()
   }
+
+
+  def apply(cfg: HardwareConfig) = new NetworkOnChip(cfg)
 }

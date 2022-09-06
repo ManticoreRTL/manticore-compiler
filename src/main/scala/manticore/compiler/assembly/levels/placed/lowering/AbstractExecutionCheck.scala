@@ -7,7 +7,6 @@ import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
 import manticore.compiler.assembly.levels.CarryType
 
@@ -24,8 +23,8 @@ object AbstractExecution extends PlacedIRChecker {
 
   def checkWriteCollision(process: DefProcess)(implicit ctx: AssemblyContext): Unit = {
 
-    val registerFile = Array.fill(ctx.max_registers) { scala.collection.mutable.Stack.empty[Name] }
-    val carryRegisterFile = Array.fill(ctx.max_carries) {
+    val registerFile = Array.fill(ctx.hw_config.nRegisters) { scala.collection.mutable.Stack.empty[Name] }
+    val carryRegisterFile = Array.fill(ctx.hw_config.nCarries) {
       scala.collection.mutable.Stack.empty[Name]
     }
 
@@ -143,7 +142,7 @@ object AbstractExecution extends PlacedIRChecker {
                     instr
                   )
                 }
-                definitionTime += (newVal -> (LatencyAnalysis.latency(instr)))
+                definitionTime += (newVal -> (ctx.hw_config.latency(instr)))
               }
               cycle + 1
           }
@@ -192,7 +191,7 @@ object AbstractExecution extends PlacedIRChecker {
     // abstractly execute the program and collect all the messages
     program.processes.foreach { p => doCycle(p.body)(p.id) }
 
-    val noc = new NetworkOnChip(ctx.max_dimx, ctx.max_dimy)
+    val noc = NetworkOnChip(ctx.hw_config)
     // Now we know exactly when each message was scheduled. We can try to reserve
     // path in the NoC for them
     for ((send, (t, pid)) <- messages) {

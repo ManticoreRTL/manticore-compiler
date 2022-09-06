@@ -5,7 +5,6 @@ import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.placed.JumpTableNormalizationTransform
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
-import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 
 object Lowering {
 
