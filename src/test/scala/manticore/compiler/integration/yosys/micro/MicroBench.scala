@@ -25,7 +25,6 @@ import manticore.compiler.assembly.levels.placed.lowering.Lowering
 import manticore.compiler.assembly.levels.placed.lowering.UtilizationChecker
 import manticore.compiler.assembly.levels.placed.parallel.AnalyticalPlacerTransform
 import manticore.compiler.assembly.levels.placed.parallel.BalancedSplitMergerTransform
-import manticore.compiler.assembly.levels.placed.parallel.BlackBoxParallelization
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedCloseSequentialCycles
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedDeadCodeElimination
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
