@@ -8,7 +8,6 @@ import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.placed.PlacedIRChecker
 import manticore.compiler.assembly.levels.placed.interpreter.PlacedValueChangeWriter
-import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
@@ -70,8 +69,7 @@ object AtomicInterpreter extends PlacedIRChecker {
           proc,
           vcd,
           monitor,
-          ctx.max_registers,
-          ctx.max_carries
+          ctx.hw_config.nRegisters,
         )(
           undefinedConstant,
           badAlloc,
@@ -99,6 +97,7 @@ object AtomicInterpreter extends PlacedIRChecker {
     override def write(rd: Name, value: UInt16): Unit = {
       register_file.write(rd, value)
     }
+    override def writeOvf(rd: Name, v: Boolean): Unit = { register_file.writeOvf(rd, v) }
 
     private val local_memory = {
 
@@ -107,7 +106,7 @@ object AtomicInterpreter extends PlacedIRChecker {
         val memories = proc.registers.collect { case m @ DefReg(v: MemoryVariable, _, _) =>
           m
         }
-        val max_avail   = ctx.max_local_memory / (16 / 8)
+        val max_avail   = ctx.hw_config.nScratchPad
         val needs_alloc = memories.exists(_.value.isEmpty)
         if (needs_alloc) {
           ctx.logger.warn(
@@ -229,6 +228,8 @@ object AtomicInterpreter extends PlacedIRChecker {
 
     private val maxPc                   = instructionMemory.length
     override def read(rs: Name): UInt16 = register_file.read(rs)
+
+    override def readOvf(rs: Name): Boolean = register_file.readOvf(rs)
 
     override def lload(address: UInt16): UInt16 = local_memory(address.toInt)
 

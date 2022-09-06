@@ -9,7 +9,6 @@ import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.WireType
 import manticore.compiler.assembly.annotations.Memblock
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import scala.annotation.tailrec
 import java.io.File
 import java.nio.file.Files
@@ -149,9 +148,9 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     }
 
     // then we enable storing
-    if (initializer_body.length < LatencyAnalysis.maxLatency() + 2) {
+    if (initializer_body.length < ctx.hw_config.maxLatency + 2) {
       initializer_body ++= Seq.fill(
-        LatencyAnalysis.maxLatency() + 2 - initializer_body.length
+        ctx.hw_config.maxLatency + 2 - initializer_body.length
       ) { Nop }
       // place Nops between setting the value of const_1 and setting the predicate
       // if needed
@@ -175,7 +174,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     // able to create sequences of 4 SetValues followed by 4 LocalStore
     // instructions such that we avoid placing Nops.
 
-    val mem_init_slider_size = LatencyAnalysis.maxLatency() + 1
+    val mem_init_slider_size = ctx.hw_config.maxLatency + 1
     val temp_regs = Seq.tabulate(mem_init_slider_size) { ix =>
       DefReg(
         variable = ValueVariable(
@@ -186,11 +185,11 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
         value = None
       )
     }
-    if (temp_regs.last.variable.id >= ctx.max_registers) {
+    if (temp_regs.last.variable.id >= ctx.hw_config.nRegisters) {
       ctx.logger.error(
         s"Can not create memory initializing sequence! " +
           s"Initializer requires at least ${temp_regs.last.variable.id + 1} " +
-          s"registers but only have ${ctx.max_registers}"
+          s"registers but only have ${ctx.hw_config.nRegisters}"
       )
     }
 
@@ -269,7 +268,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
 
     initializer_body
       .grouped(
-        ctx.max_instructions - 1
+        ctx.hw_config.nInstructions - 1
       ) // we leave 1 space for the EXPECT instruction that may be added later
       .map { case body =>
         process.copy(

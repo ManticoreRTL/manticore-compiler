@@ -7,9 +7,7 @@ import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.placed.lowering.util.NetworkOnChip
-import manticore.compiler.assembly.levels.CarryType
 
 object AbstractExecution extends PlacedIRChecker {
   import PlacedIR._
@@ -24,8 +22,8 @@ object AbstractExecution extends PlacedIRChecker {
 
   def checkWriteCollision(process: DefProcess)(implicit ctx: AssemblyContext): Unit = {
 
-    val registerFile = Array.fill(ctx.max_registers) { scala.collection.mutable.Stack.empty[Name] }
-    val carryRegisterFile = Array.fill(ctx.max_carries) {
+    val registerFile = Array.fill(ctx.hw_config.nRegisters) { scala.collection.mutable.Stack.empty[Name] }
+    val ovfRegisterFile = Array.fill(ctx.hw_config.nRegisters) {
       scala.collection.mutable.Stack.empty[Name]
     }
 
@@ -35,11 +33,9 @@ object AbstractExecution extends PlacedIRChecker {
 
     def checkUse(use: Name, instr: Instruction) = {
       val (tpe, id) = lookup(use)
-      val writes = if (tpe == CarryType) {
-        carryRegisterFile(id)
-      } else {
+      val writes =
         registerFile(id)
-      }
+
 
       if (writes.nonEmpty) {
         if (writes.top != use) {
@@ -57,13 +53,30 @@ object AbstractExecution extends PlacedIRChecker {
         ctx.logger.error(s"${use} is read but never defined!")
       }
     }
-    def appendDefined(rd: Name) = {
-      val (tpe, id) = lookup(rd)
-      if (tpe == CarryType) {
-        carryRegisterFile(id).push(rd)
+    def checkOvfUse(use: Name, instr: AddCarry) = {
+      val (_, id) = lookup(use)
+      val writes = ovfRegisterFile(id)
+      if (writes.nonEmpty) {
+        if (writes.top != use) {
+          ctx.logger.error(
+             s"Conflicted overflow physical register sharing at id ${id}! Expected to read the overflow value for " +
+               s"${use} but got the values for ${writes.top}",
+             instr
+           )
+        } else {
+          ctx.logger.debug(s"Ovf ${use} is ok!")
+        }
       } else {
-        registerFile(id).push(rd)
+        ctx.logger.error(s"${use} overflow bit is read but never defined!")
       }
+    }
+    def appendDefined(rd: Name) = {
+      val (_, id) = lookup(rd)
+      registerFile(id).push(rd)
+    }
+    def appendOvfComp(rd: Name) = {
+      val (_, id) = lookup(rd)
+      ovfRegisterFile(id).push(rd)
     }
     def execute(instructionBlock: Seq[Instruction]): Unit = instructionBlock match {
       case (jtb @ JumpTable(t, results, caseBlocks, delaySlot, _)) +: rest =>
@@ -71,6 +84,17 @@ object AbstractExecution extends PlacedIRChecker {
         caseBlocks.foreach { case JumpCase(_, blk) => execute(blk) }
         results.foreach { case Phi(rd, _) => appendDefined(rd) }
         execute(rest)
+      case SetCarry(rd, _) +: rest =>
+        appendOvfComp(rd)
+        execute(rest)
+      case ClearCarry(rd, _) +: rest =>
+        appendOvfComp(rd)
+        execute(rest)
+      case (instr @ AddCarry(rd, rs1, rs2, cin, _)) +: rest =>
+        Seq(rs1, rs2) foreach { checkUse(_, instr)}
+        checkOvfUse(cin, instr)
+        appendDefined(rd)
+        appendOvfComp(rd)
       case instr +: rest =>
         NameDependence.regUses(instr).foreach { checkUse(_, instr) }
         NameDependence.regDef(instr).foreach { appendDefined }
@@ -143,7 +167,7 @@ object AbstractExecution extends PlacedIRChecker {
                     instr
                   )
                 }
-                definitionTime += (newVal -> (LatencyAnalysis.latency(instr)))
+                definitionTime += (newVal -> (ctx.hw_config.latency(instr)))
               }
               cycle + 1
           }
@@ -192,7 +216,7 @@ object AbstractExecution extends PlacedIRChecker {
     // abstractly execute the program and collect all the messages
     program.processes.foreach { p => doCycle(p.body)(p.id) }
 
-    val noc = new NetworkOnChip(ctx.max_dimx, ctx.max_dimy)
+    val noc = NetworkOnChip(ctx.hw_config)
     // Now we know exactly when each message was scheduled. We can try to reserve
     // path in the NoC for them
     for ((send, (t, pid)) <- messages) {

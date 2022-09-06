@@ -439,7 +439,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
     // at most ctx.max_dimx * ctx.max_dimy processes while ensuring no process
     // uses memory than available and also try to minimize the workspan.
     val mergedProcesses: Array[ProcessorDescriptor] =
-      Array.fill(ctx.max_dimx * ctx.max_dimy) {
+      Array.fill(ctx.hw_config.dimX * ctx.hw_config.dimY) {
         ProcessorDescriptor.empty
       }
 
@@ -453,7 +453,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
       }
     def canMerge(p1: ProcessorDescriptor, p2: ProcessorDescriptor): Boolean =
       // need the div because the context value is in bytes
-      (p1.memory + p2.memory) <= (ctx.max_local_memory / (16 / 8))
+      (p1.memory + p2.memory) <= ctx.hw_config.nScratchPad
 
     val toMerge =
       scala.collection.mutable.Queue.empty[ProcessorDescriptor] ++ splitted

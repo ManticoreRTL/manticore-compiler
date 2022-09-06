@@ -9,8 +9,6 @@ import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.TransformationID
-import manticore.compiler.assembly.levels.UInt16
-import manticore.compiler.assembly.levels.placed.LatencyAnalysis
 import manticore.compiler.assembly.levels.placed.PlacedIR._
 
 import java.io.File
@@ -18,6 +16,7 @@ import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.Path
+import manticore.compiler.assembly.levels.UInt16
 
 object MachineCodeGenerator
     extends ((DefProgram, AssemblyContext) => Unit)
@@ -91,7 +90,7 @@ object MachineCodeGenerator
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     val vcycle_length =
-      assembled.map(_.total).max + LatencyAnalysis.maxLatency()
+      assembled.map(_.total).max + ctx.hw_config.maxLatency
     ctx.logger.info(s"Virtual cycle length: ${vcycle_length}")
     // for each process p , we need to compute the SLEEP_LENGTH as
     // vcycle_length - p.total (total is the total execution time including epilogue)
@@ -213,7 +212,7 @@ object MachineCodeGenerator
 
         // write initial memory values
 
-        val initial_mem_values = Array.fill(ctx.max_local_memory) {
+        val initial_mem_values = Array.fill(ctx.hw_config.nScratchPad) {
           0
         }
         p.registers.foreach {
@@ -242,9 +241,9 @@ object MachineCodeGenerator
     // if a processor does not really have a process to run so we have to
     // place them in the binary
     val grid = Seq
-      .tabulate(ctx.max_dimx) { x =>
+      .tabulate(ctx.hw_config.dimX) { x =>
         Seq
-          .tabulate(ctx.max_dimy) { y =>
+          .tabulate(ctx.hw_config.dimY) { y =>
             AssembledProcess(
               orig = DefProcess(
                 ProcessIdImpl(s"empty_${x}_${y}", x, y),
@@ -452,9 +451,9 @@ object MachineCodeGenerator
         // destination, but rather the path to the destination
         // in terms of x and y hops
         val x_hops =
-          LatencyAnalysis.xHops(proc.id, dest_id, (ctx.max_dimx, ctx.max_dimy))
+          ctx.hw_config.xHops(proc.id, dest_id)
         val y_hops =
-          LatencyAnalysis.yHops(proc.id, dest_id, (ctx.max_dimx, ctx.max_dimy))
+           ctx.hw_config.yHops(proc.id, dest_id)
         asm
           .Opcode(Opcodes.SEND)
           .Rd(remote(dest_id, rd))
@@ -543,7 +542,7 @@ object MachineCodeGenerator
           .Rs2(0) // reg 0 is tied to zero
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength)
           .toLong
-      case AddC(rd, co, rs1, rs2, ci, _) =>
+      case AddCarry(rd, rs1, rs2, ci, _) =>
         asm
           .Opcode(Opcodes.ARITH) // Note that ADDCARRY is not a real opcode
           .Rd(local(rd))
@@ -551,7 +550,7 @@ object MachineCodeGenerator
           .Rs1(local(rs1))
           .Rs2(local(rs2))
           .Rs3(local(ci))
-          .Rs4(local(co))
+          .Zero(Rs4Field.bitLength)
           .toLong
       case SetValue(rd, value, _) =>
         asm

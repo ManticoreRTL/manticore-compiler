@@ -76,11 +76,13 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         }
         k -> v
       }
+    val ovf_register_file = scala.collection.mutable.Map.empty[Name, Boolean] ++
+      proc.registers.map { _.variable.name -> false }
 
     // a container to map block names to their allocated interpreter
     // memory blocks (one to one)
-    private def isLabelMem(mem: Name): Boolean = proc.labels.exists {
-      case DefLabelGroup(rs, _, _, _) => rs == mem
+    private def isLabelMem(mem: Name): Boolean = proc.labels.exists { case DefLabelGroup(rs, _, _, _) =>
+      rs == mem
     }
 
     private def loadContentFromFile(
@@ -95,8 +97,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
 
     }
     val memory_blocks = proc.registers.collect {
-      case DefReg(MemoryVariable(name, width, size, initialValues), _, annons)
-          if !isLabelMem(name) =>
+      case DefReg(MemoryVariable(name, width, size, initialValues), _, annons) if !isLabelMem(name) =>
         val content = if (initialValues.nonEmpty) {
           initialValues.toArray
         } else {
@@ -117,8 +118,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         )
 
       }
-      val impl =Array.ofDim[BigInt](requiredSize.toInt)
-      for(gmem <- proc.globalMemories) {
+      val impl = Array.ofDim[BigInt](requiredSize.toInt)
+      for (gmem <- proc.globalMemories) {
         var index = gmem.base
         for (value <- gmem.content) {
           impl(index.toInt) = value
@@ -133,7 +134,7 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
     var select: Boolean                                = false
     var exception_occurred: Option[InterpretationTrap] = None
     var program_index: Int                             = 0
-    val label_bindings = scala.collection.mutable.Map.empty[Name, Label]
+    val label_bindings                                 = scala.collection.mutable.Map.empty[Name, Label]
 
   }
   final class ProcessInterpreter private[UnconstrainedInterpreter] (
@@ -400,10 +401,13 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
           assert(wideResult >= 0)
           clipped(wideResult)
 
-
       }
 
       update(rd, rd_val)
+    }
+
+    private def updateOvf(rd: Name, v: Boolean): Unit = {
+      state.ovf_register_file(rd) = v
     }
 
     private def update(rd: Name, v: BigInt): Unit = {
@@ -580,17 +584,11 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
       case Nop =>
         // do nothing
         ctx.logger.warn("Nops are unnecessary for interpretation", instruction)
-      case AddC(rd, co, rs1, rs2, ci, annons) =>
+      case AddCarry(rd, rs1, rs2, cin, _) =>
         val rd_width = definitions(rd).variable.width
         val rs1_val  = state.register_file(rs1)
         val rs2_val  = state.register_file(rs2)
-        val ci_val   = state.register_file(ci)
-        if (ci_val > 1) {
-          ctx.logger.error(
-            "Internal interpreter error, carry computation is incorrect",
-            instruction
-          )
-        }
+        val ci_val   = state.ovf_register_file(cin)
         val rs1_width = definitions(rs1).variable.width
         val rs2_width = definitions(rs2).variable.width
         if (rs1_width != rs2_width || rs1_width != rd_width) {
@@ -599,11 +597,11 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
             instruction
           )
         }
-        val rd_carry_val = rs1_val + rs2_val + ci_val
+        val rd_carry_val = rs1_val + rs2_val + (if (ci_val) 1 else 0)
         val rd_val       = clipped(rd_carry_val)(ClipWidth(rd_width))
-        val co_val       = BigInt(if (rd_carry_val.testBit(rd_width)) 1 else 0)
+        val co_val       = rd_carry_val.testBit(rd_width)
         update(rd, rd_val)
-        update(co, co_val)
+        updateOvf(rd, co_val)
 
       case PadZero(rd, rs, width, annons) =>
         val rs_val = state.register_file(rs)
@@ -614,11 +612,9 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         update(rd, rs_val)
 
       case SetCarry(rd, _) =>
-        val rd_val = BigInt(1)
-        update(rd, rd_val)
+        updateOvf(rd, true)
       case ClearCarry(rd, _) =>
-        val rd_val = BigInt(0)
-        update(rd, rd_val)
+        updateOvf(rd, false)
       case ParMux(rd, choices, default, _) =>
         // ensure that only a single condition is true
         val valid_choice = choices.collect {

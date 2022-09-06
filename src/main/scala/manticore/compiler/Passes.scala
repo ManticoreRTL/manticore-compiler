@@ -4,9 +4,6 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.AssemblyPrinter
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.placed.ExpectIdInsertion
-import manticore.compiler.assembly.levels.placed.GlobalPacketSchedulerTransform
-import manticore.compiler.assembly.levels.placed.ListSchedulerTransform
-import manticore.compiler.assembly.levels.placed.LocalMemoryAllocation
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
 import manticore.compiler.assembly.levels.placed.PlacedIRCommonSubExpressionElimination

@@ -16,6 +16,7 @@ import scala.collection.mutable.{HashMap => MHashMap, ArrayBuffer}
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedNameChecker
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedMakeDebugSymbols
 import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.DefaultHardwareConfig
 
 class SimpleCustomLutTester extends UnitFixtureTest {
 
@@ -63,10 +64,7 @@ class SimpleCustomLutTester extends UnitFixtureTest {
       dump_all = true,
       dump_dir = Some(f.test_dir.toFile()),
       debug_message = true,
-      max_custom_instructions = 32,
-      max_custom_instruction_inputs = 6,
-      max_dimx = 1,
-      max_dimy = 1,
+      hw_config = DefaultHardwareConfig(dimX = 1, dimY = 1, nCustomFunctions = 32, nCfuInputs = 6),
       log_file = Some(f.test_dir.resolve("output.log").toFile())
     )
 

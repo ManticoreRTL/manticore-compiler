@@ -15,8 +15,8 @@ trait ProcessorTester {
     require(context.output_dir.nonEmpty)
     new Processor(
       config = ManticoreBaseISA,
-      DimX = context.max_dimx,
-      DimY = context.max_dimy,
+      DimX = context.hw_config.dimX,
+      DimY = context.hw_config.dimY,
       equations = Seq.fill(32)(Seq.fill(16)(0)),
       initial_registers = context.output_dir.get
         .toPath()

@@ -15,7 +15,6 @@ import manticore.compiler.assembly.annotations.{Layout => LayoutAnnotation}
 import manticore.compiler.assembly.annotations.{Loc => LocAnnotation}
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.AssemblyTranslator
-import manticore.compiler.assembly.levels.CarryType
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.{PlacedIR => T}
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
@@ -310,8 +309,8 @@ object UnconstrainedToPlacedTransform
     case S.Recv(rd, id, rs, a) =>
       ctx.logger.error("Illegal instruction", inst)
       T.Recv(rd, rs, T.ProcessIdImpl(id, -1, -1), a)
-    case S.AddC(rd, co, rs1, rs2, ci, annons) =>
-      T.AddC(rd, co, rs1, rs2, ci, annons)
+    case S.AddCarry(rd, rs1, rs2, ci, annons) =>
+      T.AddCarry(rd, rs1, rs2, ci, annons)
     case S.SetCarry(rd, annons)   => T.SetCarry(rd, annons)
     case S.ClearCarry(rd, annons) => T.ClearCarry(rd, annons)
     case S.ParMux(rd, choices, default, annons) =>

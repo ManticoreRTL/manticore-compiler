@@ -79,7 +79,7 @@ trait CanComputeNameDependence extends Flavored {
           Seq.empty
         case PadZero(rd, rs, width, annons) =>
           Seq(rs)
-        case AddC(rd, co, rs1, rs2, ci, annons) =>
+        case AddCarry(rd, rs1, rs2, ci, annons) =>
           Seq(rs1, rs2, ci)
         case Mov(rd, rs, _)                  => Seq(rs)
         case Slice(rd, rs, _, _, _)          => Seq(rs)
@@ -153,7 +153,7 @@ trait CanComputeNameDependence extends Flavored {
         case Predicate(rs, annons)                            => Nil
         case Nop                                              => Nil
         case PadZero(rd, rs, width, annons)                   => Seq(rd)
-        case AddC(rd, co, rs1, rs2, ci, annons)               => Seq(rd, co)
+        case AddCarry(rd, rs1, rs2, ci, annons)               => Seq(rd)
         case Mov(rd, _, _)                                    => Seq(rd)
         case Slice(rd, _, _, _, _)                            => Seq(rd)
         case ClearCarry(rd, _)                                => Seq(rd)

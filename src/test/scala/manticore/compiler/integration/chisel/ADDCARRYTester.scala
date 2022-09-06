@@ -15,6 +15,7 @@ import chisel3._
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.HasLoggerId
 import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
+import manticore.compiler.DefaultHardwareConfig
 
 
 
@@ -166,8 +167,10 @@ class ADDCARRYTester
 
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      max_dimx = 1,
-      max_dimy = 1,
+      hw_config = DefaultHardwareConfig(
+        dimX = 1,
+        dimY = 1
+      ),
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),

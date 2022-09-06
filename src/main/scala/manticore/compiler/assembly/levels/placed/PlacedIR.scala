@@ -430,45 +430,7 @@ object PlacedIR extends ManticoreAssemblyIR {
   type Label = String
 }
 
-object LatencyAnalysis {
 
-  import PlacedIR._
-  def latency(inst: Instruction): Int = inst match {
-    case _: Predicate                                 => 0
-    case _ @(_: Expect | _: Interrupt | _: PutSerial) => 0
-    case Nop                                          => 0
-    case JumpTable(_, _, blocks, delaySlot, _)        =>
-      // this is a conservative estimation
-      val delaySlotLatency = 1 + delaySlot.length
-      delaySlotLatency + blocks.map { case JumpCase(_, blk) =>
-        blk.length + maxLatency() + 1
-      }.max
-
-    case _ => maxLatency()
-  }
-
-  def xHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =
-    if (source.x > target.x) dim._1 - source.x + target.x
-    else target.x - source.x
-  def yHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) =
-    if (source.y > target.y) dim._2 - source.y + target.y
-    else target.y - source.y
-
-  def xyHops(source: ProcessId, target: ProcessId, dim: (Int, Int)) = {
-    (xHops(source, target, dim), yHops(source, target, dim))
-  }
-  def maxLatency(): Int = 3
-  def manhattan(
-      source: ProcessId,
-      target: ProcessId,
-      dim: (Int, Int)
-  ) = {
-    val x_dist    = xHops(source, target, dim)
-    val y_dist    = yHops(source, target, dim)
-    val manhattan = x_dist + y_dist
-    manhattan
-  }
-}
 
 trait PlacedIRTransformer extends AssemblyTransformer[PlacedIR.DefProgram] {}
 trait PlacedIRChecker     extends AssemblyChecker[PlacedIR.DefProgram]     {}
