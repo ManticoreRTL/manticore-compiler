@@ -247,6 +247,6 @@ object UnconstrainedIRCleanupConstants extends UnconstrainedIRTransformer with C
   import flavor._
 
   override def transform(program: DefProgram)(implicit ctx: AssemblyContext): DefProgram = {
-    do_transform(program)(ctx)
+    cleanupConsts(program)(ctx)
   }
 }

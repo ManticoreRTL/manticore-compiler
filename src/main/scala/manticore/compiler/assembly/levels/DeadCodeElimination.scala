@@ -24,9 +24,7 @@ import scala.annotation.tailrec
   * split processes that do not have their Send instructions because otherwise
   * useful code gets removed.
   */
-trait DeadCodeElimination
-    extends CanComputeNameDependence
-    with CanCollectInputOutputPairs {
+trait DeadCodeElimination extends CanComputeNameDependence with CanCollectInputOutputPairs with CleanupConstants {
 
   import flavor._
 
@@ -49,8 +47,7 @@ trait DeadCodeElimination
       body: Iterable[Instruction]
   )(tracked: Name => Boolean)(implicit ctx: AssemblyContext): Set[Instruction] =
     body.collect {
-      case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send |
-          _: Interrupt | _: PutSerial) =>
+      case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send | _: Interrupt | _: PutSerial) =>
         i
       case inst if NameDependence.regDef(inst).exists(tracked) => inst
     }.toSet
@@ -164,7 +161,7 @@ trait DeadCodeElimination
       dotRoot = dotRoot,
       edgeTransformer = edgeTransform,
       cNodeTransformer = Some(nodeTransformer), // connected nodes
-      iNodeTransformer = Some(nodeTransformer) // isolated nodes
+      iNodeTransformer = Some(nodeTransformer)  // isolated nodes
     )
     dotExport
   }
@@ -282,10 +279,10 @@ trait DeadCodeElimination
       * dependence graph cyclic, we should pay attention in tracing back live
       * instructions and avoid looping/recurring forever.
       */
-    val closedBlock = process.body ++ inputOutputPairs.map {
-      case (curr, next) => Mov(curr, next)
+    val closedBlock = process.body ++ inputOutputPairs.map { case (curr, next) =>
+      Mov(curr, next)
     }
-    val defInst =  createDefMap(closedBlock)
+    val defInst = createDefMap(closedBlock)
 
     // With the inclusion of JumpTables, a single pass on the data dependence
     // graph would not rid us of all the dead code. If we first remove the dead
@@ -313,7 +310,7 @@ trait DeadCodeElimination
           block: Iterable[Instruction]
       )(tracked: Name => Boolean): Iterable[Instruction] = {
         // find the sink instructions
-        val sinks = collectSinkInstructions(block)(tracked)
+        val sinks    = collectSinkInstructions(block)(tracked)
         val depGraph = createDependenceGraph(block, defInst, inputOutputPairs)
         // we need to handle EXPECTs rather carefully, normally, and EXPECT is
         // singular node in the dependence graph because it takes
@@ -342,10 +339,8 @@ trait DeadCodeElimination
         aliveBlock.map {
           case jtb @ JumpTable(_, results, _, _, _) =>
             val filteredPhis = results.filter { case Phi(rd, _) =>
-              globallyTrackedSet(rd) || depGraph.get(jtb).diSuccessors.exists {
-                succ =>
-                  NameDependence.regUses(succ).contains(rd)
-
+              globallyTrackedSet(rd) || depGraph.get(jtb).diSuccessors.exists { succ =>
+                NameDependence.regUses(succ).contains(rd)
               }
             }
             // note that by construction we should have at least one Phi that
@@ -474,7 +469,8 @@ trait DeadCodeElimination
       case mov: Mov => !isOutputMov(mov)
       case _        => true
     }
-    process
+
+    val dceProc = process
       .copy(
         body = withOutIOMovs.toSeq,
         registers = optRegs,
@@ -482,6 +478,9 @@ trait DeadCodeElimination
       )
       .setPos(process.pos)
 
+    val finalProc = cleanupConsts(dceProc)
+
+    finalProc
   }
 
 }
