@@ -63,7 +63,9 @@ trait CanOrderInstructions extends CanBuildDependenceGraph {
         def successorCycles(xs: Seq[g.NodeT]): Iterable[g.NodeT] = xs match {
           case succ +: tail =>
             if (state(succ) == InStack) {
-              getCycle(succ)
+
+              val c = getCycle(succ)
+              c ++ Seq(succ)
             } else {
               stack push succ
               state(succ) = InStack
@@ -74,7 +76,9 @@ trait CanOrderInstructions extends CanBuildDependenceGraph {
 
         val cycle = successorCycles(n.diSuccessors.toSeq)
         state(n) = Visited
-        stack.pop()
+        if (stack.nonEmpty) {
+          stack.pop()
+        }
         cycle
       }
 
