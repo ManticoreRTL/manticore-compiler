@@ -27,9 +27,10 @@ lazy val compiler = (project in file(".")).settings(
     "com.github.scopt" %% "scopt" % "4.0.1", // cli arg parsing
     "org.scala-graph" %% "graph-core" % "1.13.2", // graphs
     "org.scala-graph" %% "graph-dot" % "1.13.0", // for exporting graphs
+    "org.scala-graph" %% "graph-constrained" % "1.13.2", // for testing
     "org.scalatest" %% "scalatest" % "3.2.9" % Test, // scala test
     // we import chisel for integration tests and not the compiler itself
-    "edu.berkeley.cs" %% "chisel3" % chiselVersion % Test,
+    "edu.berkeley.cs" %% "chisel3" % chiselVersion,
     "edu.berkeley.cs" %% "chiseltest" % "0.5.1" % Test,
     "ch.epfl.vlsc" %% "manticore-machine" % "0.1.0-SNAPSHOT" % Test,
     "org.jgrapht" % "jgrapht-io" % "1.5.1", // graphs
@@ -40,7 +41,7 @@ lazy val compiler = (project in file(".")).settings(
 
   // clean generated files by tests
   cleanFiles += baseDirectory.value / "test_run_dir",
-
+  addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full),
   // package the tests into the jar
   Test / publishArtifact := true
 )
