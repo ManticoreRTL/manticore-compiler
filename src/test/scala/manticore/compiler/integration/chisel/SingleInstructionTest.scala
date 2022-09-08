@@ -178,7 +178,7 @@ trait SingleInstructionTest extends UnitFixtureTest with ChiselScalatestTester w
   ): Unit = {
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
-      hw_config = DefaultHardwareConfig(dimX = 2, dimY = 2),
+      hw_config = DefaultHardwareConfig(dimX = 2, dimY = 2, maxLatency = 10),
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
@@ -201,7 +201,8 @@ trait SingleInstructionTest extends UnitFixtureTest with ChiselScalatestTester w
 
     val assembled_program =
       MachineCodeGenerator.assembleProgram(program)(context)
-    val sleep_cycles   = 5
+
+    val sleep_cycles   = context.hw_config.maxLatency
     val countdown_time = 2
     val timeout =
       (assembled_program.head.total + sleep_cycles) * (expected_vcycles) + 500
@@ -251,6 +252,7 @@ trait SingleInstructionTest extends UnitFixtureTest with ChiselScalatestTester w
           to_check match {
             case x +: tail =>
               if (dut.io.packet_out.valid.peek().litToBoolean) {
+                context.logger.info(s"Checking for value ${x}")
                 dut.io.packet_out.address.expect(expected_address.U)
                 dut.io.packet_out.data.expect(x.toInt.U)
                 check(tail)

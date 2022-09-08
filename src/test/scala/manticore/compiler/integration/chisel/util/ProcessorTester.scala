@@ -57,7 +57,7 @@ trait ProcessorTester {
               (w64 >> 32L) & 0xffff,
               (w64 >> 48L) & 0xffff
             )
-          } ++ Seq(process.epilogue.toLong, 5L, 4L)
+          } ++ Seq(process.epilogue.toLong, sleep.toLong, countdown.toLong)
 
         boot_stream.foldLeft(()) { case (_, w: Long) =>
           dut.io.packet_in.poke(
