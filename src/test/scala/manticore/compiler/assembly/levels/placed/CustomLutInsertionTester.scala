@@ -111,7 +111,7 @@ class CustomLutInsertionTester extends UnitFixtureTest with UnitTestMatchers {
               // Sanity check that the program interprets correctly without LUTs
               interpret(progLowered)
 
-              val progWithLutsDce = CustomLutInsertion(progLowered)
+              val progWithLutsDce = CustomLutInsertion.post(progLowered)
 
               // Sanity check that the program interprets correctly without LUTs
               interpret(progWithLutsDce)

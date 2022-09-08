@@ -41,10 +41,13 @@ import scala.jdk.CollectionConverters._
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.placed.Helpers.DeadCode
 
-object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
+trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
 
   val flavor = PlacedIR
   import flavor._
+
+  // override this function with either return INTEGER.MAX_VALUE or ctx.hw_config.nCustomInstructions
+  def maxCustomInstructions(ctx: AssemblyContext): Int
 
   import CustomFunctionImpl._
 
@@ -599,11 +602,11 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
       coneIdToReprId: Map[
         Int, // Cone ID
         Int  // Category
-      ],
-      maxNumConeTypes: Int
+      ]
   )(implicit
       ctx: AssemblyContext
   ): Set[Int] = {
+    val maxNumConeTypes = maxCustomInstructions(ctx)
     // We want to maximize the number of instructions we can remove from the program.
     // The cones must be non-overlapping as otherwise a vertex *outside* the cone uses an intermediate
     // result from within the cone and we therefore can't remove the vertices that make up the cone.
@@ -986,9 +989,7 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
     val bestConeIds = ctx.stats.recordRunTime("findOptimalConeCover") {
       findOptimalConeCover(
         cones,
-        coneIdToReprId,
-        maxNumConeTypes = Integer.MAX_VALUE
-        // maxNumConeTypes = ctx.max_custom_instructions
+        coneIdToReprId
       )(ctx)
     }
 
@@ -1302,4 +1303,18 @@ object CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransforme
 
     dotExport
   }
+
+}
+
+object PostParallelizationCustomLutInsertion extends CustomLutInsertion {
+  override def maxCustomInstructions(ctx: AssemblyContext): Int = ctx.hw_config.nCustomFunctions
+}
+
+object PreParallelizationCustomLutInsertion extends CustomLutInsertion {
+  override def maxCustomInstructions(ctx: AssemblyContext): Int = Int.MaxValue
+}
+
+object CustomLutInsertion {
+  def pre  = PreParallelizationCustomLutInsertion
+  def post = PostParallelizationCustomLutInsertion
 }

@@ -65,7 +65,7 @@ object ManticorePasses {
       PlacedIRCommonSubExpressionElimination andThen
       PlacedIRDeadCodeElimination andThen
       ExtractParallelism andThen
-      CustomLutInsertion andThen
+      CustomLutInsertion.post andThen
       BackendLowerEnd
 
 }
