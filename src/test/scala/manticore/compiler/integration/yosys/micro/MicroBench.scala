@@ -49,6 +49,7 @@ import scala.collection.mutable.ArrayBuffer
 import java.nio.file.Path
 import java.io.PrintWriter
 import manticore.compiler.DefaultHardwareConfig
+import manticore.compiler.assembly.levels.placed.PreParallelizationCustomLutInsertion
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -309,7 +310,7 @@ object CompilationStage {
     PlacedIRConstantFolding andThen
       PlacedIRCommonSubExpressionElimination andThen
       PlacedIRDeadCodeElimination andThen
-      CustomLutInsertion
+      PreParallelizationCustomLutInsertion
 
   val parallelization =
     BalancedSplitMergerTransform andThen
@@ -318,7 +319,8 @@ object CompilationStage {
       AnalyticalPlacerTransform
 
   val customLutsFixup =
-    CustomLutOverflowFixup
+    CustomLutOverflowFixup andThen
+    PlacedNameChecker
 
   val finalLowering = Lowering.Transformation andThen
     AbstractExecution andThen UtilizationChecker

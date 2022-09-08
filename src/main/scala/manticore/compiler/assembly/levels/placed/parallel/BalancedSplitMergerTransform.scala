@@ -312,6 +312,9 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
           Nil
         }
 
+      // The current implementation may result in more custom functions being used per process
+      // than those that are available in HW. There is a fixup routine after this pass that
+      // reverts custom functions back to normal instructions if it is the case.
       val funcs = body.collect {
         case CustomInstruction(funcName, _, _, _) => funcName
       }
