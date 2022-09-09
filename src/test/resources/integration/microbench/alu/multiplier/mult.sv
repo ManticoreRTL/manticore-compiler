@@ -40,13 +40,21 @@ module ArrayMultiplier #(
 endmodule
 
 
-module ArrayMultiplierTester (
+module TestBench #(
+	parameter XROM_FILE="xrom.hex",
+	parameter YROM_FILE="yrom.hex",
+	parameter PROM_FILE="prom.hex",
+	parameter W = 8,
+	parameter TEST_SIZE = 200,
+
+)
+(
     input wire clock
 );
 
 
-  localparam W = @W@;
-  localparam TEST_SIZE = @TS@;
+
+
 
   logic [    W - 1 : 0] x_rom        [0 : TEST_SIZE - 1];
   logic [    W - 1 : 0] y_rom        [0 : TEST_SIZE - 1];
@@ -76,34 +84,24 @@ module ArrayMultiplierTester (
     end
     if (done) begin
       ocounter <= ocounter + 1;
-`ifdef VERILATOR
       if (p_val != p_rom[ocounter]) begin
-        $display("[%d] Expected %d * %d = %d but got %d", ocounter, x_rom[ocounter],
-                 y_rom[ocounter], p_rom[ocounter], p_val);
+        // $display("@ %d Expected %d * %d = %d but got %d", ocounter, x_rom[ocounter],
+        //          y_rom[ocounter], p_rom[ocounter], p_val);
+        $stop;
       end
-      assert (p_val == p_rom[ocounter]);
-`else
-      $masm_expect(p_val == p_rom[ocounter], "invalid result");
-
-`endif
     end
     if (ocounter == TEST_SIZE - 1) begin
-`ifdef VERILATOR
+    //   $display("@ %d Finished!", ocounter);
       $finish;
-`else
-      $masm_stop;
-`endif
     end
   end
 
   assign x_val = x_rom[icounter];
   assign y_val = y_rom[icounter];
   initial begin
-    $readmemh("@XROM@", x_rom);
-    $readmemh("@YROM@", y_rom);
-    $readmemh("@PROM@", p_rom);
+		$readmemh(XROM_FILE, x_rom);
+		$readmemh(YROM_FILE, y_rom);
+		$readmemh(PROM_FILE, p_rom);
   end
-
-
 
 endmodule
