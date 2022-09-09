@@ -48,18 +48,9 @@ class ADDCARRYTester
       val path = fixture.dump(name, values.mkString("\n"))
       s"@MEMINIT [ file = \"${path.toAbsolutePath}\", width = ${width}, count = ${values.length} ]"
     }
-    def mkMemblock(name: String, values: Seq[BigInt]): String = {
-      s"@MEMBLOCK [block = \"${name}\", width = ${width}, capacity = ${values.length}]"
-    }
 
-    def mkReg(name: String, width: Int, init: Option[BigInt] = None): String = {
-      Seq(
-        s"@REG [id = \"${name}\", type = \"\\REG_CURR\" ]",
-        s".input ${name}_curr ${width} ${init.map(_.toString).getOrElse("")}",
-        s"@REG [id = \"${name}\", type = \"\\REG_NEXT\" ]",
-        s".output ${name}_next ${width} "
-      ).mkString("\n")
-    }
+
+
 
     val op1 = Seq.fill(test_size) { mkBigRand(width) }
     val op2 = Seq.fill(test_size) { mkBigRand(width) }
@@ -69,66 +60,50 @@ class ADDCARRYTester
     }
 
     val op1_meminit = mkMemInit("op1.dat", op1)
-    val op1_memblock = mkMemblock("op1", op1)
 
     val op2_meminit = mkMemInit("op2.dat", op2)
-    val op2_memblock = mkMemblock("op2", op2)
-
     val result_meminit = mkMemInit("result.dat", result)
-    val result_memblock = mkMemblock("result", op2)
     def log2ceil(x: Int) = BigInt(x - 1).bitLength
+
     s"""
     |.prog:
     |     @LOC [ x = 0 , y = 0]
     |    .proc p00:
-    |       ${op1_memblock}
     |       ${op1_meminit}
-    |       .mem op1_ptr ${log2ceil(test_size)}
-    |       .wire op1_address ${log2ceil(test_size)}
+    |       .mem op1_ptr ${width} ${test_size}
     |       .wire op1 ${width}
     |
     |
-    |       ${op2_memblock}
     |       ${op2_meminit}
-    |       .mem op2_ptr ${log2ceil(test_size)}
-    |       .mem op2_address ${log2ceil(test_size)}
+    |       .mem op2_ptr ${width} ${test_size}
     |       .wire op2 ${width}
     |
     |
-    |       ${result_memblock}
     |       ${result_meminit}
-    |       .mem result_ptr ${log2ceil(test_size)}
-    |       .wire result_address ${log2ceil(test_size)}
+    |       .mem result_ptr ${width} ${test_size}
     |       .wire result_ref ${width}
-    |       @TRACK [name = "result_got"]
     |       .wire result_got ${width}
     |
     |
-    |       ${mkReg("offset", log2ceil(test_size), Some(BigInt(0)))}
+    |       .reg ofr ${log2ceil(test_size)} .input offset_curr 0 .output offset_next
     |       .const offset_one ${log2ceil(test_size)} 1
     |
-    |       ${mkReg("counter", 16, Some(BigInt(0)))}
+    |       .reg ctr 16 .input counter_curr 0 .output counter_next
     |       .const one 16 1
     |       .const zero 16 0
     |       .const test_size 16 ${test_size - 1}
-    |       ${mkReg("done", 16, Some(BigInt(0)))}
+    |       .reg dr 16 .input done_curr 0 .output done_next
+    |       .reg cr 16 .input correct_curr 1 .output correct_next
     |
-    |       ${mkReg("correct", 16, Some(BigInt(1)))}
     |
     |
     |       ADD offset_next, offset_curr,  offset_one;
-    |       ADD op1_address, op1_ptr, offset_curr;
-    |       ${op1_memblock}
-    |       LLD op1, op1_address [0];
     |
-    |       ADD op2_address, op2_ptr, offset_curr;
-    |       ${op2_memblock}
-    |       LLD op2, op2_address [0];
+    |       (op1_ptr, 0) LLD op1, op1_ptr[offset_curr];
     |
+    |       (op2_ptr, 0) LLD op2, op2_ptr[offset_curr];
     |
-    |       ADD result_address, result_ptr, offset_curr;
-    |       ${result_memblock}
-    |       LLD result_ref, result_address [0];
+    |       (result_ptr, 0) LLD result_ref, result_ptr [offset_curr];
     |
     |       ADD result_got, op1, op2;
     |
@@ -136,10 +111,8 @@ class ADDCARRYTester
     |       SEQ done_next, counter_curr, test_size;
     |       ADD counter_next, counter_curr, one;
     |
-    |       @TRAP [ type = "\\fail" ]
-    |       EXPECT correct_curr, one, ["invalid result"];
-    |       @TRAP [ type = "\\stop" ]
-    |       EXPECT done_curr, zero, ["stopped"];
+    |       (0) ASSERT correct_curr;
+    |       (1) FINISH done_curr;
     |
     |
     |
@@ -169,7 +142,8 @@ class ADDCARRYTester
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
       hw_config = DefaultHardwareConfig(
         dimX = 1,
-        dimY = 1
+        dimY = 1,
+        maxLatency = 10
       ),
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
@@ -179,7 +153,7 @@ class ADDCARRYTester
       // log_file = None
     )
 
-    val source = createProgram(32, context, fixture)
+    val source = createProgram(18, context, fixture)
     val program = compile(source, context)
 
     ManticorePasses.BackendInterpreter(true)(program)(context)
@@ -203,7 +177,7 @@ class ADDCARRYTester
           dut.clock.step()
         }
         // ensure no EXPECTs failed
-        assert(dut.io.periphery.exception.id.peek().litValue.toInt < 0x8000)
+        assert(dut.io.periphery.exception.id.peekInt() == 1)
 
 
 

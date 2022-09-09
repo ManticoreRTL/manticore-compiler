@@ -171,7 +171,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       }
     }
     // we basically need LatencyAnalysis.maxLatency() + 1 free registers to be
-    // able to create sequences of 4 SetValues followed by 4 LocalStore
+    // able to create sequences of  SetValues followed by LocalStore
     // instructions such that we avoid placing Nops.
 
     val mem_init_slider_size = ctx.hw_config.maxLatency + 1
