@@ -1,20 +1,20 @@
 package manticore.compiler.integration.chisel.util
 
-import java.io.File
-import manticore.compiler.assembly.levels.UInt16
-import java.io.PrintWriter
-import java.nio.file.Path
-import manticore.compiler.ManticorePasses
-import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
 import manticore.compiler.AssemblyContext
+import manticore.compiler.ManticorePasses
+import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.assembly.levels.placed.PlacedIR
-import manticore.compiler.assembly.parser.AssemblyParser
-import java.nio.file.Files
-import manticore.machine.core.Processor
-import manticore.machine.ManticoreBaseISA
-
 import manticore.compiler.assembly.levels.placed.PlacedIRConstantFolding
+import manticore.compiler.assembly.levels.placed.UnconstrainedToPlacedTransform
+import manticore.compiler.assembly.parser.AssemblyParser
+import manticore.machine.ManticoreBaseISA
+import manticore.machine.core.Processor
+
+import java.io.File
+import java.io.PrintWriter
+import java.nio.file.Files
+import java.nio.file.Path
 
 
 trait ProgramTester {
@@ -34,13 +34,13 @@ trait ProgramTester {
   }
 
   def mkReg(name: String, init: Option[UInt16]): String = {
-    // s".reg ${name} 16 .input ${name}_curr ${init.map(_.toString).getOrElse("")} .output ${name}_next"
-    Seq(
-      s"@REG [id = \"${name}\", type = \"\\REG_CURR\" ]",
-      s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}",
-      s"@REG [id = \"${name}\", type = \"\\REG_NEXT\" ]",
-      s".output ${name}_next 16 "
-    ).mkString("\n")
+    s".reg ${name} 16 .input ${name}_curr ${init.map(_.toString).getOrElse("0")} .output ${name}_next"
+    // Seq(
+    //   s"@REG [id = \"${name}\", type = \"\\REG_CURR\" ]",
+    //   s".input ${name}_curr 16 ${init.map(_.toString).getOrElse("")}",
+    //   s"@REG [id = \"${name}\", type = \"\\REG_NEXT\" ]",
+    //   s".output ${name}_next 16 "
+    // ).mkString("\n")
   }
   def mkReceiver(name: String, init: Option[UInt16]): String = {
     Seq(
