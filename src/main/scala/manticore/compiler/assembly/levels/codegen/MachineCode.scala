@@ -18,9 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import manticore.compiler.assembly.levels.UInt16
 
-object MachineCodeGenerator
-    extends ((DefProgram, AssemblyContext) => Unit)
-    with HasTransformationID {
+object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
   override def apply(prog: DefProgram, ctx: AssemblyContext): Unit = {
 
@@ -95,8 +93,8 @@ object MachineCodeGenerator
     // for each process p , we need to compute the SLEEP_LENGTH as
     // vcycle_length - p.total (total is the total execution time including epilogue)
 
-    val binary_stream: Seq[Int] = assembled.sortBy(p => p.place).flatMap {
-      case AssembledProcess(_, body, loc, epilogue_length, total_length) =>
+    val binary_stream: Seq[Int] =
+      assembled.sortBy(p => p.place).flatMap { case AssembledProcess(_, body, loc, epilogue_length, total_length) =>
         Seq(
           (loc._2 << 8 | loc._1).toInt,
           (total_length - epilogue_length).toInt
@@ -111,7 +109,7 @@ object MachineCodeGenerator
           epilogue_length.toInt,
           (vcycle_length - total_length).toInt
         )
-    }
+      }
     binary_stream
   }
 
@@ -453,7 +451,7 @@ object MachineCodeGenerator
         val x_hops =
           ctx.hw_config.xHops(proc.id, dest_id)
         val y_hops =
-           ctx.hw_config.yHops(proc.id, dest_id)
+          ctx.hw_config.yHops(proc.id, dest_id)
         asm
           .Opcode(Opcodes.SEND)
           .Rd(remote(dest_id, rd))
@@ -478,12 +476,12 @@ object MachineCodeGenerator
       case Interrupt(action, condition, order, annons) =>
         val id = order.value
         val rs2 = action match {
-          case AssertionInterrupt   => 1
-          case FinishInterrupt      => 0
+          case AssertionInterrupt => 1
+          case FinishInterrupt    => 0
           case SerialInterrupt(fmt) =>
             ctx.logger.error("Can not handle FLUSH yet!", inst)
             0
-          case StopInterrupt        => 0
+          case StopInterrupt => 0
         }
         asm
           .Opcode(Opcodes.EXPECT)
@@ -563,16 +561,18 @@ object MachineCodeGenerator
           .Immediate(value.toInt)
           .toLong
       case CustomInstruction(name, rd, rsx, _) =>
-        assert(
-          rsx.length == 4,
-          s"Error: Expected 4 args for custom function, but received ${rsx.length}."
-        )
-        val id = proc.functions.indexWhere(func => func.name == name)
+        // The custom functon may require less inputs than those physically available in hardware.
+        // If there are less inputs, we simply pad the remaining unused args with the constant 0
+        // (which we know for sure always exists at machine code generation time as the register
+        // allocator guarantees it).
+        val zeroReg   = proc.registers.find(reg => reg.value == Some(UInt16(0))).get.variable.name
+        val rsxPadded = rsx ++ Seq.fill(ctx.hw_config.nCfuInputs - rsx.size) { zeroReg }
+        val id        = proc.functions.indexWhere(func => func.name == name)
         assert(
           id != -1,
           s"Error: could not locate custom function ${name} in process ${proc.id.id}"
         )
-        val Seq(rs1, rs2, rs3, rs4) = rsx
+        val Seq(rs1, rs2, rs3, rs4) = rsxPadded
         asm
           .Opcode(Opcodes.CUST)
           .Rd(local(rd))
