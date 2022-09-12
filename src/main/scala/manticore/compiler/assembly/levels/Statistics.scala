@@ -74,6 +74,7 @@ trait CanCollectProgramStatistics extends Flavored {
       import BinaryOperator._
       def count(inst: Instruction): Int = inst match {
         case _: CustomInstruction => incr("CUST")
+        case _: ConfigCfu => incr("CONFIG_CFU")
         case BinaryArithmetic(op, _, _, _, _) =>
           op match {
             case ADD  => incr("ADD")

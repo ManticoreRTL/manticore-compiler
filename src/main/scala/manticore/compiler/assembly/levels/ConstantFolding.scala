@@ -189,7 +189,8 @@ trait ConstantFolding
     block.foldLeft(scope) { case (builder, inst) =>
       inst match {
         case i @ (_: LocalLoad | _: GlobalLoad | _: LocalStore | _: GlobalStore | _: PadZero | _: SetCarry |
-            _: ClearCarry | _: Predicate | _: PadZero | _: Lookup | _: PutSerial | _: Interrupt | _: AddCarry) =>
+            _: ClearCarry | _: Predicate | _: PadZero | _: Lookup | _: PutSerial | _: Interrupt | _: AddCarry |
+            _: ConfigCfu) =>
           builder.keep(i)
         case Nop =>
           // don't keep

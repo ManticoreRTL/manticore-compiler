@@ -169,6 +169,8 @@ trait AssemblyNameChecker extends Flavored {
               }
             case i: BreakCase => // nothing to check
               acc
+            case ConfigCfu(funcIdx, bitIdx, equations, annons) => // nothing to check
+              acc
             case PutSerial(rs, cond, _, _) =>
               acc ++ Seq(rs, cond).collect {
                 case n if !isDefinedReg(n) => n -> inst
@@ -199,7 +201,7 @@ trait AssemblyNameChecker extends Flavored {
         block.foldLeft(unassigned) { case (prev, instr) =>
           instr match {
             case _ @(_: Interrupt | Nop | _: LocalStore | _: GlobalStore | _: PutSerial |
-                _: BreakCase | _: Expect | _: Recv | _: Send | _: Predicate) =>
+                _: BreakCase | _: Expect | _: Recv | _: Send | _: Predicate | _: ConfigCfu) =>
               prev
 
             case LocalLoad(rd, _, _, _, _) =>
@@ -319,7 +321,7 @@ trait AssemblyNameChecker extends Flavored {
             case Slice(rd, rs, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
             case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect | _: GlobalStore |
-                _: BreakCase | _: PutSerial) =>
+                _: BreakCase | _: PutSerial | _: ConfigCfu) =>
               assigns
             case Interrupt(action, _, _, _) =>
               action match {

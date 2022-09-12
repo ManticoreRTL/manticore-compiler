@@ -53,6 +53,9 @@ trait CanRename extends Flavored {
           i
         case i @ CustomInstruction(func, rd, rss, _) =>
           i.copy(rsx = rss.map { renaming })
+        case i: ConfigCfu =>
+          ctx.logger.error("Can not rename instruction", i)
+          i
         case i @ LocalLoad(rd, base, offset, order, _) =>
           i.copy(
             rd = renaming(rd),
@@ -131,10 +134,10 @@ trait CanRename extends Flavored {
               JumpCase(lbl, renameBlock(blk))
             }
           )
-        case brk @ BreakCase(_, _) =>  brk
+        case brk @ BreakCase(_, _) => brk
         case put @ PutSerial(rs, pred, _, _) =>
           put.copy(renaming(rs), renaming(pred))
-        case intr@ Interrupt(action, rs, _, _) =>
+        case intr @ Interrupt(action, rs, _, _) =>
           action match {
             // although a pattern match is not needed, I do it in case we add
             // new actions that may have a name in their action. This way

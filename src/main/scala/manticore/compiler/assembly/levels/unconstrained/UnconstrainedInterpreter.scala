@@ -431,6 +431,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
       case i: BinaryArithmetic => interpret(i)
       case i: CustomInstruction =>
         ctx.logger.error("Custom instruction can not be interpreted yet!", i)
+      case i: ConfigCfu =>
+        ctx.logger.error("ConfigCfu instruction can not be interpreted yet!", i)
       case LocalLoad(rd, base, addr, _, _) =>
         val addrValue = state.register_file(addr);
         val memory    = state.memory_blocks(base)

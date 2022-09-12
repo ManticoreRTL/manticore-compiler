@@ -14,6 +14,8 @@ import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
 import manticore.compiler.assembly.levels.placed.TaggedInstruction
 import manticore.compiler.assembly.levels.placed.TaggedInstruction.PhiSource
 
+import collection.mutable.{Map => MMap}
+
 /** Basic interpreter for placed programs. The program needs to have Send and
   * Recv instructions but does not check for NoC contention and does not require
   * allocated registers.

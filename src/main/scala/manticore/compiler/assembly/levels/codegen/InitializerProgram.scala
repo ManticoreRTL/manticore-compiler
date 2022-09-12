@@ -158,7 +158,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     initializer_body += Predicate(const_1.variable.name)
 
     // and now we create the program required to initialize the memories for
-    // this we need to use a couple of temporary register, but since we can not
+    // this we need to use a couple of temporary registers, but since we can not
     // call the register allocator again, we need to perform a mini register
     // allocation and scheduling here. We assume the register allocator uses the
     // lower indices for immortal registers, so we can get the first free index,
@@ -257,6 +257,18 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
         }
       case _ =>
       /// do nothing
+    }
+
+    // Initialize the custom functions.
+    // No NOPs are needed as all the information needed to configure the LUTs
+    // can be found in the instruction (cust_ram_idx, rd, and immediate fields).
+    for (funcIdx <- Range.inclusive(0, process.functions.size - 1)) {
+      val func      = process.functions(funcIdx)
+      val equations = func.value.equation
+      for (bitIdx <- Range.inclusive(0, equations.size - 1)) {
+        val equation = equations(bitIdx)
+        initializer_body += ConfigCfu(funcIdx, bitIdx, equation)
+      }
     }
 
     // now that we have all the registers and the instructions required to

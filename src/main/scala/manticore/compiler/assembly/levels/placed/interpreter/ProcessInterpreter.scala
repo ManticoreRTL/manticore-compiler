@@ -377,7 +377,7 @@ trait ProcessInterpreter extends InterpreterBase {
     case BreakCase(target, _) => updatePc(target)
     case Nop                  => // nothing
 
-    case _: GlobalStore | _: GlobalLoad | _: SetValue =>
+    case _: GlobalStore | _: GlobalLoad | _: SetValue | _: ConfigCfu =>
       ctx.logger.error(s"can not handle", instruction)
       trap(InternalTrap)
   }

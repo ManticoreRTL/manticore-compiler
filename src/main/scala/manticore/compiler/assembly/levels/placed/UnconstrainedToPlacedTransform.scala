@@ -344,6 +344,12 @@ object UnconstrainedToPlacedTransform
         case S.SerialInterrupt(fmt) => T.SerialInterrupt(fmt)
       }
       T.Interrupt(tAction, condition, T.SystemCallOrder(order.value), annons)
+    case S.ConfigCfu(funcIdx, bitIdx, equation, annons) =>
+      ctx.logger.error(
+        "Can not have CONFIG_CFU instruction in PlacedIR. Can only appear in program initializer!",
+        inst
+      )
+      T.ConfigCfu(funcIdx, bitIdx, equation, annons)
 
   }).setPos(inst.pos)
 
