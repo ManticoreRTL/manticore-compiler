@@ -1,22 +1,23 @@
 package manticore.compiler.integration.chisel
 
-import org.scalatest.fixture.UnitFixture
-import manticore.compiler.integration.chisel.util.ProgramTester
-import manticore.compiler.UnitFixtureTest
-import chiseltest.ChiselScalatestTester
-import manticore.compiler.integration.chisel.util.ProcessorTester
-import manticore.compiler.AssemblyContext
-import manticore.compiler.ManticorePasses
-import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
-import manticore.compiler.assembly.levels.UInt16
 import chisel3._
+import chiseltest.ChiselScalatestTester
 import chiseltest._
+import manticore.compiler.AssemblyContext
+import manticore.compiler.DefaultHardwareConfig
+import manticore.compiler.HasLoggerId
+import manticore.compiler.ManticorePasses
+import manticore.compiler.UnitFixtureTest
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.DebugSymbol
-import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.TransformationID
-import manticore.compiler.HasLoggerId
-import manticore.compiler.DefaultHardwareConfig
+import manticore.compiler.assembly.levels.UInt16
+import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
+import manticore.compiler.integration.chisel.util.ProcessorTester
+import manticore.compiler.integration.chisel.util.ProgramTester
+import org.scalatest.fixture.UnitFixture
+
+import scala.annotation.tailrec
 
 /**
   * Base test trait to verify correctness of the compiler and the
@@ -41,6 +42,7 @@ trait SingleInstructionTest extends UnitFixtureTest with ChiselScalatestTester w
 
       case ADD => op1 + op2
       case SUB => op1 - op2
+      case MUL => op1 * op2
       case OR  => op1 | op2
       case AND => op1 & op2
       case XOR => op1 ^ op2
