@@ -1,18 +1,19 @@
 package manticore.compiler.integration.chisel.util
 
+import chisel3._
+import chiseltest.ChiselScalatestTester
+import chiseltest._
 import manticore.compiler.AssemblyContext
 import manticore.compiler.HasLoggerId
-import manticore.compiler.UnitFixtureTest
-import chiseltest.ChiselScalatestTester
 import manticore.compiler.ManticorePasses
-import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
-import manticore.machine.xrt.ManticoreFlatSimKernel
-import chiseltest._
-import chisel3._
-import java.io.PrintWriter
-
-import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.UnitFixtureTest
 import manticore.compiler.assembly.levels.codegen.InitializerProgram
+import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.machine.xrt.ManticoreFlatSimKernel
+
+import java.io.FileOutputStream
+import java.io.PrintWriter
 
 trait KernelTester
     extends UnitFixtureTest
@@ -105,6 +106,7 @@ trait KernelTester
         tick(20)
 
         copyToDRAM(MachineCodeGenerator.makeBinaryStream(assembled_program)(context))
+        tick()
 
         dut.io.kernel_ctrl.start.poke(true.B)
         tick()
@@ -114,8 +116,12 @@ trait KernelTester
         dut.clock.setTimeout(
           // set the timeout to be the the time required for execution plus
           // some time required to program the processors
-          vcycles_length * context.expected_cycles.get +
+          if (context.expected_cycles.isDefined) {
+            vcycles_length * context.expected_cycles.get +
             vcycles_length * 100 * context.hw_config.dimX * context.hw_config.dimY
+          } else {
+            vcycles_length * 100 * context.hw_config.dimX * context.hw_config.dimY
+          }
         )
 
         while (!dut.io.kernel_ctrl.idle.peek().litToBoolean) {
@@ -134,12 +140,14 @@ trait KernelTester
             .litValue < 0x8000,
           "execution resulted in fatal exception!"
         )
-        assert(
-          dut.io.kernel_registers.device.virtual_cycles
-            .peek()
-            .litValue == context.expected_cycles.get,
-          "invalid number of virtual cycles!"
-        )
+        if (context.expected_cycles.isDefined) {
+          assert(
+            dut.io.kernel_registers.device.virtual_cycles
+              .peek()
+              .litValue == context.expected_cycles.get,
+            "invalid number of virtual cycles!"
+          )
+        }
     }
   }
 }
