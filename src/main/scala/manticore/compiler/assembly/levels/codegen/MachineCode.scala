@@ -9,6 +9,7 @@ import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.PlacedIR._
 
 import java.io.File
@@ -16,7 +17,6 @@ import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.Path
-import manticore.compiler.assembly.levels.UInt16
 
 object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
@@ -198,9 +198,6 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
       // write initial register values
       if (ctx.dump_rf) {
         val initial_reg_vals = p.registers
-          .takeWhile { r =>
-            r.variable.varType == ConstType || r.variable.varType == InputType || r.variable.varType == MemoryType
-          }
           .map { v => v.value.getOrElse(UInt16(0)).toInt }
         val rf_file =
           dir_name.resolve(s"rf_${p.id.x}_${p.id.y}.dat").toFile()
