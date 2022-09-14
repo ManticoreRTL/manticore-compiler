@@ -1,18 +1,19 @@
 package manticore.compiler.assembly.levels.codegen
 
-import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.levels.HasTransformationID
+import manticore.compiler.assembly.BinaryOperator
+import manticore.compiler.assembly.annotations.Memblock
 import manticore.compiler.assembly.levels.ConstType
+import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.WireType
-import manticore.compiler.assembly.annotations.Memblock
-import scala.annotation.tailrec
+import manticore.compiler.assembly.levels.placed.PlacedIR._
+
 import java.io.File
 import java.nio.file.Files
-import manticore.compiler.assembly.BinaryOperator
+import scala.annotation.tailrec
 
 object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
@@ -48,72 +49,25 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       program: DefProgram
   )(implicit ctx: AssemblyContext): Seq[DefProgram] = {
 
-    val inits = program.processes.map { makeInitializer }
-
-    @tailrec
-    def do_create(
-        left: Seq[Seq[DefProcess]],
-        builder: Seq[DefProgram]
-    ): Seq[DefProgram] = {
-      if (left.nonEmpty) {
-        val nonempty_inits = left.collect { case head :: next =>
-          head
+    program.processes.map { makeInitializer }.transpose.map { initProcs =>
+      val maxLen = initProcs.maxBy(_.body.length).body.length
+      val withFinish = initProcs.map { init =>
+        val isMaster = (init.id.x == 0 && init.id.y == 0)
+        if (isMaster) {
+          init.copy(
+            body = init.body ++ (Seq.fill(maxLen - init.body.length) { Nop } :+ Interrupt(
+              FinishInterrupt,
+              init.registers(1).variable.name,
+              SystemCallOrder(0)
+            ))
+          )
+        } else {
+          init
         }
-        val longest_init = nonempty_inits.map(_.body.length).max
-
-        val master_process = nonempty_inits.head
-        val processes =
-          if (master_process.id.x == 0 && master_process.id.y == 0) {
-
-            val const_0 = master_process.registers.head.variable.name
-            val const_1 = master_process.registers.tail.head.variable.name
-
-            val master_with_stop = master_process.copy(body =
-              master_process.body ++ Seq.fill(
-                longest_init - master_process.body.length
-              ) { Nop } :+ Expect(
-                const_0,
-                const_1,
-                ExceptionIdImpl(UInt16(0), "stop", ExpectStop)
-              )
-            )
-
-            master_with_stop +: nonempty_inits.tail
-
-          } else {
-            val const_0 = DefReg(
-              ValueVariable(s"const_0_${ctx.uniqueNumber()}", 0, ConstType),
-              Some(UInt16(0))
-            )
-            val const_1 = DefReg(
-              ValueVariable(s"const_1_${ctx.uniqueNumber()}", 1, ConstType),
-              Some(UInt16(1))
-            )
-            val body = Seq(
-              SetValue(const_0.variable.name, UInt16(0)),
-              SetValue(const_1.variable.name, UInt16(1))
-            ) ++ Seq.fill(longest_init - 2)(Nop) :+
-              Expect(
-                const_0.variable.name,
-                const_1.variable.name,
-                ExceptionIdImpl(UInt16(0), "stop", ExpectStop)
-              )
-            val master_proc_with_stop = DefProcess(
-              registers = Seq(const_0, const_1),
-              id = ProcessIdImpl("placed_0_0", 0, 0),
-              body = body,
-              functions = Seq()
-            )
-            master_proc_with_stop +: nonempty_inits
-          }
-        val next_left = left.collect { case _ :: (tail @ (_ :: _)) => tail }
-        do_create(next_left, builder :+ DefProgram(processes))
-      } else {
-        builder
       }
+      program.copy(processes = withFinish)
     }
 
-    do_create(inits, Nil)
   }
 
   /** Create a sequence of idempotent processes that can be used to initialize
@@ -130,135 +84,80 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       process: DefProcess
   )(implicit ctx: AssemblyContext): Seq[DefProcess] = {
 
+    import scala.collection.mutable.{Queue => MQueue}
     // This function can only be called only on a fully implemented process with
     // all registers allocated and memory pointers set.
 
-    val initializer_regs = scala.collection.mutable.Queue.empty[DefReg]
-    val initializer_body = scala.collection.mutable.Queue.empty[Instruction]
+    // we start by filling up the scratch pad, then configuring custom functions
+    // and handle initializing registers last.
 
-    val const_0 = process.registers(0)
-    val const_1 = process.registers(1)
+    val initMonoBody = MQueue.empty[Instruction]
+    // note that since we can not call the register allocator, we need to
+    // do a mini version of it here
+    val freeIndices = MQueue.empty[Int] ++ Range(2, ctx.hw_config.nRegisters)
+    // first things first we need to set the predicate bit to enable storing
+    val constZero = DefReg(
+      variable = ValueVariable("zero", 0, WireType),
+      value = None
+    )
+    val constOne = DefReg(
+      variable = ValueVariable("one", 1, WireType),
+      value = None
+    )
+    initMonoBody += SetValue(constOne.variable.name, UInt16(1))
+    initMonoBody += SetValue(constZero.variable.name, UInt16(0))
+    initMonoBody ++= Seq.fill(ctx.hw_config.maxLatency - 1) { Nop }
+    initMonoBody += Predicate(constOne.variable.name) // enable storing to scratchpad
+    // we initialize each memory with a sequence of SetValues followed by LocalStores
+    // size of this sliding window is set to the hardware max latency + 1to avoid
+    // inserting Nops
+    val initWindowSize = ctx.hw_config.maxLatency + 1
 
-    process.registers.foreach {
-      case r @ DefReg(vr, Some(vl), _)
-          if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
-        initializer_regs += r
-        initializer_body += SetValue(r.variable.name, vl)
-      case _ => // do nothing
-    }
-
-    // then we enable storing
-    if (initializer_body.length < ctx.hw_config.maxLatency + 2) {
-      initializer_body ++= Seq.fill(
-        ctx.hw_config.maxLatency + 2 - initializer_body.length
-      ) { Nop }
-      // place Nops between setting the value of const_1 and setting the predicate
-      // if needed
-    }
-    initializer_body += Predicate(const_1.variable.name)
-
-    // and now we create the program required to initialize the memories for
-    // this we need to use a couple of temporary registers, but since we can not
-    // call the register allocator again, we need to perform a mini register
-    // allocation and scheduling here. We assume the register allocator uses the
-    // lower indices for immortal registers, so we can get the first free index,
-    // i.e., the register index belonging to register without an initial value,
-    // by simply counting the number of immortal registers.
-    val first_free_index = process.registers.count { r =>
-      r.variable.varType match {
-        case _ @(ConstType | InputType | MemoryType) => true
-        case _                                       => false
-      }
-    }
-    // we basically need LatencyAnalysis.maxLatency() + 1 free registers to be
-    // able to create sequences of  SetValues followed by LocalStore
-    // instructions such that we avoid placing Nops.
-
-    val mem_init_slider_size = ctx.hw_config.maxLatency + 1
-    val temp_regs = Seq.tabulate(mem_init_slider_size) { ix =>
+    // these register will hold the memory values
+    val memInitRegs = Seq.tabulate(initWindowSize) { ix =>
       DefReg(
-        variable = ValueVariable(
-          s"temp_mem_init_${ctx.uniqueNumber()}",
-          first_free_index + ix,
-          WireType
-        ),
-        value = None
-      )
-    }
-    if (temp_regs.last.variable.id >= ctx.hw_config.nRegisters) {
-      ctx.logger.error(
-        s"Can not create memory initializing sequence! " +
-          s"Initializer requires at least ${temp_regs.last.variable.id + 1} " +
-          s"registers but only have ${ctx.hw_config.nRegisters}"
-      )
-    }
-
-    val counters = IndexedSeq.tabulate(mem_init_slider_size) { ix =>
-      DefReg(
-        variable = ValueVariable(
-          s"counter_${ctx.uniqueNumber()}",
-          first_free_index + temp_regs.length * ix,
-          WireType
-        ),
+        variable = ValueVariable(s"mw_$ix", ix + 2, WireType),
         value = None
       )
     }
 
-    initializer_regs.enqueueAll(temp_regs)
-    initializer_regs.enqueueAll(counters)
-
-    initializer_body ++ counters.zipWithIndex.map { case (cnt, ix) =>
-      SetValue(cnt.variable.name, UInt16(0))
+    // and these register values will hold the memory index
+    val memIndexRegs = Seq.tabulate(initWindowSize) { ix =>
+      DefReg(
+        variable = ValueVariable(s"mix_$ix", ix + memInitRegs.last.variable.id + 1, WireType),
+        value = None
+      )
     }
-
-    process.registers.foreach {
-      case r @ DefReg(mvr: MemoryVariable, offset_opt, _) =>
-        offset_opt match {
-          case Some(init @ UInt16(offset)) =>
-            mvr.initialContent.zipWithIndex
-              .grouped(mem_init_slider_size)
-              .foreach { window =>
-                val zipped_window = window.zip(temp_regs).zip(counters)
-
-                initializer_body ++= zipped_window.map { case (((value, _), tmp), _) =>
-                  SetValue(tmp.variable.name, value)
-                }
-
-                // in case the sliding window is "incomplete" place Nops instead
-                // of SetValues
-                if (window.length < mem_init_slider_size) {
-                  initializer_body ++=
-                    Seq.fill(mem_init_slider_size - window.length) { Nop }
-
-                }
-                // perform the actual store (predicate is set to 1 before)
-                initializer_body ++=
-                  zipped_window.map { case (((value, ix), tmp), cnt) =>
-                    LocalStore(
-                      rs = tmp.variable.name,
-                      base = mvr.name,
-                      address = cnt.variable.name,
-                      order = MemoryAccessOrder("", 0),
-                      predicate = None
-                    )
-                  }
-                initializer_body ++= counters.map { cnt =>
-                  BinaryArithmetic(
-                    BinaryOperator.ADD,
-                    cnt.variable.name,
-                    cnt.variable.name,
-                    const_1.variable.name
-                  )
-                }
-
-              }
-          case _ =>
-            ctx.logger.error(s"Memory is not allocated!", r)
+    val memoriesToInit = process.registers.foreach {
+      case r @ DefReg(mvr: MemoryVariable, None, _) =>
+        ctx.logger.error(s"Memory not allocated", r)
+      case r @ DefReg(mvr: MemoryVariable, Some(offset), _) =>
+        for (window <- mvr.initialContent.zipWithIndex.grouped(initWindowSize)) {
+          for (((word, index), (reg, regIx)) <- window.zip(memInitRegs zip memIndexRegs)) {
+            initMonoBody += SetValue(reg.variable.name, word)
+            initMonoBody += SetValue(regIx.variable.name, UInt16(index))
+          }
+          // we may have to insert some NOPs if there are not enough words to
+          // handle data hazards. Essentially
+          if (window.length < initWindowSize) {
+            // add nops if necessary
+            initMonoBody ++= Seq.fill(initWindowSize - window.length) { Nop }
+          }
+          for ((value, index) <- memInitRegs.zip(memIndexRegs)) {
+            initMonoBody += LocalStore(
+              rs = value.variable.name,
+              base = mvr.name,
+              address = index.variable.name,
+              order = MemoryAccessOrder(mvr.name, 0),
+              predicate = None
+            )
+          }
         }
       case _ =>
-      /// do nothing
+      // nothing to do
     }
 
+    initMonoBody += Predicate(constZero.variable.name) // disable stores
     // Initialize the custom functions.
     // No NOPs are needed as all the information needed to configure the LUTs
     // can be found in the instruction (cust_ram_idx, rd, and immediate fields).
@@ -267,25 +166,47 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       val equations = func.value.equation
       for (bitIdx <- Range.inclusive(0, equations.size - 1)) {
         val equation = equations(bitIdx)
-        initializer_body += ConfigCfu(funcIdx, bitIdx, equation)
+        initMonoBody += ConfigCfu(funcIdx, bitIdx, equation)
       }
     }
+    val regsWithInit = MQueue.empty[DefReg]
+    regsWithInit += constZero
+    regsWithInit += constOne
+    regsWithInit ++= memIndexRegs
+    regsWithInit ++= memInitRegs
 
-    // now that we have all the registers and the instructions required to
-    // initialize this process, we split the instruction sequence into smaller
-    // ones if we have more instructions than we can fit into the instruction
-    // memory
+    // initializing registers is easy now
+    process.registers.foreach {
+      case r @ DefReg(vr, Some(vl), _)
+          if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
+        regsWithInit += r
+        if (vr.id == 0) {
+          assert(vl == UInt16(0))
+        } else if (vr.id == 1) {
+          assert(vl == UInt16(1))
+        }
+        initMonoBody += SetValue(vr.name, vl)
+      case _ => // nothing to do
+    }
 
-    val proc_regs = initializer_regs.toSeq
+    val regSeq = regsWithInit.toSeq
 
-    initializer_body
+    // we need to at least have ctx.hw_config.maxLatency spare instructions
+    // in the memory avoid weird instruction overflow bugs
+    assert(
+      ctx.hw_config.nInstructions > ctx.hw_config.maxLatency,
+      s"Minimum instruction memory size is ${ctx.hw_config.maxLatency}"
+    )
+
+    // the master process
+    initMonoBody
       .grouped(
-        ctx.hw_config.nInstructions - 1
-      ) // we leave 1 space for the EXPECT instruction that may be added later
-      .map { case body =>
+        ctx.hw_config.nInstructions - ctx.hw_config.maxLatency - 1 // -1 because we have to append a Finish later
+      )                                                            // -1 to be able to add a Finish instructions
+      .map { body =>
         process.copy(
           body = body.toSeq,
-          registers = proc_regs
+          registers = regSeq
         )
       }
       .toSeq
