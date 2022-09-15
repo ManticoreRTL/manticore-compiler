@@ -310,21 +310,20 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
 
   object Opcodes extends Enumeration {
     type Type = Value
-    val NOP        = Value(0x0)
-    val SET        = Value(0x1)
-    val CUST       = Value(0x2)
-    val ARITH      = Value(0x3)
-    val LLOAD      = Value(0x4)
-    val LSTORE     = Value(0x5)
-    val EXPECT     = Value(0x6)
-    val GLOAD      = Value(0x7)
-    val GSTORE     = Value(0x8)
-    val SEND       = Value(0x9)
-    val PREDICATE  = Value(0xa)
-    val SETCARRY   = Value(0xb)
-    val SETLUTDATA = Value(0xc)
-    val CONFIGCFU  = Value(0xd)
-    val SLICE      = Value(0xe)
+    val NOP       = Value(0x0)
+    val SET       = Value(0x1)
+    val CUST      = Value(0x2)
+    val ARITH     = Value(0x3)
+    val LLOAD     = Value(0x4)
+    val LSTORE    = Value(0x5)
+    val EXPECT    = Value(0x6)
+    val GLOAD     = Value(0x7)
+    val GSTORE    = Value(0x8)
+    val SEND      = Value(0x9)
+    val PREDICATE = Value(0xa)
+    val SETCARRY  = Value(0xb)
+    val CONFIGCFU = Value(0xc)
+    val SLICE     = Value(0xd)
   }
 
   final class Assembler() {
