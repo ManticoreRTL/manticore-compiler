@@ -143,7 +143,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
             // add nops if necessary
             initMonoBody ++= Seq.fill(initWindowSize - window.length) { Nop }
           }
-          for ((value, index) <- memInitRegs.zip(memIndexRegs)) {
+          for ((value, index) <- memInitRegs.zip(memIndexRegs).take(window.length)) {
             initMonoBody += LocalStore(
               rs = value.variable.name,
               base = mvr.name,
