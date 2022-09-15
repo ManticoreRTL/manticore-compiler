@@ -436,8 +436,8 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
           .Opcode(Opcodes.LSTORE)
           .Zero(RdField.bitLength)
           .Funct(BinaryOperator.ADD)
-          .Rs1(local(rs))
-          .Rs2(local(offset))
+          .Rs1(local(offset))
+          .Rs2(local(rs))
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
           .Immediate(memoryPointer)
           .toLong
