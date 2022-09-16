@@ -177,15 +177,16 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
 
     // initializing registers is easy now
     process.registers.foreach {
-      case r @ DefReg(vr, Some(vl), _)
+      case r @ DefReg(vr, vl, _)
           if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
         regsWithInit += r
         if (vr.id == 0) {
-          assert(vl == UInt16(0))
+          assert(vl == Some(UInt16(0)))
         } else if (vr.id == 1) {
-          assert(vl == UInt16(1))
+          assert(vl == Some(UInt16(1)))
         }
-        initMonoBody += SetValue(vr.name, vl)
+        assert(vl.nonEmpty || vr.varType == InputType)
+        initMonoBody += SetValue(vr.name, vl.getOrElse(UInt16(0)))
       case _ => // nothing to do
     }
 
