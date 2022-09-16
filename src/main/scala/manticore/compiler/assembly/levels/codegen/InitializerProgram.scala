@@ -132,6 +132,10 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       case r @ DefReg(mvr: MemoryVariable, None, _) =>
         ctx.logger.error(s"Memory not allocated", r)
       case r @ DefReg(mvr: MemoryVariable, Some(offset), _) =>
+        // all memories should be initialized, otherwise we may into weird runtime
+        // bugs due uninitialized scratchpads with left over data from a previous
+        // run on hardware
+        assert(mvr.initialContent.length == mvr.size, s"Detected memory without initial content!")
         for (window <- mvr.initialContent.zipWithIndex.grouped(initWindowSize)) {
           for (((word, index), (reg, regIx)) <- window.zip(memInitRegs zip memIndexRegs)) {
             initMonoBody += SetValue(reg.variable.name, word)
