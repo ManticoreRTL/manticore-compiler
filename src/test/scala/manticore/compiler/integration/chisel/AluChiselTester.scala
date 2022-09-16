@@ -41,8 +41,8 @@ class AluChiselTester extends KernelTester with ProcessorTester {
     val resultValues = Array.tabulate(testSize) { i =>
       ctrlValues(i) match {
         case 0  => op1Values(i) << (31 & op2Values(i))
-        case 1  => op1Values(i) >> (31 & op2Values(i))
-        case 2  => op1Values(i) >>> (31 & op2Values(i))
+        case 1  => op1Values(i) >>> (31 & op2Values(i))
+        case 2  => op1Values(i) >> (31 & op2Values(i))
         case 3  => op1Values(i) + op2Values(i)
         case 4  => op1Values(i) - op2Values(i)
         case 5  => op1Values(i) & op2Values(i)
@@ -106,11 +106,11 @@ class AluChiselTester extends KernelTester with ProcessorTester {
   Seq(
     (1, 1),
     (2, 2),
-    (3, 3),
-    (4, 4),
-    (5, 5),
-    (6, 6),
-    (7, 7)
+    // (3, 3),
+    // (4, 4),
+    // (5, 5),
+    // (6, 6),
+    // (7, 7)
   ).foreach { case (dimx, dimy) =>
     it should s"not fail 32-bit ALU in a ${dimx}x${dimy} topology" in {
       mkTest(_, dimx, dimy, 100)
