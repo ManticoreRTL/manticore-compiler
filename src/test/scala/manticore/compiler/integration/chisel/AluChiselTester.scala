@@ -26,7 +26,8 @@ class AluChiselTester extends KernelTester with ProcessorTester {
       ManticorePasses.backend
 
   val randGen = new scala.util.Random(231)
-  def mkTest(fixture: FixtureParam, dimx: Int, dimy: Int, width: Int, testSize: Int): Unit = {
+  def mkTest(fixture: FixtureParam, dimx: Int, dimy: Int, testSize: Int): Unit = {
+    val width = 32
     require(width <= 64)
     val op1Values = Array.fill(testSize) {
       randGen.nextInt(1 << width)
@@ -112,7 +113,7 @@ class AluChiselTester extends KernelTester with ProcessorTester {
     (7, 7)
   ).foreach { case (dimx, dimy) =>
     it should s"not fail 32-bit ALU in a ${dimx}x${dimy} topology" in {
-      mkTest(_, dimx, dimy, 32, 2)
+      mkTest(_, dimx, dimy, 100)
 
     }
 
