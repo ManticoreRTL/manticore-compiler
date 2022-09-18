@@ -470,7 +470,11 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
           .Immediate(error_id.id.toInt)
           .toLong
       case Interrupt(action, condition, order, annons) =>
-        val id = order.value
+        val id = action match {
+          case FinishInterrupt | SerialInterrupt(_) => order.value
+          case AssertionInterrupt | StopInterrupt   => order.value + 0x8000
+
+        }
         val rs2 = action match {
           case AssertionInterrupt => 1
           case FinishInterrupt    => 0
@@ -600,7 +604,7 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
             Rs2Field.bitLength + Rs3Field.bitLength + Rs4Field.bitLength - 4 - 16
           ) // SliceOfst (4) + Immediate (16)
           .SliceOfst(offset)
-          .Immediate(length)
+          .Immediate((1 << length) - 1)
           .toLong
       case _ =>
         ctx.logger.error("can not handle instruction", inst)
