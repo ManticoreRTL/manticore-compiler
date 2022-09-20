@@ -27,41 +27,46 @@ class AluChiselTester extends KernelTester with ProcessorTester {
 
   val randGen = new scala.util.Random(231)
   def mkTest(fixture: FixtureParam, dimx: Int, dimy: Int, testSize: Int): Unit = {
-    val width = 32
-    require(width <= 64)
-    val op1Values = Array.fill(testSize) {
-      randGen.nextInt(1 << width)
+    val width           = 32
+    val maxOperandValue = (BigInt(1) << width) - 1
+    val op1Values = Array.tabulate(testSize) { i =>
+      (maxOperandValue & randGen.nextLong())
     }
-    val op2Values = Array.fill(testSize) {
-      randGen.nextInt(1 << width)
+    val op2Values = Array.tabulate(testSize) { i =>
+      (maxOperandValue & randGen.nextLong())
     }
-    val ctrlValues = Array.fill(testSize) {
-      randGen.between(0, 11)
+    val ctrlValues = Array.tabulate(testSize) { i =>
+      randGen.nextInt(11)
     }
     val resultValues = Array.tabulate(testSize) { i =>
-      ctrlValues(i) match {
-        case 0  => op1Values(i) << (31 & op2Values(i))
-        case 1  => op1Values(i) >>> (31 & op2Values(i))
-        case 2  => op1Values(i) >> (31 & op2Values(i))
-        case 3  => op1Values(i) + op2Values(i)
-        case 4  => op1Values(i) - op2Values(i)
-        case 5  => op1Values(i) & op2Values(i)
-        case 6  => op1Values(i) | op2Values(i)
-        case 7  => op1Values(i) ^ op2Values(i)
-        case 8  => ~(op1Values(i) | op2Values(i))
-        case 9  => if (op1Values(i) < op2Values(i)) 1 else 0
+      maxOperandValue & (ctrlValues(i) match {
+        case 0 => op1Values(i) << (op2Values(i) & 31).toInt
+        case 1 => op1Values(i) >> (op2Values(i) & 31).toInt
+        case 2 => BigInt(op1Values(i).toInt >> (op2Values(i) & 31).toInt)
+        case 3 => op1Values(i) + op2Values(i)
+        case 4 => op1Values(i) - op2Values(i)
+        case 5 => op1Values(i) & op2Values(i)
+        case 6 => op1Values(i) | op2Values(i)
+        case 7 => op1Values(i) ^ op2Values(i)
+        case 8 => maxOperandValue ^ (op1Values(i) | op2Values(i))
+        case 9 =>
+          if (op1Values(i) < op2Values(i)) { BigInt(1) }
+          else { BigInt(0) }
         case 10 => op1Values(i) << 16
-      }
+      })
+    }
+    Range(0, testSize).foreach { i =>
+      println(ctrlValues(i), op1Values(i), op2Values(i), resultValues(i))
     }
     val zeroValues = Array.tabulate(testSize) { i =>
       if (resultValues(i) == 0) 1 else 0
     }
     def dumpHex(fname: String, vs: Array[Int]) =
       fixture.dump(fname, vs.map(v => v.toHexString).mkString("\n")).toAbsolutePath()
-    val op1_rom    = dumpHex("op1_rom.hex", op1Values)
-    val op2_rom    = dumpHex("op2_rom.hex", op2Values)
+    val op1_rom    = dumpHex("op1_rom.hex", op1Values.map(v => v.toInt))
+    val op2_rom    = dumpHex("op2_rom.hex", op2Values.map(v => v.toInt))
     val ctrl_rom   = dumpHex("ctrl_rom.hex", ctrlValues)
-    val result_rom = dumpHex("result_rom.hex", resultValues)
+    val result_rom = dumpHex("result_rom.hex", resultValues.map(v => v.toInt))
     val zero_rom   = dumpHex("zero_rom.hex", zeroValues)
 
     val tbWrapper = WithInlineVerilog(s"""|
@@ -104,8 +109,8 @@ class AluChiselTester extends KernelTester with ProcessorTester {
     compileAndRun(source, context)(fixture)
   }
   Seq(
-    (1, 1),
-    (2, 2),
+    (1, 1)
+    // (2, 2),
     // (3, 3),
     // (4, 4),
     // (5, 5),
@@ -113,7 +118,7 @@ class AluChiselTester extends KernelTester with ProcessorTester {
     // (7, 7)
   ).foreach { case (dimx, dimy) =>
     it should s"not fail 32-bit ALU in a ${dimx}x${dimy} topology" in {
-      mkTest(_, dimx, dimy, 100)
+      mkTest(_, dimx, dimy, 300)
 
     }
 
