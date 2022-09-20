@@ -55,11 +55,11 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
         val isMaster = (init.id.x == 0 && init.id.y == 0)
         if (isMaster) {
           init.copy(
-            body = init.body ++ (Seq.fill(maxLen - init.body.length) { Nop } :+ Interrupt(
+            body = init.body ++ Seq.fill(maxLen - init.body.length) { Nop } :+ Interrupt(
               FinishInterrupt,
               init.registers(1).variable.name,
               SystemCallOrder(0)
-            ))
+            )
           )
         } else {
           init
@@ -80,6 +80,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     * @param ctx
     * @return
     */
+
   def makeInitializer(
       process: DefProcess
   )(implicit ctx: AssemblyContext): Seq[DefProcess] = {
@@ -91,7 +92,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     // we start by filling up the scratch pad, then configuring custom functions
     // and handle initializing registers last.
 
-    val initMonoBody = MQueue.empty[Instruction]
+    val initMemMonoBody = MQueue.empty[Instruction]
     // note that since we can not call the register allocator, we need to
     // do a mini version of it here
     val freeIndices = MQueue.empty[Int] ++ Range(2, ctx.hw_config.nRegisters)
@@ -104,10 +105,10 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       variable = ValueVariable("one", 1, WireType),
       value = None
     )
-    initMonoBody += SetValue(constOne.variable.name, UInt16(1))
-    initMonoBody += SetValue(constZero.variable.name, UInt16(0))
-    initMonoBody ++= Seq.fill(ctx.hw_config.maxLatency - 1) { Nop }
-    initMonoBody += Predicate(constOne.variable.name) // enable storing to scratchpad
+    initMemMonoBody += SetValue(constOne.variable.name, UInt16(1))
+    initMemMonoBody += SetValue(constZero.variable.name, UInt16(0))
+    initMemMonoBody ++= Seq.fill(ctx.hw_config.maxLatency - 1) { Nop }
+    initMemMonoBody += Predicate(constOne.variable.name) // enable storing to scratchpad
     // we initialize each memory with a sequence of SetValues followed by LocalStores
     // size of this sliding window is set to the hardware max latency + 1to avoid
     // inserting Nops
@@ -138,17 +139,17 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
         assert(mvr.initialContent.length == mvr.size, s"Detected memory without initial content!")
         for (window <- mvr.initialContent.zipWithIndex.grouped(initWindowSize)) {
           for (((word, index), (reg, regIx)) <- window.zip(memInitRegs zip memIndexRegs)) {
-            initMonoBody += SetValue(reg.variable.name, word)
-            initMonoBody += SetValue(regIx.variable.name, UInt16(index))
+            initMemMonoBody += SetValue(reg.variable.name, word)
+            initMemMonoBody += SetValue(regIx.variable.name, UInt16(index))
           }
           // we may have to insert some NOPs if there are not enough words to
           // handle data hazards. Essentially
           if (window.length < initWindowSize) {
             // add nops if necessary
-            initMonoBody ++= Seq.fill(initWindowSize - window.length) { Nop }
+            initMemMonoBody ++= Seq.fill(initWindowSize - window.length) { Nop }
           }
           for ((value, index) <- memInitRegs.zip(memIndexRegs).take(window.length)) {
-            initMonoBody += LocalStore(
+            initMemMonoBody += LocalStore(
               rs = value.variable.name,
               base = mvr.name,
               address = index.variable.name,
@@ -161,7 +162,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       // nothing to do
     }
 
-    initMonoBody += Predicate(constZero.variable.name) // disable stores
+    initMemMonoBody += Predicate(constZero.variable.name) // disable stores
     // Initialize the custom functions.
     // No NOPs are needed as all the information needed to configure the LUTs
     // can be found in the instruction (cust_ram_idx, rd, and immediate fields).
@@ -170,51 +171,57 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       val equations = func.value.equation
       for (bitIdx <- Range.inclusive(0, equations.size - 1)) {
         val equation = equations(bitIdx)
-        initMonoBody += ConfigCfu(funcIdx, bitIdx, equation)
+        initMemMonoBody += ConfigCfu(funcIdx, bitIdx, equation)
       }
     }
-    val regsWithInit = MQueue.empty[DefReg]
-    regsWithInit += constZero
-    regsWithInit += constOne
-    regsWithInit ++= memIndexRegs
-    regsWithInit ++= memInitRegs
 
+    val memInitRegDefs = Seq(constZero, constOne) ++ memIndexRegs ++ memInitRegs
+
+    val regInitMonoBody = MQueue.empty[Instruction]
+    val regInitRegDefs  = MQueue.empty[DefReg]
     // initializing registers is easy now
     process.registers.foreach {
-      case r @ DefReg(vr, vl, _)
-          if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
-        regsWithInit += r
+      case r @ DefReg(vr, vl, _) if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
+        regInitRegDefs += r
         if (vr.id == 0) {
           assert(vl == Some(UInt16(0)))
         } else if (vr.id == 1) {
           assert(vl == Some(UInt16(1)))
         }
         assert(vl.nonEmpty || vr.varType == InputType)
-        initMonoBody += SetValue(vr.name, vl.getOrElse(UInt16(0)))
+        regInitMonoBody += SetValue(vr.name, vl.getOrElse(UInt16(0)))
       case _ => // nothing to do
     }
 
-    val regSeq = regsWithInit.toSeq
+    // // we need to at least have ctx.hw_config.maxLatency * 2 spare instructions
+    // // in the memory avoid weird instruction overflow bugs, halt of it is required
+    // // to ensure the Finish instruction is followed by enough Nops to avoid
+    // // rolling back the PC to 0 and re-executing memory initialization code
+    // // which could undo register initializations
+    // assert(
+    //   ctx.hw_config.nInstructions > ctx.hw_config.maxLatency * 2,
+    //   s"Minimum instruction memory size is ${ctx.hw_config.maxLatency}"
+    // )
 
-    // we need to at least have ctx.hw_config.maxLatency spare instructions
-    // in the memory avoid weird instruction overflow bugs
-    assert(
-      ctx.hw_config.nInstructions > ctx.hw_config.maxLatency,
-      s"Minimum instruction memory size is ${ctx.hw_config.maxLatency}"
-    )
-
-    // the master process
-    initMonoBody
-      .grouped(
-        ctx.hw_config.nInstructions - ctx.hw_config.maxLatency - 1 // -1 because we have to append a Finish later
-      )                                                            // -1 to be able to add a Finish instructions
+    initMemMonoBody
+      .grouped(ctx.hw_config.nInstructions - ctx.hw_config.maxLatency - 1) // -1 to append a finish
       .map { body =>
         process.copy(
           body = body.toSeq,
-          registers = regSeq
+          registers = memInitRegDefs
         )
       }
-      .toSeq
+      .toSeq ++
+      regInitMonoBody
+        .grouped(ctx.hw_config.nInstructions - ctx.hw_config.maxLatency - 1)
+        .map { body =>
+          process.copy(
+            body = body.toSeq,
+            registers = regInitRegDefs.toSeq
+          )
+
+        }
+        .toSeq
 
   }
 
