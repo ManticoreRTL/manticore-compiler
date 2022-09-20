@@ -38,9 +38,9 @@ trait KernelTester
 
     val initializers = InitializerProgram.makeInitializer(program)(context)
 
-    val initializer_streams = initializers.map { init =>
+    val initializer_streams = initializers.zipWithIndex.map { case(init, idx_init) =>
       val asm = MachineCodeGenerator.assembleProgram(init)(context)
-      MachineCodeGenerator.generateCode(asm, fixture.test_dir.resolve("init"))(context)
+      MachineCodeGenerator.generateCode(asm, fixture.test_dir.resolve(s"init-$idx_init"))(context)
       val bstream = MachineCodeGenerator.makeBinaryStream(asm)(context)
       bstream
     }
