@@ -606,6 +606,26 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
           .SliceOfst(offset)
           .Immediate((1 << length) - 1)
           .toLong
+      case GlobalLoad(rd, Seq(low, mid, high), _, _) =>
+        asm
+          .Opcode(Opcodes.GLOAD)
+          .Rd(local(rd))
+          .Funct((BinaryOperator.ADD))
+          .Zero(Rs1Field.bitLength)
+          .Rs2(local(high))
+          .Rs3(local(mid))
+          .Rs4(local(low))
+          .toLong
+      case GlobalStore(rs, Seq(low, mid, high), None, _, _) =>
+        asm
+          .Opcode(Opcodes.GSTORE)
+          .Zero(RdField.bitLength)
+          .Funct(BinaryOperator.ADD)
+          .Rs1(local(rs))
+          .Rs2(local(high))
+          .Rs3(local(mid))
+          .Rs4(local(low))
+          .toLong
       case _ =>
         ctx.logger.error("can not handle instruction", inst)
         0L
