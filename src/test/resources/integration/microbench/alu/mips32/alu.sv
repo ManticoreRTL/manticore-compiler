@@ -51,7 +51,13 @@ endmodule
 
 
 module AluTester #(
-    parameter TEST_SIZE = @SIZE@
+    parameter TEST_SIZE = 100,
+    parameter CTRL_ROM = "ctrl_rom.hex",
+    parameter OP1_ROM = "op1_rom.hex",
+    parameter OP2_ROM = "op2_rom.hex",
+    parameter RESULT_ROM = "result_rom.hex",
+    parameter ZERO_ROM = "zero_rom.hex",
+
 ) (
     input wire clock
 );
@@ -66,11 +72,11 @@ module AluTester #(
   logic [15:0] counter = 0;
 
   initial begin
-    $readmemh("@CTRL@", ctrl_rom);
-    $readmemh("@OP1@", op1_rom);
-    $readmemh("@OP2@", op2_rom);
-    $readmemh("@RESULT@", result_rom);
-    $readmemh("@ZERO@", zero_rom);
+    $readmemh(CTRL_ROM, ctrl_rom);
+    $readmemh(OP1_ROM, op1_rom);
+    $readmemh(OP2_ROM, op2_rom);
+    $readmemh(RESULT_ROM, result_rom);
+    $readmemh(ZERO_ROM, zero_rom);
   end
 
   Alu dut (
@@ -82,31 +88,15 @@ module AluTester #(
   );
 
   always_ff @(posedge clock) begin
-`ifdef VERILATOR
-    if (result_rom[counter] != result) begin
-      $display("Expected result[%d] = 0x%08x but got 0x%08x", counter,  result_rom[counter], result);
-    end
-    if (zero_rom[counter] != zero) begin
-      $display("Expected zero[%d] = 0x%x but got 0x%x", counter,  zero_rom[counter], zero);
-    end
+
     assert (result_rom[counter] == result);
     assert (zero_rom[counter][0] == zero);
-`else
-    $masm_expect(result_rom[counter] == result, "invalid result!");
-    $masm_expect(zero_rom[counter] == zero, "invalid zero!");
-`endif
     if (counter < TEST_SIZE - 1) begin
       counter <= counter + 1;
     end else begin
-`ifdef VERILATOR
-      // $finish;
-`else
-      $masm_stop;
-`endif
+      $finish;
     end
-
   end
-
 
 
 endmodule

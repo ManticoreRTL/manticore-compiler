@@ -651,7 +651,11 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
           // compute partial equalities by computing the equality of
           // the partial operands and then summing up the results and
           // checking whether sum is equal to the number of partial results
-          rs1_uint16_array zip rs2_uint16_array foreach { case (rs1_16, rs2_16) =>
+          // but we need to first make sure the two arrays are aligned
+          val numElems = (rs1_uint16_array.length) max (rs2_uint16_array.length)
+          def zeroExtend(names: Seq[Name]) = names ++ Seq.fill(numElems - names.length) { builder.mkConstant(0) }
+
+          zeroExtend(rs1_uint16_array) zip zeroExtend(rs2_uint16_array) foreach { case (rs1_16, rs2_16) =>
             inst_q += instruction.copy(
               operator = BinaryOperator.SEQ,
               rd = seq_partial_res,

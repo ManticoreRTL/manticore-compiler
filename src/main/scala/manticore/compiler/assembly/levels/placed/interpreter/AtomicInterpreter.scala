@@ -14,6 +14,8 @@ import manticore.compiler.assembly.levels.placed.PlacedIR.CustomFunctionImpl._
 import manticore.compiler.assembly.levels.placed.TaggedInstruction
 import manticore.compiler.assembly.levels.placed.TaggedInstruction.PhiSource
 
+import collection.mutable.{Map => MMap}
+
 /** Basic interpreter for placed programs. The program needs to have Send and
   * Recv instructions but does not check for NoC contention and does not require
   * allocated registers.
@@ -242,7 +244,7 @@ object AtomicInterpreter extends PlacedIRChecker {
         global_memory(address)
       } else {
         ctx.logger.error(
-          f"Global memory address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x"
+          f"GLD address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x)"
         )
         trap(InternalTrap)
         UInt16(0)
@@ -254,7 +256,7 @@ object AtomicInterpreter extends PlacedIRChecker {
         global_memory(address) = value
       } else {
         ctx.logger.error(
-          f"Global memory address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x"
+          f"GST address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x)"
         )
         trap(InternalTrap)
       }

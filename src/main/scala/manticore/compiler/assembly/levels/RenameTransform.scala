@@ -196,6 +196,7 @@ trait RenameTransformation extends Flavored {
               }
             )
           case i: BreakCase => i
+          case i: ConfigCfu => i
           case i @ PutSerial(rs, pred, _, _) =>
             i.copy(rs = subst(rs), pred = subst(pred))
           case i @ Interrupt(action, condition, _, _) =>

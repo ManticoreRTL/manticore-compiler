@@ -1,18 +1,19 @@
 package manticore.compiler.assembly.levels.codegen
 
-import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.AssemblyContext
-import manticore.compiler.assembly.levels.HasTransformationID
+import manticore.compiler.assembly.BinaryOperator
+import manticore.compiler.assembly.annotations.Memblock
 import manticore.compiler.assembly.levels.ConstType
+import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.WireType
-import manticore.compiler.assembly.annotations.Memblock
-import scala.annotation.tailrec
+import manticore.compiler.assembly.levels.placed.PlacedIR._
+
 import java.io.File
 import java.nio.file.Files
-import manticore.compiler.assembly.BinaryOperator
+import scala.annotation.tailrec
 
 object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
@@ -48,72 +49,25 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       program: DefProgram
   )(implicit ctx: AssemblyContext): Seq[DefProgram] = {
 
-    val inits = program.processes.map { makeInitializer }
-
-    @tailrec
-    def do_create(
-        left: Seq[Seq[DefProcess]],
-        builder: Seq[DefProgram]
-    ): Seq[DefProgram] = {
-      if (left.nonEmpty) {
-        val nonempty_inits = left.collect { case head :: next =>
-          head
+    program.processes.map { makeInitializer }.transpose.map { initProcs =>
+      val maxLen = initProcs.maxBy(_.body.length).body.length
+      val withFinish = initProcs.map { init =>
+        val isMaster = (init.id.x == 0 && init.id.y == 0)
+        if (isMaster) {
+          init.copy(
+            body = init.body ++ Seq.fill(maxLen - init.body.length) { Nop } :+ Interrupt(
+              FinishInterrupt,
+              init.registers(1).variable.name,
+              SystemCallOrder(0)
+            )
+          )
+        } else {
+          init
         }
-        val longest_init = nonempty_inits.map(_.body.length).max
-
-        val master_process = nonempty_inits.head
-        val processes =
-          if (master_process.id.x == 0 && master_process.id.y == 0) {
-
-            val const_0 = master_process.registers.head.variable.name
-            val const_1 = master_process.registers.tail.head.variable.name
-
-            val master_with_stop = master_process.copy(body =
-              master_process.body ++ Seq.fill(
-                longest_init - master_process.body.length
-              ) { Nop } :+ Expect(
-                const_0,
-                const_1,
-                ExceptionIdImpl(UInt16(0), "stop", ExpectStop)
-              )
-            )
-
-            master_with_stop +: nonempty_inits.tail
-
-          } else {
-            val const_0 = DefReg(
-              ValueVariable(s"const_0_${ctx.uniqueNumber()}", 0, ConstType),
-              Some(UInt16(0))
-            )
-            val const_1 = DefReg(
-              ValueVariable(s"const_1_${ctx.uniqueNumber()}", 1, ConstType),
-              Some(UInt16(1))
-            )
-            val body = Seq(
-              SetValue(const_0.variable.name, UInt16(0)),
-              SetValue(const_1.variable.name, UInt16(1))
-            ) ++ Seq.fill(longest_init - 2)(Nop) :+
-              Expect(
-                const_0.variable.name,
-                const_1.variable.name,
-                ExceptionIdImpl(UInt16(0), "stop", ExpectStop)
-              )
-            val master_proc_with_stop = DefProcess(
-              registers = Seq(const_0, const_1),
-              id = ProcessIdImpl("placed_0_0", 0, 0),
-              body = body,
-              functions = Seq()
-            )
-            master_proc_with_stop +: nonempty_inits
-          }
-        val next_left = left.collect { case _ :: (tail @ (_ :: _)) => tail }
-        do_create(next_left, builder :+ DefProgram(processes))
-      } else {
-        builder
       }
+      program.copy(processes = withFinish)
     }
 
-    do_create(inits, Nil)
   }
 
   /** Create a sequence of idempotent processes that can be used to initialize
@@ -126,158 +80,201 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     * @param ctx
     * @return
     */
+
   def makeInitializer(
       process: DefProcess
   )(implicit ctx: AssemblyContext): Seq[DefProcess] = {
 
+    import scala.collection.mutable.{Queue => MQueue}
     // This function can only be called only on a fully implemented process with
     // all registers allocated and memory pointers set.
 
-    val initializer_regs = scala.collection.mutable.Queue.empty[DefReg]
-    val initializer_body = scala.collection.mutable.Queue.empty[Instruction]
+    // we start by filling up the scratch pad, then configuring custom functions
+    // and handle initializing registers last. In doing so we break the initializaiton
+    // into processes and segments withing processes. Each segments is supposed
+    // to represent an atomic idempotent piece of code. Having idempotent code
+    // is a require because of how Manticore handles exception. When a program
+    // is finished, before loading the next one Mantcore performs  soft reset,
+    // which puts each core in an initial state that wait for instructions
+    // from the NoC. Now this means technically some instruction may execute after
+    // kernel is started again after the previous FINISH and between the next soft
+    // reset which can corrupt the initialized values in the register files and the
+    // scratch pad. Atomic idempotent segments ensure that this does not happen.
 
-    val const_0 = process.registers(0)
-    val const_1 = process.registers(1)
+    case class IdempotentSegment(
+        body: Vector[Instruction],
+        defs: Vector[DefReg]
+    ) {
+      require(body.length < ctx.hw_config.nInstructions, "can not split a segment into multiple programs!")
+    }
 
+    val constZero = DefReg(
+      variable = ValueVariable("zero", 0, WireType),
+      value = None
+    )
+    val constOne = DefReg(
+      variable = ValueVariable("one", 1, WireType),
+      value = None
+    )
+
+    // we initialize each memory with a sequence of SetValues followed by LocalStores
+    // size of this sliding window is set to the hardware max latency + 1to avoid
+    // inserting Nops
+    val initWindowSize = ctx.hw_config.maxLatency + 1
+
+    val zeroOneSegment = IdempotentSegment(
+      Vector(
+        SetValue(constOne.variable.name, UInt16(1)),
+        SetValue(constZero.variable.name, UInt16(0))
+      ) ++ Vector.fill(ctx.hw_config.maxLatency) { Nop } :+ Predicate(constOne.variable.name),
+      Vector(
+        constOne,
+        constZero
+      )
+    )
+    // check for bad memories
     process.registers.foreach {
-      case r @ DefReg(vr, Some(vl), _)
-          if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
-        initializer_regs += r
-        initializer_body += SetValue(r.variable.name, vl)
-      case _ => // do nothing
+      case r @ DefReg(mvr: MemoryVariable, None, _) =>
+        ctx.logger.error(s"Memory not allocated", r)
+      case _ => // ok
     }
 
-    // then we enable storing
-    if (initializer_body.length < ctx.hw_config.maxLatency + 2) {
-      initializer_body ++= Seq.fill(
-        ctx.hw_config.maxLatency + 2 - initializer_body.length
-      ) { Nop }
-      // place Nops between setting the value of const_1 and setting the predicate
-      // if needed
-    }
-    initializer_body += Predicate(const_1.variable.name)
-
-    // and now we create the program required to initialize the memories for
-    // this we need to use a couple of temporary register, but since we can not
-    // call the register allocator again, we need to perform a mini register
-    // allocation and scheduling here. We assume the register allocator uses the
-    // lower indices for immortal registers, so we can get the first free index,
-    // i.e., the register index belonging to register without an initial value,
-    // by simply counting the number of immortal registers.
-    val first_free_index = process.registers.count { r =>
-      r.variable.varType match {
-        case _ @(ConstType | InputType | MemoryType) => true
-        case _                                       => false
-      }
-    }
-    // we basically need LatencyAnalysis.maxLatency() + 1 free registers to be
-    // able to create sequences of  SetValues followed by LocalStore
-    // instructions such that we avoid placing Nops.
-
-    val mem_init_slider_size = ctx.hw_config.maxLatency + 1
-    val temp_regs = Seq.tabulate(mem_init_slider_size) { ix =>
+    // these register will hold the memory values
+    val memInitRegs = Seq.tabulate(initWindowSize) { ix =>
       DefReg(
-        variable = ValueVariable(
-          s"temp_mem_init_${ctx.uniqueNumber()}",
-          first_free_index + ix,
-          WireType
-        ),
-        value = None
-      )
-    }
-    if (temp_regs.last.variable.id >= ctx.hw_config.nRegisters) {
-      ctx.logger.error(
-        s"Can not create memory initializing sequence! " +
-          s"Initializer requires at least ${temp_regs.last.variable.id + 1} " +
-          s"registers but only have ${ctx.hw_config.nRegisters}"
-      )
-    }
-
-    val counters = IndexedSeq.tabulate(mem_init_slider_size) { ix =>
-      DefReg(
-        variable = ValueVariable(
-          s"counter_${ctx.uniqueNumber()}",
-          first_free_index + temp_regs.length * ix,
-          WireType
-        ),
+        variable = ValueVariable(s"mw_$ix", ix + 2, WireType),
         value = None
       )
     }
 
-    initializer_regs.enqueueAll(temp_regs)
-    initializer_regs.enqueueAll(counters)
-
-    initializer_body ++ counters.zipWithIndex.map { case (cnt, ix) =>
-      SetValue(cnt.variable.name, UInt16(0))
+    // and these register values will hold the memory index
+    val memIndexRegs = Seq.tabulate(initWindowSize) { ix =>
+      DefReg(
+        variable = ValueVariable(s"mix_$ix", ix + memInitRegs.last.variable.id + 1, WireType),
+        value = None
+      )
     }
-
-    process.registers.foreach {
-      case r @ DefReg(mvr: MemoryVariable, offset_opt, _) =>
-        offset_opt match {
-          case Some(init @ UInt16(offset)) =>
-            mvr.initialContent.zipWithIndex
-              .grouped(mem_init_slider_size)
-              .foreach { window =>
-                val zipped_window = window.zip(temp_regs).zip(counters)
-
-                initializer_body ++= zipped_window.map { case (((value, _), tmp), _) =>
-                  SetValue(tmp.variable.name, value)
-                }
-
-                // in case the sliding window is "incomplete" place Nops instead
-                // of SetValues
-                if (window.length < mem_init_slider_size) {
-                  initializer_body ++=
-                    Seq.fill(mem_init_slider_size - window.length) { Nop }
-
-                }
-                // perform the actual store (predicate is set to 1 before)
-                initializer_body ++=
-                  zipped_window.map { case (((value, ix), tmp), cnt) =>
-                    LocalStore(
-                      rs = tmp.variable.name,
-                      base = mvr.name,
-                      address = cnt.variable.name,
-                      order = MemoryAccessOrder("", 0),
-                      predicate = None
-                    )
-                  }
-                initializer_body ++= counters.map { cnt =>
-                  BinaryArithmetic(
-                    BinaryOperator.ADD,
-                    cnt.variable.name,
-                    cnt.variable.name,
-                    const_1.variable.name
-                  )
-                }
-
-              }
-          case _ =>
-            ctx.logger.error(s"Memory is not allocated!", r)
+    // create memory init segments
+    val memInitSegments = process.registers.collect { case r @ DefReg(mvr: MemoryVariable, Some(offset), _) =>
+      // all memories should be initialized, otherwise we may into weird runtime
+      // bugs due uninitialized scratchpads with left over data from a previous
+      // run on hardware
+      assert(mvr.initialContent.length == mvr.size, s"Detected memory without initial content!")
+      // each window should be made into a segment to avoid splitting the initialization
+      // of a memory word into two initialization programs which can roll over and
+      // corrupt register values
+      for (window <- mvr.initialContent.zipWithIndex.grouped(initWindowSize)) yield {
+        val segBody = MQueue.empty[Instruction]
+        for (((word, index), (reg, regIx)) <- window.zip(memInitRegs zip memIndexRegs)) {
+          segBody += SetValue(reg.variable.name, word)
+          segBody += SetValue(regIx.variable.name, UInt16(index))
         }
-      case _ =>
-      /// do nothing
-    }
-
-    // now that we have all the registers and the instructions required to
-    // initialize this process, we split the instruction sequence into smaller
-    // ones if we have more instructions than we can fit into the instruction
-    // memory
-
-    val proc_regs = initializer_regs.toSeq
-
-    initializer_body
-      .grouped(
-        ctx.hw_config.nInstructions - 1
-      ) // we leave 1 space for the EXPECT instruction that may be added later
-      .map { case body =>
-        process.copy(
-          body = body.toSeq,
-          registers = proc_regs
+        // we may have to insert some NOPs if there are not enough words to
+        // handle data hazards. Essentially
+        if (window.length < initWindowSize) {
+          // add nops if necessary
+          segBody ++= Seq.fill(initWindowSize - window.length) { Nop }
+        }
+        for ((value, index) <- memInitRegs.zip(memIndexRegs).take(window.length)) {
+          segBody += LocalStore(
+            rs = value.variable.name,
+            base = mvr.name,
+            address = index.variable.name,
+            order = MemoryAccessOrder(mvr.name, 0),
+            predicate = None
+          )
+        }
+        IdempotentSegment(
+          segBody.toVector,
+          Vector.empty
         )
       }
-      .toSeq
+    }.flatten
 
+    val memDefs = process.registers.collect { case r @ DefReg(_: MemoryVariable, _, _) => r }
+    // Initialize the custom functions.
+    // No NOPs are needed as all the information needed to configure the LUTs
+    // can be found in the instruction (cust_ram_idx, rd, and immediate fields).
+
+    val cfuInitBody = MQueue.empty[Instruction]
+    for (funcIdx <- Range.inclusive(0, process.functions.size - 1)) yield {
+      val func      = process.functions(funcIdx)
+      val equations = func.value.equation
+      for (bitIdx <- Range.inclusive(0, equations.size - 1)) {
+        val equation = equations(bitIdx)
+        cfuInitBody += ConfigCfu(funcIdx, bitIdx, equation)
+      }
+    }
+
+    val cfuSegment = IdempotentSegment(
+      cfuInitBody.toVector,
+      Vector(constZero, constOne)
+    )
+
+    // initializing registers is easy now
+    val regInitSegment = process.registers.collect {
+      case r @ DefReg(vr, vl, _) if (vr.varType == ConstType || vr.varType == InputType || vr.varType == MemoryType) =>
+        if (vr.id == 0) {
+          assert(vl == Some(UInt16(0)))
+        } else if (vr.id == 1) {
+          assert(vl == Some(UInt16(1)))
+        }
+        assert(vl.nonEmpty || vr.varType == InputType)
+        IdempotentSegment(
+          Vector(SetValue(vr.name, vl.getOrElse(UInt16(0)))),
+          Vector(r)
+        )
+    }
+
+    val predDisable = IdempotentSegment(
+      Vector(Predicate(constZero.variable.name)),
+      Vector(constZero)
+    )
+
+    // now we need to combine segments into processes of maximum
+    // ctx.hw_config.nInstructions - ctx.hw_config.maxLatency  - 1 size, but
+    // never splitting a single segment across two processes
+    // the ctx.hw_config.maxLatency slack to is to ensure all instructions take
+    // effect by placing Nops at the end. 1 extra space is required to place
+    // a FINISH instruction in the master core.
+
+    def combineSegments(toCombine: Iterable[IdempotentSegment], defs: Iterable[DefReg]): Iterable[DefProcess] = {
+      val merged       = MQueue.empty[DefProcess]
+      val segmentsLeft = MQueue.empty[IdempotentSegment] ++ toCombine
+
+      while (segmentsLeft.nonEmpty) {
+
+        var numInstr = 0
+
+        val maxInstr = ctx.hw_config.nInstructions - ctx.hw_config.maxLatency - 1
+        assert(maxInstr > 0)
+
+        val builder = MQueue.empty[IdempotentSegment]
+
+        while (segmentsLeft.nonEmpty && (numInstr + segmentsLeft.head.body.length) < maxInstr) {
+          val seg = segmentsLeft.dequeue()
+          numInstr += seg.body.length
+          builder += seg
+        }
+
+        if (builder.nonEmpty) {
+          merged += process.copy(
+            body = builder.flatMap(_.body).toSeq ++ Seq.fill(ctx.hw_config.maxLatency) { Nop },
+            registers = defs.toSeq
+          )
+        }
+      }
+      merged.toSeq
+    }
+
+    (
+      combineSegments(
+        Seq(zeroOneSegment) ++ memInitSegments ++ Seq(cfuSegment, predDisable), // fist initialize memory and then
+        Seq(constZero, constOne) ++ memIndexRegs ++ memInitRegs ++ memDefs // register file, DO NOT MIX them since it will
+        // result in non-idempotent code!
+      ) ++
+        combineSegments(regInitSegment, regInitSegment.flatMap(_.defs))
+    ).toSeq
   }
 
 }

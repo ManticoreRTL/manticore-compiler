@@ -463,13 +463,8 @@ module Mips32 (
           pc <= pc_4;
         end
       end else begin
-`ifdef VERILATOR
         assert (reg_read1 == 45);
         $finish;
-`else
-        $masm_expect(reg_read1 == 45, "expected 45");
-        $masm_stop;
-`endif
       end
 
     end
@@ -503,7 +498,10 @@ endmodule
 
 
 
-module TestVerilator (
+module TestVerilator #(
+  parameter INST_FILE=""
+)
+(
     input wire clock
 );
 
@@ -528,9 +526,13 @@ module TestVerilator (
       .halted(halted)
   );
 
+  // always @(posedge clock) begin 
+  //   $display("addr: %d", addr);
+  // end
+
 
   initial begin
-    $readmemh("sum.hex", inst_mem);
+    if (INST_FILE) $readmemh(INST_FILE, inst_mem);
   end
 
 

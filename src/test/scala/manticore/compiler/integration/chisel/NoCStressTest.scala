@@ -1,21 +1,21 @@
 package manticore.compiler.integration.chisel
-import chiseltest._
-
 import chisel3._
-import org.scalatest.flatspec.AnyFlatSpec
-import manticore.compiler.integration.chisel.util.ProgramTester
-import manticore.compiler.assembly.levels.UInt16
-import java.nio.file.Path
-import manticore.compiler.UnitFixtureTest
+import chiseltest._
 import manticore.compiler.AssemblyContext
-import manticore.compiler.ManticorePasses
-
-import manticore.machine.xrt.ManticoreFlatSimKernel
-import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
-import manticore.compiler.assembly.levels.TransformationID
-import manticore.compiler.HasLoggerId
-import manticore.compiler.integration.chisel.util.KernelTester
 import manticore.compiler.DefaultHardwareConfig
+import manticore.compiler.HasLoggerId
+import manticore.compiler.ManticorePasses
+import manticore.compiler.UnitFixtureTest
+import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.assembly.levels.UInt16
+import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
+import manticore.compiler.integration.chisel.util.KernelTester
+import manticore.compiler.integration.chisel.util.ProgramTester
+import manticore.machine.xrt.ManticoreFlatSimKernel
+import org.scalatest.flatspec.AnyFlatSpec
+
+import java.io.PrintWriter
+import java.nio.file.Path
 
 /** A stress for the NoC implementation.
   */
@@ -73,14 +73,13 @@ class NoCStressTest extends KernelTester {
         y: Int,
         tokens: Seq[UInt16],
         checksum_meminit: String,
-        checksum_memblock: String
     ): (String, String, String) = {
 
       val tokens_meminit =
         mkMemInit(tokens, output_dir.resolve(s"tokens_${x}_${y}.dat"))
-      val tokens_memblock = mkMemBlock(s"tokens_${x}_${y}.dat", tokens.length)
       val (psums, psum_insts) = createChecksumCompute(x, y)
       val psum_decls = psums.map { s => s".wire ${s} 16" } mkString ("\n")
+      val test_size = tokens.length
 
       val header = s"""
        |@LOC[x = $x, y = $y]
@@ -97,16 +96,12 @@ class NoCStressTest extends KernelTester {
        |
        |${psum_decls}
        |
-       |${tokens_memblock}
        |${tokens_meminit}
+       |.mem token_ptr_${x}_${y} 16 ${test_size}
        |
-       |.mem token_ptr_${x}_${y} 16
-       |.wire token_address_${x}_${y} 16
-       |
-       |${checksum_memblock}
        |${checksum_meminit}
-       |.mem checksum_ptr_${x}_${y} 16
-       |.wire checksum_address_${x}_${y} 16
+       |.mem checksum_ptr_${x}_${y} 16 ${test_size}
+       |
        |.wire checksum_expected_${x}_${y} 16
        |
        |
@@ -116,16 +111,12 @@ class NoCStressTest extends KernelTester {
         s"""
        |
        |// load the token
-       |ADD token_address_${x}_${y}, token_ptr_${x}_${y}, counter_${x}_${y}_curr;
-       |${tokens_memblock}
-       |LLD token_${x}_${y}_next, token_address_${x}_${y}[0];
+       |(token_ptr_${x}_${y}, 0) LLD token_${x}_${y}_next, token_ptr_${x}_${y} [counter_${x}_${y}_curr];
        |
        |${psum_insts mkString ("\n")}
        |
        |// load the checksum
-       |ADD checksum_address_${x}_${y}, checksum_ptr_${x}_${y}, counter_${x}_${y}_curr;
-       |${checksum_memblock}
-       |LLD checksum_expected_${x}_${y}, checksum_address_${x}_${y} [0];
+       |(checksum_ptr_${x}_${y}, 0) LLD checksum_expected_${x}_${y}, checksum_ptr_${x}_${y} [counter_${x}_${y}_curr];
        |
        |SEQ correct_${x}_${y}_next, checksum_expected_${x}_${y}, ${psums.last};
        |
@@ -144,7 +135,6 @@ class NoCStressTest extends KernelTester {
         y: Int,
         tokens: Seq[UInt16],
         checksum_meminit: String,
-        checksum_memblock: String
     ): (String, String, String) = {
 
       val (header, base_decls, base_body) = generateSlaveProcess(
@@ -153,7 +143,6 @@ class NoCStressTest extends KernelTester {
         0,
         tokens,
         checksum_meminit,
-        checksum_memblock
       )
       val corrects = Seq
         .tabulate(dimx) { x => Seq.tabulate(dimy) { y => (x, y) } }
@@ -173,11 +162,8 @@ class NoCStressTest extends KernelTester {
     |
     """.stripMargin
 
-      val correct_expects = corrects.map { n =>
-        Seq(
-          s"@TRAP [ type = \"\\fail\" ]",
-          s"EXPECT ${n}_curr, one_0_0, [\"failed_${n}\"];"
-        ) mkString ("\n")
+      val correct_expects = corrects.zipWithIndex.map { case (n, i) =>
+        s"(0) ASSERT ${n}_curr;"
       } mkString ("\n")
 
       val body = base_body + s"""
@@ -186,8 +172,7 @@ class NoCStressTest extends KernelTester {
     |
     |SEQ done_next, counter_0_0_curr, max_count;
     |
-    |@TRAP [ type = "\\stop"]
-    |EXPECT done_curr, zero_0_0, ["stop"];
+    |(1) FINISH done_curr;
     |
     """.stripMargin
 
@@ -215,7 +200,6 @@ class NoCStressTest extends KernelTester {
         .reduce(_ + _)
     }
 
-    val checksum_memblock = mkMemBlock("checksum_values", checksum.length)
     val checksum_meminit =
       mkMemInit(checksum, test_dir.resolve("checksum_values.dat"))
 
@@ -228,8 +212,7 @@ class NoCStressTest extends KernelTester {
               x,
               y,
               tokens(x)(y),
-              checksum_meminit,
-              checksum_memblock
+              checksum_meminit
             )
           } else {
             generateSlaveProcess(
@@ -237,8 +220,7 @@ class NoCStressTest extends KernelTester {
               x,
               y,
               tokens(x)(y),
-              checksum_meminit,
-              checksum_memblock
+              checksum_meminit
             )
           }
           head + decls + body
@@ -278,16 +260,20 @@ class NoCStressTest extends KernelTester {
       // doing more makes little sense... but I do for good measure :D
     )
 
+    new PrintWriter(fixture.test_dir.resolve("src.masm").toFile()) {
+      write(source);
+      close
+    }
     compileAndRun(source, context)
   }
 
   Seq(
-    (2, 2),
-    (3, 3),
-    (4, 4),
-    (5, 5),
-    (6, 6),
-    (7, 7) // simulation can take a long time, so don't go crazy with the dimensions
+    (2, 2)
+    // (3, 3),
+    // (4, 4),
+    // (5, 5),
+    // (6, 6),
+    // (7, 7) // simulation can take a long time, so don't go crazy with the dimensions
   ).foreach { case (dimx, dimy) =>
     it should s"correctly compute checksums in a ${dimx}x${dimy} topology" in {
       implicit f =>

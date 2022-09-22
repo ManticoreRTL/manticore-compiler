@@ -48,6 +48,8 @@ trait CanComputeNameDependence extends Flavored {
           Seq(rs1, rs2)
         case CustomInstruction(func, rd, rsx, annons) =>
           rsx
+        case ConfigCfu(funcIdx, bitIdx, equation, annons) =>
+          Nil
         case LocalLoad(rd, base, offset, order, annons) =>
           assert(order.memory == base)
           Seq(base, offset)
@@ -125,7 +127,6 @@ trait CanComputeNameDependence extends Flavored {
               Seq(cond)
             case SerialInterrupt(_) => Seq(cond)
           }
-
       }
     }
 
@@ -142,6 +143,7 @@ trait CanComputeNameDependence extends Flavored {
       inst match {
         case BinaryArithmetic(operator, rd, rs1, rs2, annons) => Seq(rd)
         case CustomInstruction(func, rd, rsx, annons)         => Seq(rd)
+        case ConfigCfu(funcIdx, bitIdx, equation, annons)     => Nil
         case LocalLoad(rd, base, offset, _, annons)           => Seq(rd)
         case LocalStore(rs, base, offset, p, _, annons)       => Nil
         case GlobalLoad(rd, base, _, annons)                  => Seq(rd)

@@ -64,7 +64,7 @@ sealed trait HardwareConfig {
 case class DefaultHardwareConfig(
     dimX: Int,
     dimY: Int,
-    maxLatency: Int = 3,
+    maxLatency: Int = 10,
     nRegisters: Int = 2048,
     nCarries: Int = 64,
     nScratchPad: Int = (1 << 14),

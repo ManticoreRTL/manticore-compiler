@@ -348,9 +348,19 @@ trait ManticoreAssemblyIR {
       rsx: Seq[Name],
       annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
-    override def toString: String =
-      s"CUST ${rd}, [${func}], ${rsx.mkString(", ")}"
+    override def toString: String = s"CUST ${rd}, [${func}], ${rsx.mkString(", ")}"
+  }
 
+  case class ConfigCfu(
+      funcIdx: Int, // 0-31
+      bitIdx: Int,  // 0-15
+      equation: BigInt,
+      annons: Seq[AssemblyAnnotation] = Nil
+  ) extends DataInstruction {
+    val equStr       = equation.toString(16)
+    val paddedEquStr = Seq.fill(16 - equStr.length())('0').mkString + equStr
+
+    override def toString: String = s"CONFIG_CFU ${funcIdx}, ${bitIdx}, ${paddedEquStr}"
   }
 
   // LocalLoad from the local scratchpad
@@ -483,11 +493,11 @@ trait ManticoreAssemblyIR {
   }
 
   case class AddCarry(
-    rd: Name,
-    rs1: Name,
-    rs2: Name,
-    cin: Name,
-    annons: Seq[AssemblyAnnotation] = Nil
+      rd: Name,
+      rs1: Name,
+      rs2: Name,
+      cin: Name,
+      annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction {
     override def toString: String =
       s"ADDCARRY ${rd}, ${rs1}, ${rs2}, ${cin}"

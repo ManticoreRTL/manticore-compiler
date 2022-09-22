@@ -316,7 +316,8 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
       dependenceGraph: DepGraph,
       logicVertices: Set[DepVertex],
       maxCutSize: Int,
-      vToConstMap: Map[DepVertex, Constant]
+      vToConstMap: Map[DepVertex, Constant],
+      procId: ProcessId
   )(implicit
       ctx: AssemblyContext
   ): Iterable[Cone] = {
@@ -349,7 +350,7 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
     val (gLswi, primaryInputs) = logicSubgraphWithInputs()
 
     ctx.logger.dumpArtifact(
-      s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_logicSubgraphWithInputs.dot"
+      s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${procId}_logicSubgraphWithInputs.dot"
     ) {
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).
@@ -901,7 +902,8 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
         dependenceGraph,
         logicClusters.flatten,
         ctx.hw_config.nCfuInputs,
-        vToConstMap
+        vToConstMap,
+        proc.id
       ).filter { cone =>
         // We don't care about cones that consist of a single instruction as there
         // is no benefit in doing so (we will not reduce the instruction count).
