@@ -244,7 +244,7 @@ object AtomicInterpreter extends PlacedIRChecker {
         global_memory(address)
       } else {
         ctx.logger.error(
-          f"Global memory address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x"
+          f"GLD address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x)"
         )
         trap(InternalTrap)
         UInt16(0)
@@ -256,7 +256,7 @@ object AtomicInterpreter extends PlacedIRChecker {
         global_memory(address) = value
       } else {
         ctx.logger.error(
-          f"Global memory address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x"
+          f"GST address 0x${address}%032x is out-of-bound (memory size is 0x${global_memory.size}%032x)"
         )
         trap(InternalTrap)
       }

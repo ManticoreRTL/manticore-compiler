@@ -16,75 +16,44 @@ class GMemTester extends KernelTester {
 
   def mkProgram(
       context: AssemblyContext,
-      testSize: Int
+      testSize: Int,
+      numMems: Int
   ): String = {
     val dir     = context.output_dir.get
+    val rnd     = IndexedSeq.tabulate(numMems) { i => XorShift16(s"rand_$i", UInt16(879 + i << 3)) }
     val rnd1    = XorShift16("rand1", UInt16(123))
     val rnd2    = XorShift16("rand2", UInt16(456))
     val rnd3    = XorShift16("rand3", UInt16(789))
-    val meminit = mkMemInit(Seq.fill(testSize) { UInt16(0) }, dir.toPath().resolve("mem.dat"))
+    val meminit = mkMemInit(Seq.fill(0) { UInt16(0) }, dir.toPath().resolve("mem.dat"))
 
     s"""
        |.prog:
        |   @LOC [x = 0, y = 0]
        |   .proc proc_0_0:
-       |       ${meminit}
-       |       .mem mem_ptr1 16 ${testSize}
-       |       ${meminit}
-       |       .mem mem_ptr2 16 ${testSize}
-       |       ${meminit}
-       |       .mem mem_ptr3 16 ${testSize}
        |
-       |       .wire st_val1 16
-       |       .wire st_val2 16
-       |       .wire st_val3 16
-       |       .wire ld_val1 16
-       |       .wire ld_val2 16
-       |       .wire ld_val3 16
+       |       ${Seq.tabulate(numMems) { i => s".mem mem_ptr_${i} 16 ${testSize}"}.mkString("\n")}
+       |       ${Seq.tabulate(numMems) { i => s".wire ld_val_${i} 16"}.mkString("\n")}
+       |       ${Seq.tabulate(numMems) { i => s".reg cr${i} 1 .input correct_${i}_curr 1 .output correct_${i}_next"}.mkString("\n")}
+       |       ${rnd.map(_.registers).mkString("\n")}
        |
-       |
-       |       ${rnd1.registers}
-       |       ${rnd2.registers}
-       |       ${rnd3.registers}
-       |
-       |
+       |       .reg cnt 32 .input counter_curr 0 .output counter_next
+       |       .reg dn  1 .input done_curr 0 .output done_next
        |       .const one 16 1
        |       .const zero 16 0
-       |       .const test_length 16 ${testSize}
+       |       .const max_counter 16 ${testSize - 1}
+       |
+       |       ${rnd.map(_.code).mkString("\n")}
        |
        |
-       |       ${mkReg("counter", Some(UInt16(0)))}
-       |       ${mkReg("done", Some(UInt16(0)))}
-       |       ${mkReg("correct1", Some(UInt16(1)))}
-       |       ${mkReg("correct2", Some(UInt16(1)))}
-       |       ${mkReg("correct3", Some(UInt16(1)))}
-       |
-       |
-       |       ${rnd1.code}
-       |       ${rnd2.code}
-       |       ${rnd3.code}
-       |
-       |
-       |       ADD st_val1, ${rnd1.randNext}, zero;
-       |       ADD st_val2, ${rnd2.randNext}, zero;
-       |       ADD st_val3, ${rnd3.randNext}, zero;
-       |       (mem_ptr1, 0) LST st_val1, mem_ptr1[counter_curr], one;
-       |       (mem_ptr2, 0) LST st_val2, mem_ptr2[counter_curr], one;
-       |       (mem_ptr3, 0) LST st_val3, mem_ptr3[counter_curr], one;
-       |       (mem_ptr1, 1) LLD ld_val1, mem_ptr1[counter_curr];
-       |       (mem_ptr2, 1) LLD ld_val2, mem_ptr2[counter_curr];
-       |       (mem_ptr3, 1) LLD ld_val3, mem_ptr3[counter_curr];
-       |
+       |       ${Range(0, numMems).map { i => s"(mem_ptr_${i}, 0) LST ${rnd(i).randCurr}, mem_ptr_${i}[counter_curr], one;" }.mkString("\n") }
+       |       ${Range(0, numMems).map { i => s"(mem_ptr_${i}, 1) LLD ld_val_${i}, mem_ptr_${i}[counter_curr];" }.mkString("\n") }
+       |       ${Range(0, numMems).map { i => s"SEQ correct_${i}_next, ld_val_${i}, ${rnd(i).randCurr};" }.mkString("\n") }
+       |       ${Range(0, numMems).map { i => s"(0) ASSERT correct_${i}_curr;" }.mkString("\n") }
        |       ADD counter_next, counter_curr, one;
-       |       SEQ correct1_next, ld_val1, st_val1;
-       |       SEQ correct2_next, ld_val2, st_val2;
-       |       SEQ correct3_next, ld_val3, st_val3;
        |
-       |       SEQ done_next, counter_next, test_length;
        |
-       |       (0) ASSERT correct1_curr;
-       |       (0) ASSERT correct2_curr;
-       |       (0) ASSERT correct3_curr;
+       |       SEQ done_next, counter_curr, max_counter;
+       |
        |       (1) FINISH done_curr;
        |
         """.stripMargin
@@ -96,7 +65,7 @@ class GMemTester extends KernelTester {
     val context = AssemblyContext(
       output_dir = Some(fixture.test_dir.resolve("out").toFile()),
       // make the scratchpad size small so that the global memory will be used
-      hw_config = DefaultHardwareConfig(dimX = 2, dimY = 2, nScratchPad = 128),
+      hw_config = DefaultHardwareConfig(dimX = 2, dimY = 2, nScratchPad = 0),
       dump_all = true,
       dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
       expected_cycles = Some(expected_vcycles),
@@ -104,14 +73,14 @@ class GMemTester extends KernelTester {
     )
 
     implicit val TestName = new HasLoggerId { val id = getTestName }
-    val source            = mkProgram(context, expected_vcycles)
+    val source            = mkProgram(context, expected_vcycles, 10)
     fixture.dump("main.masm", source)
     compileAndRun(source, context)
   }
 
   behavior of "Global Memory"
   it should "correctly handle global stores and loads" in { implicit f =>
-    createTestAndCompileAndRun(expected_vcycles = 500)
+    createTestAndCompileAndRun(expected_vcycles = 4)
   }
 
 }
