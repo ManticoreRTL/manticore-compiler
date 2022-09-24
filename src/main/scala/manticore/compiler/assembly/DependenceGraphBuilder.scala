@@ -20,6 +20,10 @@ import scala.util.Success
 import scala.util.Failure
 import manticore.compiler.assembly.levels.CloseSequentialCycles
 import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+import manticore.compiler.assembly.SerialInterrupt
 import scalax.collection.GraphEdge
 
 /** Generic dependence graph builder, to use it, mix this trait with your
@@ -73,8 +77,6 @@ trait CanComputeNameDependence extends Flavored {
           Seq.empty
         case Mux(rd, sel, rs1, rs2, annons) =>
           Seq(sel, rs1, rs2)
-        case Expect(ref, got, error_id, annons) =>
-          Seq(ref, got)
         case Predicate(rs, annons) =>
           Seq(rs)
         case Nop =>
@@ -121,8 +123,8 @@ trait CanComputeNameDependence extends Flavored {
         case i: BreakCase =>
           Seq.empty
         case PutSerial(rs, pred, _, _) => Seq(rs, pred)
-        case Interrupt(action, cond, _, _) =>
-          action match {
+        case Interrupt(desc, cond, _, _) =>
+          desc.action match {
             case StopInterrupt | FinishInterrupt | AssertionInterrupt =>
               Seq(cond)
             case SerialInterrupt(_) => Seq(cond)
@@ -151,7 +153,6 @@ trait CanComputeNameDependence extends Flavored {
         case Send(rd, rs, dest_id, annons)                    => Nil
         case SetValue(rd, value, annons)                      => Seq(rd)
         case Mux(rd, sel, rs1, rs2, annons)                   => Seq(rd)
-        case Expect(ref, got, error_id, annons)               => Nil
         case Predicate(rs, annons)                            => Nil
         case Nop                                              => Nil
         case PadZero(rd, rs, width, annons)                   => Seq(rd)

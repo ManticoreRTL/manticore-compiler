@@ -20,6 +20,8 @@ import manticore.compiler.assembly.levels.CanRename
 import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.CanCollectInputOutputPairs
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
+import manticore.compiler.assembly.HasInterruptAction
+import manticore.compiler.assembly.InterruptAction
 
 /** Raw assembly, with possible bit slices and wide bit vectors (e.g., 128-bit
   * addition)
@@ -65,7 +67,8 @@ object UnconstrainedIR extends ManticoreAssemblyIR {
   type CustomFunction = Nothing
   type Name           = String
   type ProcessId      = String
-  type ExceptionId    = String
+
+  case class InterruptDescription(action: InterruptAction) extends HasInterruptAction
 
   type Label = String
 }

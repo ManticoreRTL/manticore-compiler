@@ -15,7 +15,10 @@ import manticore.compiler.assembly.levels.WireType
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIRTransformer
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedRenameVariables
-
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.SerialInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process.processInternal
 
@@ -2457,18 +2460,18 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
           )
           .setPos(put.pos)
       }
-    case intr @ Interrupt(action, condition, order, _) =>
+    case intr @ Interrupt(description, condition, order, _) =>
       val condArray = builder.getConversion(condition).parts
 
       assert(condArray.length == 1)
       val newOrdValue = builder.nextOrder()
-      action match {
+      description.action match {
         case StopInterrupt | AssertionInterrupt | FinishInterrupt =>
           Seq(
             intr
               .copy(
                 condition = condArray.head,
-                action = action,
+                description = description,
                 order = order.withValue(newOrdValue)
               )
               .setPos(intr.pos)
@@ -2505,18 +2508,12 @@ object WidthConversionCore extends ConversionBuilder with UnconstrainedIRTransfo
             intr
               .copy(
                 condition = condArray.head,
-                action = SerialInterrupt(newFmt),
+                description = InterruptDescription(SerialInterrupt(newFmt)),
                 order = order.withValue(newOrdValue)
               )
               .setPos(intr.pos)
           )
 
-      }
-    case i @ Expect(ref, got, _, _) =>
-      val ConvertedWire(ref_uint16_array, _) = builder.getConversion(ref)
-      val ConvertedWire(got_uint16_array, _) = builder.getConversion(got)
-      ref_uint16_array zip got_uint16_array map { case (r16, g16) =>
-        i.copy(r16, g16).setPos(i.pos)
       }
     case i @ Mux(rd, sel, rfalse, rtrue, _) =>
       val ConvertedWire(rd_uint16_array, _) = builder.getConversion(rd)

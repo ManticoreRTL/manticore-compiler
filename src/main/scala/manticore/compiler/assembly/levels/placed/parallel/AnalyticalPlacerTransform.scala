@@ -977,7 +977,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       val procIdToCoreId = program.processes
         .sortBy { proc =>
           proc.body.count {
-            case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
+            case _ @(_: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
             case _                                                                             => false
           }
         } {
@@ -1021,7 +1021,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     val privilegedProcs = program.processes.filter { proc =>
       proc.body.exists {
-        case (_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
+        case (_: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
         case _                                                                          => false
       }
     }

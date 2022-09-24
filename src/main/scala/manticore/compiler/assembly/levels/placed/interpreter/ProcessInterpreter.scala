@@ -11,7 +11,7 @@ import manticore.compiler.FormatString.FmtBin
 import manticore.compiler.FormatString.FmtDec
 import manticore.compiler.FormatString.FmtHex
 import manticore.compiler.FormatString.FmtConcat
-
+import manticore.compiler.assembly.{FinishInterrupt, StopInterrupt, SerialInterrupt, AssertionInterrupt}
 trait ProcessInterpreter extends InterpreterBase {
 
 //   type Message <: HasTargetId
@@ -246,28 +246,15 @@ trait ProcessInterpreter extends InterpreterBase {
     case Send(rd, rs, dest_id, _) =>
       val rs_val = read(rs)
       send(dest_id, rd, rs_val)
-    case Expect(ref, got, ExceptionIdImpl(id, msg, kind), _) =>
-      val ref_val = read(ref)
-      val got_val = read(got)
-      if (ref_val != got_val) {
-        kind match {
-          case ExpectFail =>
-            ctx.logger.error(s"User exception caught: ${msg}", instruction)
-            ctx.logger.error(s"Expected ${ref_val} but got ${got_val}")
-            trap(FailureTrap)
-          case ExpectStop =>
-            ctx.logger.info(s"Stop signal interpreted.", instruction)
-            trap(FinishTrap)
-        }
-      }
     case PutSerial(rs, pred, _, _) =>
       val en = read(pred)
       if (en == UInt16(1)) {
         enqueueSerial(read(rs))
       }
-    case intr @ Interrupt(action, condition, _, _) =>
+    case intr @ Interrupt(description, condition, _, _) =>
       val en = read(condition) == UInt16(1)
-      action match {
+
+      description.action match {
         case AssertionInterrupt if !en =>
           ctx.logger.error("Assertion failed!", intr)
           trap(FailureTrap)
@@ -278,7 +265,13 @@ trait ProcessInterpreter extends InterpreterBase {
           ctx.logger.error("Got stop!", intr)
           trap(FailureTrap)
         case SerialInterrupt(fmt) if en =>
-          val values      = flushSerial().map(x => BigInt(x.toInt))
+          // see whether we should use the abstract queue or the global memory
+          val desc = description.asInstanceOf[SerialInterruptDescription]
+          val values = if (desc.pointers.nonEmpty) {
+            desc.pointers.map(adr => BigInt(gload(adr).toInt))
+          } else {
+            flushSerial().map(x => BigInt(x.toInt))
+          }
           val resolvedFmt = fmt.consume(values)
           if (resolvedFmt.isLit == false) {
             ctx.logger.error("Did not have enough value to in the serial queue!", intr)

@@ -14,6 +14,7 @@ import manticore.compiler.assembly.levels.placed.PlacedIR._
 import java.io.File
 import java.nio.file.Files
 import scala.annotation.tailrec
+import manticore.compiler.assembly
 
 object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
@@ -56,7 +57,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
         if (isMaster) {
           init.copy(
             body = init.body ++ Seq.fill(maxLen - init.body.length) { Nop } :+ Interrupt(
-              FinishInterrupt,
+              SimpleInterruptDescription(action = assembly.FinishInterrupt, eid = 0, info = None),
               init.registers(1).variable.name,
               SystemCallOrder(0)
             )

@@ -29,6 +29,10 @@ import manticore.compiler.assembly.annotations.Reg
 import manticore.compiler.HasLoggerId
 import manticore.compiler.FormatString
 import manticore.compiler.LoggerId
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+import manticore.compiler.assembly.SerialInterrupt
 
 class UnconstrainedAssemblyLexer extends AssemblyLexical {
 
@@ -335,17 +339,7 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
       case (a ~ _ ~ rd ~ _ ~ dest_id ~ _ ~ rs) =>
         Send(rd.chars, rs.chars, dest_id.chars, a)
     }
-  def expect_inst(implicit ctx: AssemblyContext): Parser[Expect] =
-    (annotations ~ positioned(
-      keyword(
-        "EXPECT"
-      )
-    ) ~ ident ~ "," ~ ident ~ "," ~ ("[" ~> stringLit <~ "]")) ^^ {
-      case (a ~ kword ~ ref ~ _ ~ got ~ _ ~ ex_id) =>
-        val instr = Expect(ref.chars, got.chars, ex_id.chars, a).setPos(kword.pos)
-        ctx.logger.warn("EXPECT will be retired soon. Use ASSERT instead.", instr)
-        instr
-    }
+
 
   def pred_inst: Parser[Predicate] =
     (annotations ~ keyword("PREDICATE") ~ ident) ^^ { case (a ~ _ ~ rs) =>
@@ -356,9 +350,9 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     SystemCallOrder(v1.toInt)
   }
 
-  def control_syscall(n: String, action: InterruptAction): Parser[Interrupt] =
+  def control_syscall(n: String, description: InterruptDescription): Parser[Interrupt] =
     (annotations ~ syscall_order ~ keyword(n) ~ ident) ^^ { case (a ~ order ~ _ ~ rs) =>
-      Interrupt(action, rs.chars, order, a)
+      Interrupt(description, rs.chars, order, a)
     }
 
   def fmt_string: Parser[FormatString] = (stringLit ^^ { case str =>
@@ -371,16 +365,16 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
     (annotations ~ syscall_order ~ keyword(
       "FLUSH"
     ) ~ fmt_string ~ "," ~ ident) ^^ { case (a ~ order ~ _ ~ fmt ~ _ ~ cond) =>
-      Interrupt(SerialInterrupt(fmt), cond.chars, order, a)
+      Interrupt(InterruptDescription(SerialInterrupt(fmt)), cond.chars, order, a)
     }
 
   def interrupt_inst: Parser[Interrupt] =
-    control_syscall("FINISH", FinishInterrupt) | control_syscall(
+    control_syscall("FINISH", InterruptDescription(FinishInterrupt)) | control_syscall(
       "STOP",
-      StopInterrupt
+      InterruptDescription(StopInterrupt)
     ) | control_syscall(
       "ASSERT",
-      AssertionInterrupt
+      InterruptDescription(AssertionInterrupt)
     ) | flush_inst
 
   def put_inst: Parser[PutSerial] =
@@ -433,7 +427,7 @@ private[parser] object UnconstrainedAssemblyParser extends AssemblyTokenParser {
 
   def instruction(implicit ctx: AssemblyContext): Parser[Instruction] = positioned(
     arith_inst | lload_inst | lstore_inst | mux_inst | parmux_inst | nop_inst
-      | set_inst | send_inst | expect_inst | pred_inst | padzero_inst | mov_inst | slice_inst
+      | set_inst | send_inst | pred_inst | padzero_inst | mov_inst | slice_inst
       | interrupt_inst | put_inst
   ) <~ ";"
   def body(implicit ctx: AssemblyContext): Parser[Seq[Instruction]] = rep(instruction)

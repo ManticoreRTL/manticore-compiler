@@ -11,7 +11,7 @@ import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.PlacedIR._
-
+import manticore.compiler.assembly.{FinishInterrupt, StopInterrupt, SerialInterrupt, AssertionInterrupt}
 import java.io.File
 import java.io.FileOutputStream
 import java.io.PrintWriter
@@ -459,23 +459,13 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
           .DestY(y_hops)
           .toLong
       case _: Recv => assemble(proc, Nop)
-      case Expect(ref, got, error_id, annons) =>
-        asm
-          .Opcode(Opcodes.EXPECT)
-          .Zero(RdField.bitLength)
-          .Funct(BinaryOperator.SEQ)
-          .Rs1(local(ref))
-          .Rs2(local(got))
-          .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
-          .Immediate(error_id.id.toInt)
-          .toLong
-      case Interrupt(action, condition, order, annons) =>
-        val id = action match {
+      case Interrupt(description, condition, order, annons) =>
+        val id = description.action match {
           case FinishInterrupt | SerialInterrupt(_) => order.value
           case AssertionInterrupt | StopInterrupt   => order.value + 0x8000
 
         }
-        val rs2 = action match {
+        val rs2 = description.action match {
           case AssertionInterrupt => 1
           case FinishInterrupt    => 0
           case SerialInterrupt(fmt) =>

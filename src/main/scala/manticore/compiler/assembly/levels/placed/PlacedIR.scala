@@ -18,6 +18,14 @@ import manticore.compiler.assembly.levels.CanOrderInstructions
 import manticore.compiler.assembly.levels.CanCollectProgramStatistics
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.CanRename
+import manticore.compiler.assembly.HasInterruptAction
+import manticore.compiler.assembly.annotations.Sourceinfo
+
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+import manticore.compiler.assembly.SerialInterrupt
+import manticore.compiler.assembly.InterruptAction
 
 /** IR level with placed processes and allocated registers.
   *
@@ -59,35 +67,29 @@ object PlacedIR extends ManticoreAssemblyIR {
     def withId(new_id: Int)            = this.copy(id = new_id)
   }
 
-  // case class MemoryBlock(
-  //     block_id: Name,
-  //     capacity: Int,
-  //     width: Int,
-  //     index: Option[Int] = None,
-  //     initial_content: Seq[UInt16] = Seq.empty[UInt16]
-  // ) {
-  //   def capacityInShorts(): Int = {
-  //     capacity * numShortsPerWord()
-  //   }
-  //   def numShortsPerWord(): Int =
-  //     ((width - 1) / 16 + 1)
-  // }
-  // object MemoryBlock {
-  //   def fromAnnotation(a: MemblockAnnotation) =
-  //     MemoryBlock(a.getBlock(), a.getCapacity(), a.getWidth(), a.getIndex())
-  // }
+  sealed trait InterruptDescription extends HasInterruptAction {
+    val eid: Int
+    val info: Option[Sourceinfo]
+  }
+  case class SimpleInterruptDescription(
+      action: InterruptAction,
+      info: Option[Sourceinfo] = None,
+      eid: Int = -1
+  ) extends InterruptDescription {
+    require(action == FinishInterrupt || action == StopInterrupt || action == AssertionInterrupt)
+  }
+  case class SerialInterruptDescription(
+      action: SerialInterrupt,
+      info: Option[Sourceinfo] = None,
+      eid: Int = -1,
+      pointers: Seq[Int] = Nil
+  ) extends InterruptDescription
+
+
 
   case class ProcessIdImpl(id: String, x: Int, y: Int) {
 
     override def toString(): String = id.toString()
-  }
-
-  sealed trait ExceptionKind
-  case object ExpectFail extends ExceptionKind
-  case object ExpectStop extends ExceptionKind
-
-  case class ExceptionIdImpl(id: UInt16, msg: String, kind: ExceptionKind) {
-    override def toString(): String = s"${msg}_${id}"
   }
 
   final class CustomFunctionImpl private (
@@ -412,12 +414,10 @@ object PlacedIR extends ManticoreAssemblyIR {
   type CustomFunction = CustomFunctionImpl
   type ProcessId      = ProcessIdImpl
   type Constant       = UInt16
-  type ExceptionId    = ExceptionIdImpl
+
 
   type Label = String
 }
-
-
 
 trait PlacedIRTransformer extends AssemblyTransformer[PlacedIR.DefProgram] {}
 trait PlacedIRChecker     extends AssemblyChecker[PlacedIR.DefProgram]     {}

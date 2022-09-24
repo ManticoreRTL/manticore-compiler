@@ -1,6 +1,10 @@
 package manticore.compiler.assembly.levels
 
 import manticore.compiler.AssemblyContext
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+import manticore.compiler.assembly.SerialInterrupt
 
 trait CanRename extends Flavored {
 
@@ -69,11 +73,6 @@ trait CanRename extends Flavored {
           )
         case i @ Nop =>
           i
-        case i @ Expect(ref, got, error_id, _) =>
-          i.copy(
-            ref = renaming(ref),
-            got = renaming(got)
-          )
         case i @ Predicate(rs, _) =>
           i.copy(
             rs = renaming(rs)
@@ -137,8 +136,8 @@ trait CanRename extends Flavored {
         case brk @ BreakCase(_, _) => brk
         case put @ PutSerial(rs, pred, _, _) =>
           put.copy(renaming(rs), renaming(pred))
-        case intr @ Interrupt(action, rs, _, _) =>
-          action match {
+        case intr @ Interrupt(description, rs, _, _) =>
+          description.action match {
             // although a pattern match is not needed, I do it in case we add
             // new actions that may have a name in their action. This way
             // make the pattern match throw an error and save ourselves some

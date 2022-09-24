@@ -47,7 +47,7 @@ trait DeadCodeElimination extends CanComputeNameDependence with CanCollectInputO
       body: Iterable[Instruction]
   )(tracked: Name => Boolean)(implicit ctx: AssemblyContext): Set[Instruction] =
     body.collect {
-      case i @ (_: Expect | _: GlobalStore | _: LocalStore | _: Send | _: Interrupt | _: PutSerial) =>
+      case i @ (_: GlobalStore | _: LocalStore | _: Send | _: Interrupt | _: PutSerial) =>
         i
       case inst if NameDependence.regDef(inst).exists(tracked) => inst
     }.toSet

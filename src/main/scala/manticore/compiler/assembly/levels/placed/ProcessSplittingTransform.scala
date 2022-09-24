@@ -329,7 +329,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
               }
             }
             instr match {
-              case _ @(_: Expect | _: Interrupt | _: PutSerial | _: GlobalLoad | _: GlobalStore) =>
+              case _ @(_: Interrupt | _: PutSerial | _: GlobalLoad | _: GlobalStore) =>
                 disjoint.union(Instr(sinkInst), Syscall)
               case load @ LocalLoad(_, mem, _, order, _) if nonCopyableMemory(mem) =>
                 assert(order.memory == mem)

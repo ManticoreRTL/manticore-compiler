@@ -198,15 +198,6 @@ trait ConstantFolding
         case i @ (_: Send | _: Recv | _: CustomInstruction) =>
           ctx.logger.error("Unexpected instruction!", i)
           builder.keep(i)
-        case i @ Expect(ref, got, error_id, _) =>
-          (builder.computedValue(ref), builder.computedValue(got)) match {
-            case (Right(v1), Right(v2)) if (v1 == v2) =>
-              // no need to keep it anymore, it's always true
-              ctx.logger.warn("Removing systemcall", i)
-              builder
-            case _ => builder.keep(i)
-
-          }
         // case i @ AddCarry(rd, rs1, rs2, ci, _) =>
         //   val ci_val  = builder.computedValue(ci)
         //   val rs1_val = builder.computedValue(rs1)

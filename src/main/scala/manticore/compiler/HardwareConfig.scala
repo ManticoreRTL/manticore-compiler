@@ -30,7 +30,7 @@ sealed trait HardwareConfig {
 
   def latency(inst: Instruction): Int = inst match {
     case _: Predicate                                 => 0
-    case _ @(_: Expect | _: Interrupt | _: PutSerial) => 0
+    case _ @(_: Interrupt | _: PutSerial) => 0
     case Nop                                          => 0
     case JumpTable(_, _, blocks, delaySlot, _)        =>
       // this is a conservative estimation
