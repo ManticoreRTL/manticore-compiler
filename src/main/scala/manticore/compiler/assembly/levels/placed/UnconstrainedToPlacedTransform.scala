@@ -25,6 +25,7 @@ import scala.util.Success
 import scala.util.Try
 import manticore.compiler.assembly.annotations.Sourceinfo
 
+
 /** Changes UnconstrainedIR flavor to PlacedIR
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
@@ -259,9 +260,17 @@ object UnconstrainedToPlacedTransform
         annons
       )
     case S.GlobalLoad(rd, base, order, annons) =>
-      T.GlobalLoad(rd, base, T.MemoryAccessOrder(order.memory, order.value), annons)
+      val tOrder = order match {
+        case S.SystemCallOrder(value)           => T.SystemCallOrder(value)
+        case S.MemoryAccessOrder(memory, value) => T.MemoryAccessOrder(memory, value)
+      }
+      T.GlobalLoad(rd, base, tOrder, annons)
     case S.GlobalStore(rs, base, p, order, annons) =>
-      T.GlobalStore(rs, base, p, T.MemoryAccessOrder(order.memory, order.value), annons)
+      val tOrder = order match {
+        case S.SystemCallOrder(value)           => T.SystemCallOrder(value)
+        case S.MemoryAccessOrder(memory, value) => T.MemoryAccessOrder(memory, value)
+      }
+      T.GlobalStore(rs, base, p, tOrder, annons)
     case S.Send(rd, rs, dest_id, annons) =>
       T.Send(rd, rs, proc_map(dest_id), annons)
     case S.SetValue(rd, value, annons) =>

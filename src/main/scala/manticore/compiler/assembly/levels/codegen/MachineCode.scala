@@ -460,17 +460,13 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
           .toLong
       case _: Recv => assemble(proc, Nop)
       case Interrupt(description, condition, order, annons) =>
-        val id = description.action match {
-          case FinishInterrupt | SerialInterrupt(_) => order.value
-          case AssertionInterrupt | StopInterrupt   => order.value + 0x8000
-
+        if (description.eid == -1) {
+          ctx.logger.error("invalid eid!", inst)
         }
         val rs2 = description.action match {
           case AssertionInterrupt => 1
           case FinishInterrupt    => 0
-          case SerialInterrupt(fmt) =>
-            ctx.logger.error("Can not handle FLUSH yet!", inst)
-            0
+          case SerialInterrupt(_) => 0
           case StopInterrupt => 0
         }
         asm
@@ -480,7 +476,7 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
           .Rs1(local(condition))
           .Rs2(rs2)
           .Zero(Rs3Field.bitLength + Rs4Field.bitLength - 16)
-          .Immediate(id)
+          .Immediate(description.eid)
           .toLong
       case Predicate(rs, annons) =>
         asm

@@ -405,7 +405,7 @@ trait ManticoreAssemblyIR {
   case class GlobalLoad(
       rd: Name,
       base: Seq[Name],
-      order: MemoryAccessOrder,
+      order: ExecutionOrder,
       annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction
       with PrivilegedInstruction
@@ -420,7 +420,7 @@ trait ManticoreAssemblyIR {
       rs: Name,
       base: Seq[Name],
       predicate: Option[Name],
-      order: MemoryAccessOrder,
+      order: ExecutionOrder,
       annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction
       with PrivilegedInstruction
