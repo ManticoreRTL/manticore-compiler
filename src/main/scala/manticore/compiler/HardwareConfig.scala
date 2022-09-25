@@ -29,10 +29,13 @@ sealed trait HardwareConfig {
   protected val nHops: Int = 1
 
   def latency(inst: Instruction): Int = inst match {
-    case _: Predicate                                 => 0
-    case _ @(_: Interrupt | _: PutSerial) => 0
-    case Nop                                          => 0
-    case JumpTable(_, _, blocks, delaySlot, _)        =>
+    case _: Predicate => 0
+    // sink instructions can only have anti-dependencies which are independent of
+    // the time it takes to commit them. For an anti dependence LST -> LLD only
+    // mandates placing LST first, but no Nop is needed in between them.
+    case _ @(_: Interrupt | _: PutSerial | _: GlobalStore | _: LocalStore) => 0
+    case Nop                                   => 0
+    case JumpTable(_, _, blocks, delaySlot, _) =>
       // this is a conservative estimation
       val delaySlotLatency = 1 + delaySlot.length
       delaySlotLatency + blocks.map { case JumpCase(_, blk) =>
@@ -72,6 +75,3 @@ case class DefaultHardwareConfig(
     nCustomFunctions: Int = 32,
     nCfuInputs: Int = 4
 ) extends HardwareConfig
-
-
-

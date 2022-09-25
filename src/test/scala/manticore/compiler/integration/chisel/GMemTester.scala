@@ -21,9 +21,6 @@ class GMemTester extends KernelTester {
   ): String = {
     val dir     = context.output_dir.get
     val rnd     = IndexedSeq.tabulate(numMems) { i => XorShift16(s"rand_$i", UInt16(879 + i << 3)) }
-    val rnd1    = XorShift16("rand1", UInt16(123))
-    val rnd2    = XorShift16("rand2", UInt16(456))
-    val rnd3    = XorShift16("rand3", UInt16(789))
     val meminit = mkMemInit(Seq.fill(0) { UInt16(0) }, dir.toPath().resolve("mem.dat"))
 
     s"""
