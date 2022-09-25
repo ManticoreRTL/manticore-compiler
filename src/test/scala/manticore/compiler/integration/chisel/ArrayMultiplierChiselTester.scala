@@ -83,11 +83,7 @@ class ArrayMultiplierChiselTester extends KernelTester with ProcessorTester {
   Seq(
     (1, 1),
     (2, 2),
-    (3, 3),
-    (4, 4),
-    (5, 5),
-    (6, 6),
-    (7, 7)
+    (3, 3)
   ).foreach { case (dimx, dimy) =>
     it should s"not fail 16-bit multiplier in a ${dimx}x${dimy} topology" in {
       mkTest(_, dimx, dimy, 16, 2)
