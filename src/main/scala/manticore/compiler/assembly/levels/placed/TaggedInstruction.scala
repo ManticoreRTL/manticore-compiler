@@ -25,19 +25,18 @@ object TaggedInstruction {
   sealed trait ExecutionTag
   case object DelayedExecution
       extends ExecutionTag // an instruction that executes with a delay, i.e., a Switch or Break
-  case class PhiSource(rd: Name, rs: Name)
-      extends ExecutionTag // an instruction that contributes to a Phi
+  case class PhiSource(rd: Name, rs: Name) extends ExecutionTag // an instruction that contributes to a Phi
   case object BorrowedExecution
       extends ExecutionTag // an instruction that executes in the delay slot of another instruction
-  case class JumpTarget(label: Label)
-      extends ExecutionTag // an instruction that is the target of a jump
-  case object BreakTarget extends ExecutionTag
+  case class JumpTarget(label: Label) extends ExecutionTag // an instruction that is the target of a jump
+  case object BreakTarget             extends ExecutionTag
 
   case class InstructionUntaggablException(
       msg: String
   ) extends Exception(msg)
 
-  /** Flatten the instructions into an indexed block of tagged instructions.
+  /**
+    * Flatten the instructions into an indexed block of tagged instructions.
     * Tags are provide some auxiliary information that can either be used in
     * interpretation or low-level transformations close to machine code
     * generation.
@@ -64,27 +63,18 @@ object TaggedInstruction {
     */
   def indexedTaggedBlock(
       block: Seq[Instruction],
-      resBuilder: IndexedSeq[TaggedInstruction] =
-        IndexedSeq.empty[TaggedInstruction]
+      resBuilder: IndexedSeq[TaggedInstruction] = IndexedSeq.empty[TaggedInstruction]
   )(implicit ctx: AssemblyContext): IndexedSeq[TaggedInstruction] = {
 
     require(block.nonEmpty)
 
     // find all the instructions that immediately follow a JumpTable
-    val breakTargets = (block zip block.tail).collect {
-      case (i: JumpTable, j) => j
+    val breakTargets = (block zip block.tail).collect { case (i: JumpTable, j) =>
+      j
     }.toSet
 
-    /** Tag the instructions in a case body. This function does not handle
-      * nested [[JumpTable]]s
-      *
-      * @param jcase
-      *   jump case
-      * @param phis
-      *   map from phi (label, source) -> target where source is the operand of
-      *   a phi appearing in a Phis assignment to target
-      * @return
-      */
+    // Tag the instructions in a case body. This function does not handle
+    // nested [[JumpTable]]s
     def caseBodyTagger(
         jcase: JumpCase,
         phis: Map[(Label, Name), Name]

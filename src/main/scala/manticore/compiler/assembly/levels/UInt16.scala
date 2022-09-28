@@ -85,7 +85,7 @@ object UInt16 {
 
   val MaxValue = UInt16(0xffff)
   /**
-    * Create a new [[UInt16]] value given [[v]].
+    * Create a new [[UInt16]] value given v.
     *
     * @param v a 16 bit number
     * @return Wrapped 16-bit number

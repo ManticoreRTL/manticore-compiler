@@ -9,7 +9,8 @@ import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform
 object Lowering {
 
   val Transformation =
-    JumpTableNormalizationTransform andThen
+    InterruptLoweringTransform andThen
+      JumpTableNormalizationTransform andThen
       ProgramSchedulingTransform andThen
       SetJumpTargetsTransform andThen
       LocalMemoryAllocation andThen

@@ -6,6 +6,10 @@ import scala.annotation.tailrec
 
 import manticore.compiler.AssemblyContext
 import scala.annotation.unspecialized
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+import manticore.compiler.assembly.SerialInterrupt
 
 /** A generic name checker that makes sure all the used names in the program are
   * defined. This class should be specialized as an object before being used,
@@ -62,10 +66,7 @@ trait AssemblyNameChecker extends Flavored {
       ): Seq[(Name, Instruction)] = {
         block.foldLeft(undefs) { case (acc, inst) =>
           inst match {
-            case Expect(ref, got, error_id, annons) =>
-              acc ++ Seq(ref, got).collect {
-                case n if !isDefinedReg(n) => (n -> inst)
-              }
+
             case GlobalLoad(rd, base, _, annons) =>
               acc ++ (base :+ rd).collect {
                 case n if !isDefinedReg(n) => (n -> inst)
@@ -201,7 +202,7 @@ trait AssemblyNameChecker extends Flavored {
         block.foldLeft(unassigned) { case (prev, instr) =>
           instr match {
             case _ @(_: Interrupt | Nop | _: LocalStore | _: GlobalStore | _: PutSerial |
-                _: BreakCase | _: Expect | _: Recv | _: Send | _: Predicate | _: ConfigCfu) =>
+                _: BreakCase  | _: Recv | _: Send | _: Predicate | _: ConfigCfu) =>
               prev
 
             case LocalLoad(rd, _, _, _, _) =>
@@ -320,11 +321,11 @@ trait AssemblyNameChecker extends Flavored {
               assigns + (rd -> (assigns(rd) :+ inst))
             case Slice(rd, rs, _, _, _) =>
               assigns + (rd -> (assigns(rd) :+ inst))
-            case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: Expect | _: GlobalStore |
+            case i @ (_: LocalStore | _: Predicate | Nop | _: Send | _: GlobalStore |
                 _: BreakCase | _: PutSerial | _: ConfigCfu) =>
               assigns
-            case Interrupt(action, _, _, _) =>
-              action match {
+            case Interrupt(desc, _, _, _) =>
+              desc.action match {
                 case AssertionInterrupt => assigns
                 case FinishInterrupt    => assigns
                 case SerialInterrupt(_) => assigns

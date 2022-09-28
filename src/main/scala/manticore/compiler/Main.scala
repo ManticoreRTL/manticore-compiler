@@ -25,28 +25,36 @@ import java.io.File
 import java.io.PrintStream
 import java.io.PrintWriter
 import scala.language.postfixOps
+import java.nio.file.Path
+import manticore.compiler.assembly.levels.codegen.CodeDump
+import manticore.compiler.frontend.yosys.YosysVerilogReader
+import manticore.compiler.frontend.yosys.YosysRunner
+import manticore.compiler.frontend.yosys.Yosys
+import scala.util.Try
+import scala.util.Failure
+import scala.util.Success
+import java.nio.file.Files
 sealed trait Mode
 case object CompileMode extends Mode
-case object ExecMode extends Mode
+case class InterpretMode(lowerFirst: Boolean = false, timeout: Int = 100000, serialOut: Option[File] = None)
+    extends Mode
 case class CliConfig(
-    mode: Mode = ExecMode,
-    input_file: Option[File] = None,
-    print_tree: Boolean = false,
-    dump_all: Boolean = false,
-    dump_dir: Option[File] = None,
-    output_dir: Option[File] = None,
-    output_file: Option[File] = None,
-    log_file: Option[File] = None,
+    mode: Mode = CompileMode,
+    inputFiles: Seq[File] = Nil,
+    outputDir: File = Path.of(".").toFile,
+    dumpDir: Option[File] = None,
+    dumpAll: Boolean = false,
+    dumpScratchPad: Boolean = false,
+    dumpRegisterFile: Boolean = false,
+    dumpAscii: Boolean = false,
+    logFile: Option[File] = None,
+    debugMessage: Boolean = false,
     debug_en: Boolean = false,
     report: Option[File] = None,
+    noOptCommonCfs: Boolean = false,
     /** Machine configurations * */
-    hw_config: HardwareConfig = DefaultHardwareConfig(2, 2),
-    /** Dev configurations * */
-    simulate: Boolean = false,
-    interpret: Boolean = false,
-    dump_ra: Boolean = false,
-    dump_rf: Boolean = false,
-    dump_ascii: Boolean = false
+    dimX: Int = 12,
+    dimY: Int = 12
 )
 
 object Main {
@@ -60,76 +68,75 @@ object Main {
       OParser.sequence(
         programName("masm"),
         head("Manticore assembler", "vPROTOTYPE"),
-        cmd("execute")
-          .action { case (_, c) => c.copy(mode = ExecMode) }
-          .text("execute a manticore assembly program")
+        arg[File]("<file>...")
+          .unbounded()
+          .minOccurs(1)
+          .action { case (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
+          .text("files (.masm, .v, .sv)"),
+        opt[Unit]("no-opt-shared-cfs")
+          .action { case (_, c) => c.copy(noOptCommonCfs = true) }
+          .text("Do not optimize shared custom functions"),
+        opt[File]('o', "output")
+          .action { case (f, c) => c.copy(outputDir = f) }
+          .text("output directory"),
+        opt[File]('r', "report")
+          .action { case (x, c) => c.copy(report = Some(x)) }
+          .text("emit a compilation report"),
+        opt[Unit]("dump-all")
+          .action { case (_, c) => c.copy(dumpAll = true) }
+          .text("dump intermediate results"),
+        opt[File]("dump-dir")
+          .action { case (x, c) => c.copy(dumpDir = Some(x)) }
+          .text("directory to place all the dump files"),
+        opt[File]('l', "log")
+          .action { case (x, c) => c.copy(logFile = Some(x)) }
+          .text("log file"),
+        opt[Unit]('d', "debug")
+          .action { case (_, c) => c.copy(debug_en = true) }
+          .text("print debug information"),
+        opt[Unit]("dump-register-file")
+          .action { case (_, c) => c.copy(dumpRegisterFile = true) }
+          .text("dump register file initial values in ascii binary format"),
+        opt[Unit]("dump-scratch-pad")
+          .action { case (_, c) => c.copy(dumpScratchPad = true) }
+          .text("dump scratch pad initial values in ascii binary format"),
+        opt[Unit]("dump-ascii")
+          .action { case (_, c) => c.copy(dumpAscii = true) }
+          .text("dump program in in human readable and binary ascii format"),
+        opt[Int]('x', "dim-x")
+          .action { case (v, c) => c.copy(dimX = v) }
+          .text("horizontal grid dimension")
+          .required(),
+        opt[Int]('y', "dim-y")
+          .action { case (v, c) => c.copy(dimY = v) }
+          .text("vertical grid dimension")
+          .required(),
+        cmd("interpret")
+          .action { case (_, c) => c.copy(mode = InterpretMode()) }
+          .text("interpret")
           .children(
-            opt[File]('o', "output")
-              .action { case (x, c) => c.copy(output_file = Some(x)) }
-              .text("file for writing program output (i.e., $display)"),
-            opt[File]('l', "log")
-              .action { case (x, c) => c.copy(log_file = Some(x)) }
-              .text("compilation log file"),
-            opt[File]("dump-dir")
-              .action { case (x, c) => c.copy(dump_dir = Some(x)) }
-              .text("directory to write all the dump files"),
-            opt[Unit]("dump-all")
-              .action { case (_, c) => c.copy(dump_all = true) }
-              .text(
-                "dump everything in each step in the directory given by --dump-dir"
-              ),
-            opt[Unit]('d', "debug")
-              .action { case (_, c) => c.copy(debug_en = true) }
-              .text("print debug information"),
-            arg[File]("FILE")
-              .action { case (x, c) => c.copy(input_file = Some(x)) }
-              .text("input file")
-              .required()
+            opt[Unit]('L', "lower")
+              .action { case (_, c) =>
+                c.copy(mode = c.mode.asInstanceOf[InterpretMode].copy(lowerFirst = true))
+              }
+              .text("interpret in lower assembly the program before interpretation"),
+            opt[File]('s', "serial")
+              .action { case (f, c) => c.copy(mode = c.mode.asInstanceOf[InterpretMode].copy(serialOut = Some(f))) }
+              .text("redirect interpretation serial output to a file"),
+            opt[Int]('t', "timeout")
+              .action { case (v, c) =>
+                c.copy(mode = c.mode.asInstanceOf[InterpretMode].copy(timeout = v))
+              }
+              .text("timeout after the given number of cycles")
           ),
-        // opt[File]('i', "input")
-        //   .action { case (x, c) => c.copy(input_file = Some(x)) }
-        //   .required()
-        //   .text("input assembly file"),
-        // opt[File]('o', "output")
-        //   .action { case (x, c) => c.copy(output_dir = Some(x)) }
-        //   .text("output directory"),
-        // opt[File]('r', "report")
-        //   .action { case (x, c) => c.copy(report = Some(x)) }
-        //   .text("emit a compilation report"),
-        // opt[Unit]('t', "print-tree")
-        //   .action { case (_, c) => c.copy(print_tree = true) }
-        //   .text("print the asm program at each step of the assembler"),
-        // opt[Unit]("dump-all")
-        //   .action { case (_, c) => c.copy(dump_all = true) }
-        //   .text(
-        //     "dump everything in each step in the directory given by --dump-dir"
-        //   ),
-        // opt[File]("dump-dir")
-        //   .action { case (x, c) => c.copy(dump_dir = Some(x)) }
-        //   .text("directory to place all the dump files"),
-        // opt[Unit]('d', "debug")
-        //   .action { case (_, c) => c.copy(debug_en = true) }
-        //   .text("print debug information"),
-        // opt[Int]('X', "dimx")
-        //   .action { case (x, c) => c.copy(dimx = x) }
-        //   .text("number of cores in X"),
-        // opt[Int]('Y', "dimy")
-        //   .action { case (y, c) => c.copy(dimy = y) }
-        //   .text("number of cores in y"),
-        // opt[Unit]("interpret")
-        //   .action { case (_, c) => c.copy(interpret = true) }
-        //   .hidden()
-        //   .text("interpret the program"),
-        // opt[Unit]("dump-rf")
-        //   .action { case (_, c) => c.copy(dump_rf = true) }
-        //   .text("dump register file initial values in ascii binary format"),
-        // opt[Unit]("dump-ra")
-        //   .action { case (_, c) => c.copy(dump_ra = true) }
-        //   .text("dump register array initial values in ascii binary format"),
-        // opt[Unit]("dump-ascii")
-        //   .action { case (_, c) => c.copy(dump_ascii = true) }
-        //   .text("dump program in in human readable and binary ascii format"),
-        help('h', "help").text("print usage text and exit")
+        help('h', "help").text("print usage text and exit"),
+        checkConfig { cfg =>
+          if (cfg.dimX == 0 || cfg.dimY == 0) {
+            failure(s"invalid grid ${cfg.dimX}x${cfg.dimY}!")
+          } else {
+            success
+          }
+        }
       )
     }
 
@@ -143,43 +150,90 @@ object Main {
     implicit val ctx: AssemblyContext =
       AssemblyContext(
         debug_message = cfg.debug_en,
-        print_tree = cfg.print_tree,
-        source_file = cfg.input_file,
-        output_dir = cfg.output_dir,
-        dump_all = cfg.dump_all,
-        dump_dir = cfg.dump_dir,
-        dump_ra = cfg.dump_ra,
-        dump_rf = cfg.dump_rf,
-        dump_ascii = cfg.dump_ascii,
-        log_file = cfg.log_file,
-        hw_config = cfg.hw_config
+        output_dir = Some(cfg.outputDir),
+        dump_all = cfg.dumpAll,
+        dump_dir = cfg.dumpDir,
+        dump_ra = cfg.dumpScratchPad,
+        dump_rf = cfg.dumpRegisterFile,
+        dump_ascii = cfg.dumpAscii,
+        log_file = cfg.logFile,
+        max_cycles = Try { cfg.mode.asInstanceOf[InterpretMode].timeout }.getOrElse(0),
+        hw_config = DefaultHardwareConfig(dimX = cfg.dimX, dimY = cfg.dimY)
       )
+    cfg.dumpDir.foreach { f => Files.createDirectories(f.toPath) }
 
-    val compiler = AssemblyFileParser andThen
-      UnconstrainedNameChecker andThen
-      UnconstrainedMakeDebugSymbols andThen
-      UnconstrainedOrderInstructions andThen
-      UnconstrainedCloseSequentialCycles
-    val program = compiler(cfg.input_file.get.toPath())
+    val VerilogCompiler = Yosys.YosysDefaultPassAggregator andThen
+      YosysRunner
 
-    trait SerialPrinter {
-      def println(ln: String): Unit
+    val AssemblyCompiler = AssemblyFileParser andThen
+      ManticorePasses.frontend andThen
+      ManticorePasses.middleend andThen
+      ManticorePasses.backend
+
+    val assemblyFile = if (cfg.inputFiles.length == 1 && cfg.inputFiles.head.toPath.endsWith(".masm")) {
+      cfg.inputFiles.head.toPath
+    } else {
+      val VerilogCompiler = Yosys.YosysDefaultPassAggregator andThen
+        YosysRunner(cfg.outputDir.toPath.resolve("yosys"))
+      VerilogCompiler(cfg.inputFiles.map(_.toPath))
     }
-    val serialCapture = cfg.output_file match {
-      case Some(fname) =>
-        new PrintWriter(fname)
-      case None =>
-        new PrintWriter(System.out)
-    }
-    val interpreter = UnconstrainedInterpreter.instance(
-      program = program,
-      serial = Some { ln =>
-        serialCapture.println(ln)
-        serialCapture.flush
-      }
-    )
 
-    interpreter.runCompletion()
+    cfg.mode match {
+      case CompileMode =>
+        val compiler = AssemblyCompiler andThen CodeDump
+        compiler(assemblyFile)
+      case InterpretMode(lowerFirst, timeout, serialOut) =>
+        val serialWriter = serialOut.map { file =>
+          new PrintWriter(file)
+        }
+        val serialCapture = serialWriter.map { writer => ln: String => writer.println(ln) }
+        val result = Try {
+          if (lowerFirst) {
+            // lower the program but do not dump code, interpret instead
+            val program = AssemblyCompiler(assemblyFile)
+
+            val interpreter = AtomicInterpreter.instance(
+              program = program,
+              vcd = None,
+              monitor = None,
+              expectedCycles = None,
+              serial = serialCapture.orElse { Some(println(_)) }
+            )
+
+            interpreter.interpretCompletion()
+            if (ctx.logger.countErrors() > 0) {
+              throw new CompilationFailureException("Interpretation encountered errors! See the log.")
+            }
+          } else {
+            // immediately interpret the program
+            val program =
+              (AssemblyFileParser andThen ManticorePasses.frontend andThen UnconstrainedCloseSequentialCycles)(
+                assemblyFile
+              )
+            val interpreter = UnconstrainedInterpreter.instance(
+              program = program,
+              vcdDump = None,
+              monitor = None,
+              serial = serialCapture.orElse { Some(println(_)) }
+            )
+
+            interpreter.runCompletion()
+            if (ctx.logger.countErrors() > 0) {
+              throw new CompilationFailureException("Interpretation encountered errors! See the log.")
+            }
+          }
+
+        }
+        serialWriter.foreach { _.close() }
+        result match {
+          case Failure(exception) =>
+            System.err.println("Failed interpretation:\n" + exception.getMessage())
+            System.exit(-1)
+          case Success(_) =>
+            System.exit(0)
+        }
+
+    }
 
   }
 

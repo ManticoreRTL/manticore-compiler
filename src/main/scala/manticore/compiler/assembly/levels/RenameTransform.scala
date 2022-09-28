@@ -2,16 +2,19 @@ package manticore.compiler.assembly.levels
 
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.annotations.DebugSymbol
-
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+import manticore.compiler.assembly.SerialInterrupt
 /** Template transformation for renaming all variable. You need to override the
   * `flavor` and the `mkName` function to specialize this transformation
   * ATTENTION: This transform assumes that the instructions are ordered And it
   * also assumes that instructions are "almost" in SSA form. Almost means that a
   * register might be assigned multiple times in the same basic block but never
   * across them. The reason for even having such non SSA basic blocks is the
-  * current implementation of the [[WidthConversionCore]] transform that breaks
+  * current implementation of the WidthConversionCore transform that breaks
   * SSAness inside basic block but never breaks them across basic blocks. So
-  * this pass can be used to path the AST from the [[WidthConversionCore]] pass
+  * this pass can be used to path the AST from the WidthConversionCore pass
   * or in general to completely rename every register.
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>
@@ -151,8 +154,6 @@ trait RenameTransformation extends Flavored {
           case i @ Slice(rd, rs, _, _, _) =>
             i.copy(rs = subst(rs))
               .copy(rd = outerRenamer(rd))
-          case i @ Expect(ref, got, _, _) =>
-            i.copy(ref = subst(ref), got = subst(got))
           case i @ Nop => i
           case i: SynchronizationInstruction =>
             ctx.logger.error("Can not rename instruction", i)
@@ -200,7 +201,7 @@ trait RenameTransformation extends Flavored {
           case i @ PutSerial(rs, pred, _, _) =>
             i.copy(rs = subst(rs), pred = subst(pred))
           case i @ Interrupt(action, condition, _, _) =>
-            action match {
+            action.action match {
               case AssertionInterrupt | FinishInterrupt | _: SerialInterrupt | StopInterrupt =>
                 i.copy(condition = subst(condition))
 

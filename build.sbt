@@ -2,6 +2,9 @@ ThisBuild / organization := "ch.epfl.vlsc"
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.8"
 
+
+enablePlugins(JavaAppPackaging)
+
 val jvmHeapMemOptions = Seq(
   "-Xms512M", // initial JVM heap pool size
   "-Xmx8192M", // maximum heap size
@@ -10,6 +13,7 @@ val jvmHeapMemOptions = Seq(
 )
 
 val chiselVersion = "3.5.1"
+
 
 
 lazy val compiler = (project in file(".")).settings(
@@ -43,7 +47,7 @@ lazy val compiler = (project in file(".")).settings(
   cleanFiles += baseDirectory.value / "test_run_dir",
   addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full),
   // package the tests into the jar
-  Test / publishArtifact := true
+  // Test / publishArtifact := true
 )
 
 

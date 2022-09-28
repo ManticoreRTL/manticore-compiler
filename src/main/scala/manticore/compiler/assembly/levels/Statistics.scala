@@ -5,7 +5,10 @@ import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.BinaryOperator
 import scala.collection.immutable.ListMap
 import manticore.compiler.assembly
-
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+import manticore.compiler.assembly.SerialInterrupt
 case class ProcessStatistic(
     name: String,
     instructions: Seq[(String, Int)],
@@ -38,7 +41,6 @@ trait CanCollectProgramStatistics extends Flavored {
         "SET"        -> 0,
         "SEND"       -> 0,
         "RECV"       -> 0,
-        "EXPECT"     -> 0,
         "MUX"        -> 0,
         "NOP"        -> 0,
         "ADDCARRY"   -> 0,
@@ -99,7 +101,6 @@ trait CanCollectProgramStatistics extends Flavored {
         case _: GlobalStore => incr("GST")
         case _: LocalLoad   => incr("LLD")
         case _: LocalStore  => incr("LST")
-        case _: Expect      => incr("EXPECT")
         case _: Predicate   => incr("PREDICATE")
         case _: AddCarry    => incr("ADDCARRY")
         case _: ClearCarry  => incr("CLEARCARRY")
@@ -130,7 +131,7 @@ trait CanCollectProgramStatistics extends Flavored {
 
           numInsts + dslotInsts + incr("SWITCH")
         case Interrupt(action, _, _, _) =>
-          action match {
+          action.action match {
             case AssertionInterrupt   => incr("ASSERT")
             case FinishInterrupt      => incr("FINISH")
             case SerialInterrupt(fmt) => incr("FLUSH")

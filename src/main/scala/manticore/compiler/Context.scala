@@ -18,9 +18,7 @@ import manticore.compiler.assembly.levels.StatisticCollector
   */
 
 trait AssemblyContext {
-  val source_file: Option[File]
   val output_dir: Option[File]
-  val print_tree: Boolean // deprecated, use dump_all
   val dump_all: Boolean // dump all intermediate steps
   val dump_dir: Option[File] // location to dump intermediate steps
   val debug_message: Boolean // print debug messages
@@ -42,14 +40,13 @@ trait AssemblyContext {
   def uniqueNumber(): Int
 
 
+
 }
 
 object AssemblyContext {
 
   private class ContextImpl(
-      val source_file: Option[File],
       val output_dir: Option[File],
-      val print_tree: Boolean,
       val dump_all: Boolean,
       val dump_dir: Option[File],
       val debug_message: Boolean,
@@ -77,9 +74,7 @@ object AssemblyContext {
   }
 
   def apply(
-      source_file: Option[File] = None,
       output_dir: Option[File] = None,
-      print_tree: Boolean = false,
       dump_all: Boolean = false,
       dump_dir: Option[File] = None,
       debug_message: Boolean = false,
@@ -97,9 +92,7 @@ object AssemblyContext {
       hw_config: HardwareConfig = DefaultHardwareConfig(2, 2)
   ): AssemblyContext = {
     new ContextImpl(
-      source_file = source_file,
       output_dir = output_dir,
-      print_tree = print_tree,
       dump_all = dump_all,
       dump_dir = dump_dir,
       debug_message = debug_message,

@@ -19,10 +19,12 @@ import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.{PlacedIR => T}
 import manticore.compiler.assembly.levels.unconstrained.UnconstrainedIR
 import manticore.compiler.assembly.levels.unconstrained.{UnconstrainedIR => S}
-
+import manticore.compiler.assembly.{FinishInterrupt, StopInterrupt, SerialInterrupt, AssertionInterrupt}
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import manticore.compiler.assembly.annotations.Sourceinfo
+
 
 /** Changes UnconstrainedIR flavor to PlacedIR
   * @author
@@ -110,14 +112,7 @@ object UnconstrainedToPlacedTransform
       proc: S.DefProcess
   )(implicit ctx: AssemblyContext): T.DefProcess = {
 
-    import manticore.compiler.assembly.levels.{
-      ConstType,
-      InputType,
-      OutputType,
-      RegType,
-      WireType,
-      MemoryType
-    }
+    import manticore.compiler.assembly.levels.{ConstType, InputType, OutputType, RegType, WireType, MemoryType}
 
     if (proc.registers.length >= 2048) {
       ctx.logger.info(
@@ -245,29 +240,6 @@ object UnconstrainedToPlacedTransform
       T.BinaryArithmetic(operator, rd, rs1, rs2, annons)
     case S.CustomInstruction(func, rd, rsx, annons) =>
       T.CustomInstruction(func, rd, rsx, annons)
-    case S.Expect(ref, got, error_id, annons) =>
-      val kind = annons.collectFirst { case x: Trap => x } match {
-        case Some(trap) =>
-          trap.get(AssemblyAnnotationFields.Type) match {
-            case Some(Trap.Fail) => T.ExpectFail
-            case Some(Trap.Stop) => T.ExpectStop
-            case t @ _ =>
-              ctx.logger.warn(s"invalid @${Trap.name} type ${t}")
-              T.ExpectFail
-          }
-        case None =>
-          ctx.logger.warn(
-            s"@${Trap.name} not specified! Assuming trap ${Trap.Fail}",
-            inst
-          )
-          T.ExpectFail
-      }
-      T.Expect(
-        ref,
-        got,
-        T.ExceptionIdImpl(id = UInt16(-1), msg = error_id, kind = kind),
-        annons
-      )
     case S.LocalLoad(rd, base, addr, order, annons) =>
       // val new_offset: Int = computeOffset(inst, offset)
       T.LocalLoad(
@@ -288,9 +260,17 @@ object UnconstrainedToPlacedTransform
         annons
       )
     case S.GlobalLoad(rd, base, order, annons) =>
-      T.GlobalLoad(rd, base, T.MemoryAccessOrder(order.memory, order.value), annons)
+      val tOrder = order match {
+        case S.SystemCallOrder(value)           => T.SystemCallOrder(value)
+        case S.MemoryAccessOrder(memory, value) => T.MemoryAccessOrder(memory, value)
+      }
+      T.GlobalLoad(rd, base, tOrder, annons)
     case S.GlobalStore(rs, base, p, order, annons) =>
-      T.GlobalStore(rs, base, p, T.MemoryAccessOrder(order.memory, order.value), annons)
+      val tOrder = order match {
+        case S.SystemCallOrder(value)           => T.SystemCallOrder(value)
+        case S.MemoryAccessOrder(memory, value) => T.MemoryAccessOrder(memory, value)
+      }
+      T.GlobalStore(rs, base, p, tOrder, annons)
     case S.Send(rd, rs, dest_id, annons) =>
       T.Send(rd, rs, proc_map(dest_id), annons)
     case S.SetValue(rd, value, annons) =>
@@ -336,14 +316,16 @@ object UnconstrainedToPlacedTransform
       T.JumpTable(target, tPhis, tBlocks, tDslot, annons)
     case S.PutSerial(rs, pred, order, annons) =>
       T.PutSerial(rs, pred, T.SystemCallOrder(order.value), annons)
-    case S.Interrupt(action, condition, order, annons) =>
-      val tAction = action match {
-        case S.FinishInterrupt      => T.FinishInterrupt
-        case S.StopInterrupt        => T.StopInterrupt
-        case S.AssertionInterrupt   => T.AssertionInterrupt
-        case S.SerialInterrupt(fmt) => T.SerialInterrupt(fmt)
+    case S.Interrupt(description, condition, order, annons) =>
+      val info = annons.collectFirst { case src: Sourceinfo => src }
+
+      val tDesc = description.action match {
+        case FinishInterrupt | StopInterrupt | AssertionInterrupt =>
+          T.SimpleInterruptDescription(action = description.action, info = info, eid = -1)
+        case fmt: SerialInterrupt =>
+          T.SerialInterruptDescription(action = fmt, info = info, eid = -1, pointers = Nil)
       }
-      T.Interrupt(tAction, condition, T.SystemCallOrder(order.value), annons)
+      T.Interrupt(tDesc, condition, T.SystemCallOrder(order.value), annons)
     case S.ConfigCfu(funcIdx, bitIdx, equation, annons) =>
       ctx.logger.error(
         "Can not have CONFIG_CFU instruction in PlacedIR. Can only appear in program initializer!",

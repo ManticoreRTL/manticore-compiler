@@ -977,7 +977,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       val procIdToCoreId = program.processes
         .sortBy { proc =>
           proc.body.count {
-            case _ @(_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
+            case _ @(_: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
             case _                                                                             => false
           }
         } {
@@ -1021,7 +1021,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     val privilegedProcs = program.processes.filter { proc =>
       proc.body.exists {
-        case (_: Expect | _: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
+        case (_: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
         case _                                                                          => false
       }
     }
@@ -1263,25 +1263,3 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
   }
 }
 
-object AnalyticalPlacerTest extends App {
-  import AnalyticalPlacerTransform._
-
-  val maxDimX = 3
-  val maxDimY = 4
-
-  val p0 = CorePath(CoreId(0, 0), CoreId(1, 2), maxDimX, maxDimY)
-  val p1 = CorePath(CoreId(1, 1), CoreId(2, 0), maxDimX, maxDimY)
-
-  println(p0)
-  println(p1)
-
-  val allPaths = enumeratePaths(maxDimX, maxDimY)
-  println(s"num paths = ${allPaths.size}")
-  allPaths.toSeq
-    .sortBy { case (pathId, corePath) =>
-      pathId
-    }
-    .foreach { case (pathId, corePath) =>
-      println(pathId, corePath)
-    }
-}

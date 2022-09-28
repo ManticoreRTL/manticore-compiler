@@ -89,7 +89,7 @@ final class YosysRunner private (runDir: Path, backend: YosysBackendProxy)
     val processLogger = ProcessLogger(ln => yosysLog ++= s"${ln}\n")
     val processCmd = s"yosys -p \"${allCmds}\"  -d"
     ctx.logger.info(s"Running:\n${processCmd}")
-
+    Files.createDirectories(runDir)
     val (retCode, duration) = ctx.stats.scope {
       Process(
         command = processCmd,

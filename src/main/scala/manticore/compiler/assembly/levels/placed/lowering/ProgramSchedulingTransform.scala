@@ -681,15 +681,6 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
 
     def compute(node: dependenceGraph.NodeT): Int = {
       val dist = node.toOuter match {
-        case expect: Expect =>
-          // we want to make sure assertions fire before anything else
-          // happens in a virtual cycle, so we give them the highest priority
-          // possible
-          expect.error_id.kind match {
-            case ExpectFail =>
-              Int.MaxValue // highest possible priority
-            case ExpectStop => (Int.MaxValue - 1) // second highest
-          }
         case send: Send =>
           // we penalize the send latency by a user defined function,
           // this penalty will most likely be the manhattan distance plus

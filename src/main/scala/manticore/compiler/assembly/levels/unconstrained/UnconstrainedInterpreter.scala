@@ -27,6 +27,11 @@ import manticore.compiler.FormatString.FmtBin
 import manticore.compiler.FormatString.FmtConcat
 import manticore.compiler.FormatString.FmtDec
 import manticore.compiler.FormatString.FmtHex
+import manticore.compiler.assembly.FinishInterrupt
+import manticore.compiler.assembly.StopInterrupt
+import manticore.compiler.assembly.SerialInterrupt
+import manticore.compiler.assembly.AssertionInterrupt
+
 
 /** Simple interpreter for unconstrained flavored programs with a single process
   * @author
@@ -473,10 +478,10 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
           val rs_val = state.register_file(rs)
           state.serial_queue += rs_val
         }
-      case intr @ Interrupt(action, condition, _, _) =>
+      case intr @ Interrupt(description, condition, _, _) =>
         val cond_val = state.register_file(condition)
         val fires    = cond_val == 1
-        action match {
+        description.action match {
           case AssertionInterrupt if !fires =>
             ctx.logger.error(s"Assertion failed!", intr)
             state.exception_occurred = Some(InterpretationFailure)
@@ -503,57 +508,6 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
           case _ => // nothing to do
         }
 
-      case Expect(ref, got, error_id, annons) =>
-        val ref_val = state.register_file(ref)
-        val got_val = state.register_file(got)
-        if (ref_val != got_val) {
-
-          val trap_source = instruction
-            .findAnnotationValue(
-              Trap.name,
-              AssemblyAnnotationFields.File
-            ) match {
-            case Some(StringValue(x)) => x
-            case _                    => ""
-          }
-          state.exception_occurred = instruction.findAnnotationValue(
-            Trap.name,
-            AssemblyAnnotationFields.Type
-          ) match {
-            case Some(Trap.Fail) =>
-              ctx.logger.error(
-                s"User exception caught! ${error_id}",
-                instruction
-              )
-              ctx.logger.error(s"Expected ${ref_val} but got ${got_val}")
-              Some(InterpretationFailure)
-            case Some(Trap.Stop) =>
-              ctx.logger.info("Stop signal interpreted.")
-              if (trap_source.nonEmpty)
-                ctx.logger.info(
-                  s"Stop condition from ${trap_source}",
-                  instruction
-                )
-              Some(InterpretationFinish)
-            case _ =>
-              ctx.logger.error(s"Missing TRAP type!", instruction)
-              Some(InterpretationFailure)
-          }
-        } else {
-
-          if (
-            annons.exists {
-              case a: Echo => true
-              case _       => false
-            }
-          ) {
-            ctx.logger.info(
-              s"values ${ref_val} and ${got_val} match.",
-              instruction
-            )
-          }
-
-        }
 
       case Predicate(rs, annons) =>
         ctx.logger.error(s"Can not handle predicate yet!", instruction)

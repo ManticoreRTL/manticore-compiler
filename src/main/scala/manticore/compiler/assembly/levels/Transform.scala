@@ -134,7 +134,7 @@ trait AssemblyTranslator[
     T <: ManticoreAssemblyIR#DefProgram
 ] extends CompilerTransformation[S, T] {}
 
-/** Signature class for IR checkers, taking [[T]] IR flavor as input and
+/** Signature class for IR checkers, taking T IR flavor as input and
   * producing the same program as outpu
   *
   * @param programIr

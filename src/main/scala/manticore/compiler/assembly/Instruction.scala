@@ -37,9 +37,20 @@ trait HasWidth {
   def width: Int
 }
 
+
+sealed trait InterruptAction
+case object FinishInterrupt                   extends InterruptAction
+case object StopInterrupt                     extends InterruptAction
+case object AssertionInterrupt                extends InterruptAction
+case class SerialInterrupt(fmt: FormatString) extends InterruptAction
+
+trait HasInterruptAction {
+  val action: InterruptAction
+}
+
 /** Abstract IR flavor, any deriving IR flavor should be defined as an object
   * that defines the unbound types [[Name]], [[Constant]], [[Variable]],
-  * [[CustomFunction]], [[ProcessId]], [[ExceptionId]].
+  * [[CustomFunction]], [[ProcessId]], [[InterruptDescription]].
   *
   * Each IR node has the [[HasSerialized]] trait, meaning that by calling
   * [[serialized]] a textual form of the program is returned. Note that to
@@ -57,8 +68,7 @@ trait ManticoreAssemblyIR {
   ] with HasSerialized with HasWidth   // type defining Variables, should include variable type information
   type CustomFunction <: HasSerialized // type defining custom function, e.g., Seq[UInt16]
   type ProcessId                       // type defining a process identifier, e.g., String
-  type ExceptionId                     // type defining an exception identifier, e.g., String
-
+  type InterruptDescription <: HasInterruptAction // type defining an interrupt
   type Label
 
   trait Named[T] {
@@ -395,7 +405,7 @@ trait ManticoreAssemblyIR {
   case class GlobalLoad(
       rd: Name,
       base: Seq[Name],
-      order: MemoryAccessOrder,
+      order: ExecutionOrder,
       annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction
       with PrivilegedInstruction
@@ -410,7 +420,7 @@ trait ManticoreAssemblyIR {
       rs: Name,
       base: Seq[Name],
       predicate: Option[Name],
-      order: MemoryAccessOrder,
+      order: ExecutionOrder,
       annons: Seq[AssemblyAnnotation] = Nil
   ) extends DataInstruction
       with PrivilegedInstruction
@@ -453,18 +463,6 @@ trait ManticoreAssemblyIR {
       annons: Seq[AssemblyAnnotation] = Nil
   ) extends SynchronizationInstruction {
     override def toString: String = s"RECV ${rd}, [${source_id}], ${rs}"
-  }
-
-  // value assertion
-  case class Expect(
-      ref: Name,
-      got: Name,
-      error_id: ExceptionId,
-      annons: Seq[AssemblyAnnotation] = Nil
-  ) extends ControlInstruction
-      with PrivilegedInstruction {
-    override def toString: String = s"EXPECT ${ref}, ${got}, [${error_id}]"
-
   }
 
   case class Predicate(
@@ -597,24 +595,19 @@ trait ManticoreAssemblyIR {
       s" ${order} PUT ${rs}, ${pred}";
   }
 
-  sealed trait InterruptAction
-  case object FinishInterrupt                   extends InterruptAction
-  case object StopInterrupt                     extends InterruptAction
-  case object AssertionInterrupt                extends InterruptAction
-  case class SerialInterrupt(fmt: FormatString) extends InterruptAction
 
   // other things such as function calls are also interrupts and should be
   // defined here
 
   case class Interrupt(
-      action: InterruptAction,
+      description: InterruptDescription,
       condition: Name,
       order: SystemCallOrder,
       annons: Seq[AssemblyAnnotation] = Nil
   ) extends PrivilegedInstruction
       with ExplicitlyOrderedInstruction {
     override def toString: String = {
-      val s = action match {
+      val s = description.action match {
         case AssertionInterrupt   => "ASSERT "
         case FinishInterrupt      => "FINISH "
         case StopInterrupt        => "STOP "
@@ -625,3 +618,4 @@ trait ManticoreAssemblyIR {
   }
 
 }
+

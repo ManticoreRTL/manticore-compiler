@@ -210,7 +210,6 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
     val immortals        = allocateImmortals(process)
     val numImmortals     = immortals.length
     val registerCapacity = ctx.hw_config.nRegisters
-    val carryCapacity    = ctx.hw_config.nCarries
     val allocatedCarries = scala.collection.mutable.Queue.empty[DefReg]
     val allocatedNames   = scala.collection.mutable.Queue.empty[DefReg]
 

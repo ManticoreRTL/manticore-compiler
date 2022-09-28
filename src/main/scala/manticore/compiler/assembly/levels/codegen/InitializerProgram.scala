@@ -14,6 +14,7 @@ import manticore.compiler.assembly.levels.placed.PlacedIR._
 import java.io.File
 import java.nio.file.Files
 import scala.annotation.tailrec
+import manticore.compiler.assembly
 
 object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
@@ -49,14 +50,23 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       program: DefProgram
   )(implicit ctx: AssemblyContext): Seq[DefProgram] = {
 
-    program.processes.map { makeInitializer }.transpose.map { initProcs =>
+    val inits              = program.processes.map { makeInitializer }
+    val maxInitsPerProcess = inits.map(_.length).max
+    def emptyBody          = Seq.fill(ctx.hw_config.maxLatency) { Nop }
+    val alignedInits = inits.map { thisInits =>
+      thisInits ++ Seq.fill(maxInitsPerProcess - thisInits.length) {
+        thisInits.head.copy(body = emptyBody, registers = Nil)
+      }
+    } // need to align them for transpose, but perhaps we could avoid having the extra empty
+    // init processes by writing a for loop! I am just too lazy to do that...
+    alignedInits.transpose.map { initProcs =>
       val maxLen = initProcs.maxBy(_.body.length).body.length
       val withFinish = initProcs.map { init =>
         val isMaster = (init.id.x == 0 && init.id.y == 0)
         if (isMaster) {
           init.copy(
             body = init.body ++ Seq.fill(maxLen - init.body.length) { Nop } :+ Interrupt(
-              FinishInterrupt,
+              SimpleInterruptDescription(action = assembly.FinishInterrupt, eid = 0, info = None),
               init.registers(1).variable.name,
               SystemCallOrder(0)
             )
@@ -270,7 +280,10 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     (
       combineSegments(
         Seq(zeroOneSegment) ++ memInitSegments ++ Seq(cfuSegment, predDisable), // fist initialize memory and then
-        Seq(constZero, constOne) ++ memIndexRegs ++ memInitRegs ++ memDefs // register file, DO NOT MIX them since it will
+        Seq(
+          constZero,
+          constOne
+        ) ++ memIndexRegs ++ memInitRegs ++ memDefs // register file, DO NOT MIX them since it will
         // result in non-idempotent code!
       ) ++
         combineSegments(regInitSegment, regInitSegment.flatMap(_.defs))

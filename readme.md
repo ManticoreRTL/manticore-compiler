@@ -1,5 +1,3 @@
-![Assembly Tests](https://github.com/epfl-vlsc/manticore-compiler/actions/workflows/assembly_tests.yml/badge.svg)
-![Chisel Tests](https://github.com/epfl-vlsc/manticore-compiler/actions/workflows/chisel_tests.yml/badge.svg)
 # Manticore Assembly Compiler
 
 **This repository is under heavy development.**
@@ -21,10 +19,13 @@ on your machine:
 > git@github.com:epfl-vlsc/manticore.git
 > cd manticore
 > sbt "publishLocal"
-> sudo apt install verilator
+
 ```
 
-
+Run something using
+```
+sbt "runMain manticore.compiler.Main execute /scratch/emami/jit_sim/manticore-compiler/test_run_dir/MipsAluBench/random_inputs_1_should_match_expected_results/main.masm --dump-dir dumps --dump-all -d --output console.log"
+```
 
 # Overview
 ## Manticore Assembly
@@ -45,7 +46,7 @@ single register, see the comments in the code for further explanations.
 // beginning of the program
 .prog:
     // @LOC is an annotation
-    // Every annotation is sequence of key-value pairs, e.g., x is key the
+    // Every annotation is a sequence of key-value pairs, e.g., x is key the
     // value is 0. Values could be Int, Boolean or Strings. A key can only
     // accept a specific type, for instance we can not give the string "0"
     // to x, or the boolean false.
@@ -73,7 +74,7 @@ single register, see the comments in the code for further explanations.
         @MEMINIT [file = "op2.dat",width = 16,count = 600]
         @MEMBLOCK [block = "op2_values",width = 16,capacity = 600]
 
-        .mem op2_ptr 16
+        .mem op2_ptr 16 600
         .wire op2_addr 16
 
         .wire op2_val 16
@@ -85,211 +86,39 @@ single register, see the comments in the code for further explanations.
         .const zero 16 0
         .const test_length 16 600
 
-        // .input defines an "immutable" within the loop body but its value
-        // will be changed at the end of the loop. Every .input is annotated by
-        // @REG which should define a globally unique id with type set to \REG_CURR.
-        // Each .input should have a corresponding .output definition that
-        // shares the same unique id in its @REG annotation with the type
-        // set to \REG_NEXT. The instruction can assign a value to the
-        // .output register and that value is automatically used as the new
-        // value of the corresponding .input definition in the next loop.
-
+        // state elements in verilog, i.e., regs are defined using .reg followed
+        // by a name and a length. However every reg is also followed by an
+        // .input that is the current value of that register (with an optional initial value)
+        // and an .output which is the next value of the register. Basically
+        // for instance
+        // reg myreg [15:0] = 231;
+        // always @(posedge clk) if (myreg == 2) myreg <= something;
+        // is represented as:
         @REG [id = "counter",type = "\REG_CURR"]
-        .input counter_curr 16 0
-        @REG [id = "counter",type = "\REG_NEXT"]
-        .output counter_next 16
-        @REG [id = "done",type = "\REG_CURR"]
+        reg myreg 16 .input counter_curr 231 .output counter_next
+        // Note that myreg is simply a unique id and it is not readable/writeable.
+        // counter_curr is only readable and counter_next is only writeable.
+        // The fact that counter_curr and counter_next represent the same register
+        // is implicit i.e., we have the following code in manticore
+        // SEQ cond, counter_curr, const_2;
+        // MUX counter_next, cond, counter_curr, something;
 
-        .input done_curr 16 0
-        @REG [id = "done",type = "\REG_NEXT"]
-        .output done_next 16
-        @REG [id = "result",type = "\REG_CURR"]
-
-        .input result_curr 16
-        @REG [id = "result",type = "\REG_NEXT"]
-        .output result_next 16
-
-        @REG [id = "correct",type = "\REG_CURR"]
-        .input correct_curr 16 1
-        @REG [id = "correct",type = "\REG_NEXT"]
-        .output correct_next 16
 
 
         // The instructions follow the definitions. Each .wire or .output name
         // can only be assigned once. Therefore, the instruction do not need
         // to follow any particular order since the order can be reconstructed
+        //
 
 
         ADD op1_addr, op1_ptr, counter_curr;
         ADD op2_addr, op2_ptr, counter_curr;
         ADD res_addr, res_ptr, counter_curr;
 
-        // LD is the "load" instruction and the offset  (constant value) is
-        // given in the brackets (always give zero unless if you know what
-        // you are doing)
-        @MEMBLOCK [block = "op1_values",width = 16,capacity = 600]
-        LD op1_val, op1_addr[0];
-        @MEMBLOCK [block = "op2_values",width = 16,capacity = 600]
-        LD op2_val, op2_addr[0];
-
-        ADD result_next, op1_val, op2_val;
-        @MEMBLOCK [block = "expected_results",width = 16,capacity = 600]
-        LD expected_res, res_addr[0];
-
-        ADD counter_next, counter_curr, one;
-
-        // SEQ is seq equal
-        SEQ correct_next, result_next, expected_res;
-        SEQ done_next, counter_next, test_length;
-
-        // EXPECT is like assert(correct_curr == one)
-        @TRAP [type = "\fail"]
-        EXPECT correct_curr, one, ["failed"];
-        @TRAP [type = "\stop"]
-        EXPECT done_curr, zero, ["stopped"];
-
-    @LOC [x = 1,y = 0]
-    .proc p_1_0:
-        @REG [id = "dummy",type = "\REG_CURR"]
-
-        .input dummy_curr 16
-        @REG [id = "dummy",type = "\REG_NEXT"]
-
-        .output dummy_next 16
-        @REG [id = "result",type = "\REG_CURR"]
-
-        // notice how the this definition is shared by the
-        // two processes. This makes the compiler generate additional
-        // code to send out the value of the corresponding .output definition
-        // from process p_0_0 at the end of the loop to keep the values of
-        // result_curr in sync in both of the process. Only one process
-        // can assign result_next though.
-
-        .input result_curr 16
-
-        // this .output is never assigned
-        @REG [id = "result",type = "\REG_NEXT"]
-        .output result_next 16
-
-        MOV dummy_next, result_curr; //@81.8
-```
-
-Although the code snippet above shows two parallel processes, the standard input
-to the compiler should only define a single process, and no `@LOC` annotation
-should be used. The compiler takes care of parallelizing the code and assigning
-each process to a processor. Furthermore, the `LD` instruction should always get
-a zero offset.
-
-You generally don't need to write assembly yourself, you can use `thyrio_frontend`
-to convert `Verilog` into acceptable assembly. If you are on iccluster030, add the
-following to your `.bashrc` or `.zshrc`:
 
 ```
-export PATH=${PATH}:/scratch/emami/jit_sim/thyrio-frontend/src/thyrio
-```
 
-
-The enables to call `thyrio_frontend`, for instance:
-```
-> thyrio_frontend -vlog_in mips32.sv -masm_out mips32.masm -top TestVerilator -no_techmap -dump
-```
-
-Translate the mips32.sv file with its top module set to `TestVerilator` into `mips32.masm`.
-For the time being, always supply the `-no_techmap` argument.
-
-
-
-## Compiler architecture
-The compiler consists of two main parts, the
-[`ManticoreAssemblyIR`](manticore-compiler/main/scala/compiler/assembly/Instruction.scala)
-type class which is used as a template for different levels or flavors of the
-assembly. Currently, there are two flavors of the assembly language,
-`UnconstrainedIR` and `PlacedIR`. The first is used in the preliminary passes of
-the compiler in which a "register" can have arbitrary bit-width. For instance
-you can define a register that is 1000 bits wide as:
-
-```
-.wire my_wide_wire 1000
-@REG [....]
-.input my_wide_input 1400 1979857298374029374982734908273497239047290834
-```
-
-
-Every pass in the compiler is simply a function that takes one a program in
-flavor `T` and produces another in flavor `S` (we could have `S =:= T`, as
-is the case with most transformations.
-
-```scala
-
-object AppendConstantZeroTransform extends AssemblyTransformer[UnconstrainedIR.DefProgram,UnconstrainedIR.DefProgram] {
-    import UnconstrainedIR._
-
-    override def transform(prog: DefProgram, context: AssemblyContext): DefProgram = {
-
-        context.logger.info("This is a very simple transformation"
-            "that add a constant zero to every process")
-
-        prog.copy(
-            processes = prog.processes.map { p => transform(p, context) }
-        ).setPos(prog.pos)
-
-    }
-
-    def transform(proc: DefProcess, context: AssemblyContext): DefProcess = {
-        proc.register
-            .find(r => r.variable.varType == ConstType &&
-                r.variable.value.get == BigInt(0)) match {
-            case None => // no constant zero was found
-                proc.copy(
-                    registers = proc.registers +:
-                        DefReg(
-                            variable = LogicVariable(
-                                name = s"constant_zero_${context.uniqueNumber()}",
-                                width = 32,
-                                tpe = ConstType
-                            )
-                            value = Some(BigInt(0))
-                        )
-                ).setPos(proc.pos)
-            case Some(const0) => proc
-        }
-
-    }
-}
-```
-
-`AssemblyChecker[T]` are specialized transformation that return the same program
-and can be defined as follows:
-
-```scala
-
-object ExistsConstantZeroTransform extends AssemblyChecker[UnconstrainedIR.DefProgram] {
-    import UnconstrainedIR._
-
-    override def check(prog: DefProgram, context: AssemblyContext): DefProgram = {
-
-        context.logger.info("This is a very simple check to see if "
-            "constant zero is defined in all processes")
-
-        prog.copy(
-            processes = prog.processes.map { p => transform(p, context) }
-        ).setPos(prog.pos)
-
-    }
-
-    def check(proc: DefProcess, context: AssemblyContext): DefProcess = {
-        proc.register
-            .find(r => r.variable.varType == ConstType &&
-                r.variable.value.get == BigInt(0)) match {
-            case None => // no constant zero was found
-                context.logger.warn(s"Could not find constant zero in process ${p.id}")
-            case Some(const0) => proc
-                context.logger.info(s"Found constant zero in process ${p.id}", const0)
-        }
-
-    }
-}
-```
+### What you see below is my own notes
 
 
 
@@ -464,7 +293,7 @@ This means if m = 2 we get a latency of 6 or 9!
 AND x1, x0, c127;  only keep the first 7 bits
 SEQ x2, x1, c0; x2 = x1 == 0
 SEQ x3, x2, c0; x3 = x2 == false
-XOR x4, x3, c1; x4 = !x2 or x4 = x1 != 0
+XOR x4, x3, c1; x4 = !x3 or x4 = x2
 ```
 
 can be reduced to
@@ -475,7 +304,7 @@ can be reduced to
 .const c127 16 127
 AND x1, x0, c127;  only keep the first 7 bits
 SEQ x2, x1, c0; x2 = x1 == 0
-SEQ x4, x2, c1; x3 = x2 == true
+SEQ x4, x2, c1; x4 = x2 == true => x4 = x1 == 0
 ```
 and further to
 
@@ -485,7 +314,7 @@ and further to
 .const c1 16 1
 .const c127 16 127
 AND x1, x0, c127;  only keep the first 7 bits
-SEQ x4, x0, c0; x2 = x1 == 0
+SEQ x4, x1, c0; x2 = x1 == 0
 ```
 
 ### P1
@@ -531,3 +360,87 @@ Yosys has a pass memory_memx to handle out-of-bound memory accesses according
 to the Verilog standard, either use that or do our own checks....
 
 
+
+## JumpTables, Interpreters, and register allocation
+
+By construction, a `JumpTable` may have the following form:
+
+
+```
+SWITCH %w0
+    case L0:
+        ADD %w1, _, _;
+        BREAK
+    case L1:
+        BREAK
+    case L2:
+        BREAK
+    PHI(%w4, L0:%w1, L1:%w2, L2:%c2)
+
+```
+That is a source register in the PHI may reference a register that is defined
+outside of the scope of the SWITCH. Such register is either constant or a
+non-constant register whose also referenced outside the SWITCH blocks.
+
+
+This means that when interpreting, we should either break SSAness by converting
+the above code to the Philess code below:
+
+```
+SWITCH %w0
+    case L0:
+        ADD %w1, _, _;
+        BREAK
+    case L1:
+        MOV %w4, %w2;
+        BREAK
+    case L2:
+        MOV %w4, %c2;
+        BREAK
+```
+
+Indeed this is what `UnconstrainedInterpreter` does internally.  Another alternative,
+which keeps SSAness would be:
+
+```
+SWITCH %w0
+    case L0:
+        ADD %w1, _, _;
+        BREAK
+    case L1:
+        MOV %ww2, %w2;
+        BREAK
+    case L2:
+        MOV %wc2, %c2;
+        BREAK
+    PHI(%w4, L0:%w1, L1:%ww2, L2:%wc2)
+
+```
+
+You may wonder why wouldn't we place those moves inside the cases and make all
+case bodies nonempty and make all Phi operands be defined inside the scope of
+the switch?
+
+We can do that, but optimization passes can not guarantee to keep this invariant
+for a good reason. For instance, if we force `ConstantFolding` to never remove
+`MOV` to Phi then we may miss an opportunity to completely remove the jump table
+if we realize all operands to all Phis are constants and replace it with simple
+lookup (i.e., the lookup for label would be become a lookup for a value). This
+would not be immediately visible if we keep the latter invariant. So it's good
+to remove all possible aliases and only bring them back in at the very end when
+no more optimization is legal (i.e., just before scheduling).
+
+
+
+
+## Tracking wire
+
+Get rid of `@TRACK` annotation and explicitly handle them with `Track rs`
+instructions. Take special care when parallelizing code not to duplicate
+tracking of values that are redundantly computed in multiple places. This will
+also streamline optimizations that currently avoid optimizing anything that is
+tracked. (e.g., if a tracked value is constant, we still compute it rather than
+hard-coding it)
+
+Also note that currently if output of a jump table is tracked, `DCE` after
+jump table extraction fails.
