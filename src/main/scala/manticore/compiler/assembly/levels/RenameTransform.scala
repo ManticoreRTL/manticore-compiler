@@ -12,9 +12,9 @@ import manticore.compiler.assembly.SerialInterrupt
   * also assumes that instructions are "almost" in SSA form. Almost means that a
   * register might be assigned multiple times in the same basic block but never
   * across them. The reason for even having such non SSA basic blocks is the
-  * current implementation of the [[WidthConversionCore]] transform that breaks
+  * current implementation of the WidthConversionCore transform that breaks
   * SSAness inside basic block but never breaks them across basic blocks. So
-  * this pass can be used to path the AST from the [[WidthConversionCore]] pass
+  * this pass can be used to path the AST from the WidthConversionCore pass
   * or in general to completely rename every register.
   * @author
   *   Mahyar Emami <mahyar.emami@epfl.ch>

@@ -18,8 +18,6 @@ sealed trait HardwareConfig {
   // number of inputs to the custom function unit
   val nCfuInputs: Int
 
-  // number of carry register
-  val nCarries: Int
 
   val dimX: Int
   val dimY: Int

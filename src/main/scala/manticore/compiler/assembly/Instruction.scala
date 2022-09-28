@@ -50,7 +50,7 @@ trait HasInterruptAction {
 
 /** Abstract IR flavor, any deriving IR flavor should be defined as an object
   * that defines the unbound types [[Name]], [[Constant]], [[Variable]],
-  * [[CustomFunction]], [[ProcessId]], [[ExceptionId]].
+  * [[CustomFunction]], [[ProcessId]], [[InterruptDescription]].
   *
   * Each IR node has the [[HasSerialized]] trait, meaning that by calling
   * [[serialized]] a textual form of the program is returned. Note that to

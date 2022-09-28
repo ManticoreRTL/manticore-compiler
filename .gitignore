@@ -8,3 +8,4 @@ project/project/
 project/target/
 project/metals.sbt
 target/
+test_run_dir

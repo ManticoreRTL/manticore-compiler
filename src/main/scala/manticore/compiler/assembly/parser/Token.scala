@@ -5,7 +5,7 @@ import scala.util.parsing.input.CharArrayReader.EofCh
 
 /**
  * Valid tokens in the Assembly language with positions,
- * the trait almost a copy of [[scala.util.parsing.combinator.token]]
+ * the trait almost a copy of [[scala.util.parsing.combinator.Token]]
  * with the major difference that every Token kind derives from the
  * [[scala.util.parsing.input.Positional]] trait which is necessary to have
  *

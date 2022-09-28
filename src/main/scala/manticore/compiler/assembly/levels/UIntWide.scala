@@ -116,8 +116,8 @@ final class UIntWide private (private val v: BigInt, val width: Int) {
   }
 
   /**
-   * Object [[equals]] and [[hashCode]] are used by collections library to
-   * create [[Set]]s and [[Map]]s.
+   * Object equals and hashCode are used by collections library to
+   * create Sets and Maps.
    */
   override def equals(other: Any): Boolean = other match {
     case that: UIntWide => that.width == this.width && that.v == this.v

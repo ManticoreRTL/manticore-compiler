@@ -26,9 +26,9 @@ trait InterpreterMonitor extends Flavored {
 
   def toBigInt(v: Constant): BigInt
 
-  /** Update a the [[Name]] (not the debug symbol) with the given value. This
+  /** Update a the Name (not the debug symbol) with the given value. This
     * method should solely used by interpreter implementations that extend
-    * [[CanUpdateMonitor]] If you try
+    * CanUpdateMonitor If you try
     * @param name
     * @param value
     * @param updater
@@ -74,8 +74,8 @@ trait InterpreterMonitor extends Flavored {
 object InterpreterMonitor {
 
   /** Base functional trait for a callback A callback is provided with the
-    * [[finalValue]] of the debug symbol after the update is done in the monitor
-    * along with the subword [[offset]] and [[length]]. To create call you can
+    * finalValue of the debug symbol after the update is done in the monitor
+    * along with the subword offset and length. To create call you can
     * simply use a lambda, this trait is here mostly for documentation to tell
     * you what the callback lambda should be and what are its arguments
     */
@@ -160,7 +160,7 @@ trait InterpreterMonitorCompanion extends Flavored {
   )
 
   /** Create an interpreter monitor that only watches the what is defined in
-    * [[toWatch]], can be used to register callbacks.
+    * toWatch, can be used to register callbacks.
     *
     * @param program
     * @param toWatch

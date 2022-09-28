@@ -50,7 +50,7 @@ object UnconstrainedIRInterpreterMonitor extends InterpreterMonitorCompanion {
   ): UnconstrainedIRInterpreterMonitor = apply(program, Seq(WatchAll))
 
   /** Create an interpreter monitor that only watches the what is defined in
-    * [[toWatch]], can be used to register callbacks.
+    * toWatch, can be used to register callbacks.
     *
     * @param program
     * @param toWatch

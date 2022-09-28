@@ -620,4 +620,8 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
     res
   }
 
+
+
+  // def mkManifest()
+
 }

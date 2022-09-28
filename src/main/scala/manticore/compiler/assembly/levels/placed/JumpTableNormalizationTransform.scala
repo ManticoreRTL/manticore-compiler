@@ -6,7 +6,7 @@ import manticore.compiler.assembly.CanComputeNameDependence
 import manticore.compiler.assembly.levels.AssemblyNameChecker
 import manticore.compiler.assembly.levels.WireType
 
-/** Transforms every [[JumpTable]] in the program to a "normal form". See
+/** Transforms every JumpTable in the program to a "normal form". See
   * [[normalize]] for details.
   *
   * @author
@@ -135,9 +135,9 @@ object JumpTableNormalizationTransform
   /** Turns every jump table to "the normal form". A jump table jtb in normal
     * form has the following properties:
     *   - Process in SSA: see [[NameCheck.checkSSA]]
-    *   - [[jumpTableContainsAllDefinitionsUsedInPhis(jtb)]]
-    *   - Every case has a single [[BreakCase]] This means that normal form
-    *     [[JumpTable]] can not have empty case blocks. It is quiet possible
+    *   - jumpTableContainsAllDefinitionsUsedInPhis(jtb)
+    *   - Every case has a single BreakCase This means that normal form
+    *     JumpTable can not have empty case blocks. It is quiet possible
     *     that the normal form is not optimal for performance, and hence
     *     optimization passes will likely destroy the normal form. This
     *     transformation should only be done at the very end

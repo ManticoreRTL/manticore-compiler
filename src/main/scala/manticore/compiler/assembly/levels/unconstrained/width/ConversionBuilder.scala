@@ -14,11 +14,11 @@ import manticore.compiler.assembly.levels.VariableType
 import manticore.compiler.assembly.annotations.MemInit
 import manticore.compiler.assembly.annotations.Memblock
 
-/** A helper trait as the base of [[WidthConversion]]. It contains the
+/** A helper trait as the base of WidthConversion. It contains the
   * implementation of a mutable Builder class that lazily converts every
   * register in a process to a sequence of converted wires. The
-  * [[WidthConversion]] should instantiate this class and call the
-  * [[getConversion]] method to get the converted sequence of registers as it
+  * WidthConversion]should instantiate this class and call the
+  * getConversion method to get the converted sequence of registers as it
   * moves through the instructions. Note that the instructions are assumed to be
   * ordered properly, i.e., registers should be written and then read if they
   * are not constants.
