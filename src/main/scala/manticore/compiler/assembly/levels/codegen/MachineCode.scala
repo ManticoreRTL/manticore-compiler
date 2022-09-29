@@ -395,7 +395,9 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
   ): Long = {
 
     val res = inst match {
-      case i: BinaryArithmetic => assemble(i)
+      case i: BinaryArithmetic =>
+        require(i.operator != BinaryOperator.MULS, "MULS not supported")
+        assemble(i)
       case LocalLoad(rd, base, offset, _, annons) =>
         val memoryPointer =
           proc.registers.collectFirst {

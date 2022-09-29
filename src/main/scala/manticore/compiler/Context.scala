@@ -78,7 +78,7 @@ object AssemblyContext {
       dump_all: Boolean = false,
       dump_dir: Option[File] = None,
       debug_message: Boolean = false,
-      optimize_common_custom_functions: Boolean = false,
+      optimize_common_custom_functions: Boolean = true,
       max_cycles: Int = 1000,
       quiet: Boolean = false,
       placement_timeout_s: Int = 10,
