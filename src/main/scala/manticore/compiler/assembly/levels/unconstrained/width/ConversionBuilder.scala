@@ -57,7 +57,7 @@ trait ConversionBuilder extends Flavored {
       r.variable.name -> r
     }.toMap
 
-    private var m_gmem_user_base = 0x00004000L // the first 32Ki shorts are reserved for system.
+    private var m_gmem_user_base = ctx.hw_config.userGlobalMemoryBase
 
     private val m_gmem_allocations = scala.collection.mutable.Map.empty[Name, DefGlobalMemory]
 

@@ -60,6 +60,9 @@ sealed trait HardwareConfig {
     xDist + yDist
   }
 
+  val userGlobalMemoryBase = 0x00004000L // the first 16Ki shorts are reserved
+  // to the system
+
 }
 
 case class DefaultHardwareConfig(

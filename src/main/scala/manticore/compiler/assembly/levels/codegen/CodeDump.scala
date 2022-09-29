@@ -100,7 +100,7 @@ object CodeDump extends FunctionalTransformation[DefProgram, Unit] {
               case d @ FmtDec(w, fillZero) =>
                 asJson(
                   20,
-                  "type"     -> "bin",
+                  "type"     -> "dec",
                   "offsets"  -> Seq(ptrQ.dequeue()),
                   "bitwidth" -> w,
                   "digits"   -> d.decWidth,
@@ -126,7 +126,7 @@ object CodeDump extends FunctionalTransformation[DefProgram, Unit] {
 
       }
       .mkString(",\n")
-
+    val userMemoryBase  = asRecord(4, "base" -> ctx.hw_config.userGlobalMemoryBase)
     val gridJson        = asRecord(4, "dimx" -> ctx.hw_config.dimX, "dimy" -> ctx.hw_config.dimY)
     val initializerJson = asRecord(4, "initializers" -> initDirs.map(_.resolve("exec.bin").toAbsolutePath().toString()))
     val programJson     = asRecord(4, "program" -> programDir.resolve("exec.bin").toAbsolutePath().toString())
@@ -137,7 +137,7 @@ object CodeDump extends FunctionalTransformation[DefProgram, Unit] {
       }
       .mkString(",\n") + "\n" + " " * 8 + "]"
     val manifest =
-      "{\n" + Seq(gridJson, initializerJson, programJson, exceptionsJson, globalMemoriesJson).mkString(",\n") + "\n}"
+      "{\n" + Seq(gridJson, initializerJson, programJson, exceptionsJson, userMemoryBase, globalMemoriesJson).mkString(",\n") + "\n}"
     val manifestWriter = new PrintWriter(outDir.toPath.resolve("manifest.json").toFile)
     manifestWriter.write(manifest)
     manifestWriter.close()
