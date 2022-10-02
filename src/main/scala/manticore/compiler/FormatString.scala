@@ -83,12 +83,12 @@ object FormatString {
       ((BigInt(1) << width) - 1).toString(16).length
     def toLit(v: BigInt) = FmtLit(truncated(v.toString(16), hexWidth, "0"))
     override def toString: String = s"%${width}h"
-    def withWidth(w: Int): FmtAtomArg = copy(w)
+    def withWidth(w: Int): FmtHex = copy(w)
   }
   case class FmtBin(width: Int) extends FmtAtomArg {
     def toLit(v: BigInt) = FmtLit(truncated(v.toString(2), width, "0"))
     override def toString: String = s"%${width}b"
-    def withWidth(w: Int): FmtAtomArg = copy(w)
+    def withWidth(w: Int): FmtBin = copy(w)
   }
   case class FmtDec(width: Int, fillZero: Boolean = false) extends FmtAtomArg {
     val decWidth = ((BigInt(1) << width) - 1).toString().length
@@ -100,7 +100,7 @@ object FormatString {
     } else {
       s"%${width}d"
     }
-    def withWidth(w: Int): FmtAtomArg = copy(w)
+    def withWidth(w: Int): FmtDec = copy(w)
   }
 
   case class FmtConcat[A <: FmtAtomArg](atoms: Seq[A], width: Int)

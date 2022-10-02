@@ -107,13 +107,23 @@ object CodeDump extends FunctionalTransformation[DefProgram, Unit] {
                   "zeros"    -> fillZero
                 )
               case FmtConcat(atoms, width) =>
-                val (tpe, w, d) = atoms.head match {
-                  case t: FmtBin => ("bin", t.width, t.width)
-                  case t: FmtDec => ("dec", t.width, t.decWidth)
-                  case t: FmtHex => ("hex", t.width, t.width)
-                }
                 val offsets = atoms.map(_ => ptrQ.dequeue())
-                asJson(20, "type" -> tpe, "bitwidth" -> w, "digits" -> d, "offsets" -> offsets)
+                atoms.head match {
+                  case t: FmtBin =>
+                    asJson(20, "type" -> "bin", "bitwidth" -> width, "digits" -> width, "offsets" -> offsets)
+                  case t: FmtDec =>
+                    asJson(
+                      20,
+                      "type"     -> "bin",
+                      "bitwidth" -> width,
+                      "digits"   -> t.withWidth(width).decWidth,
+                      "offsets"  -> offsets,
+                      "zeros"    -> t.fillZero
+                    )
+                  case t: FmtHex =>
+                    asJson(20, "type" -> "hex", "bitwidth" -> width, "digits" -> width, "offsets" -> offsets)
+                }
+
             }
             .mkString(",\n")
           val fmtField = " " * 16 + "\"fmt\": [\n" + fmtStr + "\n" + " " * 16 + "]"
@@ -137,7 +147,9 @@ object CodeDump extends FunctionalTransformation[DefProgram, Unit] {
       }
       .mkString(",\n") + "\n" + " " * 8 + "]"
     val manifest =
-      "{\n" + Seq(gridJson, initializerJson, programJson, exceptionsJson, userMemoryBase, globalMemoriesJson).mkString(",\n") + "\n}"
+      "{\n" + Seq(gridJson, initializerJson, programJson, exceptionsJson, userMemoryBase, globalMemoriesJson).mkString(
+        ",\n"
+      ) + "\n}"
     val manifestWriter = new PrintWriter(outDir.toPath.resolve("manifest.json").toFile)
     manifestWriter.write(manifest)
     manifestWriter.close()
