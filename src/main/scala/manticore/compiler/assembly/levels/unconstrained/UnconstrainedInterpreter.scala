@@ -32,7 +32,6 @@ import manticore.compiler.assembly.StopInterrupt
 import manticore.compiler.assembly.SerialInterrupt
 import manticore.compiler.assembly.AssertionInterrupt
 
-
 /** Simple interpreter for unconstrained flavored programs with a single process
   * @author
   *   Mahyar Emami <mahyar.emami@eplf.ch>
@@ -442,6 +441,8 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         val addrValue = state.register_file(addr);
         val memory    = state.memory_blocks(base)
         if (addrValue >= memory.capacity) {
+          // this is just a warning since Yosys is supposed to generate correct
+          // code to multiplex an out of bound result later
           ctx.logger.warn("Index out of bound")
           update(rd, BigInt(0))
         } else {
@@ -452,18 +453,21 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
       case LocalStore(rs, base, addr, predicate, _, annons) =>
         val addrValue = state.register_file(addr);
         val memory    = state.memory_blocks(base)
-        if (addrValue >= memory.capacity) {
-          ctx.logger.warn(
-            s"Index out of bound, ignoring write to ${base} at address ${addrValue} >= ${memory.capacity}"
-          )
-        } else {
-          val wen = predicate
-            .map(state.register_file(_) == 1)
-            .getOrElse(state.predicate)
-          if (wen) {
-            val rsv = state.register_file(rs)
-            memory.content(addrValue.toInt) = rsv
+
+        val wen = predicate
+          .map(state.register_file(_) == 1)
+          .getOrElse(state.predicate)
+        if (wen) {
+          if (addrValue >= memory.capacity) {
+            // note that a write out-of-bound is an error but a read is not
+            // because we can "correct" the out-of-bound read by a multiplexer
+            // after it but we can not do the same with writes
+            ctx.logger.error(
+              s"Index out of bound, write to ${base} at address ${addrValue} >= ${memory.capacity}"
+            )
           }
+          val rsv = state.register_file(rs)
+          memory.content(addrValue.toInt) = rsv
         }
 
       case SetValue(rd, value, annons) =>
@@ -508,7 +512,6 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
           case _ => // nothing to do
         }
 
-
       case Predicate(rs, annons) =>
         ctx.logger.error(s"Can not handle predicate yet!", instruction)
 
@@ -541,10 +544,10 @@ object UnconstrainedInterpreter extends UnconstrainedIRChecker {
         // do nothing
         ctx.logger.warn("Nops are unnecessary for interpretation", instruction)
       case AddCarry(rd, rs1, rs2, cin, _) =>
-        val rd_width = definitions(rd).variable.width
-        val rs1_val  = state.register_file(rs1)
-        val rs2_val  = state.register_file(rs2)
-        val ci_val   = state.ovf_register_file(cin)
+        val rd_width  = definitions(rd).variable.width
+        val rs1_val   = state.register_file(rs1)
+        val rs2_val   = state.register_file(rs2)
+        val ci_val    = state.ovf_register_file(cin)
         val rs1_width = definitions(rs1).variable.width
         val rs2_width = definitions(rs2).variable.width
         if (rs1_width != rs2_width || rs1_width != rd_width) {
