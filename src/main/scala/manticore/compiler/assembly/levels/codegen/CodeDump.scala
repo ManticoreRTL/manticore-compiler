@@ -114,7 +114,7 @@ object CodeDump extends FunctionalTransformation[DefProgram, Unit] {
                   case t: FmtDec =>
                     asJson(
                       20,
-                      "type"     -> "bin",
+                      "type"     -> "dec",
                       "bitwidth" -> width,
                       "digits"   -> t.withWidth(width).decWidth,
                       "offsets"  -> offsets,
