@@ -143,10 +143,12 @@ trait ProcessInterpreter extends InterpreterBase {
             s"Avoid using MULS in PlacedIR! MULS has the same behavior of MUL on lower 16 bits!",
             inst
           )
-        rs1_val * rs2_val
+        val r = rs1_val * rs2_val
+        r
       case MULH =>
-        val rd_val = rs1_val.toInt * rs2_val.toInt
-        UInt16(rd_val >> 16)
+        val rd_val = ((rs1_val.toInt * rs2_val.toInt) >>> 16) // note the >>> for unsigned shifting
+        val r =  UInt16(rd_val.toInt)
+        r
 
     }
     write(rd, rd_val)

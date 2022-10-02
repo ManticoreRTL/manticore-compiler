@@ -273,7 +273,7 @@ trait SingleInstructionTest extends UnitFixtureTest with ChiselScalatestTester w
         dut.clock.step()
       }
       // ensure no EXPECTs failed
-      assert(dut.io.periphery.exception.id.peek().litValue.toInt == 1)
+      assert(dut.io.periphery.exception.id.peek().litValue.toInt < 0x8000)
 
     }
 
