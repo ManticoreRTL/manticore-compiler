@@ -54,7 +54,9 @@ case class CliConfig(
     noOptCommonCfs: Boolean = false,
     /** Machine configurations * */
     dimX: Int = 12,
-    dimY: Int = 12
+    dimY: Int = 12,
+    // hidden
+    nScratchPad: Int = DefaultHardwareConfig(2, 2).nScratchPad
 )
 
 object Main {
@@ -129,6 +131,11 @@ object Main {
               }
               .text("timeout after the given number of cycles")
           ),
+        // developer options, all should be hidden
+        opt[Int]("--scratch-pad")
+          .action { case (v, c) => c.copy(nScratchPad = v) }
+          .hidden()
+          .text("set the scratch pad capacity in words"),
         help('h', "help").text("print usage text and exit"),
         checkConfig { cfg =>
           if (cfg.dimX == 0 || cfg.dimY == 0) {
@@ -158,7 +165,7 @@ object Main {
         dump_ascii = cfg.dumpAscii,
         log_file = cfg.logFile,
         max_cycles = Try { cfg.mode.asInstanceOf[InterpretMode].timeout }.getOrElse(0),
-        hw_config = DefaultHardwareConfig(dimX = cfg.dimX, dimY = cfg.dimY)
+        hw_config = DefaultHardwareConfig(dimX = cfg.dimX, dimY = cfg.dimY, nScratchPad = cfg.nScratchPad)
       )
     cfg.dumpDir.foreach { f => Files.createDirectories(f.toPath) }
 
