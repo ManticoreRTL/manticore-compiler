@@ -132,7 +132,7 @@ object Main {
               .text("timeout after the given number of cycles")
           ),
         // developer options, all should be hidden
-        opt[Int]("--scratch-pad")
+        opt[Int]("scratch-pad")
           .action { case (v, c) => c.copy(nScratchPad = v) }
           .hidden()
           .text("set the scratch pad capacity in words"),
