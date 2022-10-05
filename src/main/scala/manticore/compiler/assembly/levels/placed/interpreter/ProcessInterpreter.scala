@@ -12,6 +12,7 @@ import manticore.compiler.FormatString.FmtDec
 import manticore.compiler.FormatString.FmtHex
 import manticore.compiler.FormatString.FmtConcat
 import manticore.compiler.assembly.{FinishInterrupt, StopInterrupt, SerialInterrupt, AssertionInterrupt}
+import scala.util.Try
 trait ProcessInterpreter extends InterpreterBase {
 
 //   type Message <: HasTargetId
@@ -171,6 +172,20 @@ trait ProcessInterpreter extends InterpreterBase {
 
     val exprWithArgs = substitute(func.expr)(substMap)
     val rdVal        = evaluate(exprWithArgs)
+    val rsVals = rsx.map(read)
+    val bits = Range(0, 16).map { ix =>
+      def bit(v: Int) = (v >> ix) & 1
+
+      val x = bit(Try{rsVals(0).toInt}.getOrElse(0))
+      val y = bit(Try{rsVals(1).toInt}.getOrElse(0))
+      val z = bit(Try{rsVals(2).toInt}.getOrElse(0))
+      val w = bit(Try{rsVals(3).toInt}.getOrElse(0))
+      val eqIx = (w << 3) | (z << 2) | (y << 1) | x
+      val r = (func.equation(ix) >> eqIx) & 1
+      r.toString
+    }.reverse.mkString("")
+
+    assert(BigInt(bits, 2).toInt == rdVal.toInt, "invalid custom equation")
 
     write(rd, rdVal)
   }

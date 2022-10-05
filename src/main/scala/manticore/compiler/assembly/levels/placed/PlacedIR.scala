@@ -85,8 +85,6 @@ object PlacedIR extends ManticoreAssemblyIR {
       pointers: Seq[Int] = Nil
   ) extends InterruptDescription
 
-
-
   case class ProcessIdImpl(id: String, x: Int, y: Int) {
 
     override def toString(): String = id.toString()
@@ -289,111 +287,25 @@ object PlacedIR extends ManticoreAssemblyIR {
     }
 
     private def computeEquation(arity: Int, expr: ExprTree): Seq[BigInt] = {
-
-      // Generates a combination of masks that are used to evaluate the expression tree at
-      // a given bit offset. Here's an example of the output for increasing values of bitpos
-      // for a arity-2 LUT (i.e. a 2-LUT).
-      //
-      // bitpos = 0
-      //   lutVectorInputCombinations(2) = List(
-      //     List(0, 0),
-      //     List(0, 1),
-      //     List(1, 0),
-      //     List(1, 1)
-      //   )
-      //
-      // bitpos = 1
-      //   lutVectorInputCombinations(2) = List(
-      //     List(0, 0),
-      //     List(0, 2),
-      //     List(2, 0),
-      //     List(2, 2)
-      //   )
-      //
-      // bitpos = 2
-      //   lutVectorInputCombinations(2) = List(
-      //     List(0, 0),
-      //     List(0, 4),
-      //     List(4, 0),
-      //     List(4, 4)
-      //   )
-      //
-      // ...
-      def lutVectorInputCombinations(
-          count: Int,
-          bitpos: Int
-      ): Seq[Seq[UInt16]] = {
-        def binStr(x: Int, width: Int): String = {
-          // Scala's toBinaryString does not emit leading 0s. We therefore interpret
-          // the binary string as an int and use a 0-padded format string to get the
-          // width of interest.
-          //
-          // Note that the following intuitive alternative will fail as the string
-          // formatter "%s" does not support padding with 0.
-          //
-          //    s"%0${width}s".format(x.toBinaryString)
-          //       ^
-          //
-          s"%0${width}d".format(x.toBinaryString.toInt)
-        }
-
-        val minVal = 0
-        val maxVal = (1 << count)
-
-        val binaryRepr = Range(minVal, maxVal).map { num =>
-          val bin = binStr(num, count)
-          bin.map { char =>
-            // Converting a char directly to an integer will return the ordinal of the character.
-            // We therefore first convert the char to a string, then to an integer.
-            val orig = char.toString.toInt
-
-            // We want to evaluate equations at the word level. We therefore create a mask
-            // that is aligned with the bit position we are currently computing the LUT
-            // equation of.
-            UInt16(orig << bitpos)
+      // this is magic
+      val eqs = Range(0, 16).map { bitIx =>
+        val eqBits = Range(0, 16).map { ix => // (ix << bitIx)
+          val substExpr = substitute(expr) {
+            Range(0, arity).map { argIx =>
+              PositionalArg(argIx) ->
+                AtomConst(
+                  UInt16(((ix >> argIx) & 1) << bitIx)
+                )
+            }.toMap
           }
+          evaluate(substExpr)
         }
-
-        binaryRepr
-      }
-
-      // The custom instruction has a 16-bit datapath. We return a Seq[BigInt] as every
-      // bit of the result could technically be computed with a different function (a given
-      // expression tree may have constants embedded within it and the constant may not be
-      // a homogenous sequence of bits).
-      val equations = Range(0, 16).map { bitpos =>
-        // There are 2^arity lutVectorInputCombinations of inputs for a LUT.
-        val inputCombinations: Seq[Seq[UInt16]] =
-          lutVectorInputCombinations(arity, bitpos)
-
-        // For every combination of inputs to the LUT, substitute the input in the
-        // expression tree and evaluate it. This yields the truth table value for
-        // the LUT vector's bitpos-th LUT.
-        val lutOutputs = inputCombinations.map { inputCombination =>
-          // The expression tree has arguments that are mapped to indices starting from 0.
-          // We replace these indices with constants (defined by the LUT's current input combination).
-          val subst: Map[AtomArg, Atom] = inputCombination.zipWithIndex.map { case (const, idx) =>
-            PositionalArg(idx) -> AtomConst(const)
-          }.toMap
-
-          val resFullDatapath = evaluate(substitute(expr)(subst))
-
-          // The SHIFT-AND is required to isolate the result of the LUT vector's evaluation for
-          // the datapath bit of interest. This result is the truth table.
-          val resBitDatapath = (resFullDatapath >> bitpos) & UInt16(1)
-
-          // The result is guaranteed to be 0 or 1 since we AND by UInt16(1) above.
-          resBitDatapath.toInt
+        eqBits.foldRight(BigInt(0)) { case (b, prev) =>
+          (prev << 1) | (b.toInt >> bitIx)
         }
-
-        // Concatenate the k-LUT's output bits to form its truth table.
-        // Note that we reverse the lut outputs as we want the MSB on the left and
-        // the LSB on the right (common LUT equation representation in truth tables).
-        val truthTableStr = lutOutputs.reverse.mkString
-        BigInt(truthTableStr, 2)
       }
+      eqs
 
-      equations
     }
 
     def apply(expr: ExprTree): CustomFunctionImpl = {
@@ -414,7 +326,6 @@ object PlacedIR extends ManticoreAssemblyIR {
   type CustomFunction = CustomFunctionImpl
   type ProcessId      = ProcessIdImpl
   type Constant       = UInt16
-
 
   type Label = String
 }
