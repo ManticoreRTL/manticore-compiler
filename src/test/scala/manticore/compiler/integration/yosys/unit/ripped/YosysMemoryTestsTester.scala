@@ -19,7 +19,7 @@ class YosysMemoryTestsTester extends UnitFixtureTest with CancelAfterFailure {
 
       }
   }
-
+  testCase("full_write")
   testCase("amber23_sram_byte_en")
   testCase("firrtl_938")
   testCase("implicit_en")
