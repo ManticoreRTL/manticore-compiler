@@ -179,7 +179,7 @@ object Main {
 
     val backend =
       ManticorePasses.ToPlaced andThen
-      ManticorePasses.ExtractParallelism
+      ManticorePasses.ExtractParallelism andThen
       CustomLutInsertion.post.withCondition(!cfg.noCf) andThen
       ManticorePasses.BackendLowerEnd
 
