@@ -275,7 +275,7 @@ object PlacedIR extends ManticoreAssemblyIR {
 
           case IdExpr(const: AtomConst) =>
             val key = Left(const.v)
-            val cnt = acc(key)
+            val cnt = acc(key) + 1
             acc + (key -> cnt)
 
           case _ =>
