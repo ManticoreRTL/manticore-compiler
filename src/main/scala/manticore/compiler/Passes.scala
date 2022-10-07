@@ -58,6 +58,11 @@ object ManticorePasses {
 
   val BackendLowerEnd = Lowering.Transformation andThen AbstractExecution
 
+  val ToPlaced = UnconstrainedToPlacedTransform andThen
+      PlacedIRConstantFolding andThen
+      PlacedIRCommonSubExpressionElimination andThen
+      PlacedIRDeadCodeElimination
+
   def backend =
     UnconstrainedToPlacedTransform andThen
       PlacedIRConstantFolding andThen
@@ -66,5 +71,6 @@ object ManticorePasses {
       ExtractParallelism andThen
       CustomLutInsertion.post andThen
       BackendLowerEnd
+
 
 }

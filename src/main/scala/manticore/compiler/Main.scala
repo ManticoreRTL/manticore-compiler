@@ -34,6 +34,7 @@ import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
 import java.nio.file.Files
+import manticore.compiler.assembly.levels.placed.CustomLutInsertion
 sealed trait Mode
 case object CompileMode extends Mode
 case class InterpretMode(lowerFirst: Boolean = false, timeout: Int = 100000, serialOut: Option[File] = None)
@@ -52,6 +53,7 @@ case class CliConfig(
     debug_en: Boolean = false,
     report: Option[File] = None,
     noOptCommonCfs: Boolean = false,
+    noCf: Boolean = false,
     /** Machine configurations * */
     dimX: Int = 12,
     dimY: Int = 12,
@@ -75,6 +77,9 @@ object Main {
           .minOccurs(1)
           .action { case (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
           .text("files (.masm, .v, .sv)"),
+        opt[Unit]("no-cf")
+          .action { case (_, c) => c.copy(noCf = true) }
+          .text("Do not extract custom functions"),
         opt[Unit]("no-opt-shared-cfs")
           .action { case (_, c) => c.copy(noOptCommonCfs = true) }
           .text("Do not optimize shared custom functions"),
@@ -172,10 +177,16 @@ object Main {
     val VerilogCompiler = Yosys.YosysDefaultPassAggregator andThen
       YosysRunner
 
+    val backend =
+      ManticorePasses.ToPlaced andThen
+      ManticorePasses.ExtractParallelism
+      CustomLutInsertion.post.withCondition(!cfg.noCf) andThen
+      ManticorePasses.BackendLowerEnd
+
     val AssemblyCompiler = AssemblyFileParser andThen
       ManticorePasses.frontend andThen
       ManticorePasses.middleend andThen
-      ManticorePasses.backend
+      backend
 
     val assemblyFile = if (cfg.inputFiles.length == 1 && cfg.inputFiles.head.toPath.endsWith(".masm")) {
       cfg.inputFiles.head.toPath
