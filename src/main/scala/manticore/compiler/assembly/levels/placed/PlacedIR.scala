@@ -287,23 +287,53 @@ object PlacedIR extends ManticoreAssemblyIR {
     }
 
     private def computeEquation(arity: Int, expr: ExprTree): Seq[BigInt] = {
-      // this is magic
-      val eqs = Range(0, 16).map { bitIx =>
-        val eqBits = Range(0, 16).map { ix => // (ix << bitIx)
-          val substExpr = substitute(expr) {
-            Range(0, arity).map { argIx =>
-              PositionalArg(argIx) ->
-                AtomConst(
-                  UInt16(((ix >> argIx) & 1) << bitIx)
-                )
-            }.toMap
-          }
-          evaluate(substExpr)
-        }
-        eqBits.foldRight(BigInt(0)) { case (b, prev) =>
-          (prev << 1) | (b.toInt >> bitIx)
+
+      def trimConsts(expr: ExprTree, bitIdx: Int): ExprTree = {
+        expr match {
+          case OrExpr(op1, op2) =>
+            OrExpr(trimConsts(op1, bitIdx), trimConsts(op2, bitIdx))
+          case AndExpr(op1, op2) =>
+            AndExpr(trimConsts(op1, bitIdx), trimConsts(op2, bitIdx))
+          case XorExpr(op1, op2) =>
+            XorExpr(trimConsts(op1, bitIdx), trimConsts(op2, bitIdx))
+          case IdExpr(id) =>
+            val newId = id match {
+              // Extract the given bit from each constant.
+              case AtomConst(v) => AtomConst((v >> bitIdx) & UInt16(1))
+              case other        => other
+            }
+            IdExpr(newId)
         }
       }
+
+      def computeBitEquation(bitIdx: Int): BigInt = {
+        val exprTrimmed = trimConsts(expr, bitIdx)
+
+        val bitIdxRes = Range(0, 1 << arity).map { number =>
+          // Decompose "number" into "arity" bits.
+          // These correspond to a LUT's (f, e, d, c, b, a) inputs. The number of inputs is equal to "arity".
+          val substMap = Range(0, arity).map { argIdx =>
+            val arg = (number >> argIdx) & 1
+            PositionalArg(argIdx) -> AtomConst(UInt16(arg))
+          }.toMap[AtomArg, Atom]
+
+          val exprTrimmedSubst = substitute(exprTrimmed)(substMap)
+          val exprTrimmedEval = evaluate(exprTrimmedSubst).toInt
+
+          number -> exprTrimmedEval
+        }.toMap
+
+        val equation = bitIdxRes.foldLeft(BigInt(0)) { case (acc, (argIdx, res)) =>
+          acc + (res << argIdx)
+        }
+
+        equation
+      }
+
+      val eqs = Range(0, 16).map { bitIdx =>
+        computeBitEquation(bitIdx)
+      }
+
       eqs
 
     }
@@ -357,3 +387,29 @@ object Helpers
 
   object DeadCode extends DeadCodeElimination { val flavor = PlacedIR }
 }
+
+// object EquationTest extends App {
+//   // (%0, %1) => (21119 ^ (%0 & (%1 ^ 21119))) : resources = $21119 -> 2, AND -> 1, XOR -> 2
+//   import PlacedIR._
+//   import PlacedIR.CustomFunctionImpl._
+
+//   val expr = XorExpr(
+//     IdExpr(AtomConst(UInt16(21119))),
+//     AndExpr(
+//       IdExpr(PositionalArg(0)),
+//       XorExpr(
+//         IdExpr(PositionalArg(1)),
+//         IdExpr(AtomConst(UInt16(21119)))
+//       )
+//     )
+//   )
+
+//   val func = CustomFunctionImpl(expr)
+
+//   val equationsStr = func.equation.zipWithIndex.map { case (eq, idx) =>
+//     s"${idx} -> 0x${eq.toString(16)}"
+//   }.mkString("\n")
+
+//   println(func.toString())
+//   println(equationsStr)
+// }

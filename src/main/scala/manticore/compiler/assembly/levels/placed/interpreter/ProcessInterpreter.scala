@@ -185,7 +185,20 @@ trait ProcessInterpreter extends InterpreterBase {
       r.toString
     }.reverse.mkString("")
 
-    assert(BigInt(bits, 2).toInt == rdVal.toInt, "invalid custom equation")
+    if (BigInt(bits, 2).toInt != rdVal.toInt) {
+      val equationsStr = func.equation.zipWithIndex.map { case (eq, idx) =>
+        s"${idx} -> 0x${eq.toString(16)}"
+      }.mkString("\n")
+      val rsValsStr = rsVals.zipWithIndex.map { case (rsVal, idx) =>
+        s"${idx} -> 0x${BigInt(rsVal.toString()).toString(16)}"
+      }.mkString("\n")
+      ctx.logger.error("invalid custom equation")
+      ctx.logger.error(instr.toString)
+      ctx.logger.error(func.toString)
+      ctx.logger.error(equationsStr)
+      ctx.logger.error(rsValsStr)
+      assert(false, s"invalid custom equation")
+    }
 
     write(rd, rdVal)
   }
