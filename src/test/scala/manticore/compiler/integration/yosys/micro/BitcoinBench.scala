@@ -30,16 +30,16 @@ final class BitcoinBench extends MicroBench with CancelAfterFailure {
 
     WithInlineVerilog(
       s"""|
-          |module Main(input wire clk);
+          |module Main(input wire clock);
           |
           |   wire [31:0] golden_nonce;
           |   wire [31:0] nonce;
           |   reg [31:0] counter = 0;
           |   fpgaminer_top
           |        #(.LOOP_LOG2(${cfg.loopLog2}), .DIFFICULTY(${cfg.difficulty}))
-          |        miner(.clk(clk), .golden_nonce(golden_nonce), .nonce_out(nonce));
+          |        miner(.clk(clock), .golden_nonce(golden_nonce), .nonce_out(nonce));
           |
-          |   always @ (posedge clk) begin
+          |   always @ (posedge clock) begin
           |       counter <= counter + 1;
           |
           |       if (golden_nonce) begin

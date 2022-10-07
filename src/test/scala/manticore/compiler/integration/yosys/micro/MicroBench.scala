@@ -50,6 +50,7 @@ import java.nio.file.Path
 import java.io.PrintWriter
 import manticore.compiler.DefaultHardwareConfig
 import manticore.compiler.assembly.levels.placed.PreParallelizationCustomLutInsertion
+import manticore.compiler.assembly.levels.placed.PostParallelizationCustomLutInsertion
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -133,7 +134,7 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       val program7 = CompilationStage.parallelization(program6)
       // checkPlaced("parallelization", program7, reference, dumper)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
-      val program8 = CompilationStage.customLutsFixup(program7)
+      val program8 = CompilationStage.customLuts(program7)
       // checkPlaced("custom luts", program8, reference, dumper)
       ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
 
@@ -309,8 +310,9 @@ object CompilationStage {
   val placedOptimizations =
     PlacedIRConstantFolding andThen
       PlacedIRCommonSubExpressionElimination andThen
-      PlacedIRDeadCodeElimination andThen
-      PreParallelizationCustomLutInsertion
+      PlacedIRDeadCodeElimination
+      // andThen
+      // PreParallelizationCustomLutInsertion
 
   val parallelization =
     BalancedSplitMergerTransform andThen
@@ -318,9 +320,13 @@ object CompilationStage {
       PlacedNameChecker andThen
       AnalyticalPlacerTransform
 
-  val customLutsFixup =
-    CustomLutOverflowFixup andThen
+  val customLuts =
+    PostParallelizationCustomLutInsertion andThen
     PlacedNameChecker
+
+  // val customLutsFixup =
+  //   CustomLutOverflowFixup andThen
+  //   PlacedNameChecker
 
   val finalLowering = Lowering.Transformation andThen
     AbstractExecution andThen UtilizationChecker
