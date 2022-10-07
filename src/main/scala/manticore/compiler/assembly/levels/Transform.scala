@@ -11,13 +11,9 @@ import java.io.BufferedWriter
 import java.io.PrintWriter
 import manticore.compiler.HasLoggerId
 import manticore.compiler.FunctionalTransformation
+import manticore.compiler.HasTransformationID
+import manticore.compiler.TransformationID
 
-case class TransformationID(id: String) extends HasLoggerId
-trait HasTransformationID {
-  implicit val transformId = TransformationID(
-    getClass().getSimpleName().takeWhile(_ != '$')
-  )
-}
 
 /** Base transformation signatures, see [[AssemblyTransformer]] and
   * [[AssemblyChecker]] below

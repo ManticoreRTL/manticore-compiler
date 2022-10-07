@@ -9,6 +9,8 @@ import manticore.compiler.assembly.StopInterrupt
 import manticore.compiler.assembly.FinishInterrupt
 import manticore.compiler.assembly.AssertionInterrupt
 import manticore.compiler.assembly.SerialInterrupt
+import manticore.compiler.TransformationID
+
 case class ProcessStatistic(
     name: String,
     instructions: Seq[(String, Int)],

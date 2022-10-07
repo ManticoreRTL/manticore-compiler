@@ -2,7 +2,7 @@ package manticore.compiler.frontend.yosys
 
 import manticore.compiler.AssemblyContext
 import manticore.compiler.FunctionalTransformation
-import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.HasTransformationID
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -37,9 +37,8 @@ object YosysRunner extends FunctionalTransformation[YosysResultProxy, Path] {
 }
 
 final class YosysRunner private (runDir: Path, backend: YosysBackendProxy)
-    extends FunctionalTransformation[YosysResultProxy, Path] {
+    extends FunctionalTransformation[YosysResultProxy, Path] with HasTransformationID{
 
-  implicit private val loggerId = TransformationID("YosysRunner")
   import scala.sys.process.{ProcessLogger, Process}
   import java.nio.file.Files
 

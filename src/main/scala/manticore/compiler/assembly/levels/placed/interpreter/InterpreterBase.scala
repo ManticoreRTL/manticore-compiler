@@ -5,7 +5,7 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.AssemblyChecker
-import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.TransformationID
 import manticore.compiler.assembly.ManticoreAssemblyIR
 import manticore.compiler.assembly.levels.placed.PlacedIR
 import manticore.compiler.assembly.levels.ValueChangeWriterBase

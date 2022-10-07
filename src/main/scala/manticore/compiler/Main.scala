@@ -71,7 +71,7 @@ object Main {
       // OParser
       OParser.sequence(
         programName("masm"),
-        head("Manticore assembler", "vPROTOTYPE"),
+        head("Manticore assembler", "v0.8"),
         arg[File]("<file>...")
           .unbounded()
           .minOccurs(1)
@@ -179,9 +179,9 @@ object Main {
 
     val backend =
       ManticorePasses.ToPlaced andThen
-      ManticorePasses.ExtractParallelism andThen
-      CustomLutInsertion.post.withCondition(!cfg.noCf) andThen
-      ManticorePasses.BackendLowerEnd
+        ManticorePasses.ExtractParallelism andThen
+        CustomLutInsertion.post.withCondition(!cfg.noCf) andThen
+        ManticorePasses.BackendLowerEnd
 
     val AssemblyCompiler = AssemblyFileParser andThen
       ManticorePasses.frontend andThen
@@ -199,7 +199,21 @@ object Main {
     cfg.mode match {
       case CompileMode =>
         val compiler = AssemblyCompiler andThen CodeDump
-        compiler(assemblyFile)
+        Try { compiler(assemblyFile) } match {
+          case Failure(exception) =>
+            ctx.logger.flush()
+            throw exception
+          case Success(_) =>
+            cfg.report match {
+              case Some(fp) =>
+                val writer = new PrintWriter(fp)
+                writer.write(ctx.stats.asYaml)
+                writer.close()
+              case None => // nothing to do
+            }
+
+        }
+
       case InterpretMode(lowerFirst, timeout, serialOut) =>
         val serialWriter = serialOut.map { file =>
           new PrintWriter(file)

@@ -24,7 +24,6 @@ import manticore.compiler.assembly.annotations.AnnotationValue
 import manticore.compiler.assembly.annotations.IntValue
 import manticore.compiler.assembly.annotations.StringValue
 import manticore.compiler.assembly.annotations.AssemblyAnnotationFields
-import manticore.compiler.assembly.levels.HasTransformationID
 import manticore.compiler.assembly.annotations.Reg
 import manticore.compiler.HasLoggerId
 import manticore.compiler.FormatString

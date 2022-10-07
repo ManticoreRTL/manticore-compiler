@@ -5,10 +5,10 @@ import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.levels.AssemblyChecker
 import manticore.compiler.assembly.levels.AssemblyTransformer
 import manticore.compiler.assembly.levels.ConstType
-import manticore.compiler.assembly.levels.HasTransformationID
+import manticore.compiler.HasTransformationID
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
-import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.TransformationID
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.assembly.{FinishInterrupt, StopInterrupt, SerialInterrupt, AssertionInterrupt}

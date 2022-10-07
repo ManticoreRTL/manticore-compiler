@@ -12,4 +12,10 @@ trait FunctionalTransformation[-S, +T] {
 
 }
 
+case class TransformationID(id: String) extends HasLoggerId
+trait HasTransformationID {
+  implicit val transformId = TransformationID(
+    getClass().getSimpleName().takeWhile(_ != '$')
+  )
+}
 

@@ -4,7 +4,7 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.HasLoggerId
 import manticore.compiler.LoggerId
 import manticore.compiler.FunctionalTransformation
-import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.TransformationID
 
 import java.io.File
 import java.nio.file.Files

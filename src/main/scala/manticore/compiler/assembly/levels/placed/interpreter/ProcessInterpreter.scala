@@ -2,7 +2,7 @@ package manticore.compiler.assembly.levels.placed.interpreter
 
 import manticore.compiler.assembly.levels.placed.PlacedIR._
 import manticore.compiler.assembly.levels.UInt16
-import manticore.compiler.assembly.levels.TransformationID
+import manticore.compiler.TransformationID
 import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.levels.ConstType
 import manticore.compiler.assembly.BinaryOperator

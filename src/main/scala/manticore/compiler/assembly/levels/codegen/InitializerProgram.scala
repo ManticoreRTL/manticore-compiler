@@ -4,7 +4,7 @@ import manticore.compiler.AssemblyContext
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.Memblock
 import manticore.compiler.assembly.levels.ConstType
-import manticore.compiler.assembly.levels.HasTransformationID
+import manticore.compiler.HasTransformationID
 import manticore.compiler.assembly.levels.InputType
 import manticore.compiler.assembly.levels.MemoryType
 import manticore.compiler.assembly.levels.UInt16
