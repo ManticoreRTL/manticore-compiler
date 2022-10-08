@@ -24,7 +24,7 @@ class Mips32ChiselTester extends KernelTester with ProcessorTester {
       ManticorePasses.middleend andThen
       ManticorePasses.backend
 
-  def mkTest(fixture: FixtureParam, dimx: Int, dimy: Int): Unit = { 
+  def mkTest(fixture: FixtureParam, dimx: Int, dimy: Int): Unit = {
     def getResource(name: String) = scala.io.Source.fromResource(
       s"integration/cpu/mips32/${name}"
     )
@@ -39,7 +39,7 @@ class Mips32ChiselTester extends KernelTester with ProcessorTester {
       debug_message = true,
       log_file = Some(fixture.test_dir.resolve("run.log").toFile())
     )
-    
+
     val instMem =
       fixture.dump("inst_mem.data", getResource("sum.hex").mkString(""))
     val tbWrapper = WithInlineVerilog(s"""|
@@ -55,7 +55,7 @@ class Mips32ChiselTester extends KernelTester with ProcessorTester {
       Seq(tbWrapper.p, WithResource("integration/cpu/mips32/mips32.sv").p)
     )
 
-    val source: String = scala.io.Source.fromFile(masmFile.toFile()).getLines().mkString("\n")    
+    val source: String = scala.io.Source.fromFile(masmFile.toFile()).getLines().mkString("\n")
 
     compileAndRun(source, context)(fixture)
   }
@@ -66,7 +66,7 @@ class Mips32ChiselTester extends KernelTester with ProcessorTester {
     // (4, 4)
   ).foreach { case (dimx, dimy) =>
 
-    it should s"not fail mips32 in a ${dimx}x${dimy} topology" in { 
+    it should s"not fail mips32 in a ${dimx}x${dimy} topology" in {
       mkTest(_, dimx, dimy)
     }
   }

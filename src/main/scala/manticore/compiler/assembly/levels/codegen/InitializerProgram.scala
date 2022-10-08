@@ -15,6 +15,9 @@ import java.io.File
 import java.nio.file.Files
 import scala.annotation.tailrec
 import manticore.compiler.assembly
+import scala.util.Try
+import scala.util.Failure
+import scala.util.Success
 
 object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with HasTransformationID {
 
@@ -55,7 +58,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
     def emptyBody          = Seq.fill(ctx.hw_config.maxLatency) { Nop }
     val alignedInits = inits.map { thisInits =>
       thisInits ++ Seq.fill(maxInitsPerProcess - thisInits.length) {
-        thisInits.head.copy(body = emptyBody, registers = Nil)
+        emptyInit(thisInits.head)
       }
     } // need to align them for transpose, but perhaps we could avoid having the extra empty
     // init processes by writing a for loop! I am just too lazy to do that...
@@ -64,6 +67,7 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
       val withFinish = initProcs.map { init =>
         val isMaster = (init.id.x == 0 && init.id.y == 0)
         if (isMaster) {
+
           init.copy(
             body = init.body ++ Seq.fill(maxLen - init.body.length) { Nop } :+ Interrupt(
               SimpleInterruptDescription(action = assembly.FinishInterrupt, eid = 0, info = None),
@@ -71,12 +75,43 @@ object InitializerProgram extends ((DefProgram, AssemblyContext) => Unit) with H
               SystemCallOrder(0)
             )
           )
+
         } else {
           init
         }
       }
       program.copy(processes = withFinish)
     }
+
+  }
+
+  /**
+   * Create an empty initialization process, used to pad initialization sequence.
+   * Any initialization sequence requires a zero and one value so does an empty one.
+   */
+  private def emptyInit(proc: DefProcess)(implicit ctx: AssemblyContext): DefProcess = {
+
+    val constZero = DefReg(
+      variable = ValueVariable("zero", 0, WireType),
+      value = None
+    )
+    val constOne = DefReg(
+      variable = ValueVariable("one", 1, WireType),
+      value = None
+    )
+
+    // note that the SetValue instructions are not really necessary, because
+    // an empty sequence only appears after full sequences in which the two
+    // values are set
+    val body = Seq(
+      SetValue(constOne.variable.name, UInt16(1)),
+      SetValue(constZero.variable.name, UInt16(0))
+    ) ++ Seq.fill(ctx.hw_config.maxLatency) { Nop }
+
+    proc.copy(
+      body = body,
+      registers = Seq(constZero, constOne)
+    )
 
   }
 

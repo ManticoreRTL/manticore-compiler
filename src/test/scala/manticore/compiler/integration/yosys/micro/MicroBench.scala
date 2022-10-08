@@ -6,7 +6,6 @@ import manticore.compiler.LoggerId
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.UnitTestMatchers
 import manticore.compiler.WithInlineVerilog
-import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.placed.CustomLutInsertion
 import manticore.compiler.assembly.levels.placed.CustomLutOverflowFixup
 import manticore.compiler.assembly.levels.placed.JumpLabelAssignmentTransform

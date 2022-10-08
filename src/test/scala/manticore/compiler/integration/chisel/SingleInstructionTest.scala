@@ -10,7 +10,6 @@ import manticore.compiler.ManticorePasses
 import manticore.compiler.UnitFixtureTest
 import manticore.compiler.assembly.BinaryOperator
 import manticore.compiler.assembly.annotations.DebugSymbol
-import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.integration.chisel.util.ProcessorTester

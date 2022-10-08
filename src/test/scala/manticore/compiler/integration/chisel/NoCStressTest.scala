@@ -6,7 +6,6 @@ import manticore.compiler.DefaultHardwareConfig
 import manticore.compiler.HasLoggerId
 import manticore.compiler.ManticorePasses
 import manticore.compiler.UnitFixtureTest
-import manticore.compiler.assembly.levels.TransformationID
 import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.codegen.MachineCodeGenerator
 import manticore.compiler.integration.chisel.util.KernelTester
