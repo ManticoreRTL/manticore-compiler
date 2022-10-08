@@ -264,8 +264,15 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
     assert(clusters.size == 1, "can not handle disconnected graphs yet") // handle core budget allocation later
 
+    ctx.stats.record("edges" -> clusters.head.edges.size)
+    val initEstimate = vcycle(clusters.head.nodes.maxBy(vcycle))
+    val nodeCount = clusters.head.nodes.size
+    val edgeCount = clusters.head.edges.size
+    ctx.stats.record("nodes" -> nodeCount)
+    ctx.stats.record("edges" -> edgeCount)
+    ctx.stats.record("estimate" -> initEstimate)
     ctx.logger.info(
-      s"max split gives a vcycle estimate of ${vcycle(clusters.head.nodes.maxBy(vcycle))} in ${clusters.head.nodes.size} processes"
+      s"max split gives a vcycle estimate of ${initEstimate} in ${nodeCount} processes with ${edgeCount} edges"
     )
     // mutates clusters.head
     ctx.stats.recordRunTime("merging") {
