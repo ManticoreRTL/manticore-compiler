@@ -142,8 +142,8 @@ trait CanCollectProgramStatistics extends Flavored {
         case _: PutSerial => incr("PUT")
       }
 
-      vcycle += proc.body.length + inst_count("RECV")
       proc.body.foreach { count }
+      vcycle += proc.body.length + inst_count("RECV")
 
       InstructionStat(inst_count.toSeq, vcycle)
     }

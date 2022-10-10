@@ -83,7 +83,7 @@ object MachineCodeGenerator extends ((DefProgram, AssemblyContext) => Unit) with
     // instructions. The SLEEP_LENGTH cycles is used to synchronize all processors
     // at the end of a virtual cycle.
     /// IMPORTANT: It is required to have SLEEP_CYCLE >= MIN_LATENCY
-    // to ensure that all instructions are finished write back when a new
+    // to ensure that all instructions are finished with write back when a new
     // virtual cycles begins.
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
