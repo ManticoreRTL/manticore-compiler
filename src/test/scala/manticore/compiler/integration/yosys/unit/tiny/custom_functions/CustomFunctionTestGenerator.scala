@@ -76,9 +76,9 @@ class CustomFunctionTestGenerator extends UnitFixtureTest with CancelAfterFailur
   case class XnorExpr(arg1: Expr, arg2: Expr) extends BinaryExpr { val op: Operator = Xnor }
   case class NotExpr(arg: Expr)               extends UnaryExpr  { val op: Operator = Not  }
 
-  def generateRandom(numTests: Int, depth: Int): String = {
+  def generateRandom(depth: Int): String = {
 
-    val inputs      = Seq.tabulate(10) { idx => NamedOperand(s"input_${idx}") }
+    val inputs      = Seq.tabulate(depth) { idx => NamedOperand(s"input_${idx}") }
     val outputs     = ArrayBuffer.empty[NamedOperand]
     val connections = ArrayBuffer.empty[(NamedOperand, Expr)]
 
@@ -150,9 +150,7 @@ class CustomFunctionTestGenerator extends UnitFixtureTest with CancelAfterFailur
       generateLogicExprIter(getRandomOperand())
     }
 
-    Range.inclusive(0, numTests - 1).foreach { testIdx =>
-      connections += Tuple2(getNextOutput(), generateLogicExpr(depth))
-    }
+    connections += Tuple2(getNextOutput(), generateLogicExpr(depth))
 
     // Output verilog
     val inputsStr = inputs
@@ -185,15 +183,19 @@ class CustomFunctionTestGenerator extends UnitFixtureTest with CancelAfterFailur
         |""".stripMargin
   }
 
-  val verilog = generateRandom(numTests = 1000, depth = 10)
+  val numTests = 1000
+  val depth    = 10
 
-  s"Custom functions" should "match verilator results" in { f =>
-    new YosysUnitTest {
-      val testIterations   = 10000
-      val code             = CodeText(verilog)
-      val testDir          = f.test_dir
-      override def dumpAll = true
-    }.lowerAndRun()
+  Range.inclusive(0, numTests - 1).foreach { testIdx =>
+    s"Combinational output ${testIdx}" should "match verilator results" in { f =>
+      val verilog = generateRandom(depth)
+      new YosysUnitTest {
+        val testIterations   = 10000
+        val code             = CodeText(verilog)
+        val testDir          = f.test_dir
+        override def dumpAll = false
+      }.lowerAndRun()
+    }
   }
 
 }
