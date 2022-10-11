@@ -7,9 +7,9 @@ import org.scalatest.CancelAfterFailure
 import scala.collection.mutable.ArrayBuffer
 import java.math.BigInteger
 
-import collection.mutable.{Map => MMap}
+import org.scalatest.ParallelTestExecution
 
-class CustomFunctionTestGenerator extends UnitFixtureTest with CancelAfterFailure {
+class CustomFunctionTestGenerator extends UnitFixtureTest with ParallelTestExecution {
 
   behavior of s"Custom function insertion"
 
