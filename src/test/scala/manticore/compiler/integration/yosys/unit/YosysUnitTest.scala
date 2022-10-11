@@ -28,19 +28,23 @@ import manticore.compiler.frontend.yosys.YosysVerilogReader
 import manticore.compiler.frontend.yosys.YosysBackendProxy
 import manticore.compiler.assembly.parser.AssemblyFileParser
 import manticore.compiler.LoggerId
+import manticore.compiler.ManticorePasses
+import manticore.compiler.assembly.levels.placed.CustomLutInsertion
+import manticore.compiler.assembly.levels.placed.interpreter.AtomicInterpreter
+import manticore.compiler.assembly.levels.placed.PlacedIRCloseSequentialCycles
 
 sealed trait TestCode
-case class CodeText(src: String) extends TestCode
+case class CodeText(src: String)      extends TestCode
 case class CodeResource(path: String) extends TestCode
 
 object YosysUnitTest {
 
   def verilate(
-    vFilenames: Seq[Path],
-    hFilenames: Seq[Path],
-    timeOut: Int
+      vFilenames: Seq[Path],
+      hFilenames: Seq[Path],
+      timeOut: Int
   )(implicit
-    ctx: AssemblyContext
+      ctx: AssemblyContext
   ): ArrayBuffer[String] = {
     import scala.sys.process.{Process, ProcessLogger}
 
@@ -64,7 +68,7 @@ object YosysUnitTest {
       val text =
         scala.io.Source.fromResource("integration/yosys/VHarness.cpp").mkString
       val tempFile = tempDir.resolve("VHarness.cpp")
-      val writer = new PrintWriter(tempFile.toFile())
+      val writer   = new PrintWriter(tempFile.toFile())
       writer.print(text)
       writer.flush()
       writer.close()
@@ -75,10 +79,10 @@ object YosysUnitTest {
 
     // Copy all files to the run directory.
     val runDirFileNames = (vFilenames ++ hFilenames).map { filepath =>
-      val filename = filepath.toString.split("/").last
+      val filename   = filepath.toString.split("/").last
       val targetPath = runDir.resolve(filename)
-      val content = scala.io.Source.fromFile(filepath.toFile()).getLines().mkString("\n")
-      val writer = new PrintWriter(targetPath.toFile())
+      val content    = scala.io.Source.fromFile(filepath.toFile()).getLines().mkString("\n")
+      val writer     = new PrintWriter(targetPath.toFile())
       writer.write(content)
       writer.flush()
       writer.close()
@@ -124,11 +128,11 @@ object YosysUnitTest {
     verilate(filenames, Seq.empty, timeOut)
   }
 
-  def compare(reference: ArrayBuffer[String], results: ArrayBuffer[String])(
-      implicit ctx: AssemblyContext
+  def compare(reference: ArrayBuffer[String], results: ArrayBuffer[String])(implicit
+      ctx: AssemblyContext
   ): Boolean = {
-    val numLines = reference.length min results.length
-    var ok = true
+    val numLines          = reference.length min results.length
+    var ok                = true
     implicit val loggerId = new HasLoggerId { val id = "result-check" }
 
     @tailrec
@@ -186,7 +190,15 @@ trait YosysUnitTest {
 
   def dumpAll: Boolean = false
 
-  final def run(): Unit = {
+  // Does not parallelize, but simply performs all optimizations before parallelization.
+  final def lowerAndRun(): Unit = run((masmFile => context => lowInterpreter(masmFile)(context)))
+
+  final def run(
+      // masm file -> interpreted output
+      interpreter: (String => (AssemblyContext => ArrayBuffer[String])) =
+        (masmFile => context => interpret(masmFile)(context))
+      // masmFile and context are passed when invoking `interpret`. They are not known yet.
+  ): Unit = {
 
     implicit val ctx = defaultContext(dumpAll)
 
@@ -210,7 +222,7 @@ trait YosysUnitTest {
 
       val manticore = yosysCompile(Seq(filename, tbFilename), ctx.dump_all)
 
-      val results = interpret(manticore)
+      val results = interpreter(manticore)(ctx)
 
       if (dumpAll) {
         dump("results.txt", results.mkString("\n"))
@@ -234,8 +246,8 @@ trait YosysUnitTest {
         ctx.logger.flush()
         throw new CompilationFailureException("test failed")
     }
-
   }
+
   private final def defaultContext(dump_all: Boolean = false): AssemblyContext =
     AssemblyContext(
       dump_all = dump_all,
@@ -246,7 +258,7 @@ trait YosysUnitTest {
 
   def yosysSelection: Seq[YosysPass] = Nil
   private def yosysRunnables = {
-    val prelim = Yosys.PreparationPasses()
+    val prelim   = Yosys.PreparationPasses()
     val lowering = Yosys.LoweringPasses
     if (yosysSelection.nonEmpty) {
       yosysSelection.foldLeft(prelim) { case (agg, p) =>
@@ -258,14 +270,14 @@ trait YosysUnitTest {
   }
 
   private final def dump(filename: String, text: String): Path = {
-    val fp = testDir.resolve(filename)
+    val fp      = testDir.resolve(filename)
     val printer = new PrintWriter(fp.toFile)
     printer.print(text)
     printer.close()
     fp
   }
   private final def copyResource(resourcePath: String): Path = {
-    val text = scala.io.Source.fromResource(resourcePath).mkString
+    val text     = scala.io.Source.fromResource(resourcePath).mkString
     val filename = Path.of(resourcePath).getFileName().toString()
     dump(filename, text)
   }
@@ -318,20 +330,39 @@ trait YosysUnitTest {
       filename: String
   )(implicit ctx: AssemblyContext): ArrayBuffer[String] = {
 
-    val parsed =
-      AssemblyFileParser(testDir.resolve(filename))
+    val parsed = AssemblyFileParser(testDir.resolve(filename))
     val compiler =
       UnconstrainedNameChecker andThen
         UnconstrainedMakeDebugSymbols andThen
         UnconstrainedOrderInstructions andThen
         UnconstrainedCloseSequentialCycles
     val program = compiler(parsed)
-    val out = ArrayBuffer.empty[String]
+    val out     = ArrayBuffer.empty[String]
     val interp = UnconstrainedInterpreter.instance(
       program = program,
       serial = Some(out += _)
     )
     interp.runCompletion()
+    out
+  }
+
+  def lowInterpreter(
+      filename: String
+  )(implicit ctx: AssemblyContext): ArrayBuffer[String] = {
+    val parsed = AssemblyFileParser(testDir.resolve(filename))
+    val compiler =
+      ManticorePasses.frontend andThen
+        ManticorePasses.middleend andThen
+        ManticorePasses.ToPlaced andThen
+        CustomLutInsertion.pre andThen
+        PlacedIRCloseSequentialCycles
+    val program = compiler(parsed)
+    val out     = ArrayBuffer.empty[String]
+    val interp = AtomicInterpreter.instance(
+      program = program,
+      serial = Some(out += _)
+    )
+    interp.interpretCompletion()
     out
   }
 }
