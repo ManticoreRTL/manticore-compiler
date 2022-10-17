@@ -26,7 +26,7 @@ class ShiftRegFifofTest extends KernelTester {
     ManticorePasses.frontend andThen
       ManticorePasses.middleend andThen
       ManticorePasses.backend
-  it should "shift values in a shift register using a single core" in {
+  it should "shift values in a shift register using 4 core" in {
     fixture =>
 
       val verilogSource = WithInlineVerilog(
@@ -108,7 +108,7 @@ class ShiftRegFifofTest extends KernelTester {
       implicit val context = AssemblyContext(
         output_dir = Some(fixture.test_dir.resolve("out").toFile()),
         hw_config = DefaultHardwareConfig(dimX = 2, dimY = 2, nRegisters = 32),
-        dump_all = false,
+        dump_all = true,
         debug_message = false,
         dump_dir = Some(fixture.test_dir.resolve("dumps").toFile()),
         expected_cycles = Some(6),

@@ -40,14 +40,12 @@ private[lowering] class NetworkOnChip(val cfg: HardwareConfig) {
     val yDist =
       cfg.yHops(from, to)
 
-    /** [[LatencyAnalysis.latency]] gives the number of NOPs required between
-      * two depending instruction, that is, it gives the latency between
-      * executing and writing back the instruction but the [[Send]] latency
-      * should also consider the number of cycles required for fetching and
-      * decoding. That is why we add "2" to the number given by
-      * [[LatencyAnalysis.latency]]
-      */
-    val enqueueTime = cfg.latency(send) + 2 + scheduleCycle
+    /* The packet is enqueued to the NoC after cfg.decodeLatency + cfg.sendPipes cycle.
+     * because we send out the packet not on write back but immediately after decode with
+     * some extra pipes.
+     * Since the packet is immediately registered (to x or y), then there is an extra +1
+    */
+    val enqueueTime = cfg.decodeLatency + cfg.sendPipes +  scheduleCycle + 1
     val xHops: Seq[Step] =
       Seq.tabulate(xDist) { i =>
         val x_v = (from.x + i + 1) % cfg.dimX
@@ -162,13 +160,16 @@ private[lowering] class NetworkOnChip(val cfg: HardwareConfig) {
     for (Step(y, t) <- path.yHops) {
       linksY(path.to.x)(y) += t
     }
+
     RecvEvent(
       Recv(
         path.send.rd,
         path.send.rs,
         path.from
       ),
-      path.yHops.last.t
+      // computing the "true receive time" is simple, we just need to account for the extra recv pipes
+      // on the recv side of the switch before the packet is written as an instruction in the instruction memory
+      path.yHops.last.t + cfg.recvPipes
     )
   }
 

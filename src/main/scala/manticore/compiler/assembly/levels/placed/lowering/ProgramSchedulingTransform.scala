@@ -186,6 +186,8 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
       def notifyReceiver(ready: Option[MatchResult]): Unit = ready match {
         case Some(SendMatch(send, path)) =>
           val recvEvent = network.request(path)
+          ctx.logger.debug(s"@ ${core.currentCycle} ${core.process.id} enqueue @ ${path.enqueueTime} ${send} -> ${recvEvent}")
+          ctx.logger.debug(s"xHops: ${path.xHops.map(_.toString).mkString(",")} yHops: ${path.yHops.map(_.toString).mkString(",")}")
           getCore(send.dest_id).notifyRecv(recvEvent)
         case _ => //nothing to do
       }

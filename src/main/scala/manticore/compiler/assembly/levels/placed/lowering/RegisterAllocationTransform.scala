@@ -491,9 +491,13 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
     // we also add maxLatency Nops at the very end to make sure the real instructions
     // get to commit because if there are no Nops at the end, the last few instruction
     // may not be fetched but discarded in the hardware pipeline
-    val withMoves = process.body ++ Seq.fill(ctx.hw_config.maxLatency) {
-      Nop
-    } ++ moveQueue.map(_._1) ++ Seq.fill(ctx.hw_config.maxLatency) { Nop }
+    val movBody = if (moveQueue.nonEmpty) {
+      Seq.fill(ctx.hw_config.maxLatency) { Nop } ++ moveQueue.map(_._1)
+    } else {
+      Nil
+    }
+
+    val withMoves = process.body ++ movBody
 
     val result = process.copy(
       body = withMoves

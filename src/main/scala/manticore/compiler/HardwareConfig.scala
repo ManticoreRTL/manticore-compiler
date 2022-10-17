@@ -24,6 +24,13 @@ sealed trait HardwareConfig {
 
   val maxLatency: Int
 
+  // number of pipes in the recv path
+  val recvPipes: Int
+  // number of pipes in the send path after decode
+  val sendPipes: Int
+  // latency of decoding
+  val decodeLatency: Int
+
   protected val nHops: Int = 1
 
   def latency(inst: Instruction): Int = inst match {
@@ -74,5 +81,9 @@ case class DefaultHardwareConfig(
     nScratchPad: Int = (1 << 14),
     nInstructions: Int = 4096,
     nCustomFunctions: Int = 32,
-    nCfuInputs: Int = 4
+    nCfuInputs: Int = 4,
+    decodeLatency: Int = 5,
+    recvPipes: Int = 7,
+
+    sendPipes: Int = 7
 ) extends HardwareConfig
