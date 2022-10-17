@@ -351,7 +351,7 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
 
     ctx.logger.dumpArtifact(
       s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${procId}_logicSubgraphWithInputs.dot",
-      forceDump = true
+      forceDump = false
     ) {
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).
@@ -1017,7 +1017,7 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
     // showing each cone category with a different color.
     ctx.logger.dumpArtifact(
       s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_selectedCustomInstructionCones.dot",
-      forceDump = true
+      forceDump = false
     ) {
       val reprIds = coneIdToReprId.values.toSet
 
