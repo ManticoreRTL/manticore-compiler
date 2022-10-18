@@ -26,11 +26,13 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
   }
   private def mergeConnectedGraphWithBudget(
       coreBudget: Int,
+      threshold: Int,
       graph: MutableGraph[ProcessDescriptor, WDiEdge],
       parContext: ParallelizationContext
   )(implicit
       ctx: AssemblyContext
   ) = {
+
 
     val locked = scala.collection.mutable.Set.empty[NodeT]
     var time_point = System.currentTimeMillis()
@@ -73,7 +75,6 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
       var shortestVcycle = Int.MaxValue
       var longestNode    = Option.empty[NodeT]
       var longestVcycle  = Int.MinValue
-
       for (node <- graph.nodes) {
         if (!locked(node)) {
           val nodeVcycle = vcycle(node)
@@ -108,10 +109,14 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
         val sendsReduction =
           (mergeCandidate.toOuter.outSet intersect neighbor.toOuter.inBound).size +
             (neighbor.toOuter.outSet intersect mergeCandidate.toOuter.inBound).size
-        val recvReduction = (mergeCandidate.toOuter.inBound intersect neighbor.toOuter.inBound).size
+        val recvReduction = 2 * (mergeCandidate.toOuter.inBound intersect neighbor.toOuter.inBound).size // times two because each recv amounts to a Nop and a SetValue
+
+        // Additionally, two processes that share the same instruction also yield a better merge since the shared instructions will be deduplicated.
+        val cseReduction = (neighbor.toOuter.body intersect mergeCandidate.toOuter.body).size
 
         // lower is better
-        val score = (candidateVcycle + vcycle(neighbor)) - sendsReduction - recvReduction
+        val score = (candidateVcycle + vcycle(neighbor)) - sendsReduction - recvReduction - cseReduction
+
         if (memoryRequirement <= (ctx.hw_config.nScratchPad)) {
           if (choice.isEmpty) {
             choice = Some(MergeChoice(mergeCandidate, neighbor, score))
@@ -150,9 +155,9 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
               case Some(choice) =>
                 // There is a viable choice. Let's see if this choice increase the
                 // current estimated vcycle.
-                if (choice.score > (longestVcycle / 2)) {
+                if (choice.score > threshold) {
                   ctx.logger.info(
-                    s"Merge choice exceeds vcycle threshold ${choice.score} > ${longestVcycle / 2}, will try straggler as merge candidate"
+                    s"Merge choice exceeds vcycle threshold ${choice.score} > ${threshold}, will try straggler as merge candidate"
                   )
                   // this choice degrades vcycle, try merging the longest node instead
                   findChoice(longestNode, longestVcycle) match {
@@ -274,9 +279,10 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
     ctx.logger.info(
       s"max split gives a vcycle estimate of ${initEstimate} in ${nodeCount} processes with ${edgeCount} edges"
     )
+    val threshold = ctx.hw_config.maxLatency max (program.processes.head.body.length / numCores)
     // mutates clusters.head
     ctx.stats.recordRunTime("merging") {
-      mergeConnectedGraphWithBudget(numCores, clusters.head, parContext)
+      mergeConnectedGraphWithBudget(numCores, threshold, clusters.head, parContext)
     }
 
     val cores          = clusters.head.nodes.toSeq.map { x => x.toOuter }
