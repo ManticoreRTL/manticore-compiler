@@ -468,7 +468,7 @@ object ProcessSplittingTransform extends PlacedIRTransformer {
           mergedProcesses.foldLeft[(Int, MergeResult)](0, NoMerge) { case ((ix, prevBest), currentChoice) =>
             if (canMerge(currentChoice, head)) {
               val possibleMerge = head merged currentChoice
-              val possibleCost  = head.body.size + currentChoice.body.size
+              val possibleCost  = estimateCost(possibleMerge)
               val nextBest = prevBest match {
                 case NoMerge => MergeChoice(possibleMerge, ix, possibleCost)
                 case other: MergeChoice if (other.cost > possibleCost) =>
