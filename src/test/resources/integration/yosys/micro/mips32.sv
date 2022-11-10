@@ -358,7 +358,7 @@ module Mips32 (
   // Program Counter
   reg [31:0] pc = 0;
   wire [31:0] pc_4 = pc + 4;
-
+  reg [31:0] counter = 0;
   // Connection to Instruction Memory (64 aligned 32-bit words)
   // (Aligned word addressable, so addrs are shifted right 2)
   assign raddr = pc >> 2;
@@ -407,8 +407,9 @@ module Mips32 (
       .wdata(reg_write)
   );
   always @(posedge clock) begin
+    counter <= counter + 1;
     if (c_reg_write) begin
-      $display("%h %h: RF[%d] <= %d", pc, instr, reg_dst ? instr[15:11] : instr[20:16], reg_write);
+      $display("%d %h %h: RF[%d] <= %d", counter, pc, instr, reg_dst ? instr[15:11] : instr[20:16], reg_write);
     end
   end
   // ALU Control

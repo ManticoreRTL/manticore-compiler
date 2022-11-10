@@ -97,7 +97,7 @@ module Alu (
     case (ctrl)
       4'b0000: result = op1 << op2[4:0];  // sll
       4'b0001: result = op1 >> op2[4:0];  // srl
-      4'b0010: result = op1 >>> op2[4:0];  // sra
+      4'b0010: result = $signed(op1) >>> $signed(op2[4:0]);  // sra
       4'b0011: result = op1 + op2;  // add
       4'b0100: result = op1 - op2;  // sub
       4'b0101: result = op1 & op2;  // and
@@ -406,7 +406,11 @@ module Mips32 (
       .waddr(reg_dst ? instr[15:11] : instr[20:16]),
       .wdata(reg_write)
   );
-
+  always @(posedge clock) begin
+    if (c_reg_write) begin
+      $display("%h %h: RF[%d] <= %d", pc, instr, reg_dst ? instr[15:11] : instr[20:16], reg_write);
+    end
+  end
   // ALU Control
   wire [3:0] ctrl;
   AluControl alu_control (
@@ -453,25 +457,18 @@ module Mips32 (
     end else begin
       if (instr[5:0] == 6'd13) begin
         halted_r <= 1'b1;
-      end
-      if (halted_r == 1'b0) begin
-        if (jump) begin
-          pc <= jump_addr;
-        end else if (branch & zero) begin
-          pc <= branch_addr;
-        end else begin
-          pc <= pc_4;
-        end
-      end else begin
-`ifdef VERILATOR
-        assert (reg_read1 == 45);
+        $display("Got halt!");
         $finish;
-        // $display("Finished execution");
-`else
-        $masm_expect(reg_read1 == 45, "expected 45");
-        $masm_stop;
-`endif
       end
+      // if (halted_r == 1'b0) begin
+      if (jump) begin
+        pc <= jump_addr;
+      end else if (branch & zero) begin
+        pc <= branch_addr;
+      end else begin
+        pc <= pc_4;
+      end
+      // end
 
     end
 
@@ -480,8 +477,6 @@ module Mips32 (
 
   end
 endmodule
-
-
 
 
 
@@ -502,42 +497,3 @@ module ResetDriver (
 
 endmodule
 
-
-
-module Main (
-    input wire clock
-);
-
-
-  reg  [31:0] inst_mem[255:0];
-
-
-  wire [31:0] inst;
-  wire [31:0] addr;
-  assign inst = inst_mem[addr];
-  wire halted;
-  wire reset;
-  ResetDriver rdriver (
-      .clock(clock),
-      .reset(reset)
-  );
-  // genvar i;
-  // for (i = 0; i < 10; i = i + 1) begin
-
-    Mips32 dut (
-        .instr (inst),
-        .raddr (addr),
-        .clock (clock),
-        .reset (reset),
-        .halted(halted)
-    );
-  // end
-
-
-
-  initial begin
-    $readmemh("sum.hex", inst_mem);
-  end
-
-
-endmodule
