@@ -50,6 +50,8 @@ import java.io.PrintWriter
 import manticore.compiler.DefaultHardwareConfig
 import manticore.compiler.assembly.levels.placed.PreParallelizationCustomLutInsertion
 import manticore.compiler.assembly.levels.placed.PostParallelizationCustomLutInsertion
+import manticore.compiler.assembly.levels.placed.EmitDepthStatistics
+import manticore.compiler.assembly.levels.unconstrained.EmitWidthStatistics
 
 abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
 
@@ -122,6 +124,9 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       // checkUnconstrained("prelim opts", program2, reference, dumper)
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       val program3 = CompilationStage.controlLowering(program2)
+
+      EmitWidthStatistics(program3)
+
       // checkUnconstrained("jump table", program3, reference, dumper)
       val program4 = CompilationStage.widthLowering(program3)
       // checkUnconstrained("width conversion", program4, reference, dumper)
@@ -129,6 +134,9 @@ abstract class MicroBench extends UnitFixtureTest with UnitTestMatchers {
       // ctx.logger.info(s"Stats: \n${ctx.stats.asYaml}")(LoggerId("Stats"))
       // checkPlaced("translation", program5, reference, dumper)
       val program6 = CompilationStage.placedOptimizations(program5)
+
+      EmitDepthStatistics(program6)
+
       // checkPlaced("placed opts", program6, reference, dumper)
       val program7 = CompilationStage.parallelization(program6)
       // checkPlaced("parallelization", program7, reference, dumper)
