@@ -5,7 +5,7 @@ object Yosys {
   import Implicits.passProxyToTransformation
   val Hierarchy     = YosysPassProxy("hierarchy")
   val Proc          = YosysPassProxy("proc")
-  val Opt           = YosysPassProxy("opt")
+  val Opt           = YosysPassProxy("opt", Seq("-purge"))
   val WReduce       = YosysPassProxy("wreduce")
   val OptReduce     = YosysPassProxy("opt_reduce")
   val OptClean      = YosysPassProxy("opt_clean")
