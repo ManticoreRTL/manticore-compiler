@@ -852,7 +852,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     val vars_dPa  = MHashMap.empty[CorePathId, IntVar]
     val hints_dPa = MHashMap.empty[CorePathId, Int]
     val minDist   = 0 // Using 1 yields infeasible solutions, but I can't tell why?
-    val maxDist   = (ctx.hw_config.dimX- 1) + (ctx.hw_config.dimY - 1)
+    val maxDist   = (ctx.hw_config.dimX - 1) + (ctx.hw_config.dimY - 1)
     pathIdToPath.foreach { case (pathId, path) =>
       val dPa = model.newIntVar(minDist, maxDist, s"d_${pathId}")
       vars_dPa += pathId -> dPa
@@ -978,7 +978,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
         .sortBy { proc =>
           proc.body.count {
             case _ @(_: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
-            case _                                                                             => false
+            case _                                                                 => false
           }
         } {
           Ordering[Int].reverse
@@ -1022,7 +1022,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     val privilegedProcs = program.processes.filter { proc =>
       proc.body.exists {
         case (_: Interrupt | _: GlobalLoad | _: GlobalStore | _: PutSerial) => true
-        case _                                                                          => false
+        case _                                                              => false
       }
     }
     assert(
@@ -1146,9 +1146,10 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // "backwards" edges in the grid that exist due to the torus structure.
     // We use these invisible cores as otherwise the rendered graph will be
     // illegible with the backwards edges.
-    val coreIdToVId = Range(-1, maxDimX + 1)
+    val coreIdToVId = Range
+      .inclusive(-1, maxDimX)
       .flatMap { x =>
-        Range(-1, maxDimY + 1).map { y =>
+        Range.inclusive(-1, maxDimY).map { y =>
           CoreId(x, y)
         }
       }
@@ -1156,30 +1157,92 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       .toMap
 
     val maxWeight = if (coreEdgeWeights.isEmpty) 0 else coreEdgeWeights.values.max
-    val weightHeatMap = coreEdgeWeights.values.map { weight =>
+    // Must add 0 and maxWeight to the weightHeatMap to ensure lookups do not fail later!
+    val weightHeatMap = (coreEdgeWeights.values.toSet + 0 + maxWeight).map { weight =>
       val weightNormalized = weight / maxWeight.toDouble
       val color            = HeatmapColor(weightNormalized)
       weight -> color
     }.toMap
 
-    def isInvisible(coreId: CoreId): Boolean =
+    def isInvisible(coreId: CoreId): Boolean = {
       (coreId.x == -1) || (coreId.x == maxDimX) || (coreId.y == -1) || (coreId.y == maxDimY)
+    }
+
+    def isBackwardsEdge(path: CorePath.PathEdge): Boolean = {
+      val isHorizBack = (path.src.x == -1 && path.dst.x == 0) || (path.src.x == maxDimX - 1 && path.src.x == maxDimX)
+      val isVertBack  = (path.src.y == -1 && path.dst.y == 0) || (path.src.y == maxDimY - 1 && path.dst.y == maxDimY)
+      isHorizBack || isVertBack
+    }
 
     val coreIdToProcId = procIdToCoreId.map(x => x.swap)
 
-    val (xEdges, yEdges) = coreEdgeWeights.partition { case (coreEdge, weight) =>
-      val (src, dst) = (coreEdge.src, coreEdge.dst)
-      src.y == dst.y
+    // Initialize all edge weights to 0 if non-existant.
+    // We will overwrite the weight of the backwards edges later.
+    val edges = MHashMap.empty[CorePath.PathEdge, Int]
+    Range
+      .inclusive(-1, maxDimY - 1)
+      .foreach { y =>
+        Range.inclusive(-1, maxDimX - 1).foreach { x =>
+          val src     = CoreId(x, y)
+          val xDst    = CoreId(x + 1, y)
+          val yDst    = CoreId(x, y + 1)
+          val xPath   = CorePath.PathEdge(src, xDst)
+          val yPath   = CorePath.PathEdge(src, yDst)
+          val xWeight = coreEdgeWeights.getOrElse(xPath, 0)
+          val yWeight = coreEdgeWeights.getOrElse(yPath, 0)
+          edges += xPath -> xWeight
+          edges += yPath -> yWeight
+        }
+      }
+
+    // Check x backwards edges from (maxDimX-1, y) -> (0, y)
+    // If they exist, then overwrite the following two edges:
+    //
+    //   (-1       , y) -> (0      , y)
+    //   (maxDimX-1, y) -> (maxDimX, y)
+    //
+    Range.inclusive(0, maxDimY - 1).foreach { y =>
+      val rightMostRealCore = CoreId(maxDimX - 1, y)
+      val leftMostRealCore  = CoreId(0, y)
+      coreEdgeWeights.get(CorePath.PathEdge(rightMostRealCore, leftMostRealCore)) match {
+        case None         => // Nothing to do
+        case Some(weight) =>
+          // Overwrite the two fake edges we add to the left and right of the core grid so
+          // it renders well.
+          val rightMostFakeCore = CoreId(maxDimX, y)
+          val leftMostFakeCore  = CoreId(-1, y)
+
+          val leftPath  = CorePath.PathEdge(leftMostFakeCore, leftMostRealCore)
+          val rightPath = CorePath.PathEdge(rightMostRealCore, rightMostFakeCore)
+
+          edges += leftPath  -> weight
+          edges += rightPath -> weight
+      }
     }
 
-    val (xForwardEdges, xBackwardEdges) = xEdges.partition { case (coreEdge, weight) =>
-      val (src, dst) = (coreEdge.src, coreEdge.dst)
-      (src.x < dst.x)
-    }
+    // Check y backwards edges from (x, maxDimY-1) -> (x, 0)
+    // If they exist, then overwrite the following two edges:
+    //
+    //   (x,        -1) -> (x,       0)
+    //   (x, maxDimY-1) -> (x, maxDimY)
+    //
+    Range.inclusive(0, maxDimX - 1).foreach { x =>
+      val bottomMostRealCore = CoreId(x, maxDimY - 1)
+      val topMostRealCore    = CoreId(x, 0)
+      coreEdgeWeights.get(CorePath.PathEdge(bottomMostRealCore, topMostRealCore)) match {
+        case None         => // Nothing to do
+        case Some(weight) =>
+          // Overwrite the two fake edges we add to the top and bottom of the core grid so
+          // it renders well.
+          val bottomMostFakeCore = CoreId(x, maxDimY)
+          val topMostFakeCore    = CoreId(x, -1)
 
-    val (yForwardEdges, yBackwardEdges) = yEdges.partition { case (coreEdge, weight) =>
-      val (src, dst) = (coreEdge.src, coreEdge.dst)
-      (src.y < dst.y)
+          val topPath    = CorePath.PathEdge(topMostFakeCore, topMostRealCore)
+          val bottomPath = CorePath.PathEdge(bottomMostRealCore, bottomMostFakeCore)
+
+          edges += topPath    -> weight
+          edges += bottomPath -> weight
+      }
     }
 
     dotLines.append("digraph {")
@@ -1208,58 +1271,29 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
         dotLines.append(s"\trank=\"same\" {${sameRankVIds.mkString(", ")}}")
       }
 
-    // Dump edges.
-    // I explicitly omit the backward edges (torus) as they make the grid layout unreadable.
-    (xForwardEdges ++ yForwardEdges).foreach { case (coreEdge, weight) =>
+    // Dump core edges.
+    edges.foreach { case (coreEdge, weight) =>
       val (src, dst)       = (coreEdge.src, coreEdge.dst)
       val (srcVId, dstVId) = (coreIdToVId(src), coreIdToVId(dst))
-      val color            = weightHeatMap(weight).toCssHexString()
-      val style            = if (weight == 0) "style=invis" else ""
-      dotLines.append(s"\t${srcVId} -> ${dstVId} [label=\"${weight}\" color=\"${color}\" ${style}]")
-    }
 
-    // Drawing the x-axis backward edges will result in the grid layout being unreadable.
-    // We instead use the invisible vertex before/after the first/last vertex in a row
-    // to model these backward edges.
-    xBackwardEdges.foreach { case (coreEdge, weight) =>
-      val y = coreEdge.src.y
+      val color = if (weight == 0) {
+        ""
+      } else {
+        s"color=\"${weightHeatMap(weight).toCssHexString()}\""
+      }
 
-      // We create 2 edges for this backward edge.
-      // 1. Edge from invisible vertex X<-1>_Y<y> to X<0>_Y<y>
-      // 2. Edge from X<maxDimX-1>_Y<y> to invisible vertex X<maxDimX>_Y<y>
-      val invisHeadSrc = coreIdToVId(CoreId(-1, y))
-      val invisHeadDst = coreIdToVId(CoreId(0, y))
-      val invisLastSrc = coreIdToVId(CoreId(maxDimX - 1, y))
-      val invisLastDst = coreIdToVId(CoreId(maxDimX, y))
+      val style = if (weight == 0) {
+        "style=invis"
+      } else if (isBackwardsEdge(coreEdge)) {
+        "style=dashed"
+      } else {
+        ""
+      }
 
-      val color = weightHeatMap(weight).toCssHexString()
-      val style = if (weight == 0) "style=invis" else "style=dashed"
-      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} color=\"${color}\" ${style}]")
-      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} color=\"${color}\" ${style}]")
-    }
-
-    // Drawing the y-axis backward edges will result in the grid layout being unreadable.
-    // We instead use the invisible vertex before/after the first/last vertex in a column
-    // to model these backward edges.
-    yBackwardEdges.foreach { case (coreEdge, weight) =>
-      val x = coreEdge.src.x
-
-      // We create 2 edges for this backward edge.
-      // 1. Edge from invisible vertex X<x>_Y<-1> to X<x>_Y<0>
-      // 2. Edge from X<x>_Y<maxDimY-1> to invisible vertex X<x>_Y<maxDimY>
-      val invisHeadSrc = coreIdToVId(CoreId(x, -1))
-      val invisHeadDst = coreIdToVId(CoreId(x, 0))
-      val invisLastSrc = coreIdToVId(CoreId(x, maxDimY - 1))
-      val invisLastDst = coreIdToVId(CoreId(x, maxDimY))
-
-      val color = weightHeatMap(weight).toCssHexString()
-      val style = if (weight == 0) "style=invis" else "style=dashed"
-      dotLines.append(s"\t${invisHeadSrc} -> ${invisHeadDst} [label=${weight} color=\"${color}\" ${style}]")
-      dotLines.append(s"\t${invisLastSrc} -> ${invisLastDst} [label=${weight} color=\"${color}\" ${style}]")
+      dotLines.append(s"\t${srcVId} -> ${dstVId} [label=${weight} ${color} ${style}]")
     }
 
     dotLines.append("}") // digraph
     dotLines.mkString("\n")
   }
 }
-
