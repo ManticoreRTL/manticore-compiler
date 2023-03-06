@@ -40,7 +40,12 @@ import scala.collection.mutable.{HashSet => MHashSet}
 import scala.jdk.CollectionConverters._
 import manticore.compiler.assembly.levels.DeadCodeElimination
 import manticore.compiler.assembly.levels.placed.Helpers.DeadCode
-
+import manticore.compiler.assembly.levels.WireType
+import manticore.compiler.assembly.levels.InputType
+import manticore.compiler.assembly.levels.RegType
+import manticore.compiler.assembly.levels.OutputType
+import manticore.compiler.assembly.levels.MemoryType
+import manticore.compiler.assembly.levels.placed.Helpers.Rename
 trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer with CanCollectProgramStatistics {
 
   val flavor = PlacedIR
@@ -312,6 +317,49 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
     logicClusters
   }
 
+  // Returns a subgraph of the dependence graph containing the logic vertices *and* their inputs
+  // (which are not logic vertices by definition). The inputs are needed to perform cut enumeration
+  // as otherwise we would not know the in-degree of the first logic vertices in the graph.
+  def logicSubgraphWithInputs(
+      dependenceGraph: DepGraph,
+      logicVertices: Set[DepVertex],
+      vToConstMap: Map[DepVertex, Constant],
+      // Preserves the output vertices of logic nodes.
+      keepOutputs: Boolean = false
+  ): (
+      DepGraph,
+      Set[DepVertex] // inputs
+  ) = {
+    // The inputs are vertices *outside* the given set of vertices that are connected
+    // to vertices *inside* the cluster. Some of these "inputs" are constants, but
+    // constants are known at compile time and do not affect the runtime behavior of
+    // a function. We therefore do not count them as inputs and filter them out.
+    val inputs = logicVertices
+      .flatMap { vLogic =>
+        Graphs.predecessorListOf(dependenceGraph, vLogic).asScala
+      }
+      .filter { vAnywhere =>
+        !logicVertices.contains(vAnywhere) && !vToConstMap.contains(vAnywhere)
+      }
+
+    val outputs = if (keepOutputs) {
+      logicVertices
+        .flatMap { vLogic =>
+          Graphs.successorListOf(dependenceGraph, vLogic).asScala
+        }
+        .filter { vAnywhere =>
+          !logicVertices.contains(vAnywhere) && !vToConstMap.contains(vAnywhere)
+        }
+    } else {
+      Set.empty[DepVertex]
+    }
+
+    val subgraphVertices = inputs ++ logicVertices ++ outputs
+    val subgraph         = new AsSubgraph(dependenceGraph, subgraphVertices.asJava)
+
+    (subgraph, inputs)
+  }
+
   def getFanoutFreeCones(
       dependenceGraph: DepGraph,
       logicVertices: Set[DepVertex],
@@ -321,33 +369,9 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
   )(implicit
       ctx: AssemblyContext
   ): Iterable[Cone] = {
-    // Returns a subgraph of the dependence graph containing the logic vertices *and* their inputs
-    // (which are not logic vertices by definition). The inputs are needed to perform cut enumeration
-    // as otherwise we would not know the in-degree of the first logic vertices in the graph.
-    def logicSubgraphWithInputs(): (
-        DepGraph,
-        Set[DepVertex] // inputs
-    ) = {
-      // The inputs are vertices *outside* the given set of vertices that are connected
-      // to vertices *inside* the cluster. Some of these "inputs" are constants, but
-      // constants are known at compile time and do not affect the runtime behavior of
-      // a function. We therefore do not count them as inputs and filter them out.
-      val inputs = logicVertices
-        .flatMap { vLogic =>
-          Graphs.predecessorListOf(dependenceGraph, vLogic).asScala
-        }
-        .filter { vAnywhere =>
-          !logicVertices.contains(vAnywhere) && !vToConstMap.contains(vAnywhere)
-        }
-
-      val subgraphVertices = inputs ++ logicVertices
-      val subgraph         = new AsSubgraph(dependenceGraph, subgraphVertices.asJava)
-
-      (subgraph, inputs)
-    }
 
     // Form a graph containing the vertices of all clusters AND their inputs.
-    val (gLswi, primaryInputs) = logicSubgraphWithInputs()
+    val (gLswi, primaryInputs) = logicSubgraphWithInputs(dependenceGraph, logicVertices, vToConstMap)
 
     ctx.logger.dumpArtifact(
       s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${procId}_logicSubgraphWithInputs.dot",
@@ -1015,10 +1039,7 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
 
     // To visually inspect the mapping for correctness, we dump a highlighted dot file
     // showing each cone category with a different color.
-    ctx.logger.dumpArtifact(
-      s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_selectedCustomInstructionCones.dot",
-      forceDump = false
-    ) {
+    if (ctx.dump_all) {
       val reprIds = coneIdToReprId.values.toSet
 
       // Each category has a defined color.
@@ -1038,6 +1059,13 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
         clusterId -> color.toCssHexString()
       }.toMap
 
+      // val nameString = proc.registers.map { reg =>
+      //   reg.variable.name -> (reg.variable.varType match {
+      //     case ConstType => reg.value.get.toString()
+      //     case _ => reg.variable.name
+      //   })
+      // }.toMap
+
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).
       val nameMap = dependenceGraph
@@ -1047,16 +1075,53 @@ trait CustomLutInsertion extends DependenceGraphBuilder with PlacedIRTransformer
           v match {
             case Left(name)   => v -> name
             case Right(instr) => v -> instr.toString()
+            // case Right(instr) => v -> Rename.asRenamed(instr)(nameString).toString
           }
         }
         .toMap
 
-      dumpGraph(
-        dependenceGraph,
-        clusters = clusters,
-        clusterColorMap = clusterColorMap,
-        vNameMap = nameMap
-      )
+      ctx.logger.dumpArtifact(
+        s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_constants.txt",
+        forceDump = false
+      ) {
+        val regToConst = proc.registers.flatMap { reg =>
+          reg.variable.varType match {
+            case ConstType => Some(reg.variable.name -> reg.value.get.toString())
+            case _         => None
+          }
+        }
+
+        regToConst.map { case (regName, const) =>
+          s"${regName} -> ${const}"
+        }.mkString("\n")
+      }
+
+      // Just the logic subgraph marked with the clusters.
+      val (gLswi, _) = logicSubgraphWithInputs(dependenceGraph, logicClusters.flatten, vToConstMap, keepOutputs = true)
+      ctx.logger.dumpArtifact(
+        s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_logicSubgraphWithInputs_selectedCustomInstructionCones.dot",
+        forceDump = false
+      ) {
+        dumpGraph(
+          gLswi,
+          clusters = clusters,
+          clusterColorMap = clusterColorMap,
+          vNameMap = nameMap
+        )
+      }
+
+      // The FULL dependence graph marked with the clusters.
+      ctx.logger.dumpArtifact(
+        s"dependence_graph_${ctx.logger.countProgress()}_${transformId}_${proc.id}_selectedCustomInstructionCones.dot",
+        forceDump = false
+      ) {
+        dumpGraph(
+          dependenceGraph,
+          clusters = clusters,
+          clusterColorMap = clusterColorMap,
+          vNameMap = nameMap
+        )
+      }
     }
 
     // The custom functions to emit. We only emit the representative function of the best cones.
