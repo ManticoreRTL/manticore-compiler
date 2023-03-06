@@ -103,8 +103,9 @@ object FormatString {
     def withWidth(w: Int): FmtDec = copy(w)
   }
 
-  case class FmtConcat[A <: FmtAtomArg](atoms: Seq[A], width: Int)
-      extends FmtArg
+  case class FmtConcat[A <: FmtAtomArg](atoms: Seq[A], width: Int) extends FmtArg {
+    override def toString: String = s"{${atoms.mkString(", ")}}(w${width})"
+  }
 
   case class FmtParseError(error: String)
 
