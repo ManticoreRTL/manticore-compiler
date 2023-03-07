@@ -1102,6 +1102,13 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // them all an Int id.
     val vToVid = g.vertexSet().asScala.zipWithIndex.toMap
 
+    val maxWeight = if (weights.isEmpty) 0 else weights.values.max
+    val weightHeatMap = (weights.values.toSet + 0 + maxWeight).map { weight =>
+      val weightNormalized = weight / maxWeight.toDouble
+      val color            = HeatmapColor(weightNormalized)
+      weight -> color
+    }.toMap
+
     dotLines.append("digraph {")
 
     // Dump vertices.
@@ -1115,15 +1122,13 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     g.edgeSet().asScala.foreach { e =>
       val src = g.getEdgeSource(e)
       val dst = g.getEdgeTarget(e)
-      val weight = weights.get((src, dst)) match {
-        case Some(w) => w.toString()
-        case None    => ""
-      }
+      val weight = weights((src, dst))
+      val color = weightHeatMap(weight).toCssHexString()
 
       val srcId = vToVid(src)
       val dstId = vToVid(dst)
 
-      dotLines.append(s"\t${srcId} -> ${dstId} [label=${weight}]")
+      dotLines.append(s"\t${srcId} -> ${dstId} [label=${weight} fontcolor=\"${color}\" color=\"${color}\"]")
     }
 
     dotLines.append("}") // digraph
@@ -1281,7 +1286,8 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       val color = if (weight == 0) {
         ""
       } else {
-        s"color=\"${weightHeatMap(weight).toCssHexString()}\""
+        val c = weightHeatMap(weight).toCssHexString()
+        s"color=\"${c}\" fontcolor=\"${c}\""
       }
 
       val style = if (weight == 0) {
