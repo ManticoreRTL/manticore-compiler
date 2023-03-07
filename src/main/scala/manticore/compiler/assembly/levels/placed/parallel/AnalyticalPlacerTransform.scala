@@ -1033,26 +1033,26 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     val privilegedCoreId = CoreId(0, 0)
     ctx.logger.info(s"Privileged process has process id ${privilegedProcId}")
 
-    // Round-robin assignemnt solution.
-    val roundRobinAssignmentHint = assignProcessesToCoresRoundRobin(
-      program,
-      processGraph,
-      procNameToProcId,
-      coreGraph,
-      procEdgeWeights,
-      pathIdToPath
-    )
-    val procIdToCoreId = roundRobinAssignmentHint
-
-    // // ILP-based solution.
-    // val procIdToCoreId = assignProcessesToCoresILP(
-    //   privilegedProcId,
-    //   privilegedCoreId,
+    // // Round-robin assignemnt solution.
+    // val roundRobinAssignmentHint = assignProcessesToCoresRoundRobin(
+    //   program,
     //   processGraph,
-    //   procEdgeWeights,
+    //   procNameToProcId,
     //   coreGraph,
+    //   procEdgeWeights,
     //   pathIdToPath
     // )
+    // val procIdToCoreId = roundRobinAssignmentHint
+
+    // ILP-based solution.
+    val procIdToCoreId = assignProcessesToCoresILP(
+      privilegedProcId,
+      privilegedCoreId,
+      processGraph,
+      procEdgeWeights,
+      coreGraph,
+      pathIdToPath
+    )
 
     // // CP-SAT-based solution.
     // val procIdToCoreId = assignProcessesToCoresCpSat(
@@ -1249,21 +1249,18 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     // Dump core vertices.
     coreIdToVId.foreach { case (coreId, vId) =>
-      if (isInvisible(coreId)) {
-        dotLines.append(s"\t${vId} [style=invis]")
-      } else {
-        // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
-        val attributes = coreIdToProcId.get(coreId) match {
-          case Some(procId) =>
-            val procName = procIdToProcName(procId)
-            s"[label=\"${coreId}\n${procName}\" fontcolor=\"#000000ff\" color=\"#000000ff\"]"
-          case None =>
-            // This core was not assigned a process, so we make the text transparent.
-            s"[label=\"${coreId}\nN/A\" fontcolor=\"#00000030\" color=\"#00000030\"]"
-        }
-
-        dotLines.append(s"\t${vId} ${attributes}")
+      val style = if (isInvisible(coreId)) "style=invis" else ""
+      // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
+      val attributes = coreIdToProcId.get(coreId) match {
+        case Some(procId) =>
+          val procName = procIdToProcName(procId)
+          s"[label=\"${coreId}\n${procName}\" fontcolor=\"#000000ff\" color=\"#000000ff\" ${style}]"
+        case None =>
+          // This core was not assigned a process, so we make the text transparent.
+          s"[label=\"${coreId}\nN/A\" fontcolor=\"#00000030\" color=\"#00000030\" ${style}]"
       }
+
+      dotLines.append(s"\t${vId} ${attributes}")
     }
 
     // Place all vertices at the same y-coordinate in the same rank so the grid is enforced.
