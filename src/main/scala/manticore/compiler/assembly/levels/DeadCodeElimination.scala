@@ -120,6 +120,10 @@ trait DeadCodeElimination extends CanComputeNameDependence with CanCollectInputO
   )(implicit ctx: AssemblyContext): String = {
     import scalax.collection.io.dot._
     import scalax.collection.io.dot.implicits._
+
+    def escape(s: String): String = s.replaceAll("\"", "\\\\\"")
+    def quote(s: String): String  = s"\"${s}\""
+
     val dotRoot = DotRootGraph(
       directed = true,
       id = Some("List scheduling dependence graph")
@@ -152,7 +156,7 @@ trait DeadCodeElimination extends CanComputeNameDependence with CanCollectInputO
           dotRoot,
           DotNodeStmt(
             NodeId(nodeIndex(inode.toOuter)),
-            List(DotAttr("label", inode.toOuter.toString.trim.take(64)))
+            List(DotAttr("label", quote(escape(inode.toOuter.toString.trim.take(64)))))
           )
         )
       )
