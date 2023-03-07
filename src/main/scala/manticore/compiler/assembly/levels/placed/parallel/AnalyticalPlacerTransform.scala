@@ -1169,7 +1169,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     }
 
     def isBackwardsEdge(path: CorePath.PathEdge): Boolean = {
-      val isHorizBack = (path.src.x == -1 && path.dst.x == 0) || (path.src.x == maxDimX - 1 && path.src.x == maxDimX)
+      val isHorizBack = (path.src.x == -1 && path.dst.x == 0) || (path.src.x == maxDimX - 1 && path.dst.x == maxDimX)
       val isVertBack  = (path.src.y == -1 && path.dst.y == 0) || (path.src.y == maxDimY - 1 && path.dst.y == maxDimY)
       isHorizBack || isVertBack
     }
@@ -1249,15 +1249,20 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     // Dump core vertices.
     coreIdToVId.foreach { case (coreId, vId) =>
-      // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
-      val procName = coreIdToProcId.get(coreId) match {
-        case Some(procId) => procIdToProcName(procId)
-        case None         => "N/A" // This core was not assigned a process.
-      }
       if (isInvisible(coreId)) {
         dotLines.append(s"\t${vId} [style=invis]")
       } else {
-        dotLines.append(s"\t${vId} [label=\"${coreId}\n${procName}\"]")
+        // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
+        val attributes = coreIdToProcId.get(coreId) match {
+          case Some(procId) =>
+            val procName = procIdToProcName(procId)
+            s"[label=\"${coreId}\n${procName}\" fontcolor=\"#000000ff\" color=\"#000000ff\"]"
+          case None =>
+            // This core was not assigned a process, so we make the text transparent.
+            s"[label=\"${coreId}\nN/A\" fontcolor=\"#00000030\" color=\"#00000030\"]"
+        }
+
+        dotLines.append(s"\t${vId} ${attributes}")
       }
     }
 
