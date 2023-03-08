@@ -1033,26 +1033,26 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     val privilegedCoreId = CoreId(0, 0)
     ctx.logger.info(s"Privileged process has process id ${privilegedProcId}")
 
-    // // Round-robin assignemnt solution.
-    // val roundRobinAssignmentHint = assignProcessesToCoresRoundRobin(
-    //   program,
-    //   processGraph,
-    //   procNameToProcId,
-    //   coreGraph,
-    //   procEdgeWeights,
-    //   pathIdToPath
-    // )
-    // val procIdToCoreId = roundRobinAssignmentHint
-
-    // ILP-based solution.
-    val procIdToCoreId = assignProcessesToCoresILP(
-      privilegedProcId,
-      privilegedCoreId,
+    // Round-robin assignemnt solution.
+    val roundRobinAssignmentHint = assignProcessesToCoresRoundRobin(
+      program,
       processGraph,
-      procEdgeWeights,
+      procNameToProcId,
       coreGraph,
+      procEdgeWeights,
       pathIdToPath
     )
+    val procIdToCoreId = roundRobinAssignmentHint
+
+    // // ILP-based solution.
+    // val procIdToCoreId = assignProcessesToCoresILP(
+    //   privilegedProcId,
+    //   privilegedCoreId,
+    //   processGraph,
+    //   procEdgeWeights,
+    //   coreGraph,
+    //   pathIdToPath
+    // )
 
     // // CP-SAT-based solution.
     // val procIdToCoreId = assignProcessesToCoresCpSat(
