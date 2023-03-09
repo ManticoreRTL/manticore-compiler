@@ -1254,15 +1254,16 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     // Dump core vertices.
     coreIdToVId.foreach { case (coreId, vId) =>
-      val style = if (isInvisible(coreId)) "style=invis" else ""
+      val style = if (isInvisible(coreId)) "style=\"invis\"" else ""
+      val shape = "shape=\"circle\""
       // Some cores may have no process assigned to them, hence why we use .get() to access the process id.
       val attributes = coreIdToProcId.get(coreId) match {
         case Some(procId) =>
           val procName = procIdToProcName(procId)
-          s"[label=\"${coreId}\n${procName}\" fontcolor=\"#000000ff\" color=\"#000000ff\" ${style}]"
+          s"[label=\"${coreId}\\n${procName}\" fontcolor=\"#000000ff\" color=\"#000000ff\" ${style} ${shape}]"
         case None =>
           // This core was not assigned a process, so we make the text transparent.
-          s"[label=\"${coreId}\nN/A\" fontcolor=\"#00000030\" color=\"#00000030\" ${style}]"
+          s"[label=\"${coreId}\\nN/A\" fontcolor=\"#00000030\" color=\"#00000030\" ${style} ${shape}]"
       }
 
       dotLines.append(s"\t${vId} ${attributes}")
