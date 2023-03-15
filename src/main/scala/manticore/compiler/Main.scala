@@ -188,7 +188,7 @@ object Main {
       ManticorePasses.middleend andThen
       backend
 
-    val assemblyFile = if (cfg.inputFiles.length == 1 && cfg.inputFiles.head.toPath.endsWith(".masm")) {
+    val assemblyFile = if (cfg.inputFiles.length == 1 && cfg.inputFiles.head.toPath.toString().endsWith(".masm")) {
       cfg.inputFiles.head.toPath
     } else {
       val VerilogCompiler = Yosys.YosysDefaultPassAggregator andThen
