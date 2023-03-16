@@ -1102,12 +1102,14 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     // them all an Int id.
     val vToVid = g.vertexSet().asScala.zipWithIndex.toMap
 
-    val maxWeight = if (weights.isEmpty) 0 else weights.values.max
-    val weightHeatMap = (weights.values.toSet + 0 + maxWeight).map { weight =>
-      val weightNormalized = weight / maxWeight.toDouble
-      val color            = HeatmapColor(weightNormalized)
-      weight -> color
-    }.toMap
+    val weightHeatMap = weights.values
+      .toSet[Int]
+      .map { weight =>
+        val weightNormalized = weight / weights.values.max
+        val color            = HeatmapColor(weightNormalized)
+        weight -> color
+      }
+      .toMap
 
     dotLines.append("digraph {")
 
@@ -1120,10 +1122,10 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
 
     // Dump edges.
     g.edgeSet().asScala.foreach { e =>
-      val src = g.getEdgeSource(e)
-      val dst = g.getEdgeTarget(e)
+      val src    = g.getEdgeSource(e)
+      val dst    = g.getEdgeTarget(e)
       val weight = weights((src, dst))
-      val color = weightHeatMap(weight).toCssHexString()
+      val color  = weightHeatMap(weight).toCssHexString()
 
       val srcId = vToVid(src)
       val dstId = vToVid(dst)
@@ -1161,13 +1163,14 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       .zipWithIndex
       .toMap
 
-    val maxWeight = if (coreEdgeWeights.isEmpty) 0 else coreEdgeWeights.values.max
-    // Must add 0 and maxWeight to the weightHeatMap to ensure lookups do not fail later!
-    val weightHeatMap = (coreEdgeWeights.values.toSet + 0 + maxWeight).map { weight =>
-      val weightNormalized = weight / maxWeight.toDouble
-      val color            = HeatmapColor(weightNormalized)
-      weight -> color
-    }.toMap
+    val weightHeatMap = coreEdgeWeights.values
+      .toSet[Int]
+      .map { weight =>
+        val weightNormalized = weight / coreEdgeWeights.values.max
+        val color            = HeatmapColor(weightNormalized)
+        weight -> color
+      }
+      .toMap
 
     def isInvisible(coreId: CoreId): Boolean = {
       (coreId.x == -1) || (coreId.x == maxDimX) || (coreId.y == -1) || (coreId.y == maxDimY)
