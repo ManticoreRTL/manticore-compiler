@@ -10,7 +10,7 @@ import manticore.compiler.assembly.levels.UInt16
 import manticore.compiler.assembly.levels.placed.Helpers.InputOutputPairs
 import manticore.compiler.assembly.levels.placed.Helpers.NameDependence
 import manticore.compiler.assembly.levels.OutputType
-import manticore.compiler.assembly.levels.placed.lowering.util.IntervalSet
+import manticore.compiler.assembly.levels.placed.lowering.util.{IntervalSet, Interval}
 import scala.annotation.tailrec
 import manticore.compiler.assembly.levels.placed.Helpers.ProgramStatistics
 
@@ -218,7 +218,6 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
       ArrayDeque.empty[Int] ++ Seq.tabulate(registerCapacity - numImmortals) { i =>
         i + numImmortals
       }
-
 
     val allocationHint =
       scala.collection.mutable.Map.empty[Name, AllocationHint]
@@ -502,6 +501,45 @@ private[lowering] object RegisterAllocationTransform extends PlacedIRTransformer
     val result = process.copy(
       body = withMoves
     )
+
+    ctx.stats.record(
+      s"Number of used registers (${process.id})" -> result.registers.map(reg => reg.variable.id).maxOption.getOrElse(0)
+    )
+
+    val numAlive = Array.fill(result.body.size) { 0 }
+    for (reg <- process.registers) {
+      if (
+        reg.variable.varType != ConstType &&
+        reg.variable.varType != MemoryType &&
+        lifetime(reg.variable.name).nonEmpty
+      ) {
+        val intervalSet = lifetime(reg.variable.name)
+        for (Interval(start, end) <- intervalSet.map(i => i)) {
+          for (t <- Range(start, end)) {
+            numAlive(t) += 1
+          }
+        }
+      }
+    }
+    val maxAlives = numAlive.max
+    ctx.stats.record(
+      s"Max registers alive (${process.id})" -> maxAlives
+    )
+
+    ctx.logger.dumpArtifact(s"${process.id}_lifetimes.txt", forceDump = false) {
+      val builder = new StringBuilder()
+      for (reg <- process.registers) {
+        if (
+          reg.variable.varType != ConstType &&
+          reg.variable.varType != MemoryType &&
+          lifetime(reg.variable.name).nonEmpty
+        ) {
+          val intervalSet = lifetime(reg.variable.name)
+          builder ++= s"${reg.variable.name} -> ${intervalSet}\n"
+        }
+      }
+      builder.toString()
+    }
 
     ctx.logger.dumpArtifact(s"${process.id}_shared_ids.txt") {
       result.registers
