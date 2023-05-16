@@ -38,7 +38,8 @@ object ManticorePasses {
       UnconstrainedDeadCodeElimination andThen
       UnconstrainedNameChecker andThen
       UnconstrainedIRParMuxDeconstructionTransform andThen
-      UnconstrainedNameChecker
+      UnconstrainedNameChecker andThen
+      UnconstrainedGraphStatistics
 
   val middleend =
     WidthConversion.transformation andThen

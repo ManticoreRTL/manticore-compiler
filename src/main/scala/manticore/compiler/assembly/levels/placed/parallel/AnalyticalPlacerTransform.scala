@@ -673,6 +673,13 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //     minimize {max_w}
     //
     val objective = solver.objective()
+    // coreGraph.edgeSet.asScala.foreach { e =>
+    //   val src      = coreGraph.getEdgeSource(e)
+    //   val dst      = coreGraph.getEdgeTarget(e)
+    //   val coreEdge = CorePath.PathEdge(src, dst)
+    //   val wCe      = vars_wCe(coreEdge)
+    //   objective.setCoefficient(wCe, 1)
+    // }
     objective.setCoefficient(maxW, 1)
     objective.setMinimization()
 
@@ -690,6 +697,39 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
         }
         .keySet
         .toMap
+
+      ctx.logger.debug {
+        vars_xPrC
+          .map { case ((procId, coreId), xPrC) =>
+            s"${procId} -> ${coreId} -> ${xPrC.solutionValue()}"
+          }
+          .mkString("\n")
+      }
+
+      ctx.logger.debug {
+        vars_ySePa
+          .map { case ((procEdge, coreEdgeId), ySePa) =>
+            s"${procEdge} -> ${ySePa.solutionValue()}"
+          }
+          .mkString("\n")
+      }
+
+      ctx.logger.debug {
+        val assignmentsStr = assignments.toSeq
+          .sortBy { case ((procId, coreId)) =>
+            procId
+          }
+          .map { case ((procId, coreId)) =>
+            s"ProcId ${procId} -> Core ${coreId}"
+          }
+          .mkString("\n")
+
+        assignmentsStr
+      }
+
+      ctx.logger.debug {
+        s"Objective function value = ${objective.value()}"
+      }
 
       ctx.logger.info {
         s"Solved process-to-core placement problem in ${solver.wallTime()}ms"
@@ -1043,6 +1083,40 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       pathIdToPath
     )
     val procIdToCoreId = roundRobinAssignmentHint
+    // ctx.logger.dumpArtifact(s"procIdToCoreId.txt", forceDump = true) {
+    //   procIdToCoreId.mkString("\n")
+    // }
+
+    // val procIdToCoreId: Map[ProcId, CoreId] = Map(
+    //   3 -> CoreId(0, 1),
+    //   1 -> CoreId(0, 2),
+    //   2 -> CoreId(1, 0),
+    //   0 -> CoreId(1, 1),
+    //   4 -> CoreId(1, 2),
+    //   5 -> CoreId(2, 0),
+    //   6 -> CoreId(2, 1),
+    //   7 -> CoreId(2, 2),
+    //   8 -> CoreId(0, 0)
+    // )
+
+    // val procIdToCoreId: Map[ProcId, CoreId] = Map(
+    //   0  -> CoreId(0, 1),
+    //   1  -> CoreId(0, 2),
+    //   2  -> CoreId(0, 3),
+    //   3  -> CoreId(1, 0),
+    //   9  -> CoreId(1, 1),
+    //   5  -> CoreId(1, 2),
+    //   6  -> CoreId(1, 3),
+    //   7  -> CoreId(2, 0),
+    //   8  -> CoreId(2, 1),
+    //   4  -> CoreId(2, 2),
+    //   10 -> CoreId(2, 3),
+    //   11 -> CoreId(3, 0),
+    //   12 -> CoreId(3, 1),
+    //   13 -> CoreId(3, 2),
+    //   14 -> CoreId(0, 0),
+    //   15 -> CoreId(3, 3)
+    // )
 
     // // ILP-based solution.
     // val procIdToCoreId = assignProcessesToCoresILP(
