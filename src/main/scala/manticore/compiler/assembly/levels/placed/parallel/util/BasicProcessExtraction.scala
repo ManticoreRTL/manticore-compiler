@@ -330,7 +330,11 @@ trait BasicProcessExtraction extends PlacedIRTransformer {
       }
 
     } else {
-      doSplit(program)
+      if (ctx.hw_config.dimX == 1 && ctx.hw_config.dimY == 1) {
+        program
+      } else {
+        doSplit(program)
+      }
     }
   }
 
