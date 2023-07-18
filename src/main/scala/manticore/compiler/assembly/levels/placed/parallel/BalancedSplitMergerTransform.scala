@@ -11,6 +11,7 @@ import scalax.collection.Graph
 import scalax.collection.edge.WDiEdge
 import scala.collection.BitSet
 import scala.annotation.tailrec
+import scala.collection.mutable.{Map => MMap}
 
 object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
@@ -285,7 +286,14 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
       mergeConnectedGraphWithBudget(numCores, threshold, clusters.head, parContext)
     }
 
-    val cores          = clusters.head.nodes.toSeq.map { x => x.toOuter }
+    val cores = clusters.head.nodes.toSeq.map { x => x.toOuter }
+
+    ctx.logger.dumpArtifact(s"duplicate_instruction_histogram.txt", forceDump = true) {
+      getDuplicateInstrsHist(cores).map { case (instrIdx, cnt) =>
+        s"${instrIdx} -> ${cnt}"
+      }.mkString("\n")
+    }
+
     val finalProcesses = createProcesses(program.processes.head, cores, parContext)
     val result = program.copy(
       processes = finalProcesses
@@ -351,6 +359,19 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
     }
 
     processes
+  }
+
+  // Returns a histogram of duplicate instructions.
+  // Instructions are represented by their index in the global single-body process graph.
+  // Map[InstrIdx => TotalCount]
+  private def getDuplicateInstrsHist(cores: Seq[ProcessDescriptor]): Map[Int, Int] = {
+    val dups = MMap.empty[Int, Int].withDefaultValue(0)
+    cores.foreach { core =>
+      core.body.foreach { ix =>
+        dups(ix) += 1
+      }
+    }
+    dups.toMap
   }
 
   private def computeStateUsers(parContext: ParallelizationContext, processes: Iterable[ProcessDescriptor]) = {
