@@ -251,150 +251,152 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
       // see if there is anything that can be committed
       tryCommitting()
 
-      core.state match {
-        case Processor.MainBlock =>
-          // then try to get an instruction to schedule it
-          val ready = findCompatible(matchSendOrAnyInst)
-          activateReady(ready)
-          scheduleReady(ready)
+      if (!core.scheduleContext.done()) {
+        core.state match {
+          case Processor.MainBlock =>
+            // then try to get an instruction to schedule it
+            val ready = findCompatible(matchSendOrAnyInst)
+            activateReady(ready)
+            scheduleReady(ready)
 
-        case Processor.DelaySlot(jtb, pos) =>
-          // put a single and only a single instruction at the current position
-          // i.e., this excludes LocalStore and GlobalStore because those ones
-          // unpack into two instructions
-          val ready = findCompatible(matchAnyButSendAndStore)
-          activateReady(ready)
-          ready match {
-            case Some(readyToActivate) =>
-              val newInst = readyToActivate.inst
-              ctx.logger.debug((s"Delay slot: ${newInst}"))
-              // tell the context we scheduling a proxy for the original
-              // instruction, needed for correct "finish" condition
-              core.scheduleContext +?= newInst
-              core.jtbBuilder.dslot += newInst
-
-            case None => // nothing to do
-              core.jtbBuilder.dslot += Nop
-          }
-
-          core.currentCycle += 1
-
-          if (pos == jumpDelaySlotSize - 1) {
-            core.state = Processor.CaseBlock(jtb, 0)
-          } else {
-            core.state = Processor.DelaySlot(jtb, pos + 1)
-          }
-        case Processor.CaseBlock(jtb, pos) =>
-          val maxPos = core.jtbBuilder.blocks.head._2.length - 1
-
-          // we can only bring new instruction from outside if all blocks
-          // doing a Nop right now
-          val canScheduleInstFromOutside = core.jtbBuilder.blocks.forall { case (lbl, blk) =>
-            blk(pos) == Nop
-          }
-
-          if (canScheduleInstFromOutside) {
+          case Processor.DelaySlot(jtb, pos) =>
+            // put a single and only a single instruction at the current position
+            // i.e., this excludes LocalStore and GlobalStore because those ones
+            // unpack into two instructions
             val ready = findCompatible(matchAnyButSendAndStore)
             activateReady(ready)
             ready match {
-              case Some(newActive) =>
-                val newInst = newActive.inst
-                ctx.logger.debug(s"Bringing in instruction to JumpTable ${jtb.target}", newInst)
-                assert(newInst != Nop)
-                // notify the context that this newInst is being scheduled
-                // in an opaque way
+              case Some(readyToActivate) =>
+                val newInst = readyToActivate.inst
+                ctx.logger.debug((s"Delay slot: ${newInst}"))
+                // tell the context we scheduling a proxy for the original
+                // instruction, needed for correct "finish" condition
                 core.scheduleContext +?= newInst
-                // need to rename the output of newInst to a fresh name in every
-                // case block to keep the SSA-ness. This means we need to create
-                // new Phi outputs for each output of the instruction we are bringing
-                // in
-                val phiOutputs = NameDependence.regDef(newInst)
+                core.jtbBuilder.dslot += newInst
 
-                val phiInputs =
-                  for ((label, caseBlock) <- core.jtbBuilder.blocks) yield {
+              case None => // nothing to do
+                core.jtbBuilder.dslot += Nop
+            }
 
-                    val newOutputNames = phiOutputs.map { origOutput =>
-                      origOutput -> s"%w${ctx.uniqueNumber()}"
+            core.currentCycle += 1
+
+            if (pos == jumpDelaySlotSize - 1) {
+              core.state = Processor.CaseBlock(jtb, 0)
+            } else {
+              core.state = Processor.DelaySlot(jtb, pos + 1)
+            }
+
+          case Processor.CaseBlock(jtb, pos) =>
+            val maxPos = core.jtbBuilder.blocks.head._2.length - 1
+
+            // we can only bring new instruction from outside if all blocks
+            // doing a Nop right now
+            val canScheduleInstFromOutside = core.jtbBuilder.blocks.forall { case (lbl, blk) =>
+              blk(pos) == Nop
+            }
+
+            if (canScheduleInstFromOutside) {
+              val ready = findCompatible(matchAnyButSendAndStore)
+              activateReady(ready)
+              ready match {
+                case Some(newActive) =>
+                  val newInst = newActive.inst
+                  ctx.logger.debug(s"Bringing in instruction to JumpTable ${jtb.target}", newInst)
+                  assert(newInst != Nop)
+                  // notify the context that this newInst is being scheduled
+                  // in an opaque way
+                  core.scheduleContext +?= newInst
+                  // need to rename the output of newInst to a fresh name in every
+                  // case block to keep the SSA-ness. This means we need to create
+                  // new Phi outputs for each output of the instruction we are bringing
+                  // in
+                  val phiOutputs = NameDependence.regDef(newInst)
+
+                  val phiInputs =
+                    for ((label, caseBlock) <- core.jtbBuilder.blocks) yield {
+
+                      val newOutputNames = phiOutputs.map { origOutput =>
+                        origOutput -> s"%w${ctx.uniqueNumber()}"
+                      }
+
+                      for ((origOutput, rdNew) <- newOutputNames) {
+                        val tpe = WireType
+
+                        // create a new definition
+                        core.newDefs += DefReg(
+                          ValueVariable(rdNew, -1, tpe),
+                          None
+                        )
+                      }
+
+                      core.jtbBuilder.addMapping(label, newOutputNames)
+
+                      val renamedInst = Rename.asRenamed(newInst) {
+                        core.jtbBuilder.getMapping(label)
+                      }
+
+                      caseBlock(pos) = renamedInst
+                      newOutputNames.map { case (rd, rs) => label -> rs }
                     }
 
-                    for ((origOutput, rdNew) <- newOutputNames) {
-                      val tpe = WireType
+                  // we create Phis for all the new outputs even though they may
+                  // no longer be used outside. We have to remove the redundant ones
+                  // later. If we don't, we screw up lifetime intervals for register
+                  // allocation (i.e., we wrongfully extends lifetimes by keeping
+                  // dead Phis and thus introduce artificial register pressure)
 
-                      // create a new definition
-                      core.newDefs += DefReg(
-                        ValueVariable(rdNew, -1, tpe),
-                        None
-                      )
-                    }
-
-                    core.jtbBuilder.addMapping(label, newOutputNames)
-
-                    val renamedInst = Rename.asRenamed(newInst) {
-                      core.jtbBuilder.getMapping(label)
-                    }
-
-                    caseBlock(pos) = renamedInst
-                    newOutputNames.map { case (rd, rs) => label -> rs }
+                  val newPhis = phiOutputs.zip(phiInputs.transpose).map { case (rd: Name, rsx: Seq[(Label, Name)]) =>
+                    Phi(rd, rsx)
                   }
 
-                // we create Phis for all the new outputs even though they may
-                // no longer be used outside. We have to remove the redundant ones
-                // later. If we don't, we screw up lifetime intervals for register
-                // allocation (i.e., we wrongfully extends lifetimes by keeping
-                // dead Phis and thus introduce artificial register pressure)
+                  if (newInst != Nop && newPhis.isEmpty) {
+                    ctx.logger.debug("something is up", newInst)
+                  }
+                  ctx.logger.debug(s"new phis: \n${newPhis.mkString("\n")}")
+                  val x = core.jtbBuilder.phis.length
+                  core.jtbBuilder.phis ++= newPhis
+                  if (core.jtbBuilder.phis.length != x + newPhis.length) {
+                    ctx.logger.error("something is up", newInst)
+                  }
 
-                val newPhis = phiOutputs.zip(phiInputs.transpose).map { case (rd: Name, rsx: Seq[(Label, Name)]) =>
-                  Phi(rd, rsx)
-                }
+                case None =>
+                // there is nothing we can do, no instruction can be brought in
+                // from the outside
 
-                if (newInst != Nop && newPhis.isEmpty) {
-                  ctx.logger.debug("something is up", newInst)
-                }
-                ctx.logger.debug(s"new phis: \n${newPhis.mkString("\n")}")
-                val x = core.jtbBuilder.phis.length
-                core.jtbBuilder.phis ++= newPhis
-                if (core.jtbBuilder.phis.length != x + newPhis.length) {
-                  ctx.logger.error("something is up", newInst)
-                }
-
-              case None =>
-              // there is nothing we can do, no instruction can be brought in
-              // from the outside
-
+              }
             }
-          }
-          core.currentCycle += 1
-          if (pos == maxPos) {
-            // we are done with the jump table
-            core.state = Processor.MainBlock
-            // now is the time for actually making the jump table active. The
-            // redundant Phis can be removed after the full schedule is done
-            // to ensure lifetime intervals remain accurate
+            core.currentCycle += 1
+            if (pos == maxPos) {
+              // we are done with the jump table
+              core.state = Processor.MainBlock
+              // now is the time for actually making the jump table active. The
+              // redundant Phis can be removed after the full schedule is done
+              // to ensure lifetime intervals remain accurate
 
-            val newJtb = jtb
-              .copy(
-                results = jtb.results ++ core.jtbBuilder.phis.toSeq,
-                dslot = core.jtbBuilder.dslot.toSeq,
-                blocks = core.jtbBuilder.blocks.map { case (lbl, blk) =>
-                  JumpCase(lbl, blk.toSeq)
-                }
-              )
-              .setPos(jtb.pos)
-            core.scheduleContext += newJtb
+              val newJtb = jtb
+                .copy(
+                  results = jtb.results ++ core.jtbBuilder.phis.toSeq,
+                  dslot = core.jtbBuilder.dslot.toSeq,
+                  blocks = core.jtbBuilder.blocks.map { case (lbl, blk) =>
+                    JumpCase(lbl, blk.toSeq)
+                  }
+                )
+                .setPos(jtb.pos)
+              core.scheduleContext += newJtb
 
-          } else {
-            core.state = Processor.CaseBlock(jtb, pos + 1)
-          }
+            } else {
+              core.state = Processor.CaseBlock(jtb, pos + 1)
+            }
 
+        }
       }
-
     }
 
     ctx.stats.recordRunTime("Simulation loop") {
       while (running()) {
         for (core <- cores) {
           // can't have core lagging behind, only leading ahead
-          assert(core.currentCycle >= globalCycle)
+          assert(core.scheduleContext.done() || core.currentCycle >= globalCycle)
           if (core.currentCycle == globalCycle) {
             advanceCoreState(core)
           }
@@ -407,35 +409,6 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
     ctx.logger.info(s"NoC:\n ${network.draw()}")
 
     ctx.logger.dumpArtifact(s"paths.json") { NetworkOnChip.jsonDump(network) }
-
-    @tailrec
-    def createRecvSchedule(
-        cycle: Int,
-        receives: Seq[RecvEvent],
-        schedule: Seq[Instruction]
-    ): (Seq[Instruction], Int) = {
-
-      receives match {
-        case (RecvEvent(inst, recvCycle)) +: receivesTail =>
-          if (recvCycle > cycle) {
-            // insert Nops up to recvCycle, because we need to wait for
-            // messages to arrive
-            createRecvSchedule(
-              recvCycle + 1,
-              receivesTail,
-              schedule ++ Seq.fill(recvCycle - cycle) { Nop } :+ inst
-            )
-          } else {
-            // message has already arrived, no need for Nops
-            createRecvSchedule(
-              cycle + 1,
-              receivesTail,
-              schedule :+ inst
-            )
-          }
-        case Nil => (schedule, cycle)
-      }
-    }
 
     // schedule the receives
     val scheduledProcesses =

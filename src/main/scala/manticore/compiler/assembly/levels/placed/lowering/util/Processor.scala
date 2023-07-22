@@ -93,6 +93,10 @@ private[lowering] final class ScheduleContext(
   private var nodesToSchedule = dependenceGraph.nodes.length
   private val schedule = scala.collection.mutable.Queue.empty[Instruction]
 
+  def done(): Boolean = {
+    nodesToSchedule == 0
+  }
+
   // add an instruction to schedule
   def +=(inst: Instruction) = {
     schedule += inst
