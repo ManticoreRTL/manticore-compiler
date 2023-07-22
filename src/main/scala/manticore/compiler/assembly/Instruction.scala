@@ -487,7 +487,7 @@ trait ManticoreAssemblyIR {
 
   case object Nop extends Instruction {
     val annons: Seq[AssemblyAnnotation] = Nil
-    override def toString: String       = s"\t\tNOP;"
+    override def toString: String       = s"\t\tNOP"
   }
 
   case class AddCarry(
