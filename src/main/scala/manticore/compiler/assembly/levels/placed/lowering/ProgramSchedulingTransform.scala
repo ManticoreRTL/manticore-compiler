@@ -23,6 +23,7 @@ import manticore.compiler.assembly.levels.placed.lowering.util.RecvEvent
 import manticore.compiler.assembly.CanBuildDependenceGraph
 import manticore.compiler.assembly.levels.OutputType
 import java.io.PrintWriter
+import collection.mutable.{Map => MMap}
 
 /** Program scheduler pass
   *
@@ -87,6 +88,11 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
     }.toMap
 
     var globalCycle = 0
+
+    // Describes why a Nop was inserted at a given cycle for a given core.
+    val nopReason = cores.map { core =>
+      core.process.id -> MMap.empty[Int, String] // cycle -> reason for NOP
+    }.toMap
 
     def running(): Boolean =
       cores.exists { core => core.scheduleContext.finished() == false }
@@ -246,6 +252,16 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
           }
         case None => // nothing to add to the active list
           core.scheduleContext += Nop
+
+          val coreNopReason = nopReason(core.process.id)
+          if (core.scheduleContext.readyList.exists(_.toOuter.isInstanceOf[Send])) {
+            coreNopReason += core.currentCycle -> "network stall"
+          } else if (core.scheduleContext.readyList.isEmpty) {
+            coreNopReason += core.currentCycle -> "compute stall"
+          } else if (core.scheduleContext.readyList.nonEmpty) {
+            coreNopReason += core.currentCycle -> "performance bug (could have scheduled something, but didn't)"
+          }
+
           core.currentCycle += 1
       }
       // see if there is anything that can be committed
@@ -417,6 +433,51 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
           (p.id.x, p.id.y)
         }
       }
+
+    scheduledProcesses.foreach { proc =>
+      val core = cores.find(c => c.process.id == proc.id).get
+
+      val progLenWithRecv = proc.body.length
+      // Do not use "core.process.body.length" here as that is unscheduled and does not contain compute NOPs! Must
+      // instead use the output of the scheduler.
+      val progLenWithoutRecv = core.scheduleContext.getSchedule().length
+
+      val coreNopReason = nopReason(proc.id)
+
+      // The "core" above has a schedule without the final NOPs needed to handle RECV instructions.
+      // The "proc" above has a schedule with    the final NOPs needed to handle RECV instructions.
+      ctx.logger.debug(s"core x${core.process.id.x}y${core.process.id.y} without RECV prog len = ${progLenWithoutRecv}")
+      ctx.logger.debug(s"core x${core.process.id.x}y${core.process.id.y} with    RECV prog len = ${progLenWithRecv}")
+
+      val numNopsToLog = progLenWithRecv - progLenWithoutRecv
+      val stallUntilRecvNopReasons = Seq.tabulate(numNopsToLog) { i =>
+        core.currentCycle + i -> "stall until recv"
+      }
+      coreNopReason ++= stallUntilRecvNopReasons
+    }
+
+    // Dump the final schedules.
+    scheduledProcesses.foreach { proc =>
+      ctx.logger.dumpArtifact(s"core_x${proc.id.x}y${proc.id.y}_schedule.txt", forceDump = true) {
+        proc.body.zipWithIndex
+          .map { case (instr, cycle) =>
+            s"(${cycle}) ${instr.toString()}"
+          }
+          .mkString("\n")
+      }
+
+      ctx.logger.dumpArtifact(s"core_x${proc.id.x}y${proc.id.y}_nop_cause.txt", forceDump = true) {
+        nopReason(proc.id).toSeq
+          .sortBy { case (cycle, _) =>
+            cycle
+          }
+          .map { case (cycle, reason) =>
+            s"(${cycle}) ${reason}"
+          }
+          .mkString("\n")
+      }
+    }
+
     program
       .copy(
         processes = scheduledProcesses.map(removeDeadPhis)
