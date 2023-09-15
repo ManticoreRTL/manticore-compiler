@@ -458,7 +458,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
 
     // Dump the final schedules.
     scheduledProcesses.foreach { proc =>
-      ctx.logger.dumpArtifact(s"core_x${proc.id.x}y${proc.id.y}_schedule.txt", forceDump = true) {
+      ctx.logger.dumpArtifact(s"core_x${proc.id.x}y${proc.id.y}_schedule.txt", forceDump = false) {
         proc.body.zipWithIndex
           .map { case (instr, cycle) =>
             s"(${cycle}) ${instr.toString()}"
@@ -466,7 +466,7 @@ private[lowering] object ProgramSchedulingTransform extends PlacedIRTransformer 
           .mkString("\n")
       }
 
-      ctx.logger.dumpArtifact(s"core_x${proc.id.x}y${proc.id.y}_nop_cause.txt", forceDump = true) {
+      ctx.logger.dumpArtifact(s"core_x${proc.id.x}y${proc.id.y}_nop_cause.txt", forceDump = false) {
         nopReason(proc.id).toSeq
           .sortBy { case (cycle, _) =>
             cycle

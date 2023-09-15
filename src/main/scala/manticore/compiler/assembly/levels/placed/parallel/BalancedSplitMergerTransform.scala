@@ -288,7 +288,7 @@ object BalancedSplitMergerTransform extends BasicProcessExtraction {
 
     val cores = clusters.head.nodes.toSeq.map { x => x.toOuter }
 
-    ctx.logger.dumpArtifact(s"duplicate_instruction_histogram.txt", forceDump = true) {
+    ctx.logger.dumpArtifact(s"duplicate_instruction_histogram.txt", forceDump = false) {
       getDuplicateInstrsHist(cores).map { case (instrIdx, cnt) =>
         s"${instrIdx} -> ${cnt}"
       }.mkString("\n")

@@ -105,7 +105,7 @@ trait EmitDepthStatistics extends DependenceGraphBuilder with PlacedIRTransforme
 
     ctx.logger.dumpArtifact(
       s"dependence_graph_${ctx.logger.countProgress()}_${transformId}.dot",
-      forceDump = true
+      forceDump = false
     ) {
       // All vertices should use the string representation of the instruction
       // that generates them, or the name itself (if a primary input).

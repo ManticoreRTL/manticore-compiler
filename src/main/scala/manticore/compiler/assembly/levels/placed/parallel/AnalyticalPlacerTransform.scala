@@ -1083,7 +1083,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
       pathIdToPath
     )
     val procIdToCoreId = roundRobinAssignmentHint
-    // ctx.logger.dumpArtifact(s"procIdToCoreId.txt", forceDump = true) {
+    // ctx.logger.dumpArtifact(s"procIdToCoreId.txt", forceDump = false) {
     //   procIdToCoreId.mkString("\n")
     // }
 
@@ -1139,7 +1139,7 @@ object AnalyticalPlacerTransform extends PlacedIRTransformer {
     //   roundRobinAssignmentHint
     // )
 
-    ctx.logger.dumpArtifact("core_graph.dot", forceDump = true) {
+    ctx.logger.dumpArtifact("core_graph.dot", forceDump = false) {
       val coreEdgeWeights = getCoreEdgeWeights(procEdgeWeights, procIdToCoreId, ctx.hw_config.dimX, ctx.hw_config.dimY)
       dumpCoreGraph(procIdToProcName, procIdToCoreId, coreEdgeWeights, ctx.hw_config.dimX, ctx.hw_config.dimY)
     }
