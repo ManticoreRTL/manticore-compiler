@@ -2,12 +2,17 @@ ThisBuild / organization := "ch.epfl.vlsc"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.8"
 
-enablePlugins(JavaAppPackaging)
+// enablePlugins(JavaAppPackaging)
 
 val chiselVersion = "3.5.1"
 
+ThisBuild / assemblyMergeStrategy := {
+    case x =>
+      MergeStrategy.first
+  }
 lazy val compiler = (project in file(".")).settings(
   name := "manticore-compiler",
+  assembly / mainClass := Some("manticore.compiler.Main"),
   scalacOptions ++= Seq(
     "-feature",
     "-deprecation",

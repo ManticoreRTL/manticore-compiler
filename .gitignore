@@ -9,3 +9,4 @@ project/target/
 project/metals.sbt
 target/
 test_run_dir
+obj_dir

@@ -42,7 +42,7 @@ case class InterpretMode(lowerFirst: Boolean = false, timeout: Int = 100000, ser
 case class CliConfig(
     mode: Mode = CompileMode,
     inputFiles: Seq[File] = Nil,
-    outputDir: File = Path.of(".").toFile,
+    outputDir: File = Path.of("./obj_dir").toFile,
     dumpDir: Option[File] = None,
     dumpAll: Boolean = false,
     dumpScratchPad: Boolean = false,

@@ -6,6 +6,8 @@ import manticore.compiler.HasTransformationID
 
 import java.nio.file.Files
 import java.nio.file.Path
+import manticore.compiler.CompilationFailureException
+import java.nio.file.Paths
 
 object YosysRunner extends FunctionalTransformation[YosysResultProxy, Path] {
 
@@ -37,7 +39,8 @@ object YosysRunner extends FunctionalTransformation[YosysResultProxy, Path] {
 }
 
 final class YosysRunner private (runDir: Path, backend: YosysBackendProxy)
-    extends FunctionalTransformation[YosysResultProxy, Path] with HasTransformationID{
+    extends FunctionalTransformation[YosysResultProxy, Path]
+    with HasTransformationID {
 
   import scala.sys.process.{ProcessLogger, Process}
   import java.nio.file.Files
@@ -61,17 +64,16 @@ final class YosysRunner private (runDir: Path, backend: YosysBackendProxy)
     val allPasses = ctx.dump_dir match {
       case Some(dDir) if ctx.dump_all =>
         var i = 0
-        val withDumps = resultProxy.passes.flatMap {
-          case yp @ YosysPassProxy(ycmd, _, _) =>
-            val index = i
-            i = i + 1
-            Seq(
-              yp,
-              Yosys.RtlIlWriter << dDir.toPath
-                .resolve(s"y${i}_post_${ycmd}.rtl")
-                .toAbsolutePath()
-                .toString()
-            )
+        val withDumps = resultProxy.passes.flatMap { case yp @ YosysPassProxy(ycmd, _, _) =>
+          val index = i
+          i = i + 1
+          Seq(
+            yp,
+            Yosys.RtlIlWriter << dDir.toPath
+              .resolve(s"y${i}_post_${ycmd}.rtl")
+              .toAbsolutePath()
+              .toString()
+          )
         }
         withDumps :+ manticoreWriter
       case _ =>
@@ -79,14 +81,19 @@ final class YosysRunner private (runDir: Path, backend: YosysBackendProxy)
 
     }
 
-    val allCmds = allPasses.foldLeft("") {
-      case (script, YosysPassProxy(command, args, _)) =>
-        script + s"${command} ${args.mkString(" ")}; "
+    val allCmds = allPasses.foldLeft("") { case (script, YosysPassProxy(command, args, _)) =>
+      script + s"${command} ${args.mkString(" ")}; "
     }
 
-    val yosysLog = new StringBuilder
+    val yosysLog      = new StringBuilder
     val processLogger = ProcessLogger(ln => yosysLog ++= s"${ln}\n")
-    val processCmd = s"yosys -p \"${allCmds}\"  -d"
+    val rootDir =
+      scala.util.Properties.envOrElse("MASM_ROOT", throw new CompilationFailureException("MASM_ROOT is not defined"))
+    if (!Paths.get(rootDir).resolve("frontend").resolve("v2masmyosys").toFile().exists()) {
+      throw new CompilationFailureException("v2masmyosys is not installed")
+    }
+    val processCmd =
+      s"${rootDir}/frontend/v2masmyosys -p \"${allCmds}\"  -d"
     ctx.logger.info(s"Running:\n${processCmd}")
     Files.createDirectories(runDir)
     val (retCode, duration) = ctx.stats.scope {

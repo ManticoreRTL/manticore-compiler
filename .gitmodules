@@ -1,0 +1,9 @@
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/ManticoreRTL/manticore-frontend.git
+[submodule "hardware"]
+	path = hardware
+	url = https://github.com/ManticoreRTL/manticore-hw.git
+[submodule "runtime"]
+	path = runtime
+	url = https://github.com/ManticoreRTL/manticore-runtime.git
